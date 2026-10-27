@@ -582,3 +582,24 @@
   .ah2-in{width:auto;max-width:none;margin:0;padding:28px max(20px, calc((100% - 1216px) / 2)) 0}
   .ab.ab{max-width:none;margin:0}
 }
+
+/* Ajustes do port Next (mobile): a regra `.ab.ab` acima vence a media query de 1024px. */
+.pg-artista {
+  .sh-r.hl{background:none;padding:14px 0}
+  .tr-r{width:calc(100% + 24px)}
+  .tr-r .tr-n .eq{height:12px;color:#111}
+  @media (max-width:1024px){
+    .ab.ab{grid-template-columns:minmax(0,1fr);gap:48px}
+    .ab-side{position:relative;top:auto}
+  }
+  @media (max-width:640px){
+    .ah2 .ah-n{font-size:clamp(40px,12vw,56px)}
+    .ab-st{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .ab-st > div{padding:14px 14px}
+    .st-v{font-size:22px}
+    .sim{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+    .sim-b b{font-size:13.5px}
+    .more-h h2{font-size:26px}
+    .blk-s{margin-top:44px}
+  }
+}
