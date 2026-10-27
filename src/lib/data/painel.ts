@@ -44,7 +44,8 @@ export type PainelEvent = Awaited<ReturnType<typeof getPainelScope>>["events"][n
 export async function listOrders(eventIds: string[], absorbById: Map<string, boolean>): Promise<PaidOrder[]> {
   if (!eventIds.length) return [];
   const rows = await db.query.orders.findMany({
-    where: and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "refunded"])),
+    // compras na revenda não entram: o dinheiro é do fã que revendeu, não do produtor
+    where: and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "refunded"]), isNull(orders.resaleListingId)),
     columns: { id: true, number: true, eventId: true, userId: true, buyerEmail: true, status: true, subtotalCents: true, meiaCents: true, discountCents: true, feeCents: true, paidAt: true, createdAt: true, buyerName: true, paymentMethod: true, couponId: true },
     with: { items: { columns: { quantity: true } } },
     orderBy: [desc(orders.createdAt)],
@@ -82,7 +83,7 @@ export async function revenueByType(eventId: string) {
     .select({ typeId: orderItems.ticketTypeId, qty: orderItems.quantity, price: orderItems.unitPriceCents })
     .from(orderItems)
     .innerJoin(orders, eq(orders.id, orderItems.orderId))
-    .where(and(eq(orders.eventId, eventId), eq(orders.status, "paid")));
+    .where(and(eq(orders.eventId, eventId), eq(orders.status, "paid"), isNull(orders.resaleListingId)));
   const m = new Map<string, { qty: number; cents: number }>();
   for (const r of rows) {
     const x = m.get(r.typeId) ?? { qty: 0, cents: 0 };
