@@ -23,6 +23,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const [favs, setFavs] = useState<string[]>([]);
   const [loggedIn, setLoggedIn] = useState(false);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- lê o localStorage só no cliente (evita mismatch de hidratação)
   useEffect(() => { setFavs(readLocal()); }, []);
 
   const hydrate = useCallback((serverFavs: string[], logged: boolean) => {
