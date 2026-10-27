@@ -9,6 +9,7 @@
 @import "../styles/pages/artista.css";
 @import "../styles/pages/entrar.css";
 @import "../styles/pages/meus-ingressos.css";
+@import "../styles/pages/checkout.css";
 
 @theme inline {
   --color-ink: #111111;
