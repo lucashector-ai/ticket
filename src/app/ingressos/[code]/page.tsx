@@ -10,6 +10,8 @@ import { getUserFavoriteSlugs } from "@/lib/data/user";
 import { dateNice } from "@/lib/format";
 import { countdownLabel, eventLabels } from "@/lib/tickets/labels";
 import { ticketQrSvg } from "@/lib/tickets/qr";
+import { appleWalletEnabled } from "@/lib/wallet/apple";
+import { googleWalletEnabled } from "@/lib/wallet/google";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,7 @@ export default async function IngressoPage({ params }: { params: Promise<{ code:
   const e = t.event;
   const L = eventLabels(e);
   const data: TicketViewData = {
+    wallet: { apple: appleWalletEnabled(), google: googleWalletEnabled() },
     ticket: { id: t.id, code: t.code, holderName: t.holderName, status: t.status, checkedInAt: t.checkedInAt?.toISOString() ?? null, qrSvg: await ticketQrSvg(t.code, t.secret) },
     eventSlug: e.slug, title: e.title, flyerId: e.flyerId,
     upcoming: (e.endAt ?? e.startAt).getTime() >= now.getTime(), countdown: countdownLabel(e.startAt, now),

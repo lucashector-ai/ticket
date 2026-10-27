@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { FavoritesHydrator } from "@/components/favorites";
 import { MeusIngressos } from "@/components/ingressos/meus-ingressos";
+import { appleWalletEnabled } from "@/lib/wallet/apple";
+import { googleWalletEnabled } from "@/lib/wallet/google";
 import type { TicketGroup, TicketItem } from "@/components/ingressos/types";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -56,7 +58,7 @@ export default async function MeusIngressosPage({ searchParams }: { searchParams
     <div className="pg-meus-ingressos">
       <FavoritesHydrator serverFavs={favs} loggedIn />
       <SiteHeader user={user} variant="default" activePath="/meus-ingressos" />
-      <MeusIngressos groups={groups} confirmedOrder={confirmedOrder} />
+      <MeusIngressos groups={groups} confirmedOrder={confirmedOrder} wallet={{ apple: appleWalletEnabled(), google: googleWalletEnabled() }} />
       <SiteFooter />
     </div>
   );

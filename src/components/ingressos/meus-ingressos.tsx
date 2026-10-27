@@ -6,7 +6,8 @@ import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { qtyLabel } from "@/lib/tickets/labels";
 import { HelpStrip } from "./help-strip";
-import { IcoArrow, IcoCalendar, IcoCheck, IcoClose, IcoNext, IcoPin, IcoPrev, IcoStar, IcoSun, IcoTicket, IcoWallet } from "./icons";
+import { WalletButtons, type WalletFlags } from "./wallet-buttons";
+import { IcoArrow, IcoCalendar, IcoCheck, IcoClose, IcoNext, IcoPin, IcoPrev, IcoStar, IcoSun, IcoTicket } from "./icons";
 import { Modal } from "./modal";
 import { TransferModal } from "./transfer-modal";
 import type { TicketGroup, TicketItem } from "./types";
@@ -15,6 +16,7 @@ type Props = {
   groups: TicketGroup[];
   /** número do pedido confirmado (?pedido=N), se pertencer ao usuário */
   confirmedOrder: number | null;
+  wallet: WalletFlags;
 };
 
 /** Linha "Titular: …" / status do ingresso dentro do carrossel. */
@@ -27,13 +29,12 @@ function holderLabel(t: TicketItem, moved: Record<string, string>) {
   return `Titular: ${t.holderName ?? "—"}`;
 }
 
-export function MeusIngressos({ groups, confirmedOrder }: Props) {
+export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
   const { flash } = useToast();
   const [tab, setTab] = useState<"up" | "past">("up");
   const [cur, setCur] = useState<Record<string, number>>({});
   const [qrOf, setQrOf] = useState<string | null>(null);
   const [transfer, setTransfer] = useState<{ group: TicketGroup; ticket: TicketItem; cur: number } | null>(null);
-  const [wallet, setWallet] = useState<string[]>([]);
   const [rates, setRates] = useState<Record<string, number>>({});
   const [moved, setMoved] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState(confirmedOrder != null);
@@ -46,18 +47,6 @@ export function MeusIngressos({ groups, confirmedOrder }: Props) {
   const idx = (g: TicketGroup) => Math.min(cur[g.key] ?? 0, g.tickets.length - 1);
   const step = (g: TicketGroup, dir: 1 | -1) => setCur((c) => ({ ...c, [g.key]: ((c[g.key] ?? 0) + dir + g.tickets.length) % g.tickets.length }));
 
-  const addWallet = (g: TicketGroup) => {
-    const t = g.tickets[idx(g)];
-    if (!wallet.includes(g.key)) setWallet((w) => [...w, g.key]);
-    // Baixa o .ics do evento (agenda/Wallet) do ingresso em destaque.
-    const a = document.createElement("a");
-    a.href = `/api/ingressos/${t.code}/ics`;
-    a.download = `onde-${t.code}.ics`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    flash("Ingresso adicionado à Wallet");
-  };
 
   const onTransferred = (email: string) => {
     if (transfer) setMoved((m) => ({ ...m, [transfer.ticket.id]: email }));
@@ -132,9 +121,7 @@ export function MeusIngressos({ groups, confirmedOrder }: Props) {
                   </li>
                 </ul>
                 <div className="tkb-a">
-                  <button className="btn-w" type="button" onClick={() => addWallet(f)}>
-                    <IcoWallet />{wallet.includes(f.key) ? "Na sua Wallet" : "Adicionar à Wallet"}
-                  </button>
+                  {f.tickets[idx(f)].status === "valid" && <WalletButtons code={f.tickets[idx(f)].code} flags={wallet} />}
                   {(() => {
                     const t = f.tickets[idx(f)];
                     const can = t.status === "valid" && !moved[t.id];

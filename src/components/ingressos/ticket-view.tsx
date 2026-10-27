@@ -6,9 +6,10 @@ import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { TICKET_STATUS_LABEL } from "@/lib/tickets/labels";
 import { HelpStrip } from "./help-strip";
-import { IcoArrow, IcoBack, IcoCalendar, IcoClose, IcoPin, IcoSun, IcoTicket, IcoUser, IcoWallet } from "./icons";
+import { IcoArrow, IcoBack, IcoCalendar, IcoClose, IcoPin, IcoSun, IcoTicket, IcoUser } from "./icons";
 import { Modal } from "./modal";
 import { TransferModal } from "./transfer-modal";
+import { WalletButtons, type WalletFlags } from "./wallet-buttons";
 import type { TicketItem } from "./types";
 
 export type TicketViewData = {
@@ -26,6 +27,7 @@ export type TicketViewData = {
   tier: string;
   orderNumber: number | null;
   checkedInLabel: string | null;
+  wallet: WalletFlags;
 };
 
 export function TicketView({ data }: { data: TicketViewData }) {
@@ -33,21 +35,9 @@ export function TicketView({ data }: { data: TicketViewData }) {
   const [transfer, setTransfer] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [movedTo, setMovedTo] = useState<string | null>(null);
-  const [wallet, setWallet] = useState(false);
   const t = data.ticket;
   const status = movedTo ? "transferred" : t.status;
   const valid = status === "valid";
-
-  const addWallet = () => {
-    setWallet(true);
-    const a = document.createElement("a");
-    a.href = `/api/ingressos/${t.code}/ics`;
-    a.download = `onde-${t.code}.ics`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    flash("Ingresso adicionado à Wallet");
-  };
 
   const kicker = !data.upcoming ? "Evento encerrado" : status === "valid" ? data.countdown : TICKET_STATUS_LABEL[status];
   const holder = movedTo ? `Transferido para ${movedTo}` : status === "transferred" ? "Transferido" : `Titular: ${t.holderName ?? "—"}`;
@@ -92,7 +82,7 @@ export function TicketView({ data }: { data: TicketViewData }) {
           </ul>
           <div className="tkb-a">
             {valid && data.upcoming && (
-              <button className="btn-w" type="button" onClick={addWallet}><IcoWallet />{wallet ? "Na sua Wallet" : "Adicionar à Wallet"}</button>
+              <WalletButtons code={t.code} flags={data.wallet} />
             )}
             {valid && (
               <button className="btn-g" type="button" onClick={() => setTransfer(true)}><IcoArrow />Transferir</button>
