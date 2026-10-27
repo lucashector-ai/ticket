@@ -14,7 +14,7 @@ export function VenueMap({ e, t }: { e: EventoData; t: Tickets }) {
   const [sel, setSel] = useState<string | null>(null);
   const plan: VenuePlan = useMemo(() => ({
     width: data.width, depth: data.depth, notes: [], source: "ia",
-    areas: data.areas.map((a) => ({ ...a, kind: ((AREA_KINDS as readonly string[]).includes(a.kind) ? a.kind : "outro") as AreaKind, sector: a.sectorName })),
+    areas: data.areas.map((a) => ({ ...a, cap: 0, kind: ((AREA_KINDS as readonly string[]).includes(a.kind) ? a.kind : "outro") as AreaKind, sector: a.sectorName })),
   }), [data]);
   const byId = new Map(data.areas.map((a) => [a.id, a]));
   const sectors = [...new Map(data.areas.filter((a) => a.sectorName).map((a) => [a.sectorName!, { name: a.sectorName!, color: a.color }])).values()];
@@ -26,8 +26,6 @@ export function VenueMap({ e, t }: { e: EventoData; t: Tickets }) {
     const prices = e.tiers.filter((x) => x.sector === name && x.status === "open").map((x) => x.priceCents);
     return prices.length ? `a partir de ${brl(Math.min(...prices))}` : "Esgotado";
   };
-  const capOf = (name: string) => data.areas.filter((a) => a.sectorName === name).reduce((s, a) => s + a.cap, 0);
-  const total = data.areas.reduce((s, a) => s + (a.sectorName ? a.cap : 0), 0);
   return (
     <div className="blk-s" id="mapa" style={{ scrollMarginTop: 100 }}>
       <h2>Mapa do local</h2>
@@ -39,7 +37,7 @@ export function VenueMap({ e, t }: { e: EventoData; t: Tickets }) {
           onPick={(id) => { setSel(id); const s = byId.get(id)?.sectorName; if (s) pick(s); }}
           view={view}
           setView={setView}
-          tag={`Escala aproximada · ${total.toLocaleString("pt-BR")} pessoas`}
+          labels="popup"
         />
         {sectors.length > 0 && (
           <div className="m3-side">
@@ -47,7 +45,7 @@ export function VenueMap({ e, t }: { e: EventoData; t: Tickets }) {
             {sectors.map((s) => (
               <button key={s.name} type="button" className={t.sector === s.name ? "al sel" : "al"} onClick={() => pick(s.name)} aria-pressed={t.sector === s.name}>
                 <span className="al-sw" style={{ background: s.color }} aria-hidden="true" />
-                <span className="al-i"><b className="al-n">{s.name}</b><span className="al-c">{fromOf(s.name)} · {capOf(s.name).toLocaleString("pt-BR")} lugares</span></span>
+                <span className="al-i"><b className="al-n">{s.name}</b><span className="al-c">{fromOf(s.name)}</span></span>
               </button>
             ))}
           </div>

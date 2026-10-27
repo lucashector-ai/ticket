@@ -18,14 +18,16 @@ function shade(hex: string, f: number) {
 export type AreaLook = (a: PlanArea) => { name: string; color: string };
 export const fixedLook = (a: PlanArea) => ({ name: a.name, color: a.kind === "setor" ? "#8A8A90" : KIND_COLOR[a.kind] });
 
-export function MapStage({ plan, look, sel, onPick, view, setView, tag }: {
+/** `labels="popup"`: o nome de cada área fica num balão sempre aberto, de frente para quem vê (página do evento). */
+export function MapStage({ plan, look, sel, onPick, view, setView, tag, labels = "face" }: {
   plan: VenuePlan;
   look: AreaLook;
   sel: string | null;
   onPick: (areaId: string) => void;
   view: MapView;
   setView: (fn: (v: MapView) => MapView) => void;
-  tag: string;
+  tag?: string;
+  labels?: "face" | "popup";
 }) {
   const k = Math.min(SCENE_W / plan.width, SCENE_H / plan.depth);
   const ox = (SCENE_W - plan.width * k) / 2, oy = (SCENE_H - plan.depth * k) / 2;
@@ -39,10 +41,22 @@ export function MapStage({ plan, look, sel, onPick, view, setView, tag }: {
           const hpx = Math.min(48, Math.max(3, a.h * k * 3));
           const style = { left: ox + a.x * k, top: oy + a.y * k, width: a.w * k, height: a.d * k, "--h": `${hpx}px`, "--c": color, "--cs": shade(color, 0.72) } as React.CSSProperties;
           return (
-            <button key={a.id} className={`ar${dark ? " dark" : ""}${sel === a.id ? " sel" : ""}`} type="button" onClick={() => onPick(a.id)} aria-label={`${name}${a.cap ? `, ${a.cap} pessoas` : ""}`} style={style}>
-              <span className="fc ftop"><span className="fc-l" style={{ transform: `rotateZ(${-view.rot}deg)` }}>{name}</span></span>
+            <button key={a.id} className={`ar${dark ? " dark" : ""}${sel === a.id ? " sel" : ""}`} type="button" onClick={() => onPick(a.id)} aria-label={name} style={style}>
+              <span className="fc ftop">{labels === "face" && <span className="fc-l" style={{ transform: `rotateZ(${-view.rot}deg)` }}>{name}</span>}</span>
               <span className="fc s" /><span className="fc e" /><span className="fc n" /><span className="fc w" />
             </button>
+          );
+        })}
+        {labels === "popup" && plan.areas.map((a) => {
+          const { name, color } = look(a);
+          const hpx = Math.min(48, Math.max(3, a.h * k * 3));
+          return (
+            <span key={`p-${a.id}`} className="mpin" aria-hidden="true"
+              style={{ left: ox + (a.x + a.w / 2) * k, top: oy + (a.y + a.d / 2) * k, transform: `translateZ(${hpx + 2}px) rotateZ(${-view.rot}deg) rotateX(${-view.tilt}deg)` }}>
+              <span className={`mpin-b${a.kind === "setor" ? " sec" : ""}${sel === a.id ? " on" : ""}`} onClick={() => onPick(a.id)}>
+                {a.kind === "setor" && <i style={{ background: color }} />}{name}
+              </span>
+            </span>
           );
         })}
       </div>
@@ -52,7 +66,7 @@ export function MapStage({ plan, look, sel, onPick, view, setView, tag }: {
         <button className={view.tilt === 0 ? "m3-b on" : "m3-b"} type="button" onClick={() => setView(() => ({ tilt: 0, rot: 0 }))}>Planta</button>
         <button className={view.tilt !== 0 ? "m3-b on" : "m3-b"} type="button" onClick={() => setView(() => VIEW_3D)}>3D</button>
       </div>
-      <span className="m3-tag">{tag}</span>
+      {tag && <span className="m3-tag">{tag}</span>}
     </div>
   );
 }
