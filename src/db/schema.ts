@@ -257,6 +257,21 @@ export const events = pgTable(
     }>(),
     /** estado completo do formulário de criação, para continuar editando */
     draft: jsonb("draft").$type<Record<string, unknown>>(),
+    /* ---- lançamento ---- */
+    /** abertura das vendas gerais: antes dela a página mostra a contagem regressiva e o "me avise" */
+    salesOpenAt: timestamp("sales_open_at", { withTimezone: true }),
+    /** pré-venda para cadastrados: começa aqui (link secreto por e-mail) e vai até a abertura */
+    presaleAt: timestamp("presale_at", { withTimezone: true }),
+    /** quando os links da pré-venda e o aviso de abertura foram enviados */
+    presaleSentAt: timestamp("presale_sent_at", { withTimezone: true }),
+    openingSentAt: timestamp("opening_sent_at", { withTimezone: true }),
+    /** fila virtual: auto (liga sozinha quando muita gente entra ao mesmo tempo) | on | off */
+    queueMode: varchar("queue_mode", { length: 8 }).notNull().default("auto"),
+    /** quantas pessoas podem comprar ao mesmo tempo antes de a fila ligar */
+    queueLimit: integer("queue_limit").notNull().default(300),
+    /** revenda oficial entre fãs e o preço máximo, em % do valor pago */
+    resaleEnabled: boolean("resale_enabled").notNull().default(true),
+    resaleMaxPct: integer("resale_max_pct").notNull().default(120),
     ...timestamps,
   },
   (t) => [
@@ -385,6 +400,13 @@ export const orders = pgTable(
     interestCents: integer("interest_cents").notNull().default(0),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
+    /** link de divulgação que trouxe a venda e a comissão dele */
+    promoterId: uuid("promoter_id"),
+    commissionCents: integer("commission_cents").notNull().default(0),
+    /** parte de uma compra em grupo / compra na revenda / link da pré-venda usado */
+    groupShareId: uuid("group_share_id"),
+    resaleListingId: uuid("resale_listing_id"),
+    presaleSignupId: uuid("presale_signup_id"),
     ...timestamps,
   },
   (t) => [index("orders_user_idx").on(t.userId), index("orders_event_idx").on(t.eventId), uniqueIndex("orders_number_idx").on(t.number)],
@@ -496,6 +518,120 @@ export const newsletterSubscribers = pgTable(
   },
 );
 
+/* ---------- lançamento, divulgação, grupo, revenda, fila ---------- */
+
+/** "Me avise na abertura" e cadastro da pré-venda. O token é o link secreto da pré-venda. */
+export const eventSignups = pgTable(
+  "event_signups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    /** abertura | presale */
+    kind: varchar("kind", { length: 12 }).notNull(),
+    email: varchar("email", { length: 254 }).notNull(),
+    userId: text("user_id"),
+    token: varchar("token", { length: 40 }).notNull(),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("event_signups_email_idx").on(t.eventId, t.kind, t.email), uniqueIndex("event_signups_token_idx").on(t.token)],
+);
+
+/** Link de divulgação com comissão (promoter, influenciador, parceiro). */
+export const promoters = pgTable(
+  "promoters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizerId: uuid("organizer_id").notNull().references(() => organizers.id, { onDelete: "cascade" }),
+    /** null = vale para todos os eventos do produtor */
+    eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    email: varchar("email", { length: 254 }),
+    /** o que vai no link: /r/<code> */
+    code: varchar("code", { length: 40 }).notNull(),
+    commissionPct: integer("commission_pct").notNull().default(10),
+    clicks: integer("clicks").notNull().default(0),
+    /** página do parceiro para acompanhar as próprias vendas */
+    token: varchar("token", { length: 40 }).notNull(),
+    active: boolean("active").notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("promoters_code_idx").on(t.code), uniqueIndex("promoters_token_idx").on(t.token), index("promoters_org_idx").on(t.organizerId)],
+);
+
+/** Compra em grupo: alguém reserva os lugares e cada amigo paga a sua parte pelo link. */
+export const groupOrders = pgTable(
+  "group_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: varchar("code", { length: 16 }).notNull(),
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    leaderUserId: text("leader_user_id").notNull(),
+    leaderName: varchar("leader_name", { length: 160 }),
+    /** reserva segura até aqui; depois as partes não pagas voltam para a venda */
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** open | done | cancelled */
+    status: varchar("status", { length: 12 }).notNull().default("open"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("group_orders_code_idx").on(t.code), index("group_orders_event_idx").on(t.eventId)],
+);
+
+export const groupShares = pgTable(
+  "group_shares",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id").notNull().references(() => groupOrders.id, { onDelete: "cascade" }),
+    ticketTypeId: uuid("ticket_type_id").notNull().references(() => ticketTypes.id),
+    priceCents: integer("price_cents").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    /** quem pegou esta parte (e o nome do titular) */
+    userId: text("user_id"),
+    name: varchar("name", { length: 160 }),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    orderId: uuid("order_id"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+  },
+  (t) => [index("group_shares_group_idx").on(t.groupId), index("group_shares_type_idx").on(t.ticketTypeId)],
+);
+
+/** Revenda oficial: o fã anuncia o ingresso; na venda, o QR antigo deixa de valer. */
+export const resaleListings = pgTable(
+  "resale_listings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticketId: uuid("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    ticketTypeId: uuid("ticket_type_id").notNull().references(() => ticketTypes.id),
+    sellerUserId: text("seller_user_id").notNull(),
+    priceCents: integer("price_cents").notNull(),
+    /** active | reserved | sold | cancelled */
+    status: varchar("status", { length: 12 }).notNull().default("active"),
+    /** comprador segurando o anúncio enquanto paga */
+    reservedBy: text("reserved_by"),
+    reservedUntil: timestamp("reserved_until", { withTimezone: true }),
+    buyerUserId: text("buyer_user_id"),
+    orderId: uuid("order_id"),
+    soldAt: timestamp("sold_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("resale_listings_event_idx").on(t.eventId, t.status), index("resale_listings_ticket_idx").on(t.ticketId)],
+);
+
+/** Fila virtual: quem está na página do evento (visitante anônimo por cookie). */
+export const queueEntries = pgTable(
+  "queue_entries",
+  {
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    visitorId: varchar("visitor_id", { length: 40 }).notNull(),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+    admittedAt: timestamp("admitted_at", { withTimezone: true }),
+    lastSeen: timestamp("last_seen", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.eventId, t.visitorId] }), index("queue_entries_wait_idx").on(t.eventId, t.admittedAt, t.joinedAt)],
+);
+
 /* ---------- relations ---------- */
 export const citiesRelations = relations(cities, ({ many }) => ({ venues: many(venues) }));
 export const venuesRelations = relations(venues, ({ one, many }) => ({
@@ -554,6 +690,23 @@ export const ticketsRelations = relations(tickets, ({ one }) => ({
   order: one(orders, { fields: [tickets.orderId], references: [orders.id] }),
   event: one(events, { fields: [tickets.eventId], references: [events.id] }),
   ticketType: one(ticketTypes, { fields: [tickets.ticketTypeId], references: [ticketTypes.id] }),
+}));
+export const groupOrdersRelations = relations(groupOrders, ({ one, many }) => ({
+  event: one(events, { fields: [groupOrders.eventId], references: [events.id] }),
+  shares: many(groupShares),
+}));
+export const groupSharesRelations = relations(groupShares, ({ one }) => ({
+  group: one(groupOrders, { fields: [groupShares.groupId], references: [groupOrders.id] }),
+  ticketType: one(ticketTypes, { fields: [groupShares.ticketTypeId], references: [ticketTypes.id] }),
+}));
+export const resaleListingsRelations = relations(resaleListings, ({ one }) => ({
+  ticket: one(tickets, { fields: [resaleListings.ticketId], references: [tickets.id] }),
+  event: one(events, { fields: [resaleListings.eventId], references: [events.id] }),
+  ticketType: one(ticketTypes, { fields: [resaleListings.ticketTypeId], references: [ticketTypes.id] }),
+}));
+export const promotersRelations = relations(promoters, ({ one }) => ({
+  organizer: one(organizers, { fields: [promoters.organizerId], references: [organizers.id] }),
+  event: one(events, { fields: [promoters.eventId], references: [events.id] }),
 }));
 export const favoritesRelations = relations(favorites, ({ one }) => ({
   event: one(events, { fields: [favorites.eventId], references: [events.id] }),
