@@ -1,5 +1,5 @@
 import "server-only";
-import { passTheme, toHex } from "./theme";
+import { PASS_THEME, toHex } from "./theme";
 import type { PassData } from "./pass-data";
 
 /*
@@ -43,7 +43,7 @@ export async function googleSaveUrl(d: PassData, site: string) {
     reviewStatus: "UNDER_REVIEW",
     eventName: txt(d.title),
     logo: { sourceUri: { uri: `${site}/wallet/google-logo.png` }, contentDescription: txt("Tickets Win") },
-    hexBackgroundColor: toHex((await passTheme(d.accent, d.banner, site)).bg),
+    hexBackgroundColor: toHex(PASS_THEME.bg),
     ...(d.art ? { heroImage: { sourceUri: { uri: d.art }, contentDescription: txt(d.title) } } : {}),
     ...(d.venue || d.address ? { venue: { name: txt(d.venue || d.city), address: txt(d.address || d.city) } } : {}),
     dateTime: { start: d.start.toISOString(), end: d.end.toISOString() },

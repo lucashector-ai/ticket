@@ -1,4 +1,4 @@
-import { unzlibSync, zlibSync } from "fflate";
+import { zlibSync } from "fflate";
 
 /* PNG RGBA mínimo (sem dependências além do fflate) para as camadas desenhadas do passe. */
 
@@ -39,40 +39,4 @@ export function encodePng(w: number, h: number, rgba: Uint8Array) {
   let o = 0;
   for (const p of parts) { out.set(p, o); o += p.length; }
   return out;
-}
-
-/** Decodifica PNG de 8 bits, RGB ou RGBA, sem entrelaçamento (o que o Images da Cloudflare devolve). */
-export function decodePng(png: Uint8Array): { w: number; h: number; rgba: Uint8Array } {
-  const v = new DataView(png.buffer, png.byteOffset, png.byteLength);
-  let o = 8, w = 0, h = 0, type = 0;
-  const idat: Uint8Array[] = [];
-  while (o < png.length) {
-    const len = v.getUint32(o), name = String.fromCharCode(...png.subarray(o + 4, o + 8));
-    const data = png.subarray(o + 8, o + 8 + len);
-    if (name === "IHDR") {
-      w = v.getUint32(o + 8); h = v.getUint32(o + 12); type = data[9];
-      if (data[8] !== 8 || (type !== 2 && type !== 6) || data[12] !== 0) throw new Error("PNG não suportado");
-    } else if (name === "IDAT") idat.push(data);
-    else if (name === "IEND") break;
-    o += 12 + len;
-  }
-  const z = new Uint8Array(idat.reduce((s, c) => s + c.length, 0));
-  idat.reduce((at, c) => (z.set(c, at), at + c.length), 0);
-  const raw = unzlibSync(z), bpp = type === 6 ? 4 : 3, stride = w * bpp;
-  const cur = new Uint8Array(stride), prev = new Uint8Array(stride), rgba = new Uint8Array(w * h * 4);
-  for (let y = 0; y < h; y++) {
-    const f = raw[y * (stride + 1)], line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
-    for (let i = 0; i < stride; i++) {
-      const a = i >= bpp ? cur[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0;
-      let p = a;
-      if (f === 4) { const pa = Math.abs(b - c), pb = Math.abs(a - c), pc = Math.abs(a + b - 2 * c); p = pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
-      cur[i] = (line[i] + (f === 0 ? 0 : f === 1 ? a : f === 2 ? b : f === 3 ? (a + b) >> 1 : p)) & 255;
-    }
-    for (let x = 0; x < w; x++) {
-      const d = (y * w + x) * 4, s = x * bpp;
-      rgba[d] = cur[s]; rgba[d + 1] = cur[s + 1]; rgba[d + 2] = cur[s + 2]; rgba[d + 3] = bpp === 4 ? cur[s + 3] : 255;
-    }
-    prev.set(cur);
-  }
-  return { w, h, rgba };
 }

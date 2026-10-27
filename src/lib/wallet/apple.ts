@@ -3,8 +3,8 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { zipSync } from "fflate";
 import forge from "node-forge";
 import { hourLabel } from "@/lib/format";
-import { PASS_IMAGES, PASS_LOGO_DARK } from "./images";
-import { passStrip, passTheme, type PassTheme, type RGB } from "./theme";
+import { PASS_IMAGES } from "./images";
+import { PASS_THEME as t, passStrip, type RGB } from "./theme";
 import type { PassData } from "./pass-data";
 
 /*
@@ -65,9 +65,10 @@ const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 const rgb = (c: RGB) => `rgb(${c.join(",")})`;
 const hourOf = (s: string) => s.match(/\b(\d{1,2}h\d{0,2})\b/)?.[1] ?? null;
 
-/* pass.json no estilo ingresso (eventTicket), na cor do evento: logo e data no topo, nome do evento
-   sobre a faixa com o picote, e abaixo dele, em duas linhas, local/horário e titular/setor. */
-function passJson(d: PassData, s: Signer, t: PassTheme) {
+/* pass.json no estilo ingresso (eventTicket), preto: logo e data no topo, a faixa com o picote e,
+   abaixo dele, o nome do evento (num campo secundário, de letra menor que o campo principal da
+   Apple) e uma linha com local, horário e setor. */
+function passJson(d: PassData, s: Signer) {
   const iso = (x: Date) => x.toISOString().replace(/\.\d{3}Z$/, "Z");
   const show = hourLabel(d.start);
   const doors = hourOf(d.doors);
@@ -103,18 +104,19 @@ function passJson(d: PassData, s: Signer, t: PassTheme) {
     barcodes: [{ format: "PKBarcodeFormatQR", message: d.qr, messageEncoding: "iso-8859-1" }],
     eventTicket: {
       headerFields: [{ key: "date", label: day.toUpperCase(), value: show, textAlignment: right }],
-      primaryFields: [{ key: "event", label: (d.city || "Evento").toUpperCase(), value: d.title }],
+      primaryFields: [],
       secondaryFields: [
-        { key: "venue", label: "LOCAL", value: d.venue || d.city },
-        doors ? { key: "doors", label: "ABERTURA", value: doors, textAlignment: right } : { key: "show", label: "INÍCIO", value: show, textAlignment: right },
+        { key: "event", label: [d.city, d.uf].filter(Boolean).join(" – ").toUpperCase() || "EVENTO", value: d.title },
+        ...(status ? [{ key: "status", label: "INGRESSO", value: status, textAlignment: right }] : []),
       ],
       auxiliaryFields: [
-        { key: "holder", label: "TITULAR", value: d.holder || "—" },
-        ...(status ? [{ key: "status", label: "INGRESSO", value: status }] : []),
+        { key: "venue", label: "LOCAL", value: d.venue || d.city },
+        doors ? { key: "doors", label: "ABERTURA", value: doors } : { key: "show", label: "INÍCIO", value: show },
         { key: "type", label: "SETOR", value: d.type, textAlignment: right },
       ],
       backFields: [
         { key: "when", label: "Data e horário", value: [d.when, d.doors || show].filter(Boolean).join(" · ") },
+        ...(d.holder ? [{ key: "holder", label: "Titular", value: d.holder }] : []),
         { key: "code", label: "Código do ingresso", value: d.code },
         ...(d.address ? [{ key: "address", label: "Endereço", value: d.address }] : []),
         { key: "link", label: "Seu ingresso no site", value: d.url, attributedValue: `<a href="${d.url}">Abrir no Tickets Win</a>` },
@@ -127,11 +129,9 @@ function passJson(d: PassData, s: Signer, t: PassTheme) {
 /** Gera o .pkpass assinado. */
 export async function buildPkpass(d: PassData): Promise<Uint8Array> {
   const s = loadSigner();
-  const t = await passTheme(d.accent, d.banner, new URL(d.url).origin);
-  const files: Record<string, Uint8Array> = { "pass.json": new TextEncoder().encode(JSON.stringify(passJson(d, s, t))) };
+  const files: Record<string, Uint8Array> = { "pass.json": new TextEncoder().encode(JSON.stringify(passJson(d, s))) };
   for (const [name, b64] of Object.entries(PASS_IMAGES)) files[name] = fromB64(b64);
-  if (t.light) for (const [name, b64] of Object.entries(PASS_LOGO_DARK)) files[name] = fromB64(b64);
-  Object.assign(files, passStrip(t));
+  Object.assign(files, passStrip());
   const manifest = JSON.stringify(Object.fromEntries(await Promise.all(Object.entries(files).map(async ([n, b]) => [n, await sha1(b)]))));
   files["manifest.json"] = new TextEncoder().encode(manifest);
 

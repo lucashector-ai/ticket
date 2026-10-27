@@ -33,7 +33,6 @@ export async function passData(t: Ticket, site: string) {
     title: t.event.title,
     when: sess ? dateFull(start) : L.dateFull,
     whenShort: sess ? dateNice(start) : L.dateNice,
-    accent: /^#[0-9a-f]{6}$/i.test(t.event.accentColor ?? "") ? t.event.accentColor! : null,
     doors: L.doors,
     venue: L.venue,
     address: L.addr,
