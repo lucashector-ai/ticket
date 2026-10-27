@@ -53,7 +53,7 @@ export async function googleSaveUrl(d: PassData, site: string) {
     id: `${issuer}.${gid(`ingresso-${d.code}`)}`,
     classId,
     state: d.valid ? "ACTIVE" : "INACTIVE",
-    barcode: { type: "QR_CODE", value: d.qr, alternateText: d.code },
+    barcode: { type: "QR_CODE", value: d.qr },
     ticketNumber: d.code,
     ...(d.holder ? { ticketHolderName: d.holder } : {}),
     ticketType: txt(d.type),
