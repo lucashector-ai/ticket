@@ -10,6 +10,7 @@ import { priceOrder, SERVICE_FEE_RATE } from "@/lib/pricing";
 import { tierStatus } from "@/lib/tickets/status";
 import { qrPayload } from "@/lib/actions/tickets";
 import { canBuy } from "@/lib/launch";
+import { promoterForOrder } from "@/lib/promoters";
 
 const { orders, orderItems, tickets, ticketTypes, coupons, events, userProfiles, eventSignups } = schema;
 
@@ -103,6 +104,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   }
   const feeRate = ev.absorbFee ? 0 : SERVICE_FEE_RATE;
   const p = priceOrder({ lines, holders: cleanHolders, coupon: couponRow ? couponView(couponRow) : null, method, installments, feeRate });
+  // comissão do parceiro: % do valor dos ingressos (sem taxa e sem juros)
+  const promoter = await promoterForOrder(ev);
 
   const [order] = await db.insert(orders).values({
     userId: user.id, eventId: ev.id, status: "pending",
@@ -113,6 +116,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     holders: cleanHolders.map((h) => ({ ticketTypeId: h.ticketTypeId, name: h.name.trim(), meia: h.meia })),
     expiresAt: new Date(Date.now() + 15 * 60_000),
     presaleSignupId: access.presaleSignupId,
+    promoterId: promoter?.id ?? null,
+    commissionCents: promoter ? Math.round(((p.subtotal - p.meia - p.discount) * promoter.commissionPct) / 100) : 0,
   }).returning();
   await db.insert(orderItems).values(lines.map((l) => ({
     orderId: order.id, ticketTypeId: l.ticketTypeId, quantity: l.quantity, unitPriceCents: l.priceCents,

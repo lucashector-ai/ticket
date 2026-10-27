@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { createCoupon, setCouponActive } from "@/lib/actions/painel";
+import { PainelPromoters, type PromotersProps } from "./promoters";
 import { useOrigin } from "./use-origin";
 
 export type MarketingProps = {
@@ -12,6 +13,7 @@ export type MarketingProps = {
   coupons: { id: string; code: string; event: string; off: string; uses: string; discount: string; revenue: string; until: string; active: boolean; expired: boolean; sector: string | null }[];
   totals: { uses: number; off: string; rev: string };
   orgSlug: string | null;
+  promoters: PromotersProps | null;
 };
 
 export function PainelMarketing(p: MarketingProps) {
@@ -113,6 +115,7 @@ export function PainelMarketing(p: MarketingProps) {
           </section>
         </aside>
       </div>
+      {p.promoters && <div style={{ marginTop: 16 }}><PainelPromoters p={p.promoters} /></div>}
     </div>
   );
 }

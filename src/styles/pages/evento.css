@@ -562,12 +562,12 @@
 }
 
 /* Abertura de vendas / pré-venda: contagem regressiva no lugar dos ingressos */
+@keyframes lnPulse{0%{box-shadow:0 0 0 0 rgba(211,245,91,.55)}100%{box-shadow:0 0 0 10px rgba(211,245,91,0)}}
 .pg-evento {
   .lnch{position:relative;overflow:hidden;background:#111!important;color:#fff;border-color:#111!important}
   .lnch::before{content:"";position:absolute;inset:-40% -30% auto auto;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(211,245,91,.28),rgba(211,245,91,0) 65%);pointer-events:none}
   .ln-k{position:relative;display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12.5px;font-weight:600;color:#D3F55B;letter-spacing:.01em}
   .ln-pulse{width:7px;height:7px;border-radius:50%;background:#D3F55B;box-shadow:0 0 0 0 rgba(211,245,91,.6);animation:lnPulse 1.8s ease-out infinite}
-  @keyframes lnPulse{0%{box-shadow:0 0 0 0 rgba(211,245,91,.55)}100%{box-shadow:0 0 0 10px rgba(211,245,91,0)}}
   .ln-t{position:relative;margin:16px 0 14px;font-family:'Inter Tight',sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em;color:#fff}
   .ln-cd{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
   .ln-c{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 0 10px;border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)}

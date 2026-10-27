@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { PainelMarketing, type MarketingProps } from "@/components/painel/marketing";
 import { db, schema } from "@/db";
 import { listOrders } from "@/lib/data/painel";
 import { brl, dateNice } from "@/lib/format";
 import { painelAccess } from "@/lib/painel/access";
 import { ended, nowMs, whenLabel } from "@/lib/painel/build";
+import { promoterStats } from "@/lib/promoters";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Marketing" };
@@ -24,6 +25,9 @@ export default async function PainelMarketingPage() {
     x.n += 1; x.off += o.discount; x.rev += o.revenue; used.set(o.couponId, x);
   }
   const title = new Map(events.map((e) => [e.id, e.title]));
+  const proms = org ? await db.query.promoters.findMany({ where: eq(schema.promoters.organizerId, org.id), orderBy: (x, { desc }) => [desc(x.createdAt)] }) : [];
+  const pstats = await promoterStats(proms.map((x) => x.id));
+  const tot = [...pstats.values()].reduce((a, x) => ({ orders: a.orders + x.orders, rev: a.rev + x.revenueCents, com: a.com + x.commissionCents }), { orders: 0, rev: 0, com: 0 });
   const now = nowMs();
   const props: MarketingProps = {
     events: events.filter((e) => e.status !== "draft" && !ended(e, now)).map((e) => ({ id: e.id, slug: e.slug, title: e.title, when: whenLabel(e), unlisted: e.unlisted })),
@@ -39,6 +43,18 @@ export default async function PainelMarketingPage() {
     }),
     totals: { uses: [...used.values()].reduce((s, x) => s + x.n, 0), off: brl([...used.values()].reduce((s, x) => s + x.off, 0)), rev: brl([...used.values()].reduce((s, x) => s + x.rev, 0)) },
     orgSlug: org?.slug ?? null,
+    promoters: org ? {
+      rows: proms.map((x) => {
+        const st = pstats.get(x.id) ?? { orders: 0, tickets: 0, revenueCents: 0, commissionCents: 0 };
+        return {
+          id: x.id, name: x.name, email: x.email ?? "", event: x.eventId ? title.get(x.eventId) ?? "Evento" : "Todos os eventos", code: x.code, token: x.token,
+          pct: x.commissionPct, active: x.active, clicks: x.clicks, orders: st.orders, tickets: st.tickets, revenue: brl(st.revenueCents), commission: brl(st.commissionCents),
+          conv: x.clicks && st.orders ? `${Math.round((st.orders / x.clicks) * 100)}% compraram` : "",
+        };
+      }),
+      events: events.filter((e) => e.status !== "draft" && !ended(e, now)).map((e) => ({ id: e.id, title: e.title })),
+      totals: { orders: tot.orders, revenue: brl(tot.rev), commission: brl(tot.com) },
+    } : null,
   };
   return <PainelMarketing {...props} />;
 }
