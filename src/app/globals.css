@@ -3,6 +3,7 @@
 @import "tailwindcss/utilities" layer(utilities);
 
 @import "../styles/base.css";
+@import "../styles/components.css";
 
 /* escopos de página (CSS nesting nativo) */
 @import "../styles/pages/evento.css";

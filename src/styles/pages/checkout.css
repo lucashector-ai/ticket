@@ -1,6 +1,6 @@
 /* Página checkout — escopo .pg-checkout (coerente com o design Onde). */
 .pg-checkout {
-  .ck-main{padding:20px 0 112px}
+  .ck-main{padding-top:20px;padding-bottom:112px}
   .ck-crumb{display:flex;align-items:center;gap:10px;font-size:14px;color:#6E6E73;padding:8px 0 0}
   .ck-crumb a{display:inline-flex;align-items:center;gap:8px;color:#111;font-weight:500;height:36px;padding:0 14px 0 10px;border-radius:999px;background:#F7F7F2;transition:background .3s}
   .ck-crumb a:hover{background:#EDEDE7}
@@ -75,4 +75,9 @@
     .ck-m{flex-wrap:wrap}
     .ck-m-tag{margin-left:58px}
   }
+}
+
+/* mobile: texto do método ocupa a linha inteira; selo quebra para baixo */
+.pg-checkout {
+  @media (max-width:640px){ .ck-m-t{flex:1 1 calc(100% - 58px)} }
 }
