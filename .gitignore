@@ -47,3 +47,6 @@ next-env.d.ts
 .open-next
 .wrangler
 .dev.vars*
+
+# worktrees de agentes
+.claude/worktrees/
