@@ -702,4 +702,12 @@
   .lx-card.lx-card{box-shadow:0 40px 100px -40px rgba(17,17,17,.18)}
   .lx-t.lx-t{font-family:'Inter Tight',sans-serif;font-weight:600;font-size:30px;line-height:1.15;letter-spacing:-.02em;text-transform:none}
   .lx-in{max-width:none}
+  /* --- adições do port Next (erro de servidor, loading, links no checkbox de termos) --- */
+  .lx-err{display:flex;align-items:center;gap:10px;margin:0;padding:12px 14px;border-radius:12px;background:#FFF0F0;color:#B3261E;font-size:14px;line-height:1.4;animation:rise .4s var(--ease) both}
+  .lx-err svg{flex:none}
+  .lx-btn[disabled],.lx-soc[disabled]{opacity:.55;cursor:wait}
+  .ck-t a{color:inherit}
+  .ck-t a:hover u{text-decoration-color:#111}
+  .ck-t[role="presentation"]{cursor:pointer}
+  .au-note b{font-weight:600}
 }

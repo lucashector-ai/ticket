@@ -10,6 +10,7 @@
 @import "../styles/pages/entrar.css";
 @import "../styles/pages/meus-ingressos.css";
 @import "../styles/pages/checkout.css";
+@import "../styles/pages/institucional.css";
 
 @theme inline {
   --color-ink: #111111;
