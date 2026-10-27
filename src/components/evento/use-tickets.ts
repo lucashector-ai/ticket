@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
-import { createOrder, validateCoupon } from "@/lib/actions/checkout";
+import { validateCoupon } from "@/lib/actions/checkout";
 import type { EventoData } from "./types";
 
 export type Coupon = { code: string; percentOff: number; amountOffCents: number };
@@ -47,15 +47,14 @@ export function useTickets(e: EventoData) {
     });
   }, [couponInput, e.id]);
 
+  /** Vai para o checkout sem pedir login; a conta só é pedida lá, na etapa Dados. */
   const checkout = useCallback(() => {
     if (!nq || pending) return;
-    const items = e.tiers.filter((t) => (qty[t.id] ?? 0) > 0).map((t) => ({ ticketTypeId: t.id, quantity: qty[t.id] }));
-    startCheckout(async () => {
-      const r = await createOrder({ eventSlug: e.slug, items, coupon: coupon?.code });
-      if (r.redirect) router.push(r.redirect);
-      else flash(r.error ?? "Não foi possível criar o pedido.");
-    });
-  }, [nq, pending, e.tiers, e.slug, qty, coupon, router, flash]);
+    const itens = e.tiers.filter((t) => (qty[t.id] ?? 0) > 0).map((t) => `${t.id}:${qty[t.id]}`).join(",");
+    const p = new URLSearchParams({ evento: e.slug, itens });
+    if (coupon) p.set("cupom", coupon.code);
+    startCheckout(() => router.push(`/checkout?${p.toString()}`));
+  }, [nq, pending, e.tiers, e.slug, qty, coupon, router]);
 
   const couponMessage = couponError
     ? { cls: "cupmsg err", text: couponError }

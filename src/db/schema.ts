@@ -257,6 +257,13 @@ export const orders = pgTable(
     paymentRef: varchar("payment_ref", { length: 160 }),
     buyerName: varchar("buyer_name", { length: 160 }),
     buyerEmail: varchar("buyer_email", { length: 254 }),
+    buyerPhone: varchar("buyer_phone", { length: 20 }),
+    buyerCpf: varchar("buyer_cpf", { length: 14 }),
+    /** titulares informados no checkout, na ordem dos ingressos */
+    holders: jsonb("holders").$type<{ ticketTypeId: string; name: string; meia: boolean }[]>(),
+    meiaCents: integer("meia_cents").notNull().default(0),
+    installments: integer("installments").notNull().default(1),
+    interestCents: integer("interest_cents").notNull().default(0),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     ...timestamps,
@@ -288,6 +295,7 @@ export const tickets = pgTable(
     ticketTypeId: uuid("ticket_type_id").notNull().references(() => ticketTypes.id),
     holderUserId: text("holder_user_id").notNull(),
     holderName: varchar("holder_name", { length: 160 }),
+    halfPrice: boolean("half_price").notNull().default(false),
     status: ticketStatus("status").notNull().default("valid"),
     checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
     // segredo rotativo usado na assinatura do QR; muda a cada transferência

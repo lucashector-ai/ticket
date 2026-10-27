@@ -92,7 +92,6 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
               </svg>
               {favs.length > 0 && <span className="badge">{favs.length}</span>}
             </Link>
-            <Link className={`lnk hide-m ${activePath === "/meus-ingressos" ? "on" : ""}`} href="/meus-ingressos">Meus ingressos</Link>
             {user ? (
               <details className="umenu hide-m">
                 <summary className="lnk" aria-label="Sua conta">{firstName(user)}</summary>
@@ -125,9 +124,12 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
             <Link href="/explorar" onClick={() => setMenu(false)} style={{ animationDelay: ".04s" }}>Explorar <span className="mute" aria-hidden="true">→</span></Link>
             <Link href="/#destaque" onClick={() => setMenu(false)} style={{ animationDelay: ".08s" }}>Eventos <span className="mute" aria-hidden="true">→</span></Link>
             <Link href="/#categorias" onClick={() => setMenu(false)} style={{ animationDelay: ".12s" }}>Categorias <span className="mute" aria-hidden="true">→</span></Link>
-            <Link href="/meus-ingressos" onClick={() => setMenu(false)} style={{ animationDelay: ".16s" }}>Meus ingressos <span className="mute" aria-hidden="true">→</span></Link>
             {user ? (
-              <form action={signOut}><button className="mm-b" type="submit" style={{ animationDelay: ".2s" }}>Sair <span className="mute" aria-hidden="true">→</span></button></form>
+              <>
+                {/* no celular não há o dropdown do perfil: os atalhos da conta aparecem só para quem entrou */}
+                <Link href="/meus-ingressos" onClick={() => setMenu(false)} style={{ animationDelay: ".16s" }}>Meus ingressos <span className="mute" aria-hidden="true">→</span></Link>
+                <form action={signOut}><button className="mm-b" type="submit" style={{ animationDelay: ".2s" }}>Sair <span className="mute" aria-hidden="true">→</span></button></form>
+              </>
             ) : (
               <Link href="/entrar" onClick={() => setMenu(false)} style={{ animationDelay: ".2s" }}>Entrar <span className="mute" aria-hidden="true">→</span></Link>
             )}

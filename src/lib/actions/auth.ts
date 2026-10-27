@@ -52,3 +52,23 @@ function friendly(message?: string, code?: string) {
   if (m.includes("not found")) return "Não encontramos uma conta com este e-mail.";
   return message || "Não foi possível entrar. Tente de novo.";
 }
+
+/** Login sem redirecionar (usado dentro do checkout). */
+export async function signInInline(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  const parsed = signInSchema.safeParse({ email, password });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  const { error } = await auth.signIn.email(parsed.data);
+  if (error) return { ok: false, error: friendly(error.message, error.code) };
+  return { ok: true };
+}
+
+/** Cadastro sem redirecionar (usado dentro do checkout). */
+export async function signUpInline(name: string, email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  const parsed = signUpSchema.safeParse({ name, email, password });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  const { data, error } = await auth.signUp.email(parsed.data);
+  if (error) return { ok: false, error: friendly(error.message, error.code) };
+  const userId = (data as { user?: { id?: string } } | null)?.user?.id;
+  if (userId) await db.insert(schema.userProfiles).values({ userId, name: parsed.data.name, email: parsed.data.email }).onConflictDoNothing();
+  return { ok: true };
+}
