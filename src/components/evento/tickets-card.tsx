@@ -104,6 +104,11 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
         </button>
       </div>
+      <button className="grp-b" type="button" onClick={t.group} disabled={t.nq < 2 || t.grouping || t.pending}>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2" /><circle cx="17" cy="9.5" r="2.6" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M14.5 19a4 4 0 0 1 6.5-3" /></svg>
+        {t.grouping ? "Reservando…" : "Comprar em grupo"}
+      </button>
+      <span className="grp-s">{t.nq < 2 ? "Escolha 2 ou mais ingressos para dividir com os amigos." : "Reservamos por 60 min e cada um paga a sua parte pelo link."}</span>
       <p className="note">Meia-entrada conforme a lei. A taxa de serviço aparece antes do pagamento. Ingresso digital no app, com QR code.</p>
     </div>
   );

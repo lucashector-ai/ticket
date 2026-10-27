@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { checkCoupon } from "@/lib/actions/compra";
+import { createGroup } from "@/lib/actions/grupo";
 import { priceOrder } from "@/lib/pricing";
 import type { EventoData } from "./types";
 
@@ -69,6 +70,19 @@ export function useTickets(e: EventoData) {
     startCheckout(() => router.push(`/checkout?${p.toString()}`));
   }, [nq, pending, e.tiers, e.slug, qty, coupon, router]);
 
+  /** Compra em grupo: reserva os ingressos escolhidos e leva à página do grupo para chamar os amigos. */
+  const [grouping, startGroup] = useTransition();
+  const group = useCallback(() => {
+    if (nq < 2 || grouping) return;
+    const items = e.tiers.filter((t) => (qty[t.id] ?? 0) > 0).map((t) => ({ ticketTypeId: t.id, quantity: qty[t.id] }));
+    startGroup(async () => {
+      const r = await createGroup({ eventSlug: e.slug, items });
+      if (r.ok) router.push(`/grupo/${r.code}`);
+      else if (r.needsLogin) router.push(`/entrar?next=${encodeURIComponent(`/eventos/${e.slug}`)}`);
+      else flash(r.error);
+    });
+  }, [nq, grouping, e.tiers, e.slug, qty, router, flash]);
+
   const couponMessage = couponError
     ? { cls: "cupmsg err", text: couponError }
     : coupon
@@ -81,7 +95,7 @@ export function useTickets(e: EventoData) {
     qty, inc, dec, nq, subtotal, discount, total, qtyLabel, session, setSession, sector, setSector, visibleTiers,
     couponInput, setCouponInput: (v: string) => { setCouponInput(v.toUpperCase()); setCouponError(null); },
     coupon, couponMessage, applyCoupon, checking,
-    checkout, pending,
+    checkout, pending, group, grouping,
   };
 }
 

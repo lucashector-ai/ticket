@@ -43,6 +43,17 @@ const RESERVA_SEG = 600;
 const PIX_SEG = 900;
 const STEP_INDEX: Record<CompraStep, number> = { resumo: 0, dados: 1, pagamento: 2, pix: 2, proc: 2, done: 3 };
 
+/** Compra com 1 ingresso travado: parte de um grupo ou anúncio da revenda. */
+export type CompraLock = {
+  kind: "grupo" | "revenda";
+  ref: { groupShareId?: string; resaleListingId?: string };
+  /** parâmetros que identificam a compra na URL do checkout */
+  query: string;
+  title: string;
+  note: string;
+  back: string;
+};
+
 type Props = {
   event: CompraEvent;
   user: { id: string; name: string; email: string } | null;
@@ -52,9 +63,10 @@ type Props = {
   initialStep: CompraStep;
   /** id do evento quando a fila virtual está ligada */
   queueEventId?: string | null;
+  lock?: CompraLock | null;
 };
 
-export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId }: Props) {
+export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock }: Props) {
   const router = useRouter();
   const { flash } = useToast();
   const [step, setStep] = useState<CompraStep>(initialStep);
@@ -130,11 +142,15 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const urlFor = useCallback((s: CompraStep) => {
     const itens = Object.entries(qty).filter(([, q]) => q > 0).map(([id, q]) => `${id}:${q}`).join(",");
     const p = new URLSearchParams({ evento: event.slug });
+    if (lock) {
+      if (s === "dados") p.set("etapa", "dados");
+      return `/checkout?${p.toString()}&${lock.query}`;
+    }
     if (itens) p.set("itens", itens);
     if (coupon) p.set("cupom", coupon.code);
     if (s === "dados") p.set("etapa", "dados");
     return `/checkout?${p.toString()}`;
-  }, [qty, coupon, event.slug]);
+  }, [qty, coupon, event.slug, lock]);
   useEffect(() => {
     if (step === "resumo" || step === "dados") window.history.replaceState(null, "", urlFor(step));
   }, [step, urlFor]);
@@ -190,6 +206,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const go = (s: CompraStep) => { setStep(s); setTried(false); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   const setTierQty = (id: string, delta: number) => {
+    if (lock) return;
     setQty((o) => {
       const total = Object.values(o).reduce((s, v) => s + v, 0);
       if (delta > 0 && total >= event.maxPerOrder) { flash(`Máximo de ${event.maxPerOrder} ingressos por pessoa.`); return o; }
@@ -217,7 +234,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     const r = await placeOrder({
       eventSlug: event.slug,
       items: lines.map((l) => ({ ticketTypeId: l.ticketTypeId, quantity: l.quantity })),
-      coupon: coupon?.code ?? null,
+      coupon: lock ? null : coupon?.code ?? null,
+      ...lock?.ref,
       buyer: { name, email, phone, cpf },
       holders: holders.map((h) => ({ ticketTypeId: h.tier.id, name: holdName(h), meia: isMeia(h) })),
       method,
@@ -238,7 +256,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     if (!r.ok) { flash(r.error); go("pagamento"); return; }
     setDone(r);
     go("done");
-    router.refresh();
+    // parte de grupo / revenda: recarregar a página levaria de volta ao grupo (a vaga já está paga)
+    if (!lock) router.refresh();
   }
 
   async function next() {
@@ -276,9 +295,9 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     <main className="wrap ck">
       {queueEventId && step !== "done" && <QueueGate eventId={queueEventId} title={event.title} />}
       <div className="ck-top">
-        <Link className="ck-back" href={`/eventos/${event.slug}`}>
+        <Link className="ck-back" href={lock?.back ?? `/eventos/${event.slug}`}>
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4" /></svg>
-          Voltar ao evento
+          {lock?.kind === "grupo" ? "Voltar ao grupo" : "Voltar ao evento"}
         </Link>
         <ol className="steps" aria-label="Etapas da compra">
           {steps.map((st) => (
@@ -314,8 +333,22 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
             {step === "resumo" && (
               <div className="pane">
                 <h1 className="ck-h">Revise seu pedido</h1>
-                <p className="ck-p">Confira os ingressos antes de seguir. Dá para ajustar as quantidades aqui.</p>
-                {multiDay && (
+                <p className="ck-p">{lock ? lock.title : "Confira os ingressos antes de seguir. Dá para ajustar as quantidades aqui."}</p>
+                {lock && (
+                  <div className="lockc">
+                    {lines.map((l) => (
+                      <div className="lk-row" key={l.ticketTypeId}>
+                        <span className="lk-ic" aria-hidden="true">{lock.kind === "grupo"
+                          ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="9" cy="8" r="3.2" /><circle cx="17" cy="9.5" r="2.6" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M14.5 19a4 4 0 0 1 6.5-3" /></svg>
+                          : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h13l-3-3M20 17H7l3 3" /></svg>}</span>
+                        <span className="lk-i"><b>{l.name}</b><small>1 ingresso · {lock.kind === "grupo" ? "parte do grupo" : "revenda oficial"}</small></span>
+                        <b className="lk-p">{money(l.priceCents)}</b>
+                      </div>
+                    ))}
+                    <p className="lk-n">{lock.note}</p>
+                  </div>
+                )}
+                {!lock && multiDay && (
                   <>
                     <span className="sess-l">Escolha a data</span>
                     <div className="sess-p" role="radiogroup" aria-label="Datas">
@@ -331,7 +364,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                     </div>
                   </>
                 )}
-                <div className="trs">
+                {!lock && <div className="trs">
                   {groups.map((g) => {
                     if (!g.name) return g.tiers.map((t) => <TierRow key={t.id} t={t} q={qty[t.id] ?? 0} sub={t.desc || (multiDay ? "" : t.note)} onQty={setTierQty} />);
                     const key = `${dayKey}|${g.name}`;
@@ -359,21 +392,21 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                       </div>
                     );
                   })}
-                </div>
+                </div>}
                 {tried && !nq && <p className="err">Escolha pelo menos um ingresso para continuar.</p>}
-                <div className="cupb">
+                {!lock && <div className="cupb">
                   <span className="cup-i" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12V4h8l9 9-8 8z" /><circle cx="7.5" cy="8.5" r="1.3" /></svg>
                   </span>
                   <input className="cup-in" type="text" placeholder="Cupom de desconto" value={couponInput} onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCupErr(null); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void applyCoupon(); } }} aria-label="Cupom de desconto" />
                   <button className="cup-b" type="button" onClick={() => void applyCoupon()}>Aplicar</button>
-                </div>
+                </div>}
                 {(coupon || cupErr) && (
                   <p className={cupErr ? "errm" : "okm"}>{cupErr ?? `Cupom ${coupon?.code} aplicado: ${coupon?.percentOff ? `${coupon.percentOff}% de desconto` : `${money(coupon?.amountOffCents ?? 0)} de desconto`}.`}</p>
                 )}
                 <div className="know">
                   <Know icon={<path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z" />} title="Ingressos nominais" text="Na próxima etapa você informa o nome de quem vai usar cada ingresso." />
-                  <Know icon={<path d="M4 7h16M4 12h10M4 17h7" />} title="Meia-entrada" text="Estudantes, PcD, jovens de baixa renda e maiores de 60. Marque na etapa de dados e leve o documento." />
+                  {!lock && <Know icon={<path d="M4 7h16M4 12h10M4 17h7" />} title="Meia-entrada" text="Estudantes, PcD, jovens de baixa renda e maiores de 60. Marque na etapa de dados e leve o documento." />}
                   <Know icon={<path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" />} title="Cancelamento" text="Até 7 dias após a compra, desde que falte mais de 48h para o evento." />
                 </div>
               </div>

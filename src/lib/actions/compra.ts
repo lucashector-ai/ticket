@@ -12,8 +12,11 @@ import { qrPayload } from "@/lib/actions/tickets";
 import { canBuy } from "@/lib/launch";
 import { promoterForOrder } from "@/lib/promoters";
 import { queueAllows } from "@/lib/queue";
+import { heldByType, heldSql } from "@/lib/holds";
+import { claimSpecial, lookupSpecial, settleShare, shareStillHeld } from "@/lib/special";
+import { notifyResaleSold } from "@/lib/resale";
 
-const { orders, orderItems, tickets, ticketTypes, coupons, events, userProfiles, eventSignups } = schema;
+const { orders, orderItems, tickets, ticketTypes, coupons, events, userProfiles, eventSignups, groupShares, resaleListings, ticketTransfers } = schema;
 
 const digits = (v: string) => v.replace(/\D/g, "");
 const fullName = z.string().trim().refine((v) => v.split(/\s+/).filter(Boolean).length >= 2, "nome e sobrenome");
@@ -31,6 +34,9 @@ const placeSchema = z.object({
   holders: z.array(z.object({ ticketTypeId: z.string().uuid(), name: fullName, meia: z.boolean() })),
   method: z.enum(["pix", "card"]),
   installments: z.number().int().min(1).max(6),
+  /** parte de uma compra em grupo / anúncio da revenda (1 ingresso, preço travado) */
+  groupShareId: z.string().uuid().optional().nullable(),
+  resaleListingId: z.string().uuid().optional().nullable(),
 });
 export type PlaceOrderInput = z.infer<typeof placeSchema>;
 
@@ -74,25 +80,42 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     const missing = Array.from(new Set(parsed.error.issues.map((i) => i.message)));
     return { ok: false, error: `Falta preencher: ${missing.join(", ")}.` };
   }
-  const { eventSlug, items, coupon, buyer, holders, method, installments } = parsed.data;
+  const { eventSlug, items, buyer, holders, method, installments, groupShareId, resaleListingId } = parsed.data;
+  let { coupon } = parsed.data;
 
   const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), with: { ticketTypes: true } });
   if (!ev || ev.status !== "published") return { ok: false, error: "Evento indisponível." };
-  const access = await canBuy(ev);
-  if (!(await queueAllows(ev))) return { ok: false, error: "Você está na fila virtual. Volte à página do evento e aguarde a sua vez." };
-  if (!access.ok) return { ok: false, error: access.phase === "presale" ? "A pré-venda é só para quem recebeu o link. A venda geral abre em breve." : "As vendas deste evento ainda não abriram." };
-  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
-  if (totalQty > ev.maxPerOrder) return { ok: false, error: `Máximo de ${ev.maxPerOrder} ingressos por pessoa.` };
-  if (holders.length !== totalQty) return { ok: false, error: "Informe o titular de cada ingresso." };
 
+  // parte de grupo ou revenda: 1 ingresso, preço travado, sem cupom nem meia; não passa por abertura/fila
+  const sp = groupShareId || resaleListingId ? await lookupSpecial(ev.id, { groupShareId, resaleListingId }, user.id) : null;
+  if (sp && !sp.ok) return { ok: false, error: sp.error };
+  const special = sp?.ok ? sp.s : null;
+  let presaleSignupId: string | null = null;
   const lines = [];
-  for (const it of items) {
-    const tt = ev.ticketTypes.find((t) => t.id === it.ticketTypeId);
-    if (!tt || tierStatus(tt) !== "open") return { ok: false, error: "Um dos lotes não está mais disponível." };
-    if (tt.sold + it.quantity > tt.quantity) return { ok: false, error: `Restam só ${Math.max(0, tt.quantity - tt.sold)} ingressos em ${tt.name}.` };
-    const forType = holders.filter((h) => h.ticketTypeId === tt.id).length;
-    if (forType !== it.quantity) return { ok: false, error: "Informe o titular de cada ingresso." };
-    lines.push({ ticketTypeId: tt.id, priceCents: tt.priceCents, quantity: it.quantity, sector: tt.sector, meiaOk: !tt.kind || tt.kind === "inteira" });
+  if (special) {
+    const tt = ev.ticketTypes.find((t) => t.id === special.ticketTypeId);
+    if (!tt || holders.length !== 1 || holders[0].ticketTypeId !== tt.id) return { ok: false, error: "Informe o titular do ingresso." };
+    if (!(await claimSpecial(special, user.id, holders[0].name.trim()))) return { ok: false, error: "Outra pessoa acabou de pegar este ingresso. Tente outro." };
+    lines.push({ ticketTypeId: tt.id, priceCents: special.priceCents, quantity: 1, sector: tt.sector, meiaOk: false });
+    coupon = null;
+  } else {
+    const access = await canBuy(ev);
+    if (!(await queueAllows(ev))) return { ok: false, error: "Você está na fila virtual. Volte à página do evento e aguarde a sua vez." };
+    if (!access.ok) return { ok: false, error: access.phase === "presale" ? "A pré-venda é só para quem recebeu o link. A venda geral abre em breve." : "As vendas deste evento ainda não abriram." };
+    presaleSignupId = access.presaleSignupId;
+    const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+    if (totalQty > ev.maxPerOrder) return { ok: false, error: `Máximo de ${ev.maxPerOrder} ingressos por pessoa.` };
+    if (holders.length !== totalQty) return { ok: false, error: "Informe o titular de cada ingresso." };
+    const held = await heldByType(ev.id);
+    for (const it of items) {
+      const tt = ev.ticketTypes.find((t) => t.id === it.ticketTypeId);
+      if (!tt || tierStatus(tt) !== "open") return { ok: false, error: "Um dos lotes não está mais disponível." };
+      const left = tt.quantity - tt.sold - (held.get(tt.id) ?? 0);
+      if (it.quantity > left) return { ok: false, error: `Restam só ${Math.max(0, left)} ingressos em ${tt.name}.` };
+      const forType = holders.filter((h) => h.ticketTypeId === tt.id).length;
+      if (forType !== it.quantity) return { ok: false, error: "Informe o titular de cada ingresso." };
+      lines.push({ ticketTypeId: tt.id, priceCents: tt.priceCents, quantity: it.quantity, sector: tt.sector, meiaOk: !tt.kind || tt.kind === "inteira" });
+    }
   }
   // meia só onde o checkout oferece (tipos de inteira); meia/social já têm preço próprio
   const meiaOk = new Map(lines.map((l) => [l.ticketTypeId, l.meiaOk]));
@@ -107,7 +130,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const feeRate = ev.absorbFee ? 0 : SERVICE_FEE_RATE;
   const p = priceOrder({ lines, holders: cleanHolders, coupon: couponRow ? couponView(couponRow) : null, method, installments, feeRate });
   // comissão do parceiro: % do valor dos ingressos (sem taxa e sem juros)
-  const promoter = await promoterForOrder(ev);
+  const promoter = special?.kind === "revenda" ? null : await promoterForOrder(ev);
 
   const [order] = await db.insert(orders).values({
     userId: user.id, eventId: ev.id, status: "pending",
@@ -117,7 +140,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     buyerName: buyer.name.trim(), buyerEmail: buyer.email.trim().toLowerCase(), buyerPhone: digits(buyer.phone), buyerCpf: digits(buyer.cpf),
     holders: cleanHolders.map((h) => ({ ticketTypeId: h.ticketTypeId, name: h.name.trim(), meia: h.meia })),
     expiresAt: new Date(Date.now() + 15 * 60_000),
-    presaleSignupId: access.presaleSignupId,
+    presaleSignupId,
+    groupShareId: special?.kind === "grupo" ? special.shareId : null,
+    resaleListingId: special?.kind === "revenda" ? special.listingId : null,
     promoterId: promoter?.id ?? null,
     commissionCents: promoter ? Math.round(((p.subtotal - p.meia - p.discount) * promoter.commissionPct) / 100) : 0,
   }).returning();
@@ -170,10 +195,17 @@ export async function confirmPayment(orderId: string): Promise<ConfirmResult> {
       .where(and(eq(eventSignups.id, order.presaleSignupId), sql`${eventSignups.usedAt} is null`)).returning({ id: eventSignups.id });
     if (!used.length) return { ok: false, error: "Este link de pré-venda já foi usado em outra compra." };
   }
+  if (order.resaleListingId) return confirmResale(order, user.id, method);
+  if (order.groupShareId) {
+    const sh = await db.query.groupShares.findFirst({ where: eq(groupShares.id, order.groupShareId), columns: { paidAt: true, userId: true } });
+    if (!sh || sh.paidAt || sh.userId !== user.id) return { ok: false, error: "Esta parte do grupo já foi paga ou passou para outra pessoa. Nada foi cobrado." };
+  }
+  // parte de grupo com a vaga ainda segurada: entra direto; senão disputa o estoque (descontando as vagas seguradas)
+  const held = order.groupShareId ? await shareStillHeld(order.groupShareId) : false;
   for (const it of order.items) {
     const res = await db.update(ticketTypes)
       .set({ sold: sql`${ticketTypes.sold} + ${it.quantity}` })
-      .where(and(eq(ticketTypes.id, it.ticketTypeId), sql`${ticketTypes.sold} + ${it.quantity} <= ${ticketTypes.quantity}`))
+      .where(and(eq(ticketTypes.id, it.ticketTypeId), held ? sql`true` : sql`${ticketTypes.sold} + ${it.quantity} + ${heldSql(ticketTypes.id, order.groupShareId)} <= ${ticketTypes.quantity}`))
       .returning({ id: ticketTypes.id });
     if (!res.length) return { ok: false, error: "Os ingressos esgotaram enquanto você pagava. Tente outro lote." };
   }
@@ -190,11 +222,39 @@ export async function confirmPayment(orderId: string): Promise<ConfirmResult> {
   const inserted = await db.insert(tickets).values(rows).returning({ code: tickets.code, secret: tickets.secret });
   if (order.couponId) await db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId));
   await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: `TEST-${order.number}` }).where(eq(orders.id, order.id));
+  if (order.groupShareId) await settleShare(order.groupShareId, order.id);
   const first = inserted[0];
   return {
     ok: true, number: order.number ?? 0, totalCents: order.totalCents, method, installments: order.installments,
     ticketCount: inserted.length, firstCode: first.code,
     ticketQrSvg: await QRCode.toString(await qrPayload(first.code, first.secret), { type: "svg", margin: 0 }),
     email: order.buyerEmail ?? user.email ?? "",
+  };
+}
+
+/** Revenda: o ingresso do vendedor passa para o comprador com um QR novo (o antigo deixa de valer). */
+async function confirmResale(order: typeof orders.$inferSelect & { items: (typeof orderItems.$inferSelect)[] }, userId: string, method: "pix" | "card"): Promise<ConfirmResult> {
+  const l = await db.query.resaleListings.findFirst({ where: eq(resaleListings.id, order.resaleListingId!), with: { ticket: true, event: { columns: { title: true, slug: true } } } });
+  const gone = { ok: false as const, error: "Este ingresso não está mais à venda. Nada foi cobrado." };
+  if (!l || l.status === "sold" || l.status === "cancelled" || l.ticket.status !== "valid" || l.ticket.holderUserId !== l.sellerUserId) return gone;
+  if (l.status === "reserved" && l.reservedBy !== userId && l.reservedUntil && l.reservedUntil > new Date()) return gone;
+  const sold = await db.update(resaleListings).set({ status: "sold", buyerUserId: userId, orderId: order.id, soldAt: new Date() })
+    .where(and(eq(resaleListings.id, l.id), sql`${resaleListings.status} in ('active', 'reserved')`)).returning({ id: resaleListings.id });
+  if (!sold.length) return gone;
+  const holder = order.holders?.[0]?.name ?? order.buyerName ?? null;
+  const [t] = await db.update(tickets)
+    .set({ holderUserId: userId, holderName: holder, secret: randomBytes(16).toString("hex"), orderId: order.id, orderItemId: order.items[0]?.id ?? null })
+    .where(and(eq(tickets.id, l.ticketId), eq(tickets.holderUserId, l.sellerUserId), eq(tickets.status, "valid")))
+    .returning({ code: tickets.code, secret: tickets.secret });
+  if (!t) {
+    await db.update(resaleListings).set({ status: "cancelled" }).where(eq(resaleListings.id, l.id));
+    return gone;
+  }
+  await db.update(ticketTransfers).set({ status: "cancelled" }).where(and(eq(ticketTransfers.ticketId, l.ticketId), eq(ticketTransfers.status, "pending")));
+  await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: `TEST-${order.number}` }).where(eq(orders.id, order.id));
+  await notifyResaleSold(l.sellerUserId, l.event.title, l.priceCents);
+  return {
+    ok: true, number: order.number ?? 0, totalCents: order.totalCents, method, installments: order.installments, ticketCount: 1, firstCode: t.code,
+    ticketQrSvg: await QRCode.toString(await qrPayload(t.code, t.secret), { type: "svg", margin: 0 }), email: order.buyerEmail ?? "",
   };
 }

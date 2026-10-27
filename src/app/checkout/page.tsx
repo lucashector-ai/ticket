@@ -12,13 +12,18 @@ import { SERVICE_FEE_RATE } from "@/lib/pricing";
 import { tierStatus } from "@/lib/tickets/status";
 import { canBuy } from "@/lib/launch";
 import { queueAllows } from "@/lib/queue";
+import { heldByType } from "@/lib/holds";
+import { lookupSpecial } from "@/lib/special";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Finalizar compra" };
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
-/** /checkout?evento=<slug>&itens=<ticketTypeId>:<qtd>,...&cupom=<código>&etapa=dados */
+/**
+ * /checkout?evento=<slug>&itens=<ticketTypeId>:<qtd>,...&cupom=<código>&etapa=dados
+ * Parte de um grupo: &grupo=<código>&vaga=<id> · Revenda: &revenda=<id do anúncio> (1 ingresso, preço travado)
+ */
 export default async function CheckoutPage({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k]) ?? "";
@@ -26,10 +31,17 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   if (!slug) redirect("/explorar");
   const [e, user] = await Promise.all([getEventBySlug(slug), getSessionUser()]);
   if (!e || e.status !== "published") redirect("/explorar");
-  if (!(await canBuy(e)).ok || !(await queueAllows(e))) redirect(`/eventos/${e.slug}`);
+
+  const ref = { groupShareId: one("vaga") || null, resaleListingId: one("revenda") || null };
+  const found = ref.groupShareId || ref.resaleListingId ? await lookupSpecial(e.id, ref, user?.id ?? null) : null;
+  if (found && !found.ok) redirect(ref.groupShareId && one("grupo") ? `/grupo/${encodeURIComponent(one("grupo"))}?erro=${encodeURIComponent(found.error)}` : `/eventos/${e.slug}?revenda=indisponivel`);
+  const special = found?.ok ? found.s : null;
+  if (!special && (!(await canBuy(e)).ok || !(await queueAllows(e)))) redirect(`/eventos/${e.slug}`);
+  const held = special ? new Map<string, number>() : await heldByType(e.id);
 
   const qty: Record<string, number> = {};
-  for (const part of one("itens").split(",")) {
+  if (special) qty[special.ticketTypeId] = 1;
+  else for (const part of one("itens").split(",")) {
     const [id, q] = part.split(":");
     const n = Number.parseInt(q ?? "", 10);
     if (id && Number.isFinite(n) && n > 0 && e.ticketTypes.some((t) => t.id === id && tierStatus(t) === "open")) qty[id] = Math.min(n, 8);
@@ -54,12 +66,16 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
     venue: e.venueNameOverride ?? e.venue?.name ?? "",
     city: e.venue?.city.name ?? "",
     maxPerOrder: e.maxPerOrder,
-    tiers: e.ticketTypes.map((t) => ({
-      id: t.id, name: t.sector ? `${t.sector} · ${t.name}` : t.name, type: t.name, note: t.note ?? "", desc: t.description, priceCents: t.priceCents,
-      open: tierStatus(t) === "open" && t.sold < t.quantity, sold: t.status === "sold_out" || t.sold >= t.quantity,
-      sector: t.sector, sectorColor: t.sectorColor, sessionId: t.sessionId, meiaOk: !t.kind || t.kind === "inteira",
-    })),
-    sessions,
+    tiers: e.ticketTypes.filter((t) => !special || t.id === special.ticketTypeId).map((t) => {
+      const left = t.quantity - t.sold - (held.get(t.id) ?? 0);
+      return {
+        id: t.id, name: t.sector ? `${t.sector} · ${t.name}` : t.name, type: t.name, note: t.note ?? "", desc: t.description,
+        priceCents: special ? special.priceCents : t.priceCents,
+        open: special ? true : tierStatus(t) === "open" && left > 0, sold: special ? false : t.status === "sold_out" || left <= 0,
+        sector: t.sector, sectorColor: t.sectorColor, sessionId: special ? null : t.sessionId, meiaOk: special ? false : !t.kind || t.kind === "inteira",
+      };
+    }),
+    sessions: special ? [] : sessions,
     feeRate: e.absorbFee ? 0 : SERVICE_FEE_RATE,
   };
   const step = (["resumo", "dados"].includes(one("etapa")) ? one("etapa") : "resumo") as CompraStep;
@@ -75,7 +91,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         initialQty={qty}
         initialCoupon={one("cupom").toUpperCase() || null}
         initialStep={Object.keys(qty).length ? step : "resumo"}
-        queueEventId={e.queueMode !== "off" ? e.id : null}
+        queueEventId={!special && e.queueMode !== "off" ? e.id : null}
+        lock={special ? (special.kind === "grupo"
+          ? { kind: "grupo", ref: { groupShareId: special.shareId }, query: `grupo=${encodeURIComponent(special.groupCode)}&vaga=${special.shareId}`, title: `Sua parte do grupo · vaga ${special.slot} de ${special.slots}`, note: "O preço é o do lote reservado pelo grupo. Cupom e meia-entrada não valem nas partes do grupo.", back: `/grupo/${special.groupCode}` }
+          : { kind: "revenda", ref: { resaleListingId: special.listingId }, query: `revenda=${special.listingId}`, title: "Ingresso da revenda oficial", note: "Comprado de outro fã. Ao pagar, você recebe um QR code novo e o antigo deixa de valer.", back: `/eventos/${e.slug}#revenda` }) : null}
       />
       <SiteFooter />
     </div>
