@@ -16,6 +16,15 @@ export async function passData(t: Ticket, site: string) {
   const start = sess?.startAt ?? t.event.startAt;
   const end = sess ? new Date(start.getTime() + 6 * 3600_000) : t.event.endAt ?? new Date(start.getTime() + 6 * 3600_000);
   const art = t.event.bannerId && /^\/midia\//.test(t.event.bannerId) ? `${site}${t.event.bannerId}` : null;
+  /* quando o passe fica "relevante" (tela de bloqueio, toque duplo): cada data em que o ingresso vale,
+     de 3h antes até o fim. Ingresso sem data própria num evento de várias datas vale em todas. */
+  const sessions = sess ? [sess] : await db.query.eventSessions.findMany({ where: eq(schema.eventSessions.eventId, t.event.id), orderBy: (x, { asc }) => [asc(x.startAt)] });
+  const H = 3600_000;
+  const windows = (sessions.length ? sessions.map((x) => x.startAt) : [start])
+    .map((d) => ({ from: new Date(d.getTime() - 3 * H), to: new Date(d.getTime() + 6 * H) }))
+    .filter((w) => w.to.getTime() > Date.now()).slice(0, 10);
+  const lat = Number(t.event.venue?.lat), lng = Number(t.event.venue?.lng);
+  const performers = (await db.query.eventArtists.findMany({ where: eq(schema.eventArtists.eventId, t.event.id), with: { artist: { columns: { name: true } } }, limit: 6 })).map((x) => x.artist.name);
   return {
     code: t.code,
     qr: await qrPayload(t.code, t.secret),
@@ -34,6 +43,10 @@ export async function passData(t: Ticket, site: string) {
     url: `${site}/ingressos/${t.code}`,
     eventId: t.event.id,
     art,
+    banner: t.event.bannerId,
+    windows,
+    geo: Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng) ? { lat, lng } : null,
+    performers,
   };
 }
 export type PassData = Awaited<ReturnType<typeof passData>>;

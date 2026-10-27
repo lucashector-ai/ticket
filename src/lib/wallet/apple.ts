@@ -3,6 +3,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { zipSync } from "fflate";
 import forge from "node-forge";
 import { PASS_IMAGES } from "./images";
+import { passStrip } from "./strip";
 import type { PassData } from "./pass-data";
 
 /*
@@ -55,11 +56,9 @@ async function wwdr(): Promise<forge.pki.Certificate> {
   return forge.pki.certificateFromAsn1(forge.asn1.fromDer(der));
 }
 
-const sha1 = (bytes: Uint8Array) => {
-  const md = forge.md.sha1.create();
-  md.update(forge.util.binary.raw.encode(bytes));
-  return md.digest().toHex();
-};
+/** SHA-1 em hex pelo WebCrypto (o do node-forge estoura a pilha com imagens grandes). */
+const sha1 = async (bytes: Uint8Array) =>
+  [...new Uint8Array(await crypto.subtle.digest("SHA-1", bytes as BufferSource))].map((b) => b.toString(16).padStart(2, "0")).join("");
 const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 /** pass.json no formato eventTicket (preto, título em branco, rótulos em lima). */
@@ -76,7 +75,19 @@ function passJson(d: PassData, s: Signer) {
     backgroundColor: "rgb(17,17,17)",
     foregroundColor: "rgb(255,255,255)",
     labelColor: "rgb(211,245,91)",
-    relevantDate: iso(d.start),
+    relevantDate: iso(d.windows[0]?.from ?? d.start),
+    // iOS 18+: todas as janelas em que o ingresso deve aparecer sozinho (tela de bloqueio, toque duplo)
+    ...(d.windows.length ? { relevantDates: d.windows.map((w) => ({ startDate: iso(w.from), endDate: iso(w.to) })) } : {}),
+    ...(d.geo ? { locations: [{ latitude: d.geo.lat, longitude: d.geo.lng, relevantText: `Você chegou ao ${d.venue || "evento"}. Seu ingresso está aqui.` }], maxDistance: 800 } : {}),
+    semantics: {
+      eventName: d.title,
+      eventType: "PKEventTypeLivePerformance",
+      eventStartDate: iso(d.start),
+      eventEndDate: iso(d.end),
+      ...(d.venue ? { venueName: d.venue } : {}),
+      ...(d.geo ? { venueLocation: { latitude: d.geo.lat, longitude: d.geo.lng } } : {}),
+      ...(d.performers.length ? { performerNames: d.performers } : {}),
+    },
     expirationDate: iso(new Date(d.end.getTime() + 12 * 3600_000)),
     ...(d.valid ? {} : { voided: true }),
     barcodes: [{ format: "PKBarcodeFormatQR", message: d.qr, messageEncoding: "iso-8859-1", altText: d.code }],
@@ -107,7 +118,8 @@ export async function buildPkpass(d: PassData): Promise<Uint8Array> {
   const s = loadSigner();
   const files: Record<string, Uint8Array> = { "pass.json": new TextEncoder().encode(JSON.stringify(passJson(d, s))) };
   for (const [name, b64] of Object.entries(PASS_IMAGES)) files[name] = fromB64(b64);
-  const manifest = JSON.stringify(Object.fromEntries(Object.entries(files).map(([n, b]) => [n, sha1(b)])));
+  Object.assign(files, (await passStrip(d.banner)) ?? {});
+  const manifest = JSON.stringify(Object.fromEntries(await Promise.all(Object.entries(files).map(async ([n, b]) => [n, await sha1(b)]))));
   files["manifest.json"] = new TextEncoder().encode(manifest);
 
   const p7 = forge.pkcs7.createSignedData();

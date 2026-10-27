@@ -17,6 +17,7 @@ interface __BaseEnv_CloudflareEnv {
 	ANTHROPIC_API_KEY: string;
 	SPOTIFY_CLIENT_ID: string;
 	SPOTIFY_CLIENT_SECRET: string;
+	IMAGES: ImagesBinding;
 	APPLE_PASS_P12: string;
 	APPLE_PASS_P12_PASSWORD: string;
 	GOOGLE_WALLET_ISSUER_ID: string;

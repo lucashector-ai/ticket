@@ -22,6 +22,7 @@
   "kv_namespaces": [
     { "binding": "KV", "id": "e0598640fff84473847be030aa1c2096" }
   ],
+  "images": { "binding": "IMAGES" },
   "services": [
     { "binding": "WORKER_SELF_REFERENCE", "service": "ticket" }
   ]
