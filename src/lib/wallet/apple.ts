@@ -61,8 +61,22 @@ const sha1 = async (bytes: Uint8Array) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-1", bytes as BufferSource))].map((b) => b.toString(16).padStart(2, "0")).join("");
 const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
-/** pass.json no formato eventTicket (preto, título em branco, rótulos em lima). */
+type RGB = [number, number, number];
+const LIME: RGB = [211, 245, 91];
+const rgb = (c: RGB) => `rgb(${c.join(",")})`;
+
+/** Cores do passe a partir da cor do evento: cor escura vira o fundo; cor clara vira os rótulos. */
+export function passColors(accent: string | null): { bg: RGB; label: RGB; accent: RGB } {
+  const dark: RGB = [17, 17, 17];
+  if (!accent) return { bg: dark, label: LIME, accent: LIME };
+  const c = [1, 3, 5].map((i) => parseInt(accent.slice(i, i + 2), 16)) as RGB;
+  const lum = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+  return lum < 0.22 ? { bg: c, label: LIME, accent: LIME } : { bg: dark, label: c, accent: c };
+}
+
+/** pass.json no formato eventTicket: capa do evento na faixa, nome por cima, dados do ingresso abaixo. */
 function passJson(d: PassData, s: Signer) {
+  const col = passColors(d.accent);
   const iso = (x: Date) => x.toISOString().replace(/\.\d{3}Z$/, "Z");
   return {
     formatVersion: 1,
@@ -72,9 +86,9 @@ function passJson(d: PassData, s: Signer) {
     organizationName: "Tickets Win",
     description: `Ingresso · ${d.title}`,
     logoText: "",
-    backgroundColor: "rgb(17,17,17)",
+    backgroundColor: rgb(col.bg),
     foregroundColor: "rgb(255,255,255)",
-    labelColor: "rgb(211,245,91)",
+    labelColor: rgb(col.label),
     relevantDate: iso(d.windows[0]?.from ?? d.start),
     // iOS 18+: todas as janelas em que o ingresso deve aparecer sozinho (tela de bloqueio, toque duplo)
     ...(d.windows.length ? { relevantDates: d.windows.map((w) => ({ startDate: iso(w.from), endDate: iso(w.to) })) } : {}),
@@ -85,6 +99,9 @@ function passJson(d: PassData, s: Signer) {
       eventStartDate: iso(d.start),
       eventEndDate: iso(d.end),
       ...(d.venue ? { venueName: d.venue } : {}),
+      ...(d.city ? { venueRegionName: d.uf ? `${d.city} – ${d.uf}` : d.city } : {}),
+      ...(d.holder ? { attendeeName: d.holder } : {}),
+      admissionLevel: d.type,
       ...(d.geo ? { venueLocation: { latitude: d.geo.lat, longitude: d.geo.lng } } : {}),
       ...(d.performers.length ? { performerNames: d.performers } : {}),
     },
@@ -92,18 +109,18 @@ function passJson(d: PassData, s: Signer) {
     ...(d.valid ? {} : { voided: true }),
     barcodes: [{ format: "PKBarcodeFormatQR", message: d.qr, messageEncoding: "iso-8859-1", altText: d.code }],
     eventTicket: {
-      headerFields: [{ key: "status", label: "INGRESSO", value: d.valid ? "Válido" : d.used ? "Utilizado" : "Inválido" }],
-      primaryFields: [{ key: "event", label: "EVENTO", value: d.title }],
+      headerFields: [{ key: "date", label: "DATA", value: d.whenShort, textAlignment: "PKTextAlignmentRight" }],
+      primaryFields: [{ key: "event", label: d.city ? d.city.toUpperCase() : "EVENTO", value: d.title }],
       secondaryFields: [
-        { key: "date", label: "DATA", value: d.when },
         { key: "venue", label: "LOCAL", value: d.venue || d.city },
+        { key: "type", label: "SETOR", value: d.type, textAlignment: "PKTextAlignmentRight" },
       ],
       auxiliaryFields: [
-        { key: "type", label: "TIPO", value: d.type },
-        ...(d.holder ? [{ key: "holder", label: "TITULAR", value: d.holder }] : []),
-        ...(d.doors ? [{ key: "doors", label: "PORTÕES", value: d.doors }] : []),
+        { key: "holder", label: "TITULAR", value: d.holder || "—" },
+        { key: "status", label: "INGRESSO", value: d.valid ? "Válido" : d.used ? "Utilizado" : "Inválido", textAlignment: "PKTextAlignmentRight" },
       ],
       backFields: [
+        { key: "when", label: "Data e horário", value: [d.when, d.doors || d.whenShort.split(" · ")[1]].filter(Boolean).join(" · ") },
         { key: "code", label: "Código do ingresso", value: d.code },
         ...(d.address ? [{ key: "address", label: "Endereço", value: d.address }] : []),
         { key: "link", label: "Seu ingresso no site", value: d.url, attributedValue: `<a href="${d.url}">Abrir no Tickets Win</a>` },
@@ -118,7 +135,8 @@ export async function buildPkpass(d: PassData): Promise<Uint8Array> {
   const s = loadSigner();
   const files: Record<string, Uint8Array> = { "pass.json": new TextEncoder().encode(JSON.stringify(passJson(d, s))) };
   for (const [name, b64] of Object.entries(PASS_IMAGES)) files[name] = fromB64(b64);
-  Object.assign(files, (await passStrip(d.banner)) ?? {});
+  const col = passColors(d.accent);
+  Object.assign(files, (await passStrip(d.banner, new URL(d.url).origin, col.bg, col.accent)) ?? {});
   const manifest = JSON.stringify(Object.fromEntries(await Promise.all(Object.entries(files).map(async ([n, b]) => [n, await sha1(b)]))));
   files["manifest.json"] = new TextEncoder().encode(manifest);
 

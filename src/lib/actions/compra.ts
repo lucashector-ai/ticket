@@ -130,7 +130,7 @@ function ticketCode() {
   const b = randomBytes(8);
   let s = "";
   for (let i = 0; i < 8; i++) s += alphabet[b[i] % alphabet.length];
-  return `ONDE-${s.slice(0, 4)}-${s.slice(4)}`;
+  return `TW-${s.slice(0, 4)}-${s.slice(4)}`;
 }
 
 export type ConfirmResult =

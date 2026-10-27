@@ -5,8 +5,8 @@ import { db, schema } from "@/db";
 import { qrPayload } from "@/lib/actions/tickets";
 import { getTicketByCode } from "@/lib/data/ingressos";
 
-const PAYLOAD_RE = /^ONDE\|(ONDE-[A-Z0-9]{4}-[A-Z0-9]{4})\|([A-Za-z0-9_-]{16})$/;
-const CODE_RE = /^ONDE-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+const PAYLOAD_RE = /^ONDE\|((?:TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4})\|([A-Za-z0-9_-]{16})$/;
+const CODE_RE = /^(?:TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 
 function same(a: string, b: string) {
   const ba = Buffer.from(a), bb = Buffer.from(b);

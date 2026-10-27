@@ -15,7 +15,7 @@ import { googleWalletEnabled } from "@/lib/wallet/google";
 
 export const dynamic = "force-dynamic";
 
-const CODE_RE = /^ONDE-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+const CODE_RE = /^(TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   const { code } = await params;

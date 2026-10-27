@@ -2,7 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { qrPayload } from "@/lib/actions/tickets";
-import { dateFull } from "@/lib/format";
+import { dateFull, dateNice } from "@/lib/format";
 import type { getTicketByCode } from "@/lib/data/ingressos";
 import { eventLabels } from "@/lib/tickets/labels";
 
@@ -32,6 +32,8 @@ export async function passData(t: Ticket, site: string) {
     used: t.status === "used",
     title: t.event.title,
     when: sess ? dateFull(start) : L.dateFull,
+    whenShort: sess ? dateNice(start) : L.dateNice,
+    accent: /^#[0-9a-f]{6}$/i.test(t.event.accentColor ?? "") ? t.event.accentColor! : null,
     doors: L.doors,
     venue: L.venue,
     address: L.addr,

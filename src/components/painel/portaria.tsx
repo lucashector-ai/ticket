@@ -112,7 +112,7 @@ export function Portaria({ eventId, title, sub, total, inside: inside0 }: { even
           <section className="cx">
             <div className="card-h"><h2 className="card-t">Digitar código</h2></div>
             <form className="frm" onSubmit={(e) => { e.preventDefault(); if (code.trim()) { void check(code.trim()); setCode(""); } }}>
-              <label className="fld"><span>Código do ingresso</span><input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ONDE-XXXX-XXXX" autoCapitalize="characters" autoComplete="off" /></label>
+              <label className="fld"><span>Código do ingresso</span><input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="TW-XXXX-XXXX" autoCapitalize="characters" autoComplete="off" /></label>
               <button className="b2 dark block" type="submit" disabled={!code.trim()}>Validar</button>
             </form>
           </section>

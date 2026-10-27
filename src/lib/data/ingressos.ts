@@ -6,7 +6,7 @@ const { tickets } = schema;
 
 export type TicketDetail = NonNullable<Awaited<ReturnType<typeof getTicketByCode>>>;
 
-/** Ingresso pelo código ONDE-XXXX-XXXX, com evento (local/cidade), lote e pedido. */
+/** Ingresso pelo código TW-XXXX-XXXX, com evento (local/cidade), lote e pedido. */
 export async function getTicketByCode(code: string) {
   const t = await db.query.tickets.findFirst({
     where: eq(tickets.code, code.trim().toUpperCase()),

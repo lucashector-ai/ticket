@@ -1,4 +1,5 @@
 import "server-only";
+import { passColors } from "./apple";
 import type { PassData } from "./pass-data";
 
 /*
@@ -42,7 +43,7 @@ export async function googleSaveUrl(d: PassData, site: string) {
     reviewStatus: "UNDER_REVIEW",
     eventName: txt(d.title),
     logo: { sourceUri: { uri: `${site}/wallet/google-logo.png` }, contentDescription: txt("Tickets Win") },
-    hexBackgroundColor: "#111111",
+    hexBackgroundColor: `#${passColors(d.accent).bg.map((x) => x.toString(16).padStart(2, "0")).join("")}`,
     ...(d.art ? { heroImage: { sourceUri: { uri: d.art }, contentDescription: txt(d.title) } } : {}),
     ...(d.venue || d.address ? { venue: { name: txt(d.venue || d.city), address: txt(d.address || d.city) } } : {}),
     dateTime: { start: d.start.toISOString(), end: d.end.toISOString() },
