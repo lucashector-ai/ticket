@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { dateFull, dateNice, hourLabel, initials, parts, slugify } from "@/lib/format";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
+import { AREA_KINDS, KIND_COLOR, MAX_AREAS, normalizePlan } from "@/lib/criar/plan";
 import {
   CATEGORY_KINDS, effTypes, eventSlug, num, parseBrDateTime, parseCity, spDate, toCents,
   type DbMap, type Draft,
@@ -30,7 +31,12 @@ const draftSchema = z.object({
     types: z.array(z.object({ id, kind: z.enum(["inteira", "meia", "social", "outro"]), name: str(120), price: str(12), qty: str(9), desc: str(600) })).max(20),
   })).min(1).max(20),
   map: z.enum(["empty", "sketch", "done"]), prompt: str(1000), sketchUrl: z.union([z.literal(""), media.unwrap()]).default(""),
-  areaMap: z.record(z.string().max(20), id),
+  plan: z.object({
+    width: z.number(), depth: z.number(), source: z.enum(["ia", "modelo"]), notes: z.array(z.string().max(300)).max(10),
+    areas: z.array(z.object({
+      id, name: str(60), kind: z.enum(AREA_KINDS), x: z.number(), y: z.number(), w: z.number(), d: z.number(), h: z.number(), cap: z.number(), sector: id.nullable(),
+    })).max(MAX_AREAS),
+  }).nullable().default(null),
   vis: z.enum(["publico", "link", "rascunho"]), saleStart: str(40), refund: str(300),
 });
 const mapSchema = z.object({ sessions: z.record(id, z.string().uuid()), types: z.record(z.string().max(90), z.string().uuid()) });
@@ -98,6 +104,23 @@ async function organizerFor(user: Producer) {
 }
 
 type Producer = { id: string; name?: string | null; email?: string | null };
+
+/** Planta publicada com nome e cor do setor de cada área (o que o comprador vê). */
+function venueMapOf(d: Draft) {
+  if (d.tmode !== "mapa" || d.map !== "done" || !d.plan?.areas.length) return null;
+  const plan = normalizePlan(d.plan, d.sectors.map((k) => k.id));
+  const sec = new Map(d.sectors.map((k) => [k.id, k]));
+  return {
+    prompt: d.prompt, sketchUrl: d.sketchUrl || undefined,
+    plan: {
+      width: plan.width, depth: plan.depth,
+      areas: plan.areas.map(({ sector, ...a }) => {
+        const k = sector ? sec.get(sector) : undefined;
+        return { ...a, sectorName: k ? k.name.trim() || "Setor" : null, color: k ? k.color : a.kind === "setor" ? "#8A8A90" : KIND_COLOR[a.kind] };
+      }),
+    },
+  };
+}
 
 /** Salva o evento do formulário em nome do produtor: cria na primeira vez, atualiza depois (preços, lotes, datas). */
 export async function saveEventAs(user: Producer, input: { draft: Draft; eventId: string | null; dbMap: DbMap }): Promise<SaveEventResult> {
@@ -230,7 +253,7 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     minPriceCents: prices.length ? Math.min(...prices) : 0, maxPerOrder: 8,
     format: d.mode, ticketMode: d.tmode, absorbFee: !d.fee,
     media: { home: d.media.home, strip: d.media.strip, share: d.media.share },
-    venueMap: d.tmode === "mapa" && d.map === "done" ? { prompt: d.prompt, areaSectors: d.areaMap, sketchUrl: d.sketchUrl || undefined } : null,
+    venueMap: venueMapOf(d),
     createdByUserId: user.id,
   };
 

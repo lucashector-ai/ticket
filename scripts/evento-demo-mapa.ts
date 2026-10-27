@@ -6,6 +6,7 @@
 import { eq, sql } from "drizzle-orm";
 import { db, schema } from "../src/db";
 import { emptyDraft, type Draft } from "../src/lib/criar/model";
+import { templatePlan } from "../src/lib/criar/plan";
 import { saveEventAs } from "../src/lib/criar/save";
 
 const T = (id: string, kind: "inteira" | "meia" | "social" | "outro", name: string, price: string, qty: string, desc = "") => ({ id, kind, name, price, qty, desc });
@@ -58,7 +59,7 @@ async function main() {
         T("t9", "meia", "Meia-entrada", "550", "140")] },
     ],
     map: "done", prompt: "Arena de uns 40 × 60 m. Palco no fundo, Pista Premium logo na frente, camarotes elevados nas duas laterais, bares no fundo e banheiros perto da entrada.",
-    areaMap: { prem: "k2", pista: "k1", camE: "k3", camD: "k3" },
+    plan: { ...templatePlan(["k2", "k1", "k3"]), notes: [] },
     vis: "publico", saleStart: "", refund: "Até 7 dias após a compra, com 48h de antecedência",
   };
 

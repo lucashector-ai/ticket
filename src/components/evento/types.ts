@@ -64,8 +64,14 @@ export type EventoData = {
   organizer: OrganizerInfo | null;
   tiers: TierItem[];
   sessions: SessionItem[];
-  /** mapa 3D do local: setor (nome e cor) ligado a cada área vendável */
-  venueMap: Record<string, { name: string; color: string }> | null;
+  /** planta do local para o mapa 3D; cada área de setor traz o nome e a cor do setor de ingressos */
+  venueMap: VenueMapData | null;
   maxPerOrder: number;
   minPriceCents: number;
+};
+
+export type VenueMapData = {
+  width: number;
+  depth: number;
+  areas: { id: string; name: string; kind: string; x: number; y: number; w: number; d: number; h: number; cap: number; sectorName: string | null; color: string }[];
 };

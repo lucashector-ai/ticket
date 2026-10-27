@@ -56,16 +56,7 @@ function toData(e: EventDetail): EventoData {
       sector: t.sector, sectorColor: t.sectorColor, sessionId: t.sessionId,
     };
   });
-  const form = (e.draft as { form?: { sectors?: { id: string; name: string; color: string }[] } } | null)?.form;
-  let venueMap: EventoData["venueMap"] = null;
-  if (e.ticketMode === "mapa" && e.venueMap && form?.sectors) {
-    const byId = new Map(form.sectors.map((k) => [k.id, { name: k.name.trim() || "Setor", color: k.color }]));
-    venueMap = {};
-    for (const [area, sid] of Object.entries(e.venueMap.areaSectors)) {
-      const sec = byId.get(sid);
-      if (sec) venueMap[area] = sec;
-    }
-  }
+  const venueMap: EventoData["venueMap"] = e.ticketMode === "mapa" && e.venueMap?.plan?.areas?.length ? e.venueMap.plan : null;
   const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"], MS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const sessions: SessionItem[] = e.sessions.length > 1
     ? [...e.sessions].sort((a, b) => a.startAt.getTime() - b.startAt.getTime()).map((s) => {

@@ -1,5 +1,6 @@
 /* Formulário de criação de evento: tipos e regras usados no navegador e no servidor. */
 import { slugify } from "@/lib/format";
+import type { VenuePlan } from "./plan";
 
 export type EventMode = "unica" | "temporada" | "turne";
 export type TicketMode = "mapa" | "simples";
@@ -32,7 +33,8 @@ export type Draft = {
   map: "empty" | "sketch" | "done";
   prompt: string;
   sketchUrl: string;
-  areaMap: Record<string, string>;
+  /** planta do local (gerada pela IA ou pelo modelo e ajustada no editor) */
+  plan: VenuePlan | null;
   vis: Visibility;
   saleStart: string;
   refund: string;
@@ -65,7 +67,7 @@ export function emptyDraft(): Draft {
     lineup: [], media: {}, coupons: [], venue: { name: "", city: "" }, sessions: [],
     autoMeia: true, fee: true,
     sectors: [{ id: "k1", name: "Ingressos", color: "#D3F55B", open: true, types: [{ id: "t1", kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "" }] }],
-    map: "empty", prompt: "", sketchUrl: "", areaMap: {}, vis: "publico", saleStart: "", refund: DEFAULT_REFUND,
+    map: "empty", prompt: "", sketchUrl: "", plan: null, vis: "publico", saleStart: "", refund: DEFAULT_REFUND,
   };
 }
 
