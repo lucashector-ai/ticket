@@ -13,6 +13,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
+    "db:push:prod": "bash scripts/db-push-prod.sh",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx --env-file=.env.local src/db/seed.ts"
