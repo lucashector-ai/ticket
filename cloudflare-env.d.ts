@@ -6,7 +6,7 @@ interface __BaseEnv_CloudflareEnv {
 	MEDIA: R2Bucket;
 	NEXT_INC_CACHE_R2_BUCKET: R2Bucket;
 	ASSETS: Fetcher;
-	NEXT_PUBLIC_SITE_URL: "https://onde.workers.dev";
+	NEXT_PUBLIC_SITE_URL: "https://ticket.oobo-site.workers.dev";
 	NEXT_INC_CACHE_R2_PREFIX: "incremental-cache";
 	DATABASE_URL: string;
 	DATABASE_URL_DEV: string;
