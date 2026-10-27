@@ -35,6 +35,8 @@ export type EventoData = {
   slug: string;
   title: string;
   flyerId: string;
+  /** cor principal do flyer: fundo atrás do desfoque do topo */
+  accentColor: string;
   bannerId: string;
   category: string | null;
   dateFull: string;

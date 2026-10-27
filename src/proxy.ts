@@ -1,15 +1,25 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth/server";
 
 type Middleware = ReturnType<typeof auth.middleware>;
 let middleware: Middleware | undefined;
 
-// Protege as rotas que exigem sessão. O restante do site é público.
+/** Rotas que exigem login. */
+const PROTECTED = ["/meus-ingressos", "/conta", "/checkout", "/ingressos"];
+
+/** Parâmetro com que o Neon Auth volta do Google; precisa ser trocado pela sessão. */
+const OAUTH_VERIFIER = "neon_auth_session_verifier";
+
 export default function proxy(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+  const isProtected = PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  const returningFromOAuth = searchParams.has(OAUTH_VERIFIER);
+  if (!isProtected && !returningFromOAuth) return NextResponse.next();
   middleware ??= auth.middleware({ loginUrl: "/entrar" });
   return middleware(request);
 }
 
 export const config = {
-  matcher: ["/meus-ingressos/:path*", "/conta/:path*", "/checkout/:path*"],
+  // todas as páginas; ficam de fora API, arquivos estáticos e imagens
+  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|.*\\.[a-zA-Z0-9]+$).*)"],
 };

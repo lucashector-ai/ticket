@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useFavorites } from "@/components/favorites";
 import { signOut } from "@/lib/actions/auth";
@@ -19,18 +18,20 @@ type Props = {
   cities?: { value: string; label: string }[];
   city?: string;
   onCity?: (v: string) => void;
+  /** @deprecated a home não mostra mais busca no cabeçalho */
   query?: string;
+  /** @deprecated */
   onQuery?: (v: string) => void;
+  /** @deprecated */
   onSearchSubmit?: () => void;
   stuck?: boolean;
   activePath?: string;
 };
 
-export function SiteHeader({ user, variant = "default", onImage = false, cities, city = "all", onCity, query = "", onQuery, onSearchSubmit, stuck = false, activePath }: Props) {
+export function SiteHeader({ user, variant = "default", onImage = false, cities, city = "all", onCity, stuck = false, activePath }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [menu, setMenu] = useState(false);
   const { favs } = useFavorites();
-  const router = useRouter();
 
   useEffect(() => {
     const onScroll = () => setScrolled((window.scrollY || 0) > 12);
@@ -58,15 +59,8 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
             </svg>
             Onde
           </Link>
-          {variant === "home" ? (
-            <label className="hsearch">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
-                <circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" />
-              </svg>
-              <span className="sr">Pesquisar eventos</span>
-              <input type="search" placeholder="Pesquisar eventos" value={query} onChange={(e) => onQuery?.(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onSearchSubmit?.(); } }} autoComplete="off" />
-            </label>
-          ) : (
+          {/* na home a busca fica só na barra grande da vitrine */}
+          {variant !== "home" && (
             <Link className="hs" href="/explorar">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
                 <circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" />
@@ -91,11 +85,6 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
                 </select>
                 <svg className="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3" /></svg>
               </label>
-            )}
-            {variant === "home" && (
-              <button className="ib only-s" type="button" onClick={onSearchSubmit ?? (() => router.push("/explorar"))} aria-label="Buscar eventos">
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" /></svg>
-              </button>
             )}
             <Link className="ib hide-m" href="/explorar?salvos=1" aria-label="Eventos salvos">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

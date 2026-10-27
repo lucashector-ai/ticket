@@ -55,6 +55,7 @@ function toData(e: EventDetail): EventoData {
     slug: e.slug,
     title: e.title,
     flyerId: e.flyerId,
+    accentColor: e.accentColor ?? "#111111",
     bannerId: e.bannerId ?? e.flyerId,
     category: e.primaryCategoryLabel,
     dateFull: e.dateFullLabel ?? dateFull(e.startAt),

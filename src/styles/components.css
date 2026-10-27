@@ -20,3 +20,6 @@
 .hdr.on-img .blk{background:#D3F55B;color:#111}
 @media (max-width:1180px){.hs{display:none}}
 @media (max-width:900px){.blk.hide-m,.umenu.hide-m{display:none}}
+
+/* itens do header nunca quebram em duas linhas */
+.hdr-r .lnk,.hdr-r .btn-o,.hdr-r .blk,.hdr-r .cityp,.umenu>summary{white-space:nowrap}

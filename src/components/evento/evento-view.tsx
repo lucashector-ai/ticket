@@ -70,7 +70,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar }: Pro
       <SiteHeader user={user} variant="default" onImage />
       <div id="topo">
         <section className="ehero" aria-labelledby="ev-t">
-          <div className="ebg" aria-hidden="true">
+          <div className="ebg" aria-hidden="true" style={{ backgroundColor: e.accentColor }}>
             <div className="ebg-in"><FlyerArt id={e.flyerId} /></div>
           </div>
           <span className="ebg-tint" aria-hidden="true" />
