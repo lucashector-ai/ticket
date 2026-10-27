@@ -223,11 +223,11 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts }: P
                   />
                 </label>
                 <span className="qb-sep" aria-hidden="true" />
-                <button className={filters.date === "hoje" ? "qb-c on" : "qb-c"} type="button" onClick={() => refilter({ date: filters.date === "hoje" ? "any" : "hoje", onlyFavs: false })} aria-pressed={filters.date === "hoje"}>
+                <button className={filters.date === "hoje" ? "qb-c on" : "qb-c"} type="button" onClick={() => { refilter({ date: filters.date === "hoje" ? "any" : "hoje", onlyFavs: false }); scrollTo("destaque"); }} aria-pressed={filters.date === "hoje"}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5" /><path d="M12 9.5v4l2.5 1.5M9.5 2.5h5" /></svg>
                   <span>Hoje</span>
                 </button>
-                <button className={filters.date === "fds" ? "qb-c on" : "qb-c"} type="button" onClick={() => refilter({ date: filters.date === "fds" ? "any" : "fds", onlyFavs: false })} aria-pressed={filters.date === "fds"}>
+                <button className={filters.date === "fds" ? "qb-c on" : "qb-c"} type="button" onClick={() => { refilter({ date: filters.date === "fds" ? "any" : "fds", onlyFavs: false }); scrollTo("destaque"); }} aria-pressed={filters.date === "fds"}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
                   <span>Fim de semana</span>
                 </button>

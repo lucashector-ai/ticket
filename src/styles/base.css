@@ -306,7 +306,10 @@ input,select{font:inherit;color:inherit}
 .qwrap .qbar{pointer-events:auto}
 .qwrap.stuck{top:68px}
 .qbar{margin:0 auto;max-width:780px;border-radius:18px;padding:0 0 0 22px;gap:4px;animation:rise .7s .25s var(--ease) both;box-shadow:none;-webkit-mask:radial-gradient(circle 10px at 0 50%,#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 10px at 100% 50%,#0000 98%,#000) right/51% 100% no-repeat;mask:radial-gradient(circle 10px at 0 50%,#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 10px at 100% 50%,#0000 98%,#000) right/51% 100% no-repeat;transition:max-width .6s var(--ease),height .6s var(--ease)}
-.qbar:focus-within{box-shadow:none;outline:3px solid #D3F55B;outline-offset:-3px}
+/* sem contorno ao tocar nos atalhos ou no campo; o foco do teclado fica no fundo do botão */
+.qbar:focus-within{box-shadow:none;outline:none}
+.qbar .qb-c:focus,.qbar input:focus{outline:none}
+.qbar .qb-c:focus-visible{background:#EDEDE7}
 .qb-perf{align-self:stretch;width:0;margin:10px 0 10px 6px;border-left:2px dashed #E2E2DC}
 .qb-stub{flex:none;align-self:stretch;display:flex;align-items:center;gap:8px;padding:0 22px 0 18px;background:#D3F55B;color:#111;transition:transform .6s var(--ease)}
 .qb-n{font-family:'Inter Tight',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.04em}
