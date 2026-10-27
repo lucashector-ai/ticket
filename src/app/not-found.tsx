@@ -2,15 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { getHeaderUser } from "@/components/inst-shell";
 
 export const metadata: Metadata = { title: "Página não encontrada" };
 
-export default async function NotFound() {
-  const user = await getHeaderUser();
+// Sem leitura de sessão: a 404 é gerada estaticamente e precisa funcionar sem cookies.
+export default function NotFound() {
   return (
     <div className="pg-inst">
-      <SiteHeader user={user} variant="default" />
+      <SiteHeader user={null} variant="default" />
       <main className="wrap in-404">
         <p className="big" aria-hidden="true">404</p>
         <h1>Essa página não está no mapa.</h1>
