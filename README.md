@@ -24,12 +24,26 @@ pnpm dev                     # http://localhost:3000
 
 Checks: `pnpm typecheck`, `pnpm lint`. Preview no runtime do Workers: `pnpm preview`.
 
-## Deploy (Cloudflare)
+## Deploy (Cloudflare Workers Builds)
 
-1. `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` no ambiente (token com Workers Scripts, KV, R2).
-2. Segredos do Worker: `./scripts/cf-secrets.sh .env.local` (usa `DATABASE_URL_PROD` como `DATABASE_URL`).
-3. `pnpm deploy` (build OpenNext + `wrangler deploy`).
-4. No Neon Auth, adicione a URL pública do Worker como domínio confiável.
+O Worker `ticket` está ligado a este repositório pelo Workers Builds: cada push na branch de produção gera build e deploy.
+
+| Configuração | Valor |
+| --- | --- |
+| Repositório | `lucashector-ai/ticket` |
+| Branch de produção | `claude/eager-galileo-rgwakn` |
+| Build command | `pnpm exec opennextjs-cloudflare build` |
+| Deploy command | `pnpm exec opennextjs-cloudflare deploy` |
+| Root directory | `/` |
+
+O build não precisa de segredos. Em tempo de execução, o Worker precisa destes **Secrets** (Settings → Variables and Secrets):
+
+- `DATABASE_URL` — connection string da branch `main` do Neon (produção).
+- `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, `NEON_AUTH_JWKS_URL`.
+
+Depois do primeiro deploy, adicione a URL pública do Worker como domínio confiável no Neon Auth, senão o login falha em produção.
+
+Deploy manual (alternativa): com `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` no ambiente, rode `./scripts/cf-secrets.sh .env.local` e `pnpm deploy`.
 
 ## Estrutura
 
