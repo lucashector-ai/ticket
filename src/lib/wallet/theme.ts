@@ -12,9 +12,9 @@ const NOTCH: RGB = [242, 242, 246]; // #F2F2F6, o fundo claro da Carteira
 const clamp = (x: number) => Math.min(1, Math.max(0, x));
 const mix = (a: RGB, b: RGB, t: number) => a.map((x, i) => Math.round(x + (b[i] - x) * t)) as RGB;
 
-/* Faixa (strip.png, 375 × 98 pt) que fica logo abaixo do nome do evento e ocupa a largura toda do
-   passe: na cor do passe, com o picote no rodapé e um recorte em cada lateral. */
-const W = 375, H = 98;
+/* Faixa (strip.png) logo abaixo da logo, na largura toda do passe: só o picote, com um recorte em
+   cada lateral. Baixinha (a Apple aceita até 98 pt) para os textos virem logo depois do picote. */
+const W = 375, H = 28;
 let strip: Record<string, Uint8Array> | null = null;
 
 export function passStrip(): Record<string, Uint8Array> {
@@ -23,7 +23,7 @@ export function passStrip(): Record<string, Uint8Array> {
   const out: Record<string, Uint8Array> = {};
   for (const k of [1, 2, 3]) {
     const w = W * k, h = H * k, px = new Uint8Array(w * h * 4);
-    const cy = 84 * k, notch = 10 * k, r = 1.6 * k, step = 9 * k, x0 = 20 * k, x1 = w - 20 * k;
+    const cy = 14 * k, notch = 10 * k, r = 1.6 * k, step = 9 * k, x0 = 20 * k, x1 = w - 20 * k;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         let c: RGB = bg;
