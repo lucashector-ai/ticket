@@ -75,6 +75,8 @@ export type EventoData = {
   maxPerOrder: number;
   minPriceCents: number;
   /** abertura das vendas e pré-venda (datas em ISO); `access`: tem o link da pré-venda */
+  /** anúncios ativos da revenda oficial (preço do anúncio e com a taxa de serviço) */
+  resale: { offers: { id: string; label: string; color: string | null; session: string | null; priceCents: number; totalCents: number; mine: boolean }[] };
   /** fila virtual ligada (automática ou sempre) */
   queueOn: boolean;
   launch: { phase: "soon" | "presale" | "open"; openAt: string | null; presaleAt: string | null; access: boolean };

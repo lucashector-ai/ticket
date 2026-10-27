@@ -9,6 +9,9 @@ import { HelpStrip } from "./help-strip";
 import { IcoArrow, IcoBack, IcoCalendar, IcoClose, IcoPin, IcoSun, IcoTicket, IcoUser } from "./icons";
 import { Modal } from "./modal";
 import { TransferModal } from "./transfer-modal";
+import { ResaleModal } from "./resale-modal";
+import { cancelListing } from "@/lib/actions/revenda";
+import { money } from "@/lib/pricing";
 import { WalletButtons, type WalletFlags } from "./wallet-buttons";
 import type { TicketItem } from "./types";
 
@@ -28,6 +31,8 @@ export type TicketViewData = {
   orderNumber: number | null;
   checkedInLabel: string | null;
   wallet: WalletFlags;
+  /** revenda oficial: liberada pelo produtor, valores e o anúncio atual */
+  resale: { enabled: boolean; faceCents: number; maxCents: number; listing: { id: string; priceCents: number; reserved: boolean } | null };
 };
 
 export function TicketView({ data }: { data: TicketViewData }) {
@@ -35,6 +40,13 @@ export function TicketView({ data }: { data: TicketViewData }) {
   const [transfer, setTransfer] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [movedTo, setMovedTo] = useState<string | null>(null);
+  const [resell, setResell] = useState(false);
+  const [listing, setListing] = useState(data.resale.listing);
+  const unlist = async () => {
+    if (!listing) return;
+    const r = await cancelListing(listing.id);
+    if (r.ok) { setListing(null); flash("Ingresso retirado da revenda"); } else flash(r.error);
+  };
   const t = data.ticket;
   const status = movedTo ? "transferred" : t.status;
   const valid = status === "valid";
@@ -84,11 +96,20 @@ export function TicketView({ data }: { data: TicketViewData }) {
             {valid && data.upcoming && (
               <WalletButtons code={t.code} flags={data.wallet} />
             )}
-            {valid && (
+            {valid && !listing && (
               <button className="btn-g" type="button" onClick={() => setTransfer(true)}><IcoArrow />Transferir</button>
+            )}
+            {valid && data.upcoming && data.resale.enabled && !listing && (
+              <button className="btn-g" type="button" onClick={() => setResell(true)}>Revender</button>
             )}
             <Link className="btn-l" href="/meus-ingressos">Voltar</Link>
           </div>
+          {valid && listing && (
+            <div className="rs-on">
+              <span><b>À venda na revenda por {money(listing.priceCents)}</b>{listing.reserved ? "Alguém está pagando por ele agora." : "Enquanto ninguém comprar, ele continua valendo para você."}</span>
+              <button type="button" onClick={() => void unlist()}>Tirar da revenda</button>
+            </div>
+          )}
         </div>
         <div className={valid ? "tkb-s" : "tkb-s off"}>
           <button className="qr-b" type="button" onClick={() => setQrOpen(true)} aria-label="Ampliar QR code do ingresso">
@@ -121,6 +142,17 @@ export function TicketView({ data }: { data: TicketViewData }) {
           </div>
           <p className="mo-tip"><IcoSun />Aumente o brilho da tela na entrada</p>
         </Modal>
+      )}
+
+      {resell && (
+        <ResaleModal
+          title={data.title}
+          ticketId={t.id}
+          faceCents={data.resale.faceCents}
+          maxCents={data.resale.maxCents}
+          onClose={() => setResell(false)}
+          onDone={(id, priceCents) => { setResell(false); setListing({ id, priceCents, reserved: false }); flash("Ingresso anunciado na revenda"); }}
+        />
       )}
 
       {transfer && (

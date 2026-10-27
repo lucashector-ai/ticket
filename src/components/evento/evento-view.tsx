@@ -16,6 +16,7 @@ import { OrganizerCard } from "./organizer-card";
 import { PlayerBar, usePlayer } from "./player";
 import { QueueGate } from "@/components/queue-gate";
 import { LaunchCard } from "./launch-card";
+import { ResaleCard } from "./resale-card";
 import { TicketsCard } from "./tickets-card";
 import type { EventoData } from "./types";
 import { useTickets } from "./use-tickets";
@@ -183,7 +184,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
           </div>
 
           <aside className="side">
-            {waiting ? <LaunchCard e={e} email={viewerEmail} /> : <TicketsCard e={e} t={tickets} />}
+            {waiting ? <LaunchCard e={e} email={viewerEmail} /> : <><TicketsCard e={e} t={tickets} /><ResaleCard e={e} /></>}
           </aside>
         </div>
 

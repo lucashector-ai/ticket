@@ -1,7 +1,7 @@
 "use server";
 
 import { createHmac, randomBytes } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db, schema } from "@/db";
@@ -24,6 +24,8 @@ export async function transferTicket(_prev: { ok?: boolean; error?: string } | n
   const t = await db.query.tickets.findFirst({ where: and(eq(tickets.id, parsed.data.ticketId), eq(tickets.holderUserId, user.id)) });
   if (!t) return { error: "Ingresso não encontrado." };
   if (t.status !== "valid") return { error: "Este ingresso não pode ser transferido." };
+  const listed = await db.query.resaleListings.findFirst({ where: and(eq(schema.resaleListings.ticketId, t.id), inArray(schema.resaleListings.status, ["active", "reserved"])), columns: { id: true } });
+  if (listed) return { error: "Este ingresso está na revenda. Tire do anúncio antes de transferir." };
   const token = randomBytes(24).toString("hex");
   await db.insert(ticketTransfers).values({ ticketId: t.id, fromUserId: user.id, toEmail: parsed.data.email.toLowerCase(), token, status: "pending" });
   // nesta fase a transferência é imediata: o titular passa a ser o e-mail de destino

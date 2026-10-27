@@ -11,6 +11,9 @@ import { dateNice } from "@/lib/format";
 import { countdownLabel, eventLabels } from "@/lib/tickets/labels";
 import { ticketQrSvg } from "@/lib/tickets/qr";
 import { appleWalletEnabled } from "@/lib/wallet/apple";
+import { and, eq, inArray } from "drizzle-orm";
+import { db, schema } from "@/db";
+import { resaleCap } from "@/lib/resale";
 import { googleWalletEnabled } from "@/lib/wallet/google";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +37,7 @@ export default async function IngressoPage({ params }: { params: Promise<{ code:
 
   const now = new Date();
   const e = t.event;
+  const listing = await db.query.resaleListings.findFirst({ where: and(eq(schema.resaleListings.ticketId, t.id), inArray(schema.resaleListings.status, ["active", "reserved"])) });
   const L = eventLabels(e);
   const data: TicketViewData = {
     wallet: { apple: appleWalletEnabled(), google: googleWalletEnabled() },
@@ -43,6 +47,7 @@ export default async function IngressoPage({ params }: { params: Promise<{ code:
     dateFull: L.dateFull, dateNice: L.dateNice, doors: L.doors, venue: L.venue, addr: L.addr,
     tier: t.ticketType.name, orderNumber: t.order?.number ?? null,
     checkedInLabel: t.checkedInAt ? dateNice(t.checkedInAt) : null,
+    resale: { enabled: e.resaleEnabled && e.status === "published", ...resaleCap(t.ticketType.priceCents, t.halfPrice, e.resaleMaxPct), listing: listing ? { id: listing.id, priceCents: listing.priceCents, reserved: listing.status === "reserved" && !!listing.reservedUntil && listing.reservedUntil > now } : null },
   };
 
   return (

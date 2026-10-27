@@ -24,3 +24,9 @@ export async function notifyResaleSold(sellerUserId: string, eventTitle: string,
     }),
   }]).catch((e) => console.error("resale mail", e));
 }
+
+/** Valor de face do ingresso (meia = metade) e o máximo permitido na revenda. */
+export function resaleCap(typePriceCents: number, halfPrice: boolean, maxPct: number) {
+  const faceCents = halfPrice ? Math.round(typePriceCents / 2) : typePriceCents;
+  return { faceCents, maxCents: Math.floor((faceCents * maxPct) / 100) };
+}

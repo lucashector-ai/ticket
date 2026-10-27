@@ -662,3 +662,19 @@
 .tkb-a .btn-l{width:100%;justify-content:center;height:40px}
 }
 }
+
+/* revenda oficial no ingresso */
+.pg-meus-ingressos {
+  .rs-on{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:14px 16px;border-radius:16px;background:rgba(211,245,91,.12);border:1px solid rgba(211,245,91,.3)}
+  .rs-on span{display:flex;flex-direction:column;gap:3px;font-size:13px;color:rgba(255,255,255,.7)}
+  .rs-on b{font-size:14.5px;color:#D3F55B}
+  .rs-on button{flex:none;height:36px;padding:0 14px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font-size:13px;font-weight:600}
+  .rs-on button:hover{background:rgba(255,255,255,.2)}
+  .rs-in{display:flex;align-items:center;gap:6px;border-radius:14px;background:#F4F4F1;padding-left:16px}
+  .rs-in em{font-style:normal;font-weight:600;color:#55554E}
+  .rs-in .fld-i{flex:1;min-width:0;padding-left:4px;font-size:18px;font-weight:600}
+  .rs-sum{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:#F7F7F2;font-size:13.5px;color:#55554E}
+  .rs-sum b{color:#111}
+  .rs-get{font-size:16px}
+  .rs-sum small{color:#8A8A82}
+}

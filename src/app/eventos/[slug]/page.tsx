@@ -11,6 +11,9 @@ import { dateFull, hourLabel, initials, parts, timeLabel } from "@/lib/format";
 import { salesStartNote, tierStatus } from "@/lib/tickets/status";
 import { presaleAccess, salePhase } from "@/lib/launch";
 import { heldByType } from "@/lib/holds";
+import { and, asc, eq, lt, or } from "drizzle-orm";
+import { db, schema } from "@/db";
+import { SERVICE_FEE_RATE } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +29,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 /* Paleta do design (mesma do seed) usada nos gradientes das faixas do player mock. */
 const PAL = ["#1E1E22", "#D3F55B", "#E9E7E0", "#2C55F5", "#FF4FD8", "#C4532B"];
 
-function toData(e: EventDetail, access: boolean, held: Map<string, number>): EventoData {
+type Offer = { id: string; ticketTypeId: string; priceCents: number; sellerUserId: string };
+function toData(e: EventDetail, access: boolean, held: Map<string, number>, offers: Offer[], viewerId: string | null): EventoData {
   const venueName = e.venueNameOverride ?? e.venue?.name ?? "";
   const city = e.venue?.city.name ?? "";
   const uf = e.venue?.city.uf ?? "";
@@ -102,6 +106,17 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>): Eve
     venueMap,
     maxPerOrder: e.maxPerOrder,
     queueOn: e.queueMode !== "off",
+    resale: {
+      offers: e.resaleEnabled ? offers.flatMap((o) => {
+        const t = e.ticketTypes.find((x) => x.id === o.ticketTypeId);
+        if (!t) return [];
+        const s = t.sessionId ? sessions.find((x) => x.id === t.sessionId) : null;
+        return [{
+          id: o.id, label: [t.sector, t.name].filter(Boolean).join(" · "), color: t.sectorColor, session: s ? `${s.wd}, ${s.day}` : null,
+          priceCents: o.priceCents, totalCents: o.priceCents + (e.absorbFee ? 0 : Math.round(o.priceCents * SERVICE_FEE_RATE)), mine: o.sellerUserId === viewerId,
+        }];
+      }) : [],
+    },
     launch: { phase: salePhase(e), openAt: e.salesOpenAt?.toISOString() ?? null, presaleAt: e.presaleAt?.toISOString() ?? null, access },
     minPriceCents: open.length ? Math.min(...open.map((t) => t.priceCents)) : e.minPriceCents,
   };
@@ -118,7 +133,11 @@ export default async function EventoPage({ params }: Params) {
     ev.organizerId ? isFollowing(user?.id, "organizer", ev.organizerId) : Promise.resolve(false),
   ]);
   const access = salePhase(ev) === "presale" && !!(await presaleAccess(ev.id));
-  const data = toData(ev, access, await heldByType(ev.id));
+  const offers = await db.select({ id: schema.resaleListings.id, ticketTypeId: schema.resaleListings.ticketTypeId, priceCents: schema.resaleListings.priceCents, sellerUserId: schema.resaleListings.sellerUserId })
+    .from(schema.resaleListings)
+    .where(and(eq(schema.resaleListings.eventId, ev.id), or(eq(schema.resaleListings.status, "active"), and(eq(schema.resaleListings.status, "reserved"), lt(schema.resaleListings.reservedUntil, new Date())))))
+    .orderBy(asc(schema.resaleListings.priceCents));
+  const data = toData(ev, access, await heldByType(ev.id), offers, user?.id ?? null);
   const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
 
   return (

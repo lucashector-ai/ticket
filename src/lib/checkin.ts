@@ -1,6 +1,6 @@
 import "server-only";
 import { timingSafeEqual } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { qrPayload } from "@/lib/actions/tickets";
 import { getTicketByCode } from "@/lib/data/ingressos";
@@ -44,5 +44,8 @@ export async function checkinTicket(input: string, eventIds: Set<string> | null)
   const done = await db.update(schema.tickets).set({ status: "used", checkedInAt: now })
     .where(and(eq(schema.tickets.id, ticket.id), eq(schema.tickets.status, "valid"))).returning({ id: schema.tickets.id });
   if (!done.length) return { ok: false, status: 409, error: "Ingresso já utilizado.", ticket: info };
+  // entrou no evento: sai da revenda
+  await db.update(schema.resaleListings).set({ status: "cancelled" })
+    .where(and(eq(schema.resaleListings.ticketId, ticket.id), inArray(schema.resaleListings.status, ["active", "reserved"])));
   return { ok: true, status: 200, checkedInAt: now, ticket: info };
 }
