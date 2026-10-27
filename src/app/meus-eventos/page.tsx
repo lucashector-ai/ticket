@@ -34,7 +34,7 @@ export default async function MeusEventosPage() {
             <span className="ce-k">Tickets Win para produtores</span>
             <h1 className="ce-h">Meus eventos</h1>
           </div>
-          <div className="ce-ta">{org && <Link className="b-sec" href={`/produtor/${org.slug}`}>Minha página</Link>}<Link className="b-pri" href="/criar-evento">+ Criar evento</Link></div>
+          <div className="ce-ta"><Link className="b-sec" href="/painel">Painel</Link>{org && <Link className="b-sec" href={`/produtor/${org.slug}`}>Minha página</Link>}<Link className="b-pri" href="/criar-evento">+ Criar evento</Link></div>
         </div>
         {!rows.length ? (
           <div className="ss-empty">Você ainda não criou nenhum evento.</div>

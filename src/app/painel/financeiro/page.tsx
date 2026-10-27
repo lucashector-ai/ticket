@@ -1,0 +1,54 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { getSessionUser } from "@/lib/auth/server";
+import { getPainelScope, listOrders } from "@/lib/data/painel";
+import { brl } from "@/lib/format";
+import { ended, nowMs } from "@/lib/painel/build";
+
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Financeiro" };
+
+/** Financeiro de todos os eventos do produtor. */
+export default async function PainelFinanceiro() {
+  const user = (await getSessionUser())!;
+  const { org, events } = await getPainelScope(user.id);
+  const orders = await listOrders(events.map((e) => e.id), new Map(events.map((e) => [e.id, e.absorbFee])));
+  const now = nowMs();
+  const year = new Date(now).getFullYear();
+  const paid = orders.filter((o) => o.status === "paid");
+  const refunded = orders.filter((o) => o.status === "refunded");
+  const sum = (l: typeof orders, f: (o: (typeof orders)[number]) => number) => l.reduce((s, o) => s + f(o), 0);
+  const future = new Set(events.filter((e) => !ended(e, now)).map((e) => e.id));
+  const rows = events.filter((e) => e.status !== "draft").map((e) => {
+    const mine = paid.filter((o) => o.eventId === e.id);
+    return { id: e.id, title: e.title, gross: sum(mine, (o) => o.revenue), fee: sum(mine, (o) => o.revenue - o.net), net: sum(mine, (o) => o.net), n: sum(mine, (o) => o.qty), future: future.has(e.id) };
+  });
+  const grossAll = sum(paid, (o) => o.revenue), refAll = sum(refunded, (o) => o.revenue);
+  const kpis = [
+    { l: "Líquido das vendas", v: brl(sum(paid, (o) => o.net)), n: `${events.filter((e) => e.status !== "draft").length} eventos` },
+    { l: "Em eventos futuros", v: brl(sum(paid.filter((o) => future.has(o.eventId)), (o) => o.net)), n: `${future.size} ${future.size === 1 ? "evento" : "eventos"}` },
+    { l: `Vendido em ${year}`, v: brl(sum(paid.filter((o) => o.at.getFullYear() === year), (o) => o.revenue)), n: "em ingressos" },
+    { l: "Reembolsos", v: `${grossAll + refAll ? ((refAll / (grossAll + refAll)) * 100).toFixed(1).replace(".", ",") : "0"}%`, n: `${refunded.length} ${refunded.length === 1 ? "pedido" : "pedidos"}` },
+  ];
+  return (
+    <div className="pane">
+      <div className="pg-h"><div><h1 className="pg-t">Financeiro</h1><p className="pg-s">Todos os eventos de {org?.name ?? "você"}</p></div></div>
+      <div className="kpis">
+        {kpis.map((k) => <div className="kpi" key={k.l}><span className="kp-l">{k.l}</span><b className="kp-v">{k.v}</b><div className="kp-f"><span className="kp-n">{k.n}</span></div></div>)}
+      </div>
+      <section className="cx">
+        <div className="card-h"><div><h2 className="card-t">Por evento</h2><span className="card-s">Repasses automáticos começam quando o pagamento real for ligado. Vendas de teste não geram repasse.</span></div></div>
+        <div className="tbl">
+          <div className="tr4 thd"><span>Evento</span><span className="num">Vendido</span><span className="num">Taxa</span><span className="num">Ingressos</span><span className="num">Líquido</span></div>
+          {rows.map((r) => (
+            <div className="tr4" key={r.id}>
+              <Link className="tt-n" href={`/painel/evento/${r.id}?aba=financeiro`}>{r.title}</Link>
+              <span className="num">{brl(r.gross)}</span><span className="num">{r.fee ? brl(r.fee) : "—"}</span><span className="num">{r.n.toLocaleString("pt-BR")}</span><b className="num">{brl(r.net)}</b>
+            </div>
+          ))}
+          {rows.length === 0 && <div className="empty2"><b className="em-t">Nenhum evento publicado</b><span className="em-s">Quando você vender, os valores aparecem aqui.</span></div>}
+        </div>
+      </section>
+    </div>
+  );
+}

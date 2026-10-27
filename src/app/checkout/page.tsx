@@ -6,7 +6,8 @@ import { getSessionUser } from "@/lib/auth/server";
 import { getEventBySlug } from "@/lib/data/events";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { CompraFlow, type CompraEvent, type CompraStep } from "@/components/compra/compra-flow";
+import { CompraFlow, type CompraEvent, type CompraSession, type CompraStep } from "@/components/compra/compra-flow";
+import { dateNice, hourLabel, parts } from "@/lib/format";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
 import { tierStatus } from "@/lib/tickets/status";
 
@@ -32,6 +33,16 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   }
   const profile = user ? await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, user.id) }) : null;
 
+  // várias datas: mesmas pílulas da página do evento (ordem cronológica)
+  const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"], MS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  const sessions: CompraSession[] = e.sessions.length > 1
+    ? [...e.sessions].sort((a, b) => a.startAt.getTime() - b.startAt.getTime()).map((s) => {
+      const p = parts(s.startAt);
+      const city = e.format === "turne" && s.venue ? s.venue.city.name : null;
+      return { id: s.id, wd: WD[p.wd], day: `${p.d} ${MS[p.m - 1]}`, sub: city ?? hourLabel(s.startAt), label: [dateNice(s.startAt), city].filter(Boolean).join(" · ") };
+    })
+    : [];
+
   const event: CompraEvent = {
     slug: e.slug,
     title: e.title,
@@ -41,10 +52,11 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
     city: e.venue?.city.name ?? "",
     maxPerOrder: e.maxPerOrder,
     tiers: e.ticketTypes.map((t) => ({
-      id: t.id, name: t.sector ? `${t.sector} · ${t.name}` : t.name, note: t.note ?? "", priceCents: t.priceCents,
+      id: t.id, name: t.sector ? `${t.sector} · ${t.name}` : t.name, type: t.name, note: t.note ?? "", desc: t.description, priceCents: t.priceCents,
       open: tierStatus(t) === "open" && t.sold < t.quantity, sold: t.status === "sold_out" || t.sold >= t.quantity,
-      sector: t.sector, meiaOk: !t.kind || t.kind === "inteira",
+      sector: t.sector, sectorColor: t.sectorColor, sessionId: t.sessionId, meiaOk: !t.kind || t.kind === "inteira",
     })),
+    sessions,
     feeRate: e.absorbFee ? 0 : SERVICE_FEE_RATE,
   };
   const step = (["resumo", "dados"].includes(one("etapa")) ? one("etapa") : "resumo") as CompraStep;

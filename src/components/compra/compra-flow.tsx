@@ -12,10 +12,20 @@ import { cardBrand, expOk, fmtCard, fmtCpf, fmtExp, fmtPhone, isEmail, isFullNam
 import { BrandMark } from "@/components/brand-logo";
 
 export type CompraStep = "resumo" | "dados" | "pagamento" | "pix" | "proc" | "done";
-/** `meiaOk`: o titular pode marcar meia-entrada (tipos de inteira); meia e social já vêm com preço próprio. */
-export type CompraTier = { id: string; name: string; note: string; priceCents: number; open: boolean; sold: boolean; sector: string | null; meiaOk: boolean };
+/**
+ * `name`: rótulo completo ("Pista · Inteira"), usado no resumo e nos titulares; `type`: só o tipo ("Inteira").
+ * `meiaOk`: o titular pode marcar meia-entrada (tipos de inteira); meia e social já vêm com preço próprio.
+ */
+export type CompraTier = {
+  id: string; name: string; type: string; note: string; desc: string | null; priceCents: number; open: boolean; sold: boolean;
+  sector: string | null; sectorColor: string | null; sessionId: string | null; meiaOk: boolean;
+};
+/** Uma data de evento com várias datas: pílula (`wd`, `day`, `sub`) e rótulo do resumo ("Sex, 30 Out · 21h"). */
+export type CompraSession = { id: string; wd: string; day: string; sub: string; label: string };
 export type CompraEvent = {
   slug: string; title: string; flyerId: string; dateNice: string; venue: string; city: string; maxPerOrder: number; tiers: CompraTier[];
+  /** vazio quando o evento tem uma data só */
+  sessions: CompraSession[];
   /** 0 quando o produtor absorve a taxa de serviço */
   feeRate: number;
 };
@@ -23,6 +33,10 @@ type Coupon = { code: string; percentOff: number; amountOffCents: number; amount
 const couponOf = (r: Coupon) => ({ code: r.code, percentOff: r.percentOff, amountOffCents: r.amountOffCents, amountPerTicket: r.amountPerTicket, sector: r.sector });
 type Hold = { name: string; me: boolean; meia: boolean };
 type PixOrder = { orderId: string; number: number; totalCents: number; pixCode: string; pixQrSvg: string };
+
+/** chave da data do ingresso no resumo ("" quando o evento tem uma data só) */
+const dayOf = (e: CompraEvent, t: CompraTier) => (e.sessions.length ? t.sessionId ?? "" : "");
+type TierGroup = { name: string | null; color: string | null; tiers: CompraTier[] };
 
 const RESERVA_SEG = 600;
 const PIX_SEG = 900;
@@ -62,6 +76,22 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const [busy, setBusy] = useState(false);
   const [authNudge, setAuthNudge] = useState(false);
   const authRef = useRef<HTMLDivElement>(null);
+  /* data escolhida no resumo: a dos ingressos já selecionados, senão a primeira */
+  const [session, setSession] = useState<string | null>(() => {
+    const picked = new Set(event.tiers.filter((t) => (initialQty[t.id] ?? 0) > 0).map((t) => t.sessionId));
+    return (event.sessions.find((s) => picked.has(s.id)) ?? event.sessions[0])?.id ?? null;
+  });
+  /* setores abertos por data; nas datas com ingressos vindos da página do evento, abrem só os setores escolhidos */
+  const [openSecs, setOpenSecs] = useState<Record<string, boolean>>(() => {
+    const o: Record<string, boolean> = {};
+    const withSel = new Set(event.tiers.filter((t) => t.sector && (initialQty[t.id] ?? 0) > 0).map((t) => dayOf(event, t)));
+    for (const t of event.tiers) {
+      if (!t.sector || !withSel.has(dayOf(event, t))) continue;
+      const k = `${dayOf(event, t)}|${t.sector}`;
+      o[k] = o[k] || (initialQty[t.id] ?? 0) > 0;
+    }
+    return o;
+  });
 
   /* cronômetros da reserva e do Pix */
   useEffect(() => {
@@ -128,6 +158,18 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     feeRate: event.feeRate,
   });
   const installments = installmentOptions(price.base);
+
+  /* resumo: ingressos da data escolhida agrupados por setor (na ordem em que aparecem); sem setor, lista simples */
+  const multiDay = event.sessions.length > 0;
+  const dayKey = multiDay ? session ?? "" : "";
+  const groups: TierGroup[] = [];
+  for (const t of event.tiers) {
+    if (multiDay && t.sessionId && t.sessionId !== session) continue;
+    const g = groups.find((x) => x.name === t.sector);
+    if (g) g.tiers.push(t); else groups.push({ name: t.sector, color: t.sectorColor, tiers: [t] });
+  }
+  const firstSec = groups.find((g) => g.name);
+  const dayLabel = (id: string) => (multiDay ? event.sessions.find((s) => s.id === event.tiers.find((t) => t.id === id)?.sessionId)?.label ?? null : null);
 
   /* validação */
   const holdName = (h: { key: string }) => (hold[h.key]?.name ?? "").trim();
@@ -269,25 +311,47 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               <div className="pane">
                 <h1 className="ck-h">Revise seu pedido</h1>
                 <p className="ck-p">Confira os ingressos antes de seguir. Dá para ajustar as quantidades aqui.</p>
+                {multiDay && (
+                  <>
+                    <span className="sess-l">Escolha a data</span>
+                    <div className="sess-p" role="radiogroup" aria-label="Datas">
+                      {event.sessions.map((s) => {
+                        const n = event.tiers.filter((t) => t.sessionId === s.id).reduce((acc, t) => acc + (qty[t.id] ?? 0), 0);
+                        return (
+                          <button key={s.id} type="button" role="radio" aria-checked={session === s.id} className={session === s.id ? "pd on" : "pd"} onClick={() => setSession(s.id)}>
+                            <span className="pd-w">{s.wd}</span><b className="pd-d">{s.day}</b><span className="pd-c">{s.sub}</span>
+                            {n > 0 && <i className="pd-n">{n}</i>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
                 <div className="trs">
-                  {event.tiers.map((t) => {
-                    const q = qty[t.id] ?? 0;
+                  {groups.map((g) => {
+                    if (!g.name) return g.tiers.map((t) => <TierRow key={t.id} t={t} q={qty[t.id] ?? 0} sub={t.desc || (multiDay ? "" : t.note)} onQty={setTierQty} />);
+                    const key = `${dayKey}|${g.name}`;
+                    const sel = g.tiers.reduce((acc, t) => acc + (qty[t.id] ?? 0), 0);
+                    const open = openSecs[key] ?? g === firstSec;
+                    const avail = g.tiers.filter((t) => t.open);
+                    const from = Math.min(...(avail.length ? avail : g.tiers).map((t) => t.priceCents));
                     return (
-                      <div key={t.id} className={t.sold ? "trw so" : q > 0 ? "trw sel" : "trw"}>
-                        <div className="tr-i">
-                          <b className="tr-n">{t.name}</b>
-                          <span className="tr-o">{t.note}</span>
-                        </div>
-                        <span className="tr-p">{money(t.priceCents)}</span>
-                        {t.open ? (
-                          <div className="qt">
-                            <button className="qt-b" type="button" onClick={() => setTierQty(t.id, -1)} aria-label={`Remover um ${t.name}`}>−</button>
-                            <span className="qt-v">{q}</span>
-                            <button className="qt-b" type="button" onClick={() => setTierQty(t.id, 1)} aria-label={`Adicionar um ${t.name}`}>+</button>
+                      <div key={key} className={open ? "tg open" : "tg"}>
+                        <button className="tg-h" type="button" aria-expanded={open} onClick={() => setOpenSecs((o) => ({ ...o, [key]: !open }))}>
+                          <i className="sec-sw" style={{ background: g.color ?? "#111" }} aria-hidden="true" />
+                          <b className="tg-t">{g.name}</b>
+                          {sel > 0 && <i className="tg-n">{sel}</i>}
+                          <span className="tg-from">a partir de {money(from)}</span>
+                          <span className="tg-c" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4" /></svg></span>
+                        </button>
+                        {/* sempre montado: a altura anima de 0 até o conteúdo (grid 0fr → 1fr) */}
+                        <div className="tg-bw" inert={!open}>
+                          <div className="tg-bi">
+                            <div className="tg-b">
+                              {g.tiers.map((t, i) => <TierRow key={t.id} t={t} q={qty[t.id] ?? 0} label={t.type} sub={t.desc || (multiDay ? "" : t.note)} onQty={setTierQty} delay={i} />)}
+                            </div>
                           </div>
-                        ) : (
-                          <span className="tr-so">{t.sold ? "Esgotado" : "Em breve"}</span>
-                        )}
+                        </div>
                       </div>
                     );
                   })}
@@ -509,7 +573,11 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               <ul className="sm-l">
                 {(lines.length ? lines : [{ ticketTypeId: "x", name: "Nenhum ingresso", quantity: 0, priceCents: 0 }]).map((l) => (
                   <li key={l.ticketTypeId} className="sm-li">
-                    <span className="sm-ln">{l.quantity ? `${l.quantity}× ${l.name}` : l.name}</span>
+                    <span className="sm-ln">
+                      {l.quantity ? `${l.quantity}× ${l.name}` : l.name}
+                      {/* várias datas: a data saiu das linhas do resumo, então aparece aqui */}
+                      {l.quantity > 0 && dayLabel(l.ticketTypeId) && <small className="sm-ld">{dayLabel(l.ticketTypeId)}</small>}
+                    </span>
                     <span className="sm-lv">{money(l.quantity * l.priceCents)}</span>
                   </li>
                 ))}
@@ -577,6 +645,28 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
         </div>
       )}
     </main>
+  );
+}
+
+/** Linha de um tipo de ingresso no resumo; dentro de um setor mostra só o tipo (`label`), sem repetir setor e data. */
+function TierRow({ t, q, label = t.name, sub, onQty, delay }: { t: CompraTier; q: number; label?: string; sub: string; onQty: (id: string, delta: number) => void; delay?: number }) {
+  return (
+    <div className={t.sold ? "trw so" : q > 0 ? "trw sel" : "trw"} style={delay !== undefined ? ({ "--i": delay } as React.CSSProperties) : undefined}>
+      <div className="tr-i">
+        <b className="tr-n">{label}</b>
+        {sub && <span className="tr-o">{sub}</span>}
+      </div>
+      <span className="tr-p">{money(t.priceCents)}</span>
+      {t.open ? (
+        <div className="qt">
+          <button className="qt-b" type="button" onClick={() => onQty(t.id, -1)} aria-label={`Remover um ${t.name}`}>−</button>
+          <span className="qt-v">{q}</span>
+          <button className="qt-b" type="button" onClick={() => onQty(t.id, 1)} aria-label={`Adicionar um ${t.name}`}>+</button>
+        </div>
+      ) : (
+        <span className="tr-so">{t.sold ? "Esgotado" : "Em breve"}</span>
+      )}
+    </div>
   );
 }
 
