@@ -6,6 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { SiteHeader, type HeaderUser } from "@/components/site-header";
 import { useToast } from "@/components/toast";
 import { toggleFollow } from "@/lib/actions/social";
+import { updateArtistBio } from "@/lib/actions/artista";
 import { connectArtistSpotify } from "@/lib/actions/spotify";
 import { SpotifyArtistSearch, SpotifyIcon } from "@/components/spotify-search";
 import { BustIcon, HeroArt } from "./hero-art";
@@ -30,6 +31,8 @@ export type ArtistaProps = {
   bio: string[];
   /** quando o "Sobre" vem de fora (Wikipédia) */
   bioSource: { name: string; url: string } | null;
+  /** texto escrito pelo produtor (vazio = usa Wikipédia/nada) */
+  bioRaw: string;
   /** foto do artista (Spotify ou enviada) */
   image: string | null;
   stats: { fans: string; shows: string; cities: string };
@@ -222,8 +225,12 @@ export function ArtistaView(p: ArtistaProps) {
             <div className="col">
               <div className="blk-s">
                 <h2>Sobre</h2>
-                {p.bio.map((t, i) => <p className="ab-bio" key={i}>{t}</p>)}
-                {p.bioSource && <p className="ab-src">Fonte: <a href={p.bioSource.url} target="_blank" rel="noreferrer">{p.bioSource.name}</a></p>}
+                {p.canEdit
+                  ? <BioEditor artistId={p.artistId} name={p.name} bio={p.bio} raw={p.bioRaw} source={p.bioSource} />
+                  : <>
+                      {p.bio.map((t, i) => <p className="ab-bio" key={i}>{t}</p>)}
+                      {p.bioSource && <p className="ab-src">Fonte: <a href={p.bioSource.url} target="_blank" rel="noreferrer">{p.bioSource.name}</a></p>}
+                    </>}
                 {p.spotify && p.spotify.genres.length > 0 && (
                   <div className="ab-gen">{p.spotify.genres.map((g) => <span key={g}>{g}</span>)}</div>
                 )}
@@ -395,5 +402,43 @@ function SpotifyLink({ artistId, name, linked }: { artistId: string; name: strin
       {busy && <span className="sp-own-b">Ligando…</span>}
       {linked && <button className="sp-chg" type="button" onClick={() => setOpen(false)}>Cancelar</button>}
     </div>
+  );
+}
+
+/** Para quem tem evento com o artista: escreve o "Sobre" (vale mais que a Wikipédia). */
+function BioEditor({ artistId, name, bio, raw, source }: { artistId: string; name: string; bio: string[]; raw: string; source: { name: string; url: string } | null }) {
+  const router = useRouter();
+  const { flash } = useToast();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(raw || bio.join("\n\n"));
+  const [busy, startBusy] = useTransition();
+  const save = () => startBusy(async () => {
+    const r = await updateArtistBio(artistId, text).catch(() => ({ ok: false as const, error: "Não foi possível salvar agora." }));
+    if (!r.ok) { flash(r.error); return; }
+    flash("Sobre atualizado.");
+    setOpen(false);
+    router.refresh();
+  });
+  if (open) {
+    return (
+      <div className="bio-ed">
+        <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={4000} rows={7} placeholder={`Conte quem é ${name}: estilo, trajetória, lançamentos recentes.`} aria-label={`Sobre ${name}`} autoFocus />
+        <span className="bio-h">Separe os parágrafos com uma linha em branco. Deixe vazio para voltar a usar a Wikipédia, quando houver.</span>
+        <div className="bio-a">
+          <button className="bio-s" type="button" onClick={save} disabled={busy}>{busy ? "Salvando…" : "Salvar"}</button>
+          <button className="sp-chg" type="button" onClick={() => setOpen(false)}>Cancelar</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <>
+      {bio.length ? bio.map((t, i) => <p className="ab-bio" key={i}>{t}</p>) : <p className="ab-bio" style={{ color: "#9A9AA0" }}>Ainda não há texto sobre {name}.</p>}
+      {source && <p className="ab-src">Fonte: <a href={source.url} target="_blank" rel="noreferrer">{source.name}</a></p>}
+      <button className="sp-chg" style={{ marginTop: 12 }} type="button" onClick={() => setOpen(true)}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+        {raw ? "Editar o Sobre" : "Escrever o Sobre (só você vê este botão)"}
+      </button>
+    </>
   );
 }

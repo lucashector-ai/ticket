@@ -170,3 +170,24 @@ export async function searchEvents(f: SearchFilters): Promise<EventCard[]> {
 }
 
 export { eventCategories, venues, cities, organizers };
+
+/** Eventos publicados de um produtor: próximos (em ordem de data) e passados (mais recentes primeiro). */
+export async function listOrganizerEvents(organizerId: string) {
+  const rows = await db.query.events.findMany({
+    where: and(eq(events.organizerId, organizerId), eq(events.status, "published"), eq(events.unlisted, false)),
+    with: cardWith,
+    orderBy: [asc(events.startAt)],
+  });
+  const now = Date.now();
+  const cards = rows.map(toCard);
+  const upcoming = cards.filter((e) => (e.endAt ?? e.startAt).getTime() >= now);
+  const past = cards.filter((e) => (e.endAt ?? e.startAt).getTime() < now).reverse();
+  return { upcoming, past };
+}
+
+/** Quanto já foi vendido do evento (0–100), pela soma dos lotes. */
+export async function soldPercent(eventId: string) {
+  const [r] = await db.select({ q: sql<number>`coalesce(sum(${ticketTypes.quantity}),0)`, s: sql<number>`coalesce(sum(${ticketTypes.sold}),0)` }).from(ticketTypes).where(eq(ticketTypes.eventId, eventId));
+  const q = Number(r?.q ?? 0), s = Number(r?.s ?? 0);
+  return q > 0 ? Math.min(100, Math.round((s / q) * 100)) : 0;
+}

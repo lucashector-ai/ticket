@@ -60,7 +60,12 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
                 <span className="tg-from">a partir de {brl(from)}</span>
                 <span className="tg-c" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4" /></svg></span>
               </button>
-              {open && <div className="tg-b">{g.tiers.map((tier) => <TierRow key={tier.id} tier={tier} t={t} inGroup />)}</div>}
+              {/* sempre montado: a altura anima de 0 até o conteúdo (grid 0fr → 1fr) */}
+              <div className="tg-bw" inert={!open}>
+                <div className="tg-bi">
+                  <div className="tg-b">{g.tiers.map((tier, i) => <TierRow key={tier.id} tier={tier} t={t} inGroup delay={i} />)}</div>
+                </div>
+              </div>
             </div>
           );
         })}
@@ -103,7 +108,7 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
   );
 }
 
-function TierRow({ tier, t, inGroup = false }: { tier: TierItem; t: Tickets; inGroup?: boolean }) {
+function TierRow({ tier, t, inGroup = false, delay }: { tier: TierItem; t: Tickets; inGroup?: boolean; delay?: number }) {
   const q = t.qty[tier.id] ?? 0;
   const open = tier.status === "open" && tier.available > 0;
   const sold = tier.status === "sold_out" || tier.status === "closed" || (tier.status === "open" && tier.available === 0);
@@ -111,7 +116,7 @@ function TierRow({ tier, t, inGroup = false }: { tier: TierItem; t: Tickets; inG
   const cls = sold ? "tier so" : upcoming ? "tier up" : q > 0 ? "tier sel" : "tier";
   const label = tier.sector && !inGroup ? `${tier.sector} · ${tier.name}` : tier.name;
   return (
-    <div className={cls} key={tier.id}>
+    <div className={cls} style={delay !== undefined ? ({ "--i": delay } as React.CSSProperties) : undefined}>
       <div className="tn">
         <b>{tier.sector && !inGroup && <i className="sec-sw" style={{ background: tier.sectorColor ?? "#111" }} aria-hidden="true" />}{label}</b>
         {tier.desc && <small className="tdesc">{tier.desc}</small>}

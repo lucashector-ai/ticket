@@ -21,6 +21,7 @@ export default async function MeusEventosPage() {
     with: { ticketTypes: { columns: { sold: true, quantity: true } } },
     orderBy: [desc(schema.events.updatedAt)],
   });
+  const org = await db.query.organizers.findFirst({ where: eq(schema.organizers.ownerUserId, user.id), columns: { slug: true } });
   const headerUser = { id: user.id, name: user.name, email: user.email, image: user.image };
   const statusLabel = (r: (typeof rows)[number]) => (r.status === "draft" ? "Rascunho" : r.unlisted ? "Publicado · só com link" : "Publicado");
 
@@ -33,7 +34,7 @@ export default async function MeusEventosPage() {
             <span className="ce-k">Tickets Win para produtores</span>
             <h1 className="ce-h">Meus eventos</h1>
           </div>
-          <div className="ce-ta"><Link className="b-pri" href="/criar-evento">+ Criar evento</Link></div>
+          <div className="ce-ta">{org && <Link className="b-sec" href={`/produtor/${org.slug}`}>Minha página</Link>}<Link className="b-pri" href="/criar-evento">+ Criar evento</Link></div>
         </div>
         {!rows.length ? (
           <div className="ss-empty">Você ainda não criou nenhum evento.</div>

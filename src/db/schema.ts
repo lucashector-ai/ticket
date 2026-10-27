@@ -87,9 +87,35 @@ export const organizers = pgTable(
     ownerUserId: text("owner_user_id"),
     contactEmail: varchar("contact_email", { length: 254 }),
     instagram: varchar("instagram", { length: 120 }),
+    /* perfil público (página do produtor, editável pelo dono) */
+    coverUrl: text("cover_url"),
+    tagline: varchar("tagline", { length: 200 }),
+    cityName: varchar("city_name", { length: 120 }),
+    uf: varchar("uf", { length: 2 }),
+    website: varchar("website", { length: 200 }),
+    whatsapp: varchar("whatsapp", { length: 32 }),
+    legalName: varchar("legal_name", { length: 200 }),
+    cnpj: varchar("cnpj", { length: 20 }),
+    policies: jsonb("policies").$type<OrganizerPolicies>(),
     ...timestamps,
   },
   (t) => [uniqueIndex("organizers_slug_idx").on(t.slug)],
+);
+
+export type OrganizerPolicies = { cancel?: string; meia?: string; transfer?: string; access?: string };
+
+/** Novidades que o produtor publica na página dele (texto, foto, evento ligado). */
+export const organizerPosts = pgTable(
+  "organizer_posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizerId: uuid("organizer_id").notNull().references(() => organizers.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    imageUrl: text("image_url"),
+    eventId: uuid("event_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("organizer_posts_org_idx").on(t.organizerId, t.createdAt)],
 );
 
 export const artists = pgTable(
@@ -414,9 +440,30 @@ export const follows = pgTable(
     userId: text("user_id").notNull(),
     targetType: followTarget("target_type").notNull(),
     targetId: uuid("target_id").notNull(),
+    /** sininho: avisar de pré-venda e novas datas */
+    notify: boolean("notify").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.targetType, t.targetId] })],
+);
+
+/** Avaliação de um evento por quem tinha ingresso; o produtor pode responder. */
+export const eventReviews = pgTable(
+  "event_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    organizerId: uuid("organizer_id").references(() => organizers.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    userName: varchar("user_name", { length: 160 }),
+    rating: integer("rating").notNull(),
+    body: text("body"),
+    tags: jsonb("tags").$type<string[]>(),
+    reply: text("reply"),
+    repliedAt: timestamp("replied_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("event_reviews_user_idx").on(t.eventId, t.userId), index("event_reviews_org_idx").on(t.organizerId, t.createdAt)],
 );
 
 export const newsletterSubscribers = pgTable(
@@ -434,7 +481,14 @@ export const venuesRelations = relations(venues, ({ one, many }) => ({
   city: one(cities, { fields: [venues.cityId], references: [cities.id] }),
   events: many(events),
 }));
-export const organizersRelations = relations(organizers, ({ many }) => ({ events: many(events) }));
+export const organizersRelations = relations(organizers, ({ many }) => ({ events: many(events), posts: many(organizerPosts), reviews: many(eventReviews) }));
+export const organizerPostsRelations = relations(organizerPosts, ({ one }) => ({
+  organizer: one(organizers, { fields: [organizerPosts.organizerId], references: [organizers.id] }),
+}));
+export const eventReviewsRelations = relations(eventReviews, ({ one }) => ({
+  event: one(events, { fields: [eventReviews.eventId], references: [events.id] }),
+  organizer: one(organizers, { fields: [eventReviews.organizerId], references: [organizers.id] }),
+}));
 export const artistsRelations = relations(artists, ({ many }) => ({ eventArtists: many(eventArtists) }));
 export const categoriesRelations = relations(categories, ({ many }) => ({ eventCategories: many(eventCategories) }));
 export const eventsRelations = relations(events, ({ one, many }) => ({

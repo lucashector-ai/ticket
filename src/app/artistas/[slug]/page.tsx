@@ -59,6 +59,7 @@ export default async function ArtistaPage({ params }: Params) {
     avatarGrad: avatarGrad(palette),
     bio: (artist.bio || sp?.about?.text || "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
     bioSource: !artist.bio && sp?.about ? { name: sp.about.source, url: sp.about.url } : null,
+    bioRaw: artist.bio ?? "",
     stats: { fans: kLabel(fans), shows: String(shows.length), cities: String(new Set(shows.map((e) => `${e.city}/${e.uf}`)).size) },
     links: {
       spotify: artist.spotifyUrl, youtube: artist.youtubeUrl, instagram: artist.instagramUrl, deezer: artist.deezerUrl,

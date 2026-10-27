@@ -35,6 +35,8 @@ export type SessionItem = { id: string; wd: string; day: string; sub: string };
 
 export type OrganizerInfo = {
   id: string;
+  slug: string;
+  avatarUrl: string | null;
   name: string;
   initials: string;
   bio: string | null;

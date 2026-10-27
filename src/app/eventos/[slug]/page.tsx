@@ -48,7 +48,7 @@ function toData(e: EventDetail): EventoData {
     };
   });
   const organizer: OrganizerInfo | null = e.organizer
-    ? { id: e.organizer.id, name: e.organizer.name, initials: e.organizer.initials ?? initials(e.organizer.name), bio: e.organizer.bio, verified: e.organizer.verified, email: e.organizer.contactEmail }
+    ? { id: e.organizer.id, slug: e.organizer.slug, avatarUrl: e.organizer.avatarUrl, name: e.organizer.name, initials: e.organizer.initials ?? initials(e.organizer.name), bio: e.organizer.bio, verified: e.organizer.verified, email: e.organizer.contactEmail }
     : null;
   const tiers: TierItem[] = e.ticketTypes.map((t) => {
     const status = tierStatus(t);

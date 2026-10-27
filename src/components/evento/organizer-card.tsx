@@ -36,9 +36,12 @@ export function OrganizerCard({ o, eventSlug, loggedIn, initialFollowing }: { o:
       <h2>Quem organiza</h2>
       <div className="pr2">
         <div className="pr2-top">
-          <span className="prod-av" style={{ background: "#111111", color: "#D3F55B" }}>{o.initials}</span>
+          <Link className="prod-av" href={`/produtor/${o.slug}`} style={{ background: "#111111", color: "#D3F55B", overflow: "hidden" }} aria-label={`Página de ${o.name}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {o.avatarUrl ? <img src={o.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : o.initials}
+          </Link>
           <div className="pr2-id">
-            <b>{o.name}</b>
+            <Link href={`/produtor/${o.slug}`}><b>{o.name}</b></Link>
             {o.verified && (
               <span>
                 <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
@@ -56,7 +59,7 @@ export function OrganizerCard({ o, eventSlug, loggedIn, initialFollowing }: { o:
         {o.bio && <p className="pr2-bio">{o.bio}</p>}
         <div className="pr2-a">
           <button className="pr2-l" type="button" onClick={onContact}>Falar com o produtor</button>
-          <Link className="pr2-l" href={`/explorar?q=${encodeURIComponent(o.name)}`}>Ver outros eventos</Link>
+          <Link className="pr2-l" href={`/produtor/${o.slug}`}>Ver página do produtor</Link>
         </div>
       </div>
     </div>

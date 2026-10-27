@@ -17,6 +17,7 @@
 @import "../styles/pages/criar.css";
 @import "../styles/pages/institucional.css";
 @import "../styles/pages/explorar.css";
+@import "../styles/pages/produtor.css";
 
 @theme inline {
   --color-ink: #111111;
