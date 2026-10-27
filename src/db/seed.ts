@@ -130,8 +130,8 @@ async function main() {
       const h = hash(name);
       const pal = PAL[k % 6];
       const tracks = [0, 1, 2, 3, 4].map((j) => {
-        const pl = ((h >> (j + 2)) % 700 + 300) * 1000 * (5 - j) * 0.9;
-        const sec = 140 + ((h >> j) % 80);
+        const pl = ((h >>> (j + 2)) % 700 + 300) * 1000 * (5 - j) * 0.9;
+        const sec = 140 + ((h >>> j) % 80);
         return { title: POOL[(h + j * 7) % POOL.length], plays: fmt(pl) + " plays", duration: `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}` };
       });
       const g = e.cat.toLowerCase();
