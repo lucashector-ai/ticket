@@ -6,6 +6,7 @@ import { EventCard } from "@/components/event-card";
 import { FlyerArt } from "@/components/art/flyer";
 import { useFavorites } from "@/components/favorites";
 import type { EventCard as EventCardData } from "@/lib/data/events";
+import { BrandMark } from "@/components/brand-logo";
 import {
   applyFilters, chipDefs, DATE_OPTS, DEFAULT_FILTERS, filtersToParams, isDefault, MAIN_CATS, PAGE_SIZE, parseFilters, PRICE_OPTS, sameFilters, SORT_OPTS,
   type Filters,
@@ -267,11 +268,7 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
             )}
             {isEmpty && (
               <div className="empty">
-                <svg width="56" height="56" viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="12" cy="12" r="11" fill="#111111" />
-                  <circle className="sig-ring" cx="15.6" cy="8.4" r="3.4" fill="none" stroke="#D3F55B" strokeWidth=".6" />
-                  <circle cx="15.6" cy="8.4" r="3.4" fill="#D3F55B" />
-                </svg>
+                <BrandMark size={56} />
                 <h3>{filters.salvos && favs.length === 0 ? "Você ainda não salvou nada" : "Nenhum evento encontrado"}</h3>
                 <p>{filters.salvos && favs.length === 0 ? "Toque no coração de um evento para guardar aqui os que valem sair de casa." : "Tente outra data, outra cidade ou uma busca mais ampla. Sempre tem algo acontecendo."}</p>
                 <button className="btn-p" type="button" onClick={clearAll}>Limpar filtros</button>

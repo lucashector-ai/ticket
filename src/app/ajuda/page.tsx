@@ -5,7 +5,7 @@ import { InstShell } from "@/components/inst-shell";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Central de ajuda",
-  description: "Reembolsos, meia-entrada, transferência de ingressos e as dúvidas mais comuns sobre a Onde.",
+  description: "Reembolsos, meia-entrada, transferência de ingressos e as dúvidas mais comuns sobre o Tickets Win.",
 };
 
 const TOPICS = [
@@ -19,7 +19,7 @@ const FAQ = [
   { q: "Onde fica o meu ingresso depois da compra?", a: "Em Meus ingressos, na sua conta. Você também recebe o QR Code por e-mail. Não precisa imprimir: basta mostrar no celular na entrada." },
   { q: "Quais formas de pagamento vocês aceitam?", a: "Pix (aprovação na hora) e cartão de crédito em até 3x sem juros. O parcelamento depende do produtor e aparece no checkout." },
   { q: "O evento foi cancelado ou adiado. E agora?", a: "Se for cancelado, o reembolso é automático e integral, inclusive a taxa de serviço. Se for adiado, seu ingresso continua válido para a nova data; se não puder ir, você pode pedir o reembolso em até 7 dias após o anúncio." },
-  { q: "Meu QR Code não está carregando.", a: "Abra o ingresso pela sua conta com a internet ligada ao menos uma vez: ele fica salvo para funcionar offline. Se ainda assim não aparecer, procure a equipe da Onde na portaria com um documento com foto." },
+  { q: "Meu QR Code não está carregando.", a: "Abra o ingresso pela sua conta com a internet ligada ao menos uma vez: ele fica salvo para funcionar offline. Se ainda assim não aparecer, procure a equipe do Tickets Win na portaria com um documento com foto." },
   { q: "Posso comprar para outra pessoa?", a: "Pode. No checkout você informa o nome de quem vai usar cada ingresso. Depois, é só transferir pela sua conta (veja a seção Transferir ingresso)." },
   { q: "Como falo com o produtor do evento?", a: "Na página do evento há o contato do organizador. Para dúvidas sobre pagamento, reembolso e conta, fale com a gente em ajuda@onde.app." },
 ];
@@ -68,7 +68,7 @@ export default function AjudaPage() {
         <h2 className="in-h2" id="transf-t"><small>Transferência</small>Como transferir um ingresso para outra pessoa</h2>
         <ol>
           <li>Abra o ingresso em <Link href="/meus-ingressos">Meus ingressos</Link> e toque em &ldquo;Transferir&rdquo;.</li>
-          <li>Informe o e-mail de quem vai receber. Se a pessoa ainda não tiver conta na Onde, ela cria uma com esse e-mail.</li>
+          <li>Informe o e-mail de quem vai receber. Se a pessoa ainda não tiver conta no Tickets Win, ela cria uma com esse e-mail.</li>
           <li>Confirme. O QR Code antigo é invalidado na hora e um novo é gerado para o destinatário.</li>
         </ol>
         <p>A transferência é gratuita, pode ser feita até o início do evento e não pode ser desfeita, então confira o e-mail antes de confirmar. Ingressos de meia-entrada só podem ser transferidos para quem também tem direito ao benefício.</p>

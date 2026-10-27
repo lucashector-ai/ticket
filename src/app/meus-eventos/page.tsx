@@ -30,7 +30,7 @@ export default async function MeusEventosPage() {
       <main className="wrap ce me-ev">
         <div className="ce-top">
           <div>
-            <span className="ce-k">Onde para produtores</span>
+            <span className="ce-k">Tickets Win para produtores</span>
             <h1 className="ce-h">Meus eventos</h1>
           </div>
           <div className="ce-ta"><Link className="b-pri" href="/criar-evento">+ Criar evento</Link></div>

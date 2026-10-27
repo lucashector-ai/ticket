@@ -5,10 +5,10 @@ import { InstShell } from "@/components/inst-shell";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Para produtores",
-  description: "Publique seu evento na Onde, venda ingressos sem complicação e acompanhe tudo em tempo real.",
+  description: "Publique seu evento no Tickets Win, venda ingressos sem complicação e acompanhe tudo em tempo real.",
 };
 
-const MAILTO = "mailto:produtores@onde.app?subject=Quero%20criar%20um%20evento%20na%20Onde";
+const MAILTO = "mailto:produtores@onde.app?subject=Quero%20criar%20um%20evento%20no%20Tickets%20Win";
 
 const BENEFITS = [
   {
@@ -45,19 +45,19 @@ export default function ProdutoresPage() {
       activePath="/produtores"
       eyebrow="Para produtores"
       title="Seu evento no lugar onde as pessoas já estão procurando."
-      lead="A Onde reúne quem produz e quem quer sair de casa. Publique seu evento, venda ingressos e faça o check-in com uma ferramenta só."
+      lead="O Tickets Win reúne quem produz e quem quer sair de casa. Publique seu evento, venda ingressos e faça o check-in com uma ferramenta só."
       actions={
         <>
           <Link className="btn-p" href="/criar-evento">
             Criar evento
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
-          <a className="btn-g" href={MAILTO}>Falar com a Onde</a>
+          <a className="btn-g" href={MAILTO}>Falar com o Tickets Win</a>
         </>
       }
     >
       <section className="in-sec" aria-labelledby="beneficios">
-        <h2 className="in-h2" id="beneficios"><small>Por que a Onde</small>Tudo que um evento precisa, sem a parte chata.</h2>
+        <h2 className="in-h2" id="beneficios"><small>Por que o Tickets Win</small>Tudo que um evento precisa, sem a parte chata.</h2>
         <div className="in-grid">
           {BENEFITS.map((b) => (
             <article className="in-card" key={b.title}>
@@ -91,7 +91,7 @@ export default function ProdutoresPage() {
         </div>
         <div className="in-acts">
           <Link className="btn-p" href="/criar-evento">Criar evento</Link>
-          <a className="btn-g" href={MAILTO}>Falar com a Onde</a>
+          <a className="btn-g" href={MAILTO}>Falar com o Tickets Win</a>
         </div>
       </section>
     </InstShell>

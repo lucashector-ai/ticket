@@ -11,7 +11,7 @@ import { slugify } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { absolute: "Onde — Descubra eventos" },
+  title: { absolute: "Tickets Win — Descubra eventos" },
   description: "Descubra os eventos que valem sair de casa. Festas, shows, festivais e experiências nas principais cidades do Brasil.",
 };
 

@@ -52,7 +52,7 @@ export function MapStage({ plan, look, sel, onPick, view, setView, tag, labels =
           const hpx = Math.min(48, Math.max(3, a.h * k * 3));
           return (
             <span key={`p-${a.id}`} className="mpin" aria-hidden="true"
-              style={{ left: ox + (a.x + a.w / 2) * k, top: oy + (a.y + a.d / 2) * k, transform: `translateZ(${hpx + 2}px) rotateZ(${-view.rot}deg) rotateX(${-view.tilt}deg)` }}>
+              style={{ left: ox + (a.x + a.w / 2) * k, top: oy + (a.y + a.d / 2) * k, transform: `translateZ(${hpx + 6}px) rotateZ(${-view.rot}deg) rotateX(${-view.tilt}deg)` }}>
               <span className={`mpin-b${a.kind === "setor" ? " sec" : ""}${sel === a.id ? " on" : ""}`} onClick={() => onPick(a.id)}>
                 {a.kind === "setor" && <i style={{ background: color }} />}{name}
               </span>

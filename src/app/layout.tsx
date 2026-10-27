@@ -4,7 +4,7 @@ import { ToastProvider } from "@/components/toast";
 import { FavoritesProvider } from "@/components/favorites";
 
 export const metadata: Metadata = {
-  title: { default: "Onde — Descubra eventos", template: "%s · Onde" },
+  title: { default: "Tickets Win — Descubra eventos", template: "%s · Tickets Win" },
   description: "A forma mais simples de descobrir e viver os melhores eventos da sua cidade.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
 };

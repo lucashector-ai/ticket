@@ -5,7 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { ArtistaView, type ArtistaProps } from "@/components/artista/artista-view";
 import { getSessionUser } from "@/lib/auth/server";
 import { getArtistBySlug, listArtistShows, listSimilarArtists } from "@/lib/data/events";
-import { isFollowing } from "@/lib/data/user";
+import { countFollowers, isFollowing } from "@/lib/data/user";
 import { dayNum, kLabel, monShort } from "@/lib/format";
 import { canEditArtist, refreshArtistSpotify } from "@/lib/spotify-artists";
 
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const first = (artist.bio ?? "").split(/\n\s*\n/)[0]?.trim();
   return {
     title: artist.name,
-    description: first || `${artist.name} na Onde: shows, faixas e próximas datas.`,
+    description: first || `${artist.name} no Tickets Win: shows, faixas e próximas datas.`,
   };
 }
 
@@ -36,7 +36,7 @@ export default async function ArtistaPage({ params }: Params) {
   if (!artist) notFound();
 
   const [shows, similar, user] = await Promise.all([listArtistShows(artist), listSimilarArtists(artist), getSessionUser()]);
-  const [following, canEdit] = await Promise.all([isFollowing(user?.id, "artist", artist.id), user ? canEditArtist(user.id, artist.id) : false]);
+  const [following, canEdit, fans] = await Promise.all([isFollowing(user?.id, "artist", artist.id), user ? canEditArtist(user.id, artist.id) : false, countFollowers("artist", artist.id)]);
   // dados do Spotify com mais de uma semana: atualiza depois de responder (a próxima visita já vê)
   after(() => refreshArtistSpotify(artist));
   const sp = artist.spotifyId && artist.spotifyData ? artist.spotifyData : null;
@@ -57,8 +57,9 @@ export default async function ArtistaPage({ params }: Params) {
     listeners: artist.monthlyListeners ? `${kLabel(artist.monthlyListeners)} ouvintes mensais` : sp?.followers ? `${kLabel(sp.followers)} seguidores no Spotify` : null,
     palette,
     avatarGrad: avatarGrad(palette),
-    bio: (artist.bio ?? "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
-    stats: { fans: kLabel(artist.followersCount), shows: String(artist.showsCount), cities: String(artist.citiesCount) },
+    bio: (artist.bio || sp?.about?.text || "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
+    bioSource: !artist.bio && sp?.about ? { name: sp.about.source, url: sp.about.url } : null,
+    stats: { fans: kLabel(fans), shows: String(shows.length), cities: String(new Set(shows.map((e) => `${e.city}/${e.uf}`)).size) },
     links: {
       spotify: artist.spotifyUrl, youtube: artist.youtubeUrl, instagram: artist.instagramUrl, deezer: artist.deezerUrl,
     },
@@ -72,11 +73,12 @@ export default async function ArtistaPage({ params }: Params) {
     })),
     similar: similar.map((a) => {
       const p = a.palette ?? DEFAULT_PALETTE;
-      return { slug: a.slug, name: a.name, genre: a.genre ?? "Música", grad: avatarGrad(p), fg: p.fg };
+      return { slug: a.slug, name: a.name, genre: a.genre ?? "Música", grad: avatarGrad(p), fg: p.fg, image: a.spotifyData?.image ?? a.imageUrl ?? null };
     }),
     following,
     canEdit,
     spotify: sp && artist.spotifyId ? { id: artist.spotifyId, url: sp.url, image: sp.image, genres: sp.genres, releases: sp.releases } : null,
+    image: sp?.image ?? artist.imageUrl ?? null,
   };
 
   return (

@@ -9,7 +9,7 @@ export default function PrivacidadePage() {
       <h1>Política de privacidade</h1>
       <span className="in-upd">Última atualização: 1º de outubro de 2026</span>
 
-      <p>Esta política explica quais dados pessoais a <strong>Onde Tecnologia Ltda.</strong> coleta, por que coleta e como você pode exercer seus direitos, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018).</p>
+      <p>Esta política explica quais dados pessoais a <strong>Tickets Win Tecnologia Ltda.</strong> coleta, por que coleta e como você pode exercer seus direitos, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018).</p>
 
       <h2 id="dados">1. Quais dados coletamos</h2>
       <table>

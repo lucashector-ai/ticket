@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark, BrandWord } from "@/components/brand-logo";
 
 /** Cartão central das páginas de autenticação (design "entrar"). Vai dentro de um `.pg-entrar`. */
 export function AuthCard({ children }: { children: React.ReactNode }) {
@@ -11,12 +12,9 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
       <div className="lx-card">
         <main className="lx-f">
           <div className="lx-in">
-            <Link className="lg2" href="/" aria-label="Onde — voltar ao início">
-              <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="11" fill="#111111" />
-                <circle cx="15.6" cy="8.4" r="3.4" fill="#D3F55B" />
-              </svg>
-              <span className="lg2-t">Onde</span>
+            <Link className="lg2" href="/" aria-label="Tickets Win — voltar ao início">
+              <BrandMark size={40} />
+              <span className="lg2-t"><BrandWord height={16} /></span>
             </Link>
             {children}
           </div>

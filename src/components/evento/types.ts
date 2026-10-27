@@ -7,6 +7,10 @@ export type LineupItem = {
   time: string | null;
   role: string | null;
   initials: string;
+  /** foto (Spotify ou enviada); sem foto, usa o avatar com as cores */
+  image: string | null;
+  /** ligado ao Spotify (tem player na página do artista) */
+  spotify: boolean;
   grad: string;
   fg: string;
   tracks: { title: string; plays: string; duration: string; grad: string }[];

@@ -16,6 +16,7 @@ import { Newsletter } from "./newsletter";
 import { QuickView } from "./quick-view";
 import { SpotifyStrip, type HomeSpotify } from "./spotify-strip";
 import type { CityOpt, HomeCategory, HomeEvent } from "./types";
+import { BrandMark, BrandWord } from "@/components/brand-logo";
 
 type Props = {
   user: HeaderUser;
@@ -207,9 +208,9 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
           <div className={stuck ? "qwrap stuck" : "qwrap"}>
             <div className="wrap">
               <div className="qbar" role="search">
-                <Link className="qb-logo" href="/" aria-label="Onde — voltar ao início">
-                  <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#111111" /><circle cx="15.6" cy="8.4" r="3.4" fill="#D3F55B" /></svg>
-                  <span>Onde</span>
+                <Link className="qb-logo" href="/" aria-label="Tickets Win — voltar ao início">
+                  <BrandMark size={24} />
+                  <span><BrandWord height={17} /></span>
                 </Link>
                 <label className="qb-s">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" /></svg>
@@ -277,11 +278,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
               )}
               {ok && view.length === 0 && (
                 <div className="empty">
-                  <svg width="56" height="56" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="11" fill="#111111" />
-                    <circle className="sig-ring" cx="15.6" cy="8.4" r="3.4" fill="none" stroke="#D3F55B" strokeWidth=".6" />
-                    <circle cx="15.6" cy="8.4" r="3.4" fill="#D3F55B" />
-                  </svg>
+                  <BrandMark size={56} />
                   <h3>Nenhum evento encontrado</h3>
                   <p>Tente outra data, outra cidade ou uma busca mais ampla. Sempre tem algo acontecendo.</p>
                   <button className="btn-p" type="button" onClick={() => refilter(DEFAULT_FILTERS)}>Limpar filtros</button>

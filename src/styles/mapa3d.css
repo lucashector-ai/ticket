@@ -38,7 +38,7 @@
 /* balões com o nome de cada área, sempre de frente para a câmera */
 .m3w {
   .mpin{position:absolute;width:0;height:0;transform-style:preserve-3d;transform-origin:0 0;transition:transform .7s var(--ease);pointer-events:none}
-  .mpin-b{position:absolute;left:0;bottom:10px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:9px;background:#FFFFFF;color:#111;font-size:11.5px;font-weight:700;white-space:nowrap;box-shadow:0 8px 20px -8px rgba(0,0,0,.55);pointer-events:auto;cursor:pointer;transition:background .2s}
+  .mpin-b{position:absolute;left:0;bottom:16px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:9px;background:#FFFFFF;color:#111;font-size:11.5px;font-weight:700;white-space:nowrap;box-shadow:0 5px 12px -5px rgba(0,0,0,.5);pointer-events:auto;cursor:pointer;transition:background .2s}
   .mpin-b::after{content:"";position:absolute;left:50%;bottom:-5px;width:10px;height:10px;margin-left:-5px;background:inherit;transform:rotate(45deg);border-radius:2px}
   .mpin-b:not(.sec){background:rgba(255,255,255,.82);color:#3A3A3C;font-weight:600;font-size:10.5px}
   .mpin-b.on{background:#D3F55B}

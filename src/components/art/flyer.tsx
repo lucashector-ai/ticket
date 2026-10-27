@@ -1,4 +1,4 @@
-/* Gerado automaticamente a partir do template "tpl-Flyer" do export Onde. Refine à mão. */
+/* Gerado automaticamente a partir do template "tpl-Flyer" do export Tickets Win. Refine à mão. */
 import { Fragment } from "react";
 
 export const FLYER_IDS = ["baile", "subsolo", "marea", "cypher", "noite", "luz", "orquestra", "mesa", "calourada", "guitarra", "terreiro", "sintonia"] as const;

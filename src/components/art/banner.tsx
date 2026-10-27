@@ -1,4 +1,4 @@
-/* Banners (21:9 / 16:9 / preenchimento) dos eventos — gerados a partir do design Onde. */
+/* Banners (21:9 / 16:9 / preenchimento) dos eventos — gerados a partir do design Tickets Win. */
 import { isImageArt } from "./flyer";
 export const BANNER_IDS = ["baile", "sintonia", "terreiro", "marea", "subsolo", "cypher", "noite", "luz", "orquestra", "mesa", "calourada", "guitarra"] as const;
 export type BannerId = (typeof BANNER_IDS)[number];

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useFavorites } from "@/components/favorites";
 import { signOut } from "@/lib/actions/auth";
+import { BrandLogo } from "@/components/brand-logo";
 
 export type HeaderUser = { id: string; name?: string | null; email?: string | null; image?: string | null } | null;
 
@@ -51,13 +52,8 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
     <>
       <header className={cls}>
         <div className="wrap hdr-in">
-          <Link className="logo" href="/" aria-label="Onde — início">
-            <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
-              <circle className="logo-c" cx="12" cy="12" r="11" fill="#111111" />
-              <circle className="sig-ring" cx="15.6" cy="8.4" r="3.4" fill="none" stroke="#D3F55B" strokeWidth="1" />
-              <circle cx="15.6" cy="8.4" r="3.4" fill="#D3F55B" />
-            </svg>
-            Onde
+          <Link className="logo" href="/" aria-label="Tickets Win — início">
+            <BrandLogo height={24} />
           </Link>
           {/* na home a busca fica só na barra grande da vitrine */}
           {variant !== "home" && (

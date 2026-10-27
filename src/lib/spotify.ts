@@ -98,7 +98,32 @@ export async function fetchArtist(id: string): Promise<SpotifyArtistData | null>
     image: pickImage(a.images), genres: (a.genres ?? []).slice(0, 4),
     followers: typeof a.followers?.total === "number" ? a.followers.total : null,
     releases: releases.slice(0, 8),
+    about: await fetchAbout(a.name, a.genres ?? []).catch(() => null),
   };
+}
+
+/* ---------- "Sobre" pela Wikipédia (o Spotify não expõe a bio na API) ---------- */
+
+const WIKI_UA = { "user-agent": "TicketsWin/1.0 (https://ticket.oobo-site.workers.dev)", accept: "application/json" };
+const fold = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const MUSIC = /m[uú]sic|cantor|cantora|banda|dj\b|rapper|rap\b|produtor|compositor|grupo musical|duo|singer|musician|band\b|record producer|songwriter|disc jockey|rapper|group/i;
+
+/** Resumo da Wikipédia (pt, depois en) só quando o título bate com o nome e o texto é sobre música. */
+export async function fetchAbout(name: string, genres: string[]): Promise<SpotifyArtistData["about"]> {
+  for (const lang of ["pt", "en"]) {
+    const q = `${name} ${lang === "pt" ? "música" : "music"} ${genres[0] ?? ""}`.trim();
+    const sr = await fetch(`https://${lang}.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=3&srsearch=${encodeURIComponent(q)}`, { headers: WIKI_UA }).catch(() => null);
+    const hits = ((await sr?.json().catch(() => null)) as { query?: { search?: { title: string }[] } } | null)?.query?.search ?? [];
+    const want = fold(name);
+    const hit = hits.find((h) => { const t = fold(h.title); return t === want || t.startsWith(`${want} `); });
+    if (!hit) continue;
+    const r = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hit.title.replace(/ /g, "_"))}`, { headers: WIKI_UA }).catch(() => null);
+    const j = (await r?.json().catch(() => null)) as { type?: string; extract?: string; description?: string; content_urls?: { desktop?: { page?: string } } } | null;
+    if (!j?.extract || j.type === "disambiguation") continue;
+    if (!MUSIC.test(`${j.description ?? ""} ${j.extract.slice(0, 400)}`)) continue;
+    return { text: j.extract, source: lang === "pt" ? "Wikipédia" : "Wikipedia (em inglês)", url: j.content_urls?.desktop?.page ?? `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(hit.title)}` };
+  }
+  return null;
 }
 
 /* ---------- conta do usuário (OAuth) ---------- */

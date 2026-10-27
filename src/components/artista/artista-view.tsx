@@ -12,7 +12,7 @@ import { BustIcon, HeroArt } from "./hero-art";
 
 export type ArtistaTrack = { title: string; plays: string; duration: string; grad: string };
 export type ArtistaShow = { slug: string; title: string; venue: string; city: string; day: string; mon: string; own: boolean };
-export type ArtistaSimilar = { slug: string; name: string; genre: string; grad: string; fg: string };
+export type ArtistaSimilar = { slug: string; name: string; genre: string; grad: string; fg: string; image: string | null };
 export type ArtistaSpotify = { id: string; url: string; image: string | null; genres: string[]; releases: { id: string; name: string; type: string; year: string; image: string | null; url: string }[] };
 
 export type ArtistaProps = {
@@ -28,6 +28,10 @@ export type ArtistaProps = {
   palette: { bg: string; fg: string; accent: string };
   avatarGrad: string;
   bio: string[];
+  /** quando o "Sobre" vem de fora (Wikipédia) */
+  bioSource: { name: string; url: string } | null;
+  /** foto do artista (Spotify ou enviada) */
+  image: string | null;
   stats: { fans: string; shows: string; cities: string };
   links: { spotify: string | null; youtube: string | null; instagram: string | null; deezer: string | null };
   tracks: ArtistaTrack[];
@@ -130,7 +134,7 @@ export function ArtistaView(p: ArtistaProps) {
     const url = typeof window !== "undefined" ? window.location.href : `/artistas/${p.slug}`;
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        await navigator.share({ title: `${p.name} · Onde`, url });
+        await navigator.share({ title: `${p.name} · Tickets Win`, url });
         return;
       }
     } catch { return; }
@@ -205,9 +209,9 @@ export function ArtistaView(p: ArtistaProps) {
               </div>
             </div>
             <div className="ah2-ph">
-              {p.spotify?.image
+              {p.image
                 // eslint-disable-next-line @next/next/no-img-element
-                ? <img className="ah2-img" src={p.spotify.image} alt={`Foto de ${p.name}`} />
+                ? <img className="ah2-img" src={p.image} alt={`Foto de ${p.name}`} />
                 : <HeroArt accent={p.palette.accent} />}
             </div>
           </div>
@@ -219,13 +223,14 @@ export function ArtistaView(p: ArtistaProps) {
               <div className="blk-s">
                 <h2>Sobre</h2>
                 {p.bio.map((t, i) => <p className="ab-bio" key={i}>{t}</p>)}
+                {p.bioSource && <p className="ab-src">Fonte: <a href={p.bioSource.url} target="_blank" rel="noreferrer">{p.bioSource.name}</a></p>}
                 {p.spotify && p.spotify.genres.length > 0 && (
                   <div className="ab-gen">{p.spotify.genres.map((g) => <span key={g}>{g}</span>)}</div>
                 )}
                 <div className="ab-st">
-                  <div><b className="st-v">{p.stats.fans}</b><span className="st-l">Seguidores na Onde</span></div>
-                  <div><b className="st-v">{p.stats.shows}</b><span className="st-l">Shows em 2026</span></div>
-                  <div><b className="st-v">{p.stats.cities}</b><span className="st-l">Cidades na turnê</span></div>
+                  <div><b className="st-v">{p.stats.fans}</b><span className="st-l">Seguidores no Tickets Win</span></div>
+                  <div><b className="st-v">{p.stats.shows}</b><span className="st-l">Próximos shows</span></div>
+                  <div><b className="st-v">{p.stats.cities}</b><span className="st-l">Cidades na agenda</span></div>
                 </div>
               </div>
 
@@ -325,7 +330,10 @@ export function ArtistaView(p: ArtistaProps) {
             <div className="sim">
               {p.similar.map((m) => (
                 <Link className="sim-b" href={`/artistas/${m.slug}`} key={m.slug} aria-label={`Ver perfil de ${m.name}`}>
-                  <span className="sim-ph" style={{ background: m.grad, color: m.fg }}><BustIcon /></span>
+                  <span className="sim-ph" style={{ background: m.grad, color: m.fg }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {m.image ? <img src={m.image} alt="" loading="lazy" /> : <BustIcon />}
+                  </span>
                   <b>{m.name}</b>
                   <span className="sim-g">{m.genre}</span>
                 </Link>
@@ -337,7 +345,10 @@ export function ArtistaView(p: ArtistaProps) {
 
       {cur && (
         <div className="pl" role="region" aria-label="Prévia tocando">
-          <span className="pl-c" style={{ background: cur.grad, color: p.palette.fg }}><BustIcon /></span>
+          <span className="pl-c" style={{ background: cur.grad, color: p.palette.fg }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {p.image ? <img src={p.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} /> : <BustIcon />}
+          </span>
           <div className="pl-t">
             <b>{cur.title}</b>
             <span className="pl-s">

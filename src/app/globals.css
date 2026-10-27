@@ -1,4 +1,4 @@
-/* Tailwind sem preflight: o design Onde traz o próprio reset em base.css */
+/* Tailwind sem preflight: o design Tickets Win traz o próprio reset em base.css */
 @import "tailwindcss/theme" layer(theme);
 @import "tailwindcss/utilities" layer(utilities);
 

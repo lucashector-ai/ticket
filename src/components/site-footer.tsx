@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function SiteFooter() {
   return (
@@ -6,9 +7,8 @@ export function SiteFooter() {
       <div className="wrap">
         <div className="fg">
           <div>
-            <Link className="logo" href="/" aria-label="Onde — voltar ao início">
-              <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#111111" /><circle cx="15.6" cy="8.4" r="3.4" fill="#D3F55B" /></svg>
-              Onde
+            <Link className="logo" href="/" aria-label="Tickets Win — voltar ao início">
+              <BrandLogo height={26} />
             </Link>
             <p style={{ fontSize: 15, lineHeight: 1.55, color: "#6E6E73", margin: "16px 0 0", maxWidth: 300 }}>A forma mais simples de descobrir e viver os melhores eventos da sua cidade.</p>
             <div className="soc">
@@ -56,8 +56,8 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="fb">
-          <span>© 2026 Onde. Todos os direitos reservados.</span>
-          <span>Onde Tecnologia Ltda · São Paulo – SP</span>
+          <span>© 2026 Tickets Win. Todos os direitos reservados.</span>
+          <span>Tickets Win Tecnologia Ltda · São Paulo – SP</span>
           <span>Feito no Brasil</span>
         </div>
       </div>

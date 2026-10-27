@@ -9,7 +9,7 @@ export default function AcessibilidadePage() {
       <h1>Acessibilidade</h1>
       <span className="in-upd">Última atualização: 1º de outubro de 2026</span>
 
-      <p>Queremos que qualquer pessoa consiga descobrir um evento e comprar o ingresso na Onde, independentemente de como usa a internet. Esta página descreve o que já fazemos, o que ainda falta e como falar com a gente.</p>
+      <p>Queremos que qualquer pessoa consiga descobrir um evento e comprar o ingresso no Tickets Win, independentemente de como usa a internet. Esta página descreve o que já fazemos, o que ainda falta e como falar com a gente.</p>
 
       <h2 id="compromisso">1. Nosso compromisso</h2>
       <p>Seguimos as Diretrizes de Acessibilidade para Conteúdo Web (WCAG 2.2) no nível AA como meta para todo o site e aplicativo, em linha com a Lei Brasileira de Inclusão (Lei 13.146/2015). Novas telas passam por revisão de acessibilidade antes de ir ao ar.</p>

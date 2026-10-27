@@ -86,8 +86,16 @@ export function PlayerBar({ p }: { p: Player }) {
 /** Botão "Ouvir"/"Tocando" usado no line-up. */
 export function ListenButton({ artist, p }: { artist: LineupItem; p: Player }) {
   const playing = p.isPlaying(artist.id);
-  // artista cadastrado pelo produtor ainda sem faixas: nada para tocar
-  if (!artist.tracks.length) return null;
+  // sem faixas próprias: se o artista está ligado ao Spotify, leva ao player na página dele
+  if (!artist.tracks.length) {
+    if (!artist.spotify) return null;
+    return (
+      <a className="ou" href={`/artistas/${artist.slug}#ouvir`} aria-label={`Ouvir ${artist.name} no Spotify`}>
+        <span className="ou-i"><svg width="10" height="10" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.6v10.8L13.4 8z" fill="currentColor" /></svg></span>
+        Ouvir
+      </a>
+    );
+  }
   return (
     <button className={p.isCurrent(artist.id) ? "ou on" : "ou"} type="button" onClick={() => p.play(artist)} aria-label={`Ouvir ${artist.name}`} aria-pressed={playing}>
       <span className="ou-i">

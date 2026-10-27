@@ -40,6 +40,8 @@ function toData(e: EventDetail): EventoData {
       time: e.timed ? ea.timeLabel : null,
       role: ea.role,
       initials: initials(a.name),
+      image: a.spotifyData?.image ?? a.imageUrl ?? null,
+      spotify: !!a.spotifyId,
       grad: `radial-gradient(circle at 30% 25%, ${pal.accent} 0%, ${pal.bg} 70%)`,
       fg: pal.fg,
       tracks: (a.tracks ?? []).map((t, j) => ({ ...t, grad: `linear-gradient(135deg, ${PAL[(i + j) % 6]}, ${PAL[(i + j + 2) % 6]})` })),

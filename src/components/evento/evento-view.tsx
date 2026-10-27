@@ -208,7 +208,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar }: Pro
           <div className="ld-in">
             <div className="ld-tk">
               <div className="ld-main">
-                <span className="ld-k">Onde · Ingresso</span>
+                <span className="ld-k">Tickets Win · Ingresso</span>
                 <b className="ld-t">{e.title}</b>
                 <span className="ld-d">{e.dateFull} · {e.city}</span>
                 <span className="ld-bar"><i /></span>

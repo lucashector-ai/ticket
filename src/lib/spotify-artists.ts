@@ -1,5 +1,6 @@
 import { and, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
+import type { SpotifyArtistData } from "@/db/schema";
 import { fetchArtist } from "@/lib/spotify";
 
 const { artists, eventArtists, events, organizers } = schema;
@@ -18,9 +19,11 @@ export async function linkArtistSpotify(artistId: string, spotifyId: string): Pr
 }
 
 /** Atualiza os dados do Spotify se estiverem velhos. Falhas são ignoradas (fica o que já havia). */
-export async function refreshArtistSpotify(a: { id: string; spotifyId: string | null; spotifySyncedAt: Date | null }) {
+export async function refreshArtistSpotify(a: { id: string; spotifyId: string | null; spotifySyncedAt: Date | null; spotifyData: SpotifyArtistData | null }) {
   if (!a.spotifyId) return;
-  if (a.spotifySyncedAt && Date.now() - a.spotifySyncedAt.getTime() < SPOTIFY_TTL_MS) return;
+  // ligados antes do "Sobre" existir (sem o campo about) atualizam já, sem esperar a semana
+  const fresh = a.spotifySyncedAt && Date.now() - a.spotifySyncedAt.getTime() < SPOTIFY_TTL_MS;
+  if (fresh && a.spotifyData && "about" in a.spotifyData) return;
   const data = await fetchArtist(a.spotifyId).catch(() => null);
   if (data) await db.update(artists).set({ spotifyData: data, spotifySyncedAt: new Date(), spotifyUrl: data.url }).where(eq(artists.id, a.id));
 }

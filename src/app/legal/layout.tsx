@@ -5,7 +5,7 @@ import { LegalNav } from "@/components/legal-nav";
 import { getHeaderUser } from "@/components/inst-shell";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: { default: "Legal", template: "%s · Onde" } };
+export const metadata: Metadata = { title: { default: "Legal", template: "%s · Tickets Win" } };
 
 export default async function LegalLayout({ children }: { children: React.ReactNode }) {
   const user = await getHeaderUser();

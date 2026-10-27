@@ -4,8 +4,8 @@ import { InstShell } from "@/components/inst-shell";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Sobre a Onde",
-  description: "A Onde nasceu em São Paulo para tornar simples descobrir e viver os melhores eventos da sua cidade.",
+  title: "Sobre o Tickets Win",
+  description: "O Tickets Win nasceu em São Paulo para tornar simples descobrir e viver os melhores eventos da sua cidade.",
 };
 
 const VALUES = [
@@ -24,13 +24,13 @@ export default function SobrePage() {
   return (
     <InstShell
       activePath="/sobre"
-      eyebrow="Sobre a Onde"
+      eyebrow="Sobre o Tickets Win"
       title="A gente acredita que a melhor parte da cidade acontece à noite."
-      lead="A Onde é uma plataforma de ingressos feita em São Paulo. Começamos em 2024 cansados de descobrir o show bom só depois que ele acabou — e de pagar taxa escondida quando descobríamos a tempo."
+      lead="O Tickets Win é uma plataforma de ingressos feita em São Paulo. Começamos em 2024 cansados de descobrir o show bom só depois que ele acabou — e de pagar taxa escondida quando descobríamos a tempo."
     >
       <section className="in-sec prose" aria-labelledby="historia">
         <h2 className="in-h2" id="historia"><small>Nossa história</small>De um grupo de amigos a 300 mil pessoas por mês</h2>
-        <p>Tudo começou com uma planilha compartilhada de festas e um bot que mandava os destaques da semana no grupo. Em 2024 viramos app, em 2025 passamos a vender ingressos e hoje a Onde conecta mais de 1.200 produtores a quem quer sair de casa em 14 cidades brasileiras.</p>
+        <p>Tudo começou com uma planilha compartilhada de festas e um bot que mandava os destaques da semana no grupo. Em 2024 viramos app, em 2025 passamos a vender ingressos e hoje o Tickets Win conecta mais de 1.200 produtores a quem quer sair de casa em 14 cidades brasileiras.</p>
         <p>Somos um time de 28 pessoas, metade engenharia e produto, metade operações e relacionamento com produtores. Ainda somos pequenos de propósito: preferimos fazer poucas coisas muito bem feitas.</p>
       </section>
 
@@ -48,7 +48,7 @@ export default function SobrePage() {
       </section>
 
       <section className="in-sec" id="carreiras" aria-labelledby="carreiras-t">
-        <h2 className="in-h2" id="carreiras-t"><small>Carreiras</small>Vem construir a Onde com a gente</h2>
+        <h2 className="in-h2" id="carreiras-t"><small>Carreiras</small>Vem construir o Tickets Win com a gente</h2>
         <div className="prose">
           <p>Trabalhamos em modelo híbrido com escritório na Vila Madalena, em São Paulo. Oferecemos salário compatível com o mercado, plano de saúde, vale-cultura e, claro, ingressos para os eventos da plataforma. Processos seletivos levam no máximo três semanas e você recebe retorno em todas as etapas.</p>
         </div>
@@ -66,7 +66,7 @@ export default function SobrePage() {
       </section>
 
       <section className="in-sec" id="imprensa" aria-labelledby="imprensa-t">
-        <h2 className="in-h2" id="imprensa-t"><small>Imprensa</small>Falando sobre a Onde</h2>
+        <h2 className="in-h2" id="imprensa-t"><small>Imprensa</small>Falando sobre o Tickets Win</h2>
         <div className="in-press">
           <article className="in-card">
             <b>Contato para jornalistas</b>
@@ -81,7 +81,7 @@ export default function SobrePage() {
 
       <section className="in-cta" aria-labelledby="cta">
         <div>
-          <h2 id="cta">Produz eventos? A Onde foi feita para você também.</h2>
+          <h2 id="cta">Produz eventos? O Tickets Win foi feito para você também.</h2>
           <p>Publique seu evento, venda ingressos e faça o check-in com uma ferramenta só, com taxa transparente e repasse rápido.</p>
         </div>
         <div className="in-acts">

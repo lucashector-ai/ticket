@@ -126,7 +126,7 @@ export function CriarFlow({ initial, eventId: initialId, slug: initialSlug, dbMa
     <main className="wrap ce">
       <div className="ce-top">
         <div>
-          <span className="ce-k">Onde para produtores</span>
+          <span className="ce-k">Tickets Win para produtores</span>
           <h1 className="ce-h">{d.title || "Novo evento"}</h1>
         </div>
         <div className="ce-ta">

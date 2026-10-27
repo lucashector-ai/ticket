@@ -124,7 +124,11 @@ export const artists = pgTable(
 );
 
 export type SpotifyRelease = { id: string; name: string; type: string; year: string; image: string | null; url: string };
-export type SpotifyArtistData = { name: string; url: string; image: string | null; genres: string[]; followers: number | null; releases: SpotifyRelease[] };
+export type SpotifyArtistData = {
+  name: string; url: string; image: string | null; genres: string[]; followers: number | null; releases: SpotifyRelease[];
+  /** "Sobre": o Spotify não expõe a bio na API, então vem da Wikipédia quando acha o artista */
+  about?: { text: string; source: string; url: string } | null;
+};
 
 /** Spotify conectado por um usuário: guardamos só os artistas que ele ouve (sem tokens). */
 export const spotifyConnections = pgTable("spotify_connections", {

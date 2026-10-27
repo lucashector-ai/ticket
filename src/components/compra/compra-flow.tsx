@@ -9,6 +9,7 @@ import { checkCoupon, confirmPayment, placeOrder, type ConfirmResult } from "@/l
 import { installmentOptions, money, priceOrder } from "@/lib/pricing";
 import { InlineAuth } from "./inline-auth";
 import { cardBrand, expOk, fmtCard, fmtCpf, fmtExp, fmtPhone, isEmail, isFullName, mmss, onlyDigits } from "./format";
+import { BrandMark } from "@/components/brand-logo";
 
 export type CompraStep = "resumo" | "dados" | "pagamento" | "pix" | "proc" | "done";
 /** `meiaOk`: o titular pode marcar meia-entrada (tipos de inteira); meia e social já vêm com preço próprio. */
@@ -402,7 +403,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   <div className="cardf">
                     <div className="cc" aria-hidden="true">
                       <span className="cc-logo">
-                        <svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#FFFFFF" /><circle cx="15.6" cy="8.4" r="3.4" fill="#D3F55B" /></svg>
+                        <BrandMark size={22} />
                         <span className="cc-brand">{cardBrand(cc.num)}</span>
                       </span>
                       <span className="cc-num">{(fmtCard(cc.num) + " •••• •••• •••• ••••").slice(0, 19)}</span>
@@ -468,7 +469,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                     <ol className="howto">
                       <li>Abra o app do seu banco</li>
                       <li>Escolha Pix › Ler QR code ou Copia e cola</li>
-                      <li>Confira o valor e o recebedor Onde e confirme</li>
+                      <li>Confira o valor e o recebedor Tickets Win e confirme</li>
                     </ol>
                     <span className="pix-wait"><span className="pw-dot" aria-hidden="true" />Aguardando pagamento</span>
                     <button className="go2" type="button" onClick={() => void finish(order.orderId)} disabled={busy || expired}>Já fiz o pagamento</button>
@@ -482,7 +483,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               <div className="pane proc">
                 <div className="ld-tk proc-tk" aria-hidden="true">
                   <div className="ld-main">
-                    <span className="ld-k">Onde · Pagamento</span>
+                    <span className="ld-k">Tickets Win · Pagamento</span>
                     <b className="ld-t">{event.title}</b>
                     <span className="ld-d">{totalLabel} · {payLabel}</span>
                     <span className="ld-bar"><i /></span>
@@ -554,7 +555,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
           <p className="done-p">Enviamos os ingressos para <b className="done-b">{done.email || "seu e-mail"}</b>. Eles também já estão em Meus ingressos.</p>
           <div className="ld-tk done-tk">
             <div className="ld-main">
-              <span className="ld-k">Onde · Ingresso · Pedido #{done.number}</span>
+              <span className="ld-k">Tickets Win · Ingresso · Pedido #{done.number}</span>
               <b className="ld-t">{event.title}</b>
               <span className="ld-d">{event.dateNice} · {event.venue}</span>
               <span className="dn-q">{done.ticketCount} {done.ticketCount === 1 ? "ingresso" : "ingressos"}</span>

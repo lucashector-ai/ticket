@@ -111,22 +111,25 @@ export async function getArtistBySlug(slug: string) {
   return a ?? null;
 }
 
-/** Próximos shows do artista + outros eventos do mesmo gênero (como no design). */
-export async function listArtistShows(artist: ArtistDetail, limit = 3): Promise<EventCard[]> {
-  const own = artist.eventArtists.map((x) => x.event.id);
+/** Próximos shows do artista: só eventos em que ele está no line-up. */
+export async function listArtistShows(artist: ArtistDetail, limit = 8): Promise<EventCard[]> {
+  const own = new Set(artist.eventArtists.map((x) => x.event.id));
   const live = await listLiveEvents();
-  const mine = live.filter((e) => own.includes(e.id));
-  const sameGenre = live.filter((e) => !own.includes(e.id) && e.categoryLabel === artist.genre);
-  const rest = live.filter((e) => !own.includes(e.id) && e.categoryLabel !== artist.genre);
-  return [...mine, ...sameGenre, ...rest].slice(0, limit).sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+  return live.filter((e) => own.has(e.id)).slice(0, limit);
 }
 
+/** Parecidos: primeiro quem divide gêneros do Spotify, depois o mesmo gênero. */
 export async function listSimilarArtists(artist: ArtistDetail, limit = 6) {
   const all = await db.query.artists.findMany({ orderBy: [desc(artists.monthlyListeners)] });
-  const skip = (a: { id: string; name: string }) => a.id === artist.id || /^\d/.test(a.name);
-  const same = all.filter((a) => !skip(a) && a.genre === artist.genre);
-  const rest = all.filter((a) => !skip(a) && a.genre !== artist.genre);
-  return [...same, ...rest].slice(0, limit);
+  const mine = new Set(artist.spotifyData?.genres ?? []);
+  const score = (a: (typeof all)[number]) =>
+    (a.spotifyData?.genres ?? []).filter((g) => mine.has(g)).length * 10 + (a.genre === artist.genre ? 1 : 0) + (a.spotifyData?.image ? 0.5 : 0);
+  return all
+    .filter((a) => a.id !== artist.id && !/^\d/.test(a.name))
+    .map((a) => ({ a, s: score(a) }))
+    .sort((x, y) => y.s - x.s)
+    .slice(0, limit)
+    .map((x) => x.a);
 }
 
 export async function listAllArtists() {

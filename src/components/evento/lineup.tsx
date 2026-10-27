@@ -7,10 +7,12 @@ import { ListenButton, type Player } from "./player";
 function Avatar({ a, big }: { a: LineupItem; big?: boolean }) {
   return (
     <span className={big ? "lu-ph big" : "lu-ph"} style={{ background: a.grad, color: a.fg }} title={a.initials}>
-      <svg viewBox="0 0 40 40" aria-hidden="true">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {a.image && <img className="lu-img" src={a.image} alt="" loading="lazy" />}
+      {!a.image && <svg viewBox="0 0 40 40" aria-hidden="true">
         <circle cx="20" cy="15.5" r="7" fill="currentColor" />
         <path d="M6 40c1.6-8.6 7.2-13.4 14-13.4S32.4 31.4 34 40z" fill="currentColor" />
-      </svg>
+      </svg>}
     </span>
   );
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 
@@ -49,4 +49,10 @@ export async function getSpotifyConnection(userId: string | null | undefined) {
   if (!userId) return null;
   const row = await db.query.spotifyConnections.findFirst({ where: eq(schema.spotifyConnections.userId, userId) });
   return row ?? null;
+}
+
+/** Quantas pessoas seguem o artista/produtor no site. */
+export async function countFollowers(targetType: "artist" | "organizer", targetId: string) {
+  const [row] = await db.select({ n: count() }).from(follows).where(and(eq(follows.targetType, targetType), eq(follows.targetId, targetId)));
+  return row?.n ?? 0;
 }

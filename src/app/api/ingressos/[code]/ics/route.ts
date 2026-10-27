@@ -25,7 +25,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
   const url = `${site}/ingressos/${t.code}`;
   const desc = `Ingresso ${t.code} · ${t.ticketType.name}${t.holderName ? ` · Titular: ${t.holderName}` : ""}${L.doors ? `\n${L.doors}` : ""}\nAbra o QR code em ${url}`;
   const lines = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Onde//Ingressos//PT-BR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Tickets Win//Ingressos//PT-BR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
     "BEGIN:VEVENT",
     `UID:${t.code}@onde`,
     `DTSTAMP:${icsDate(new Date())}`,
