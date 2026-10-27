@@ -1,15 +1,50 @@
-import { listLiveEvents } from "@/lib/data/events";
+import type { Metadata } from "next";
+import { FavoritesHydrator } from "@/components/favorites";
+import { HomeClient } from "@/components/home/home-client";
+import type { HomeEvent } from "@/components/home/types";
 import { getSessionUser } from "@/lib/auth/server";
+import { listCategories, listCities, listHeroEvents, listLiveEvents, type EventCard } from "@/lib/data/events";
+import { listHomeExtras } from "@/lib/data/home";
+import { getUserFavoriteSlugs } from "@/lib/data/user";
 
 export const dynamic = "force-dynamic";
 
+export const metadata: Metadata = {
+  title: { absolute: "Onde — Descubra eventos" },
+  description: "Descubra os eventos que valem sair de casa. Festas, shows, festivais e experiências nas principais cidades do Brasil.",
+};
+
 export default async function Home() {
-  const [events, user] = await Promise.all([listLiveEvents(), getSessionUser()]);
+  const [live, hero, cats, cities, user] = await Promise.all([listLiveEvents(), listHeroEvents(), listCategories(), listCities(), getSessionUser()]);
+  const [extras, serverFavs] = await Promise.all([listHomeExtras([...live, ...hero].map((e) => e.id)), getUserFavoriteSlugs(user?.id)]);
+
+  const toHome = (e: EventCard): HomeEvent => ({
+    slug: e.slug, title: e.title, flyerId: e.flyerId, bannerId: e.bannerId ?? e.flyerId,
+    startMs: e.startAt.getTime(), endMs: (e.endAt ?? e.startAt).getTime(), dateNice: e.dateNice,
+    venue: e.venue, city: e.city, uf: e.uf, minPriceCents: e.minPriceCents, popularity: e.popularity,
+    kinds: e.kinds, categoryLabel: e.categoryLabel ?? "Evento", lineup: e.lineup,
+    description: extras[e.id]?.description ?? e.tagline ?? "", tiers: extras[e.id]?.tiers ?? [],
+  });
+
+  const events = live.map(toHome);
+  const heroEvents = (hero.length ? hero : live.slice(0, 4)).map(toHome);
+  const categories = cats.slice(0, 7).map((c) => ({
+    slug: c.slug, name: c.name, coverFlyer: c.coverFlyer ?? "baile",
+    count: live.filter((e) => e.kinds.includes(c.slug)).length,
+  }));
+  const cityOpts = [
+    { value: "all", label: "Todas as cidades" },
+    ...cities
+      .filter((c) => live.some((e) => e.city === c.name))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+      .map((c) => ({ value: c.name, label: c.name })),
+  ];
+  const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
+
   return (
-    <main className="wrap" style={{ padding: 40 }}>
-      <h1 className="disp">Onde</h1>
-      <p>{events.length} eventos ao vivo. Usuário: {user?.email ?? "anônimo"}</p>
-      <ul>{events.map((e) => <li key={e.id}>{e.title} — {e.dateNice} — {e.city}</li>)}</ul>
-    </main>
+    <>
+      <FavoritesHydrator serverFavs={serverFavs} loggedIn={!!user} />
+      <HomeClient user={headerUser} events={events} heroEvents={heroEvents} categories={categories} cityOpts={cityOpts} />
+    </>
   );
 }
