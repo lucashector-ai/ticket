@@ -11,6 +11,7 @@ import { tierStatus } from "@/lib/tickets/status";
 import { qrPayload } from "@/lib/actions/tickets";
 import { canBuy } from "@/lib/launch";
 import { promoterForOrder } from "@/lib/promoters";
+import { queueAllows } from "@/lib/queue";
 
 const { orders, orderItems, tickets, ticketTypes, coupons, events, userProfiles, eventSignups } = schema;
 
@@ -78,6 +79,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), with: { ticketTypes: true } });
   if (!ev || ev.status !== "published") return { ok: false, error: "Evento indisponível." };
   const access = await canBuy(ev);
+  if (!(await queueAllows(ev))) return { ok: false, error: "Você está na fila virtual. Volte à página do evento e aguarde a sua vez." };
   if (!access.ok) return { ok: false, error: access.phase === "presale" ? "A pré-venda é só para quem recebeu o link. A venda geral abre em breve." : "As vendas deste evento ainda não abriram." };
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
   if (totalQty > ev.maxPerOrder) return { ok: false, error: `Máximo de ${ev.maxPerOrder} ingressos por pessoa.` };

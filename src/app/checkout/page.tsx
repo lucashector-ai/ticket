@@ -11,6 +11,7 @@ import { dateNice, hourLabel, parts } from "@/lib/format";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
 import { tierStatus } from "@/lib/tickets/status";
 import { canBuy } from "@/lib/launch";
+import { queueAllows } from "@/lib/queue";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Finalizar compra" };
@@ -25,7 +26,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   if (!slug) redirect("/explorar");
   const [e, user] = await Promise.all([getEventBySlug(slug), getSessionUser()]);
   if (!e || e.status !== "published") redirect("/explorar");
-  if (!(await canBuy(e)).ok) redirect(`/eventos/${e.slug}`);
+  if (!(await canBuy(e)).ok || !(await queueAllows(e))) redirect(`/eventos/${e.slug}`);
 
   const qty: Record<string, number> = {};
   for (const part of one("itens").split(",")) {
@@ -74,6 +75,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         initialQty={qty}
         initialCoupon={one("cupom").toUpperCase() || null}
         initialStep={Object.keys(qty).length ? step : "resumo"}
+        queueEventId={e.queueMode !== "off" ? e.id : null}
       />
       <SiteFooter />
     </div>

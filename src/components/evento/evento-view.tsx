@@ -14,6 +14,7 @@ import { Description } from "./description";
 import { Lineup } from "./lineup";
 import { OrganizerCard } from "./organizer-card";
 import { PlayerBar, usePlayer } from "./player";
+import { QueueGate } from "@/components/queue-gate";
 import { LaunchCard } from "./launch-card";
 import { TicketsCard } from "./tickets-card";
 import type { EventoData } from "./types";
@@ -232,6 +233,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
       )}
 
       <PlayerBar p={player} />
+      {e.queueOn && !waiting && <QueueGate eventId={e.id} title={e.title} />}
     </>
   );
 }

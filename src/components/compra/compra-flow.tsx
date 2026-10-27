@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { checkCoupon, confirmPayment, placeOrder, type ConfirmResult } from "@/lib/actions/compra";
+import { QueueGate } from "@/components/queue-gate";
 import { installmentOptions, money, priceOrder } from "@/lib/pricing";
 import { InlineAuth } from "./inline-auth";
 import { cardBrand, expOk, fmtCard, fmtCpf, fmtExp, fmtPhone, isEmail, isFullName, mmss, onlyDigits } from "./format";
@@ -49,9 +50,11 @@ type Props = {
   initialQty: Record<string, number>;
   initialCoupon: string | null;
   initialStep: CompraStep;
+  /** id do evento quando a fila virtual está ligada */
+  queueEventId?: string | null;
 };
 
-export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep }: Props) {
+export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId }: Props) {
   const router = useRouter();
   const { flash } = useToast();
   const [step, setStep] = useState<CompraStep>(initialStep);
@@ -271,6 +274,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
 
   return (
     <main className="wrap ck">
+      {queueEventId && step !== "done" && <QueueGate eventId={queueEventId} title={event.title} />}
       <div className="ck-top">
         <Link className="ck-back" href={`/eventos/${event.slug}`}>
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4" /></svg>

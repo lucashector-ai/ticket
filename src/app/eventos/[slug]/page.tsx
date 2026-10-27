@@ -100,6 +100,7 @@ function toData(e: EventDetail, access: boolean): EventoData {
     sessions,
     venueMap,
     maxPerOrder: e.maxPerOrder,
+    queueOn: e.queueMode !== "off",
     launch: { phase: salePhase(e), openAt: e.salesOpenAt?.toISOString() ?? null, presaleAt: e.presaleAt?.toISOString() ?? null, access },
     minPriceCents: open.length ? Math.min(...open.map((t) => t.priceCents)) : e.minPriceCents,
   };
