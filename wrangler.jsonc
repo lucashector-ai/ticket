@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ticket",
-  "main": ".open-next/worker.js",
+  "main": "custom-worker.js",
   "compatibility_date": "2026-10-13",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "upload_source_maps": true,
@@ -23,6 +23,8 @@
     { "binding": "KV", "id": "e0598640fff84473847be030aa1c2096" }
   ],
   "images": { "binding": "IMAGES" },
+  // a cada minuto: avisos de abertura/pré-venda e limpeza da fila virtual (ver custom-worker.js)
+  "triggers": { "crons": ["* * * * *"] },
   "services": [
     { "binding": "WORKER_SELF_REFERENCE", "service": "ticket" }
   ]

@@ -6,9 +6,10 @@ import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { brl } from "@/lib/format";
 import { Feed, type FeedRow } from "./home";
+import { PainelLancamento, type LaunchProps } from "./lancamento";
 import { useOrigin } from "./use-origin";
 
-type Tab = "geral" | "participantes" | "checkin" | "financeiro";
+type Tab = "geral" | "participantes" | "checkin" | "financeiro" | "lancamento";
 type Person = { id: string; name: string; ini: string; bg: string; email: string; ticket: string; meia: boolean; order: string; date: string; status: string; inAt: string | null };
 
 export type EventoPainelProps = {
@@ -23,6 +24,7 @@ export type EventoPainelProps = {
   people: Person[];
   checkin: { total: number; inside: number; perMin: string; sectors: { name: string; n: number; total: number; pct: number }[]; last: { id: string; name: string; what: string; at: string }[] };
   fin: { gross: string; buyerFees: string; platform: string; net: string; refunds: { id: string; name: string; value: string; when: string }[]; refundPct: string };
+  launch?: LaunchProps;
 };
 
 const n = (v: number) => v.toLocaleString("pt-BR");
@@ -39,7 +41,7 @@ export function PainelEvento(p: EventoPainelProps) {
     window.history.replaceState(null, "", u.toString());
   };
   const copy = async () => { try { await navigator.clipboard.writeText(url); flash("Link copiado."); } catch { flash("Não foi possível copiar."); } };
-  const TABS: [Tab, string, number][] = [["geral", "Visão geral", 0], ["participantes", "Participantes", p.people.length], ["checkin", "Check-in", 0], ["financeiro", "Financeiro", p.fin.refunds.length]];
+  const TABS: [Tab, string, number][] = [["geral", "Visão geral", 0], ["participantes", "Participantes", p.people.length], ["checkin", "Check-in", 0], ["financeiro", "Financeiro", p.fin.refunds.length], ["lancamento", "Lançamento", p.launch?.signups.length ?? 0]];
 
   return (
     <div className="pane">
@@ -74,6 +76,7 @@ export function PainelEvento(p: EventoPainelProps) {
       {tab === "participantes" && <People p={p} />}
       {tab === "checkin" && <Checkin p={p} />}
       {tab === "financeiro" && <Fin p={p} />}
+      {tab === "lancamento" && p.launch && <PainelLancamento p={p.launch} />}
     </div>
   );
 }

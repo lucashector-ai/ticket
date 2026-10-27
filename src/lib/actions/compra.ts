@@ -9,8 +9,9 @@ import { getSessionUser } from "@/lib/auth/server";
 import { priceOrder, SERVICE_FEE_RATE } from "@/lib/pricing";
 import { tierStatus } from "@/lib/tickets/status";
 import { qrPayload } from "@/lib/actions/tickets";
+import { canBuy } from "@/lib/launch";
 
-const { orders, orderItems, tickets, ticketTypes, coupons, events, userProfiles } = schema;
+const { orders, orderItems, tickets, ticketTypes, coupons, events, userProfiles, eventSignups } = schema;
 
 const digits = (v: string) => v.replace(/\D/g, "");
 const fullName = z.string().trim().refine((v) => v.split(/\s+/).filter(Boolean).length >= 2, "nome e sobrenome");
@@ -75,6 +76,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
   const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), with: { ticketTypes: true } });
   if (!ev || ev.status !== "published") return { ok: false, error: "Evento indisponível." };
+  const access = await canBuy(ev);
+  if (!access.ok) return { ok: false, error: access.phase === "presale" ? "A pré-venda é só para quem recebeu o link. A venda geral abre em breve." : "As vendas deste evento ainda não abriram." };
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
   if (totalQty > ev.maxPerOrder) return { ok: false, error: `Máximo de ${ev.maxPerOrder} ingressos por pessoa.` };
   if (holders.length !== totalQty) return { ok: false, error: "Informe o titular de cada ingresso." };
@@ -109,6 +112,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     buyerName: buyer.name.trim(), buyerEmail: buyer.email.trim().toLowerCase(), buyerPhone: digits(buyer.phone), buyerCpf: digits(buyer.cpf),
     holders: cleanHolders.map((h) => ({ ticketTypeId: h.ticketTypeId, name: h.name.trim(), meia: h.meia })),
     expiresAt: new Date(Date.now() + 15 * 60_000),
+    presaleSignupId: access.presaleSignupId,
   }).returning();
   await db.insert(orderItems).values(lines.map((l) => ({
     orderId: order.id, ticketTypeId: l.ticketTypeId, quantity: l.quantity, unitPriceCents: l.priceCents,
@@ -152,6 +156,12 @@ export async function confirmPayment(orderId: string): Promise<ConfirmResult> {
   if (order.expiresAt && order.expiresAt < new Date()) {
     await db.update(orders).set({ status: "expired" }).where(eq(orders.id, order.id));
     return { ok: false, error: "O tempo da reserva acabou. Escolha os ingressos de novo." };
+  }
+  // link da pré-venda vale para uma compra só
+  if (order.presaleSignupId) {
+    const used = await db.update(eventSignups).set({ usedAt: new Date() })
+      .where(and(eq(eventSignups.id, order.presaleSignupId), sql`${eventSignups.usedAt} is null`)).returning({ id: eventSignups.id });
+    if (!used.length) return { ok: false, error: "Este link de pré-venda já foi usado em outra compra." };
   }
   for (const it of order.items) {
     const res = await db.update(ticketTypes)

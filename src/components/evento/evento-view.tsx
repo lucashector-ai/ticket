@@ -14,6 +14,7 @@ import { Description } from "./description";
 import { Lineup } from "./lineup";
 import { OrganizerCard } from "./organizer-card";
 import { PlayerBar, usePlayer } from "./player";
+import { LaunchCard } from "./launch-card";
 import { TicketsCard } from "./tickets-card";
 import type { EventoData } from "./types";
 import { useTickets } from "./use-tickets";
@@ -26,9 +27,10 @@ type Props = {
   loggedIn: boolean;
   initialFollowing: boolean;
   similar: EventCardData[];
+  viewerEmail: string;
 };
 
-export function EventoView({ e, user, loggedIn, initialFollowing, similar }: Props) {
+export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewerEmail }: Props) {
   const router = useRouter();
   const { flash } = useToast();
   const { isFav, toggle } = useFavorites();
@@ -61,8 +63,10 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar }: Pro
   const onBack = (ev: React.MouseEvent) => {
     if (window.history.length > 1) { ev.preventDefault(); router.back(); }
   };
+  // antes da abertura (ou na pré-venda sem o link), o cartão de ingressos vira contagem regressiva
+  const waiting = e.launch.phase !== "open" && !e.launch.access;
   const mbarGo = () => {
-    if (tickets.nq) tickets.checkout();
+    if (tickets.nq && !waiting) tickets.checkout();
     else document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
@@ -178,7 +182,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar }: Pro
           </div>
 
           <aside className="side">
-            <TicketsCard e={e} t={tickets} />
+            {waiting ? <LaunchCard e={e} email={viewerEmail} /> : <TicketsCard e={e} t={tickets} />}
           </aside>
         </div>
 
@@ -196,11 +200,18 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar }: Pro
       </main>
 
       <div className="mbar">
-        <div>
-          <span>{tickets.qtyLabel}</span>
-          <b>{brl(tickets.total)}</b>
-        </div>
-        <button type="button" onClick={mbarGo} disabled={tickets.pending}>{tickets.nq ? "Continuar" : "Escolher"}</button>
+        {waiting ? (
+          <div>
+            <span>{e.launch.phase === "presale" ? "Pré-venda para cadastrados" : e.launch.presaleAt ? "Pré-venda em breve" : "Vendas em breve"}{e.minPriceCents > 0 ? " · a partir de" : ""}</span>
+            <b>{e.minPriceCents > 0 ? brl(e.minPriceCents) : "Em breve"}</b>
+          </div>
+        ) : (
+          <div>
+            <span>{tickets.qtyLabel}</span>
+            <b>{brl(tickets.total)}</b>
+          </div>
+        )}
+        <button type="button" onClick={mbarGo} disabled={tickets.pending}>{waiting ? (e.launch.phase === "soon" && e.launch.presaleAt ? "Pré-venda" : "Me avise") : tickets.nq ? "Continuar" : "Escolher"}</button>
       </div>
 
       {ld && (

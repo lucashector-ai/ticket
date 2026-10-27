@@ -31,6 +31,8 @@ export function statusOf(e: PainelEvent, now = Date.now()) {
   const cap = capacity(e), sold = soldCount(e);
   if (cap && sold >= cap) return { label: "Esgotado", cls: "st warn" };
   if (cap && sold / cap >= 0.85) return { label: "Últimos ingressos", cls: "st warn" };
+  // publicado, mas antes da abertura das vendas
+  if (e.salesOpenAt && e.salesOpenAt.getTime() > now) return e.presaleAt && e.presaleAt.getTime() <= now ? { label: "Pré-venda", cls: "st warn" } : { label: "Vendas em breve", cls: "st draft" };
   return { label: e.unlisted ? "À venda · só com link" : "À venda", cls: "st on" };
 }
 

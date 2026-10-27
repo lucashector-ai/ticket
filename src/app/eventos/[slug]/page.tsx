@@ -9,6 +9,7 @@ import { getUserFavoriteSlugs, isFollowing } from "@/lib/data/user";
 import { getSessionUser } from "@/lib/auth/server";
 import { dateFull, hourLabel, initials, parts, timeLabel } from "@/lib/format";
 import { salesStartNote, tierStatus } from "@/lib/tickets/status";
+import { presaleAccess, salePhase } from "@/lib/launch";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 /* Paleta do design (mesma do seed) usada nos gradientes das faixas do player mock. */
 const PAL = ["#1E1E22", "#D3F55B", "#E9E7E0", "#2C55F5", "#FF4FD8", "#C4532B"];
 
-function toData(e: EventDetail): EventoData {
+function toData(e: EventDetail, access: boolean): EventoData {
   const venueName = e.venueNameOverride ?? e.venue?.name ?? "";
   const city = e.venue?.city.name ?? "";
   const uf = e.venue?.city.uf ?? "";
@@ -99,6 +100,7 @@ function toData(e: EventDetail): EventoData {
     sessions,
     venueMap,
     maxPerOrder: e.maxPerOrder,
+    launch: { phase: salePhase(e), openAt: e.salesOpenAt?.toISOString() ?? null, presaleAt: e.presaleAt?.toISOString() ?? null, access },
     minPriceCents: open.length ? Math.min(...open.map((t) => t.priceCents)) : e.minPriceCents,
   };
 }
@@ -113,13 +115,14 @@ export default async function EventoPage({ params }: Params) {
     getUserFavoriteSlugs(user?.id),
     ev.organizerId ? isFollowing(user?.id, "organizer", ev.organizerId) : Promise.resolve(false),
   ]);
-  const data = toData(ev);
+  const access = salePhase(ev) === "presale" && !!(await presaleAccess(ev.id));
+  const data = toData(ev, access);
   const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
 
   return (
     <div className="pg-evento">
       <FavoritesHydrator serverFavs={serverFavs} loggedIn={!!user} />
-      <EventoView e={data} user={headerUser} loggedIn={!!user} initialFollowing={following} similar={similar} />
+      <EventoView e={data} user={headerUser} loggedIn={!!user} initialFollowing={following} similar={similar} viewerEmail={user?.email ?? ""} />
       <SiteFooter />
     </div>
   );

@@ -74,6 +74,8 @@ export type EventoData = {
   venueMap: VenueMapData | null;
   maxPerOrder: number;
   minPriceCents: number;
+  /** abertura das vendas e pré-venda (datas em ISO); `access`: tem o link da pré-venda */
+  launch: { phase: "soon" | "presale" | "open"; openAt: string | null; presaleAt: string | null; access: boolean };
 };
 
 export type VenueMapData = {

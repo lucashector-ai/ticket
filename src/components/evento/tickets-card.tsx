@@ -22,6 +22,7 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
         <h2>Ingressos</h2>
         <span className="mute" style={{ fontSize: 13 }}>Até {e.maxPerOrder} por pessoa</span>
       </div>
+      {e.launch.access && <p className="ln-pv"><i aria-hidden="true" />Pré-venda liberada para você · uma compra com este link</p>}
       {e.minPriceCents > 0 && <p className="from">A partir de <b>{brl(e.minPriceCents)}</b></p>}
       {e.sessions.length > 1 && (
         <>

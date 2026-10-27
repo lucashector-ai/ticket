@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { eq } from "drizzle-orm";
+import { and, count, eq, gt, isNotNull, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/db";
 import { PainelEvento, type EventoPainelProps } from "@/components/painel/evento";
+import { emailEnabled } from "@/lib/email";
+import { salePhase } from "@/lib/launch";
 import { listEventCoupons, listOrders, listParticipants, revenueByType } from "@/lib/data/painel";
 import { painelAccess } from "@/lib/painel/access";
 import { brl, dateNice, initials } from "@/lib/format";
@@ -15,6 +17,13 @@ type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ aba?: st
 const METHOD: Record<string, string> = { pix: "Pix", card: "Cartão", free: "Gratuito", test: "Teste" };
 const TT_STATUS: Record<string, [string, string]> = { open: ["À venda", "st on"], sold_out: ["Esgotado", "st warn"], upcoming: ["Em breve", "st draft"], closed: ["Encerrado", "st end"] };
 const hm = (d: Date) => new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(d);
+/** Date → valor de <input type="datetime-local"> no horário de São Paulo */
+function localInput(d: Date | null) {
+  if (!d) return "";
+  const o: Record<string, string> = {};
+  for (const x of new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d)) o[x.type] = x.value;
+  return `${o.year}-${o.month}-${o.day}T${o.hour}:${o.minute}`;
+}
 const dm = (d: Date) => new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short", timeZone: "America/Sao_Paulo" }).format(d).replace(".", "");
 
 export default async function PainelEventoPage({ params, searchParams }: Props) {
@@ -24,12 +33,18 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
   if (!e) notFound();
   const now = nowMs();
 
-  const [orders, people, byType, cps, sessions] = await Promise.all([
+  const { eventSignups, queueEntries, resaleListings } = schema;
+  const fresh = new Date(nowMs() - 60_000);
+  const [orders, people, byType, cps, sessions, signups, [qActive], [qWaiting], resale] = await Promise.all([
     listOrders([e.id], new Map([[e.id, e.absorbFee]])),
     listParticipants(e.id),
     revenueByType(e.id),
     listEventCoupons(e.id),
     db.query.eventSessions.findMany({ where: eq(schema.eventSessions.eventId, e.id) }),
+    db.query.eventSignups.findMany({ where: eq(eventSignups.eventId, e.id), orderBy: (x, { desc }) => [desc(x.createdAt)] }),
+    db.select({ n: count() }).from(queueEntries).where(and(eq(queueEntries.eventId, e.id), isNotNull(queueEntries.admittedAt), gt(queueEntries.lastSeen, fresh))),
+    db.select({ n: count() }).from(queueEntries).where(and(eq(queueEntries.eventId, e.id), isNull(queueEntries.admittedAt), gt(queueEntries.lastSeen, fresh))),
+    db.select({ status: resaleListings.status }).from(resaleListings).where(eq(resaleListings.eventId, e.id)),
   ]);
   const paid = orders.filter((o) => o.status === "paid");
   const refunded = orders.filter((o) => o.status === "refunded");
@@ -67,7 +82,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
   const st = statusOf(e, now);
   const days = Math.ceil((e.startAt.getTime() - now) / DAY);
   const props: EventoPainelProps = {
-    tab: aba === "participantes" || aba === "checkin" || aba === "financeiro" ? aba : "geral",
+    tab: aba === "participantes" || aba === "checkin" || aba === "financeiro" || aba === "lancamento" ? aba : "geral",
     ev: {
       id: e.id, slug: e.slug, title: e.title, flyerId: e.flyerId, when: whenLabel(e), where: whereLabel(e), status: st.label, stCls: st.cls,
       countdown: ended(e, now) ? "" : days <= 0 ? "É hoje" : days === 1 ? "Amanhã" : `Faltam ${days} dias`, draft: e.status === "draft", absorbFee: e.absorbFee,
@@ -98,6 +113,19 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
       refunds: refunded.map((o) => ({ id: o.id, name: o.buyer, value: brl(o.revenue), when: ago(o.at) })),
       refundPct: gross + sum(refunded, (o) => o.revenue) ? ((sum(refunded, (o) => o.revenue) / (gross + sum(refunded, (o) => o.revenue))) * 100).toFixed(1).replace(".", ",") : "0",
     },
+  };
+  const phase = salePhase(e);
+  props.launch = {
+    eventId: e.id, salesOpenAt: localInput(e.salesOpenAt), presaleAt: localInput(e.presaleAt), phase,
+    phaseLabel: phase === "open" ? (e.salesOpenAt ? "Vendas abertas" : "À venda") : phase === "presale" ? "Pré-venda" : "Em breve",
+    presaleSent: e.presaleSentAt ? `${dm(e.presaleSentAt)}, ${hm(e.presaleSentAt)}` : null,
+    openingSent: e.openingSentAt ? `${dm(e.openingSentAt)}, ${hm(e.openingSentAt)}` : null,
+    emailOn: emailEnabled(),
+    queueMode: (["auto", "on", "off"].includes(e.queueMode) ? e.queueMode : "auto") as "auto" | "on" | "off", queueLimit: e.queueLimit,
+    queueNow: { active: qActive?.n ?? 0, waiting: qWaiting?.n ?? 0 },
+    resaleEnabled: e.resaleEnabled, resaleMaxPct: e.resaleMaxPct,
+    resaleNow: { active: resale.filter((r) => r.status === "active" || r.status === "reserved").length, sold: resale.filter((r) => r.status === "sold").length },
+    signups: signups.map((x) => ({ id: x.id, kind: x.kind === "presale" ? "presale" : "abertura", email: x.email, when: `${dm(x.createdAt)}, ${hm(x.createdAt)}`, notified: !!x.notifiedAt, used: !!x.usedAt, token: x.token })),
   };
   return <PainelEvento {...props} />;
 }
