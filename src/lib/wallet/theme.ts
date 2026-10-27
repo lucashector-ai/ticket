@@ -86,8 +86,7 @@ export async function passTheme(accent: string | null, banner: string | null, si
 }
 
 /* Faixa (strip.png, 375 × 98 pt) que fica logo abaixo do nome do evento e ocupa a largura toda do
-   passe: na cor do passe, com o picote no rodapé e um recorte em cada lateral. Os recortes são
-   pretos, como o fundo da Carteira no iPhone. */
+   passe: na cor do passe, com o picote no rodapé e um recorte branco em cada lateral. */
 const W = 375, H = 98;
 const strips = new Map<string, Record<string, Uint8Array>>();
 
@@ -109,7 +108,7 @@ export function passStrip(t: PassTheme): Record<string, Uint8Array> {
           if (d > 0 && cx <= x1) c = mix(c, dot, d * alpha);
         }
         const n = clamp(notch - Math.min(Math.hypot(x + 0.5, y + 0.5 - cy), Math.hypot(w - x - 0.5, y + 0.5 - cy)) + 0.5);
-        if (n > 0) c = mix(c, [0, 0, 0], n);
+        if (n > 0) c = mix(c, WHITE, n);
         const i = (y * w + x) * 4;
         px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; px[i + 3] = 255;
       }
