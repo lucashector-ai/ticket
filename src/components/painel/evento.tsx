@@ -6,6 +6,7 @@ import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { brl } from "@/lib/format";
 import { Feed, type FeedRow } from "./home";
+import { useOrigin } from "./use-origin";
 
 type Tab = "geral" | "participantes" | "checkin" | "financeiro";
 type Person = { id: string; name: string; ini: string; bg: string; email: string; ticket: string; meia: boolean; order: string; date: string; status: string; inAt: string | null };
@@ -30,7 +31,7 @@ export function PainelEvento(p: EventoPainelProps) {
   const { flash } = useToast();
   const [tab, setTab] = useState<Tab>(p.tab);
   const [more, setMore] = useState(false);
-  const url = typeof window === "undefined" ? `/eventos/${p.ev.slug}` : `${window.location.origin}/eventos/${p.ev.slug}`;
+  const url = `${useOrigin()}/eventos/${p.ev.slug}`;
   const pick = (t: Tab) => {
     setTab(t);
     const u = new URL(window.location.href);

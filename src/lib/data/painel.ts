@@ -1,9 +1,10 @@
 import "server-only";
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { cache } from "react";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
 
-const { organizers, events, orders, orderItems, ticketTypes, tickets, coupons } = schema;
+const { organizers, organizerMembers, events, orders, orderItems, ticketTypes, tickets, coupons } = schema;
 
 /* Dinheiro do produtor: o que entrou pelos ingressos (sem a taxa do comprador). Se ele
    absorve a taxa, a plataforma desconta 10% disso; senão o comprador já pagou a taxa à parte. */
@@ -13,18 +14,30 @@ export const platformFee = (revenue: number, absorb: boolean) => (absorb ? Math.
 export type PaidOrder = {
   id: string; number: number | null; eventId: string; at: Date; qty: number; revenue: number; net: number; buyerFee: number;
   buyer: string; method: string | null; status: string; couponId: string | null; discount: number;
+  userId: string; email: string | null; meia: boolean;
 };
 
-/** Produtor do usuário e os eventos dele (os do produtor e os que ele mesmo criou). */
-export async function getPainelScope(userId: string) {
-  const org = await db.query.organizers.findFirst({ where: eq(organizers.ownerUserId, userId) });
+export type PainelRole = "owner" | "admin" | "portaria";
+
+/** Produtor do usuário (dono ou membro da equipe), o papel dele e os eventos. Aceita convites pendentes do e-mail da conta. */
+export const getPainelScope = cache(async (user: { id: string; email?: string | null }) => {
+  if (user.email) {
+    await db.update(organizerMembers).set({ userId: user.id, acceptedAt: new Date() })
+      .where(and(sql`lower(${organizerMembers.email}) = lower(${user.email})`, isNull(organizerMembers.userId)));
+  }
+  let role: PainelRole = "owner";
+  let org = (await db.query.organizers.findFirst({ where: eq(organizers.ownerUserId, user.id) })) ?? null;
+  if (!org) {
+    const m = await db.query.organizerMembers.findFirst({ where: eq(organizerMembers.userId, user.id), with: { organizer: true } });
+    if (m) { org = m.organizer; role = m.role === "admin" ? "admin" : "portaria"; }
+  }
   const evs = await db.query.events.findMany({
-    where: org ? or(eq(events.organizerId, org.id), eq(events.createdByUserId, userId)) : eq(events.createdByUserId, userId),
+    where: !org ? eq(events.createdByUserId, user.id) : role === "owner" ? or(eq(events.organizerId, org.id), eq(events.createdByUserId, user.id)) : eq(events.organizerId, org.id),
     with: { venue: { with: { city: true } }, ticketTypes: true },
     orderBy: [desc(events.startAt)],
   });
-  return { org: org ?? null, events: evs };
-}
+  return { org, role, events: evs };
+});
 export type PainelEvent = Awaited<ReturnType<typeof getPainelScope>>["events"][number];
 
 /** Pedidos pagos (e reembolsados, para o financeiro) dos eventos, com quantidade e valores. */
@@ -32,7 +45,7 @@ export async function listOrders(eventIds: string[], absorbById: Map<string, boo
   if (!eventIds.length) return [];
   const rows = await db.query.orders.findMany({
     where: and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "refunded"])),
-    columns: { id: true, number: true, eventId: true, status: true, subtotalCents: true, meiaCents: true, discountCents: true, feeCents: true, paidAt: true, createdAt: true, buyerName: true, paymentMethod: true, couponId: true },
+    columns: { id: true, number: true, eventId: true, userId: true, buyerEmail: true, status: true, subtotalCents: true, meiaCents: true, discountCents: true, feeCents: true, paidAt: true, createdAt: true, buyerName: true, paymentMethod: true, couponId: true },
     with: { items: { columns: { quantity: true } } },
     orderBy: [desc(orders.createdAt)],
   });
@@ -42,6 +55,7 @@ export async function listOrders(eventIds: string[], absorbById: Map<string, boo
       id: o.id, number: o.number, eventId: o.eventId, at: o.paidAt ?? o.createdAt, qty: o.items.reduce((s, i) => s + i.quantity, 0),
       revenue, net: revenue - platformFee(revenue, absorbById.get(o.eventId) ?? false), buyerFee: o.feeCents,
       buyer: o.buyerName ?? "Comprador", method: o.paymentMethod, status: o.status, couponId: o.couponId, discount: o.discountCents,
+      userId: o.userId, email: o.buyerEmail, meia: o.meiaCents > 0,
     };
   });
 }

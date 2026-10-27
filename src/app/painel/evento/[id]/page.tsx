@@ -3,8 +3,8 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/db";
 import { PainelEvento, type EventoPainelProps } from "@/components/painel/evento";
-import { getSessionUser } from "@/lib/auth/server";
-import { getPainelScope, listEventCoupons, listOrders, listParticipants, revenueByType } from "@/lib/data/painel";
+import { listEventCoupons, listOrders, listParticipants, revenueByType } from "@/lib/data/painel";
+import { painelAccess } from "@/lib/painel/access";
 import { brl, dateNice, initials } from "@/lib/format";
 import { DAY, avBg, ago, capacity, daily, ended, feedItem, nowMs, soldCount, statusOf, whenLabel, whereLabel } from "@/lib/painel/build";
 
@@ -18,9 +18,8 @@ const hm = (d: Date) => new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minu
 const dm = (d: Date) => new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short", timeZone: "America/Sao_Paulo" }).format(d).replace(".", "");
 
 export default async function PainelEventoPage({ params, searchParams }: Props) {
-  const user = (await getSessionUser())!;
   const [{ id }, { aba }] = await Promise.all([params, searchParams]);
-  const { events } = await getPainelScope(user.id);
+  const { events } = await painelAccess("admin");
   const e = events.find((x) => x.id === id);
   if (!e) notFound();
   const now = nowMs();

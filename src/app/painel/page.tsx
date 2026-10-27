@@ -1,6 +1,6 @@
 import { PainelHome, type HomeProps } from "@/components/painel/home";
-import { getSessionUser } from "@/lib/auth/server";
-import { getPainelScope, listOrders } from "@/lib/data/painel";
+import { listOrders } from "@/lib/data/painel";
+import { painelAccess } from "@/lib/painel/access";
 import { brl, normalize } from "@/lib/format";
 import { DAY, capacity, daily, delta, ended, feedItem, nowMs, soldCount, spark, statusOf, whenLabel, whereLabel } from "@/lib/painel/build";
 
@@ -9,9 +9,8 @@ export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ q?: string }> };
 
 export default async function PainelInicio({ searchParams }: Props) {
-  const user = (await getSessionUser())!;
   const { q } = await searchParams;
-  const { org, events } = await getPainelScope(user.id);
+  const { user, org, events } = await painelAccess("admin");
   const absorb = new Map(events.map((e) => [e.id, e.absorbFee]));
   const orders = await listOrders(events.map((e) => e.id), absorb);
   const paid = orders.filter((o) => o.status === "paid");

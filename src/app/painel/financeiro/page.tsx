@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSessionUser } from "@/lib/auth/server";
-import { getPainelScope, listOrders } from "@/lib/data/painel";
+import { listOrders } from "@/lib/data/painel";
+import { painelAccess } from "@/lib/painel/access";
 import { brl } from "@/lib/format";
 import { ended, nowMs } from "@/lib/painel/build";
 
@@ -10,8 +10,7 @@ export const metadata: Metadata = { title: "Financeiro" };
 
 /** Financeiro de todos os eventos do produtor. */
 export default async function PainelFinanceiro() {
-  const user = (await getSessionUser())!;
-  const { org, events } = await getPainelScope(user.id);
+  const { org, events } = await painelAccess("admin");
   const orders = await listOrders(events.map((e) => e.id), new Map(events.map((e) => [e.id, e.absorbFee])));
   const now = nowMs();
   const year = new Date(now).getFullYear();

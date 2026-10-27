@@ -97,12 +97,33 @@ export const organizers = pgTable(
     legalName: varchar("legal_name", { length: 200 }),
     cnpj: varchar("cnpj", { length: 20 }),
     policies: jsonb("policies").$type<OrganizerPolicies>(),
+    /** conta para receber os repasses (painel → Configurações) */
+    payout: jsonb("payout").$type<OrganizerPayout>(),
+    /** padrões aplicados aos eventos novos */
+    defaults: jsonb("defaults").$type<OrganizerDefaults>(),
     ...timestamps,
   },
   (t) => [uniqueIndex("organizers_slug_idx").on(t.slug)],
 );
 
 export type OrganizerPolicies = { cancel?: string; meia?: string; transfer?: string; access?: string };
+export type OrganizerPayout = { bank?: string; agency?: string; account?: string; kind?: "corrente" | "poupanca"; holder?: string; doc?: string; pixKey?: string };
+export type OrganizerDefaults = { buyerPaysFee?: boolean; autoMeia?: boolean; age?: string; refund?: string };
+
+/** Equipe do produtor: admin vê o painel inteiro; portaria só faz o check-in. Convite por e-mail. */
+export const organizerMembers = pgTable(
+  "organizer_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizerId: uuid("organizer_id").notNull().references(() => organizers.id, { onDelete: "cascade" }),
+    email: varchar("email", { length: 254 }).notNull(),
+    role: varchar("role", { length: 16 }).notNull().default("portaria"),
+    userId: text("user_id"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("organizer_members_email_idx").on(t.organizerId, t.email), index("organizer_members_user_idx").on(t.userId)],
+);
 
 /** Novidades que o produtor publica na página dele (texto, foto, evento ligado). */
 export const organizerPosts = pgTable(
@@ -482,6 +503,9 @@ export const venuesRelations = relations(venues, ({ one, many }) => ({
   events: many(events),
 }));
 export const organizersRelations = relations(organizers, ({ many }) => ({ events: many(events), posts: many(organizerPosts), reviews: many(eventReviews) }));
+export const organizerMembersRelations = relations(organizerMembers, ({ one }) => ({
+  organizer: one(organizers, { fields: [organizerMembers.organizerId], references: [organizers.id] }),
+}));
 export const organizerPostsRelations = relations(organizerPosts, ({ one }) => ({
   organizer: one(organizers, { fields: [organizerPosts.organizerId], references: [organizers.id] }),
 }));

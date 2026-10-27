@@ -93,7 +93,8 @@ async function uniqueEventSlug(base: string) {
   return `${base}-${randomBytes(3).toString("hex")}`;
 }
 
-async function organizerFor(user: Producer) {
+/** Produtor do usuário (cria na primeira vez que ele precisa de um). */
+export async function organizerFor(user: Producer) {
   const own = await db.query.organizers.findFirst({ where: eq(organizers.ownerUserId, user.id) });
   if (own) return own;
   const name = user.name?.trim() || user.email?.split("@")[0] || "Produtor";

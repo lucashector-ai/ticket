@@ -30,12 +30,19 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
     dbMap = saved?.dbMap ?? null;
     slug = ev.slug;
   }
+  // evento novo: começa com os padrões das Configurações do painel
+  let defaults: Partial<Draft> = {};
+  if (!editId) {
+    const org = await db.query.organizers.findFirst({ where: eq(schema.organizers.ownerUserId, user.id), columns: { defaults: true } });
+    const d = org?.defaults;
+    if (d) defaults = { fee: d.buyerPaysFee ?? true, autoMeia: d.autoMeia ?? true, ...(d.age ? { age: d.age } : {}), ...(d.refund ? { refund: d.refund } : {}) };
+  }
   const headerUser = { id: user.id, name: user.name, email: user.email, image: user.image };
 
   return (
     <div className="pg-criar">
       <SiteHeader user={headerUser} variant="default" />
-      <CriarFlow key={editId ?? "novo"} initial={initial} eventId={editId} slug={slug} dbMap={dbMap} />
+      <CriarFlow key={editId ?? "novo"} initial={initial} defaults={defaults} eventId={editId} slug={slug} dbMap={dbMap} />
       <SiteFooter />
     </div>
   );

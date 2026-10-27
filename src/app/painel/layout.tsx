@@ -10,11 +10,11 @@ export const metadata: Metadata = { title: { default: "Painel do produtor", temp
 export default async function PainelLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
   if (!user) redirect("/entrar?next=/painel");
-  const { org } = await getPainelScope(user.id);
+  const { org, role } = await getPainelScope(user);
   const name = org?.name ?? user.name ?? "Produtor";
   return (
     <div className="pg-painel">
-      <PainelShell orgName={name} orgInitials={org?.initials ?? initials(name)} orgSlug={org?.slug ?? null} userName={user.name || user.email}>{children}</PainelShell>
+      <PainelShell role={role} orgName={name} orgInitials={org?.initials ?? initials(name)} orgSlug={org?.slug ?? null} userName={user.name || user.email}>{children}</PainelShell>
     </div>
   );
 }

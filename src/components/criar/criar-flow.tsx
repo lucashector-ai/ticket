@@ -11,14 +11,14 @@ import { DatasPane, FormatoPane, InfoPane, IngressosPane, PublicarPane } from ".
 import { brMoney, parseIso, WD, MO, type Ctx } from "./shared";
 
 type Saved = { eventId: string; slug: string; status: "published" | "draft"; unlisted: boolean };
-type Props = { initial: Draft | null; eventId: string | null; slug: string | null; dbMap: DbMap | null };
+type Props = { initial: Draft | null; defaults?: Partial<Draft>; eventId: string | null; slug: string | null; dbMap: DbMap | null };
 
 const LOCAL_KEY = "onde:criar-evento:novo";
 const noopSubscribe = () => () => {};
 
-export function CriarFlow({ initial, eventId: initialId, slug: initialSlug, dbMap: initialMap }: Props) {
+export function CriarFlow({ initial, defaults, eventId: initialId, slug: initialSlug, dbMap: initialMap }: Props) {
   const { flash } = useToast();
-  const [d, setD] = useState<Draft>(() => initial ?? emptyDraft());
+  const [d, setD] = useState<Draft>(() => initial ?? { ...emptyDraft(), ...defaults });
   const [step, setStep] = useState(0);
   const [saved, setSaved] = useState<Saved | null>(initialId && initialSlug ? { eventId: initialId, slug: initialSlug, status: "draft", unlisted: false } : null);
   const [dbMap, setDbMap] = useState<DbMap>(initialMap ?? { sessions: {}, types: {} });

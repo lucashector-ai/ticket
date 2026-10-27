@@ -16,14 +16,14 @@ const ICON = {
 const NAV: { href: string; label: string; icon: keyof typeof ICON }[] = [
   { href: "/painel", label: "Início", icon: "home" },
   { href: "/painel/financeiro", label: "Financeiro", icon: "fin" },
-  { href: "/painel/em-breve/publico", label: "Público", icon: "pub" },
-  { href: "/painel/em-breve/marketing", label: "Marketing", icon: "mkt" },
-  { href: "/painel/em-breve/equipe", label: "Equipe e portaria", icon: "team" },
-  { href: "/painel/em-breve/configuracoes", label: "Configurações", icon: "cfg" },
+  { href: "/painel/publico", label: "Público", icon: "pub" },
+  { href: "/painel/marketing", label: "Marketing", icon: "mkt" },
+  { href: "/painel/equipe", label: "Equipe e portaria", icon: "team" },
+  { href: "/painel/configuracoes", label: "Configurações", icon: "cfg" },
 ];
 
 /** Barra do topo + menu lateral do painel (layout do design "painel do produtor"). */
-export function PainelShell({ orgName, orgInitials, orgSlug, userName, children }: { orgName: string; orgInitials: string; orgSlug: string | null; userName: string; children: React.ReactNode }) {
+export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, children }: { role: "owner" | "admin" | "portaria"; orgName: string; orgInitials: string; orgSlug: string | null; userName: string; children: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -39,13 +39,13 @@ export function PainelShell({ orgName, orgInitials, orgSlug, userName, children 
         <div className="pd-tr">
           {orgSlug && <Link className="pd-site" href={`/produtor/${orgSlug}`}>Ver minha página</Link>}
           <Link className="pd-site" href="/">Ir para o site</Link>
-          <span className="pd-me"><span className="pd-av">{orgInitials}</span><span className="pd-mi"><b className="pd-mn">{orgName}</b><span className="pd-ms">{userName} · Admin</span></span></span>
+          <span className="pd-me"><span className="pd-av">{orgInitials}</span><span className="pd-mi"><b className="pd-mn">{orgName}</b><span className="pd-ms">{userName} · {role === "owner" ? "Dono" : role === "admin" ? "Admin" : "Portaria"}</span></span></span>
         </div>
       </header>
       <div className="pd-shell">
         <nav className="pd-side" aria-label="Menu do produtor">
-          <Link className="pd-new" href="/criar-evento"><svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" /></svg>Criar evento</Link>
-          {NAV.map((n) => (
+          {role !== "portaria" && <Link className="pd-new" href="/criar-evento"><svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" /></svg>Criar evento</Link>}
+          {NAV.filter((n) => role !== "portaria" || n.icon === "team").filter((n) => role === "owner" || n.icon !== "cfg").map((n) => (
             <Link key={n.href} className={cur(n.href) ? "nv cur" : "nv"} href={n.href} aria-current={cur(n.href) ? "page" : undefined}>
               <span className="nvi" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[n.icon]} /></svg></span>{n.label}
             </Link>
