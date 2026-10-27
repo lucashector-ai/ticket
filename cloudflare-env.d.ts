@@ -13,7 +13,8 @@ interface __BaseEnv_CloudflareEnv {
 	NEON_AUTH_BASE_URL: string;
 	NEXT_PUBLIC_NEON_AUTH_URL: string;
 	NEON_AUTH_JWKS_URL: string;
-	WORKER_SELF_REFERENCE: Fetcher /* onde */;
+	NEON_AUTH_COOKIE_SECRET: string;
+	WORKER_SELF_REFERENCE: Fetcher /* ticket */;
 }
 declare namespace Cloudflare {
 	interface Env extends __BaseEnv_CloudflareEnv {}

@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "onde",
+  "name": "ticket",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-10-13",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -23,6 +23,6 @@
     { "binding": "KV", "id": "e0598640fff84473847be030aa1c2096" }
   ],
   "services": [
-    { "binding": "WORKER_SELF_REFERENCE", "service": "onde" }
+    { "binding": "WORKER_SELF_REFERENCE", "service": "ticket" }
   ]
 }

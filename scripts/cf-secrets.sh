@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Envia os segredos do Worker "onde" para o Cloudflare a partir de um arquivo .env.
+# Envia os segredos do Worker "ticket" para o Cloudflare a partir de um arquivo .env.
 # Uso: CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=... ./scripts/cf-secrets.sh [.env.production]
 set -euo pipefail
 ENV_FILE="${1:-.env.production}"
