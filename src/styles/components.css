@@ -23,3 +23,40 @@
 
 /* itens do header nunca quebram em duas linhas */
 .hdr-r .lnk,.hdr-r .btn-o,.hdr-r .blk,.hdr-r .cityp,.umenu>summary{white-space:nowrap}
+
+/* ---------- celular ---------- */
+@media (max-width:760px){
+  /* barra de busca da home: pílula simples (campo + seta), sem recortes de ingresso */
+  .qwrap .qbar,.qwrap.stuck .qbar{flex-wrap:nowrap;height:56px;max-width:none;padding:0 0 0 18px;gap:10px;border-radius:999px;-webkit-mask:none;mask:none;background:#FFFFFF;outline-offset:0}
+  .qwrap .qb-c,.qwrap .qb-sep,.qwrap .qb-act,.qwrap.stuck .qb-act{display:none}
+  .qwrap .qb-s{flex:1 1 auto;padding:0;gap:10px}
+  .qwrap .qb-s input{font-size:16px;height:56px}
+  .qwrap .qb-stub,.qwrap.stuck .qb-stub{flex:none;align-self:center;width:44px;height:44px;margin:0 6px 0 0;padding:0;border-radius:50%;justify-content:center}
+  .qwrap.stuck .qb-logo{max-width:26px;margin-right:0}
+  .qwrap.stuck .qb-logo span{display:none}
+  .qwrap.stuck{top:10px}
+}
+@media (max-width:640px){
+  /* dois cards por linha */
+  body .grid.grid{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;row-gap:28px}
+  body .grid .card{border-radius:18px}
+  body .grid .cimg{border-radius:14px}
+  body .grid .cbody,body .grid .cbody.cbody{padding:10px 0 0}
+  body .grid .ct,body .grid h3{font-size:15px;line-height:1.2}
+  body .grid .cdate,body .grid .cmeta{font-size:12.5px;margin-top:4px}
+  body .grid .cwhere,body .grid .ccity,body .grid .cmeta.mute{font-size:12px;margin-top:2px}
+  body .grid .cfoot{min-height:36px;margin-top:10px;gap:8px}
+  body .grid .cprice b,body .grid .price{font-size:14.5px}
+  body .grid .cprice,body .grid .price small{font-size:11px}
+  body .grid .cfx,body .grid .cfx-a,body .grid .go{width:36px;height:36px}
+  body .grid .cfx-l{display:none}
+  body .grid .pill-w,body .grid .ctag{left:8px;top:8px;height:24px;padding:0 9px;font-size:11px}
+  body .grid .fav{right:8px;top:8px;width:30px;height:30px}
+  body .grid .fav svg{width:15px;height:15px}
+}
+/* no celular, ações do header ficam só no menu (algumas páginas reescrevem .blk) */
+@media (max-width:900px){ body .hdr .hide-m{display:none} }
+
+/* menu do celular: botão "Criar evento" com tamanho normal e nada por cima do menu */
+.mm .btn-p{display:inline-flex;justify-content:center;width:100%;height:56px;padding:0 24px;border-bottom:0;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;letter-spacing:0}
+body:has(.mm) .mbar{display:none}
