@@ -86,6 +86,8 @@ export function PlayerBar({ p }: { p: Player }) {
 /** Botão "Ouvir"/"Tocando" usado no line-up. */
 export function ListenButton({ artist, p }: { artist: LineupItem; p: Player }) {
   const playing = p.isPlaying(artist.id);
+  // artista cadastrado pelo produtor ainda sem faixas: nada para tocar
+  if (!artist.tracks.length) return null;
   return (
     <button className={p.isCurrent(artist.id) ? "ou on" : "ou"} type="button" onClick={() => p.play(artist)} aria-label={`Ouvir ${artist.name}`} aria-pressed={playing}>
       <span className="ou-i">

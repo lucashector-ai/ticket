@@ -4,9 +4,11 @@ export const SERVICE_FEE_RATE = 0.1;
 export const MAX_INSTALLMENTS = 6;
 export const INTEREST_FREE_INSTALLMENTS = 3;
 
-export type PricingLine = { ticketTypeId: string; priceCents: number; quantity: number };
+/** `sector` limita cupons de setor; `meiaOk: false` = tipo já tem preço próprio (meia, social...), sem meia no checkout. */
+export type PricingLine = { ticketTypeId: string; priceCents: number; quantity: number; sector?: string | null; meiaOk?: boolean };
 export type PricingHolder = { ticketTypeId: string; meia: boolean };
-export type PricingCoupon = { percentOff: number; amountOffCents: number } | null;
+/** `amountPerTicket`: o desconto em R$ vale por ingresso; `sector`: só para ingressos desse setor. */
+export type PricingCoupon = { percentOff: number; amountOffCents: number; amountPerTicket?: boolean; sector?: string | null } | null;
 
 export function installmentRate(n: number) {
   return n <= INTEREST_FREE_INSTALLMENTS ? 0 : 0.0299 * n;
@@ -18,15 +20,29 @@ export function priceOrder(input: {
   coupon: PricingCoupon;
   method: "pix" | "card";
   installments: number;
+  /** 0 quando o produtor absorve a taxa */
+  feeRate?: number;
 }) {
-  const price = new Map(input.lines.map((l) => [l.ticketTypeId, l.priceCents]));
+  const line = new Map(input.lines.map((l) => [l.ticketTypeId, l]));
+  const halfOf = (h: PricingHolder) => {
+    const l = line.get(h.ticketTypeId);
+    return h.meia && l && l.meiaOk !== false ? Math.round(l.priceCents / 2) : 0;
+  };
   const subtotal = input.lines.reduce((s, l) => s + l.priceCents * l.quantity, 0);
-  const meia = input.holders.reduce((s, h) => s + (h.meia ? Math.round((price.get(h.ticketTypeId) ?? 0) / 2) : 0), 0);
+  const meia = input.holders.reduce((s, h) => s + halfOf(h), 0);
   const afterMeia = subtotal - meia;
-  const discount = input.coupon
-    ? Math.min(afterMeia, Math.round((afterMeia * input.coupon.percentOff) / 100) + input.coupon.amountOffCents)
-    : 0;
-  const fee = Math.round((afterMeia - discount) * SERVICE_FEE_RATE);
+  let discount = 0;
+  const c = input.coupon;
+  if (c) {
+    const ok = (l: PricingLine) => !c.sector || l.sector === c.sector;
+    const eligible = input.lines.filter(ok);
+    const base = eligible.reduce((s, l) => s + l.priceCents * l.quantity, 0)
+      - input.holders.reduce((s, h) => s + (eligible.some((l) => l.ticketTypeId === h.ticketTypeId) ? halfOf(h) : 0), 0);
+    const units = eligible.reduce((s, l) => s + l.quantity, 0);
+    const amount = c.amountPerTicket ? c.amountOffCents * units : c.amountOffCents;
+    discount = Math.min(base, Math.round((base * c.percentOff) / 100) + amount);
+  }
+  const fee = Math.round((afterMeia - discount) * (input.feeRate ?? SERVICE_FEE_RATE));
   const base = afterMeia - discount + fee;
   const n = input.method === "card" ? Math.min(Math.max(1, Math.trunc(input.installments)), MAX_INSTALLMENTS) : 1;
   const interest = input.method === "card" && n > INTEREST_FREE_INSTALLMENTS ? Math.round(base * installmentRate(n)) : 0;

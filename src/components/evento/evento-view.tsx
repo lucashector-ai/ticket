@@ -17,6 +17,7 @@ import { PlayerBar, usePlayer } from "./player";
 import { TicketsCard } from "./tickets-card";
 import type { EventoData } from "./types";
 import { useTickets } from "./use-tickets";
+import { VenueMap } from "./venue-map";
 import { brl } from "@/lib/format";
 
 type Props = {
@@ -135,6 +136,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar }: Pro
 
             <Description paragraphs={e.paragraphs} />
             <Lineup lineup={e.lineup} timed={e.timed} p={player} />
+            {e.venueMap && <VenueMap e={e} t={tickets} />}
 
             <div className="blk-s">
               <h2>O que você deve saber</h2>

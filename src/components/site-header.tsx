@@ -98,13 +98,14 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
                 <div className="umenu-pop">
                   <Link href="/meus-ingressos">Meus ingressos</Link>
                   <Link href="/explorar?salvos=1">Eventos salvos</Link>
+                  <Link href="/meus-eventos">Meus eventos</Link>
                   <form action={signOut}><button type="submit">Sair</button></form>
                 </div>
               </details>
             ) : (
               <Link className={`lnk hide-m ${activePath === "/entrar" ? "on" : ""}`} href="/entrar">Entrar</Link>
             )}
-            <Link className={variant === "home" ? "btn-o hide-m" : "blk hide-m"} href="/produtores">
+            <Link className={variant === "home" ? "btn-o hide-m" : "blk hide-m"} href="/criar-evento">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" /></svg>
               Criar evento
             </Link>
@@ -128,6 +129,7 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
               <>
                 {/* no celular não há o dropdown do perfil: os atalhos da conta aparecem só para quem entrou */}
                 <Link href="/meus-ingressos" onClick={() => setMenu(false)} style={{ animationDelay: ".16s" }}>Meus ingressos <span className="mute" aria-hidden="true">→</span></Link>
+                <Link href="/meus-eventos" onClick={() => setMenu(false)} style={{ animationDelay: ".18s" }}>Meus eventos <span className="mute" aria-hidden="true">→</span></Link>
                 <form action={signOut}><button className="mm-b" type="submit" style={{ animationDelay: ".2s" }}>Sair <span className="mute" aria-hidden="true">→</span></button></form>
               </>
             ) : (
@@ -141,7 +143,7 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
                 </select>
               </label>
             )}
-            <Link className="btn-p" href="/produtores" style={{ marginTop: "28px" }}>Criar evento</Link>
+            <Link className="btn-p" href="/criar-evento" style={{ marginTop: "28px" }}>Criar evento</Link>
           </div>
         </div>
       )}

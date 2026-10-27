@@ -6,7 +6,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
-import { priceOrder } from "@/lib/pricing";
+import { priceOrder, SERVICE_FEE_RATE } from "@/lib/pricing";
+import { tierStatus } from "@/lib/tickets/status";
 import { qrPayload } from "@/lib/actions/tickets";
 
 const { orders, orderItems, tickets, ticketTypes, coupons, events, userProfiles } = schema;
@@ -49,7 +50,11 @@ export async function checkCoupon(code: string, eventSlug: string) {
   if (!ev) return { ok: false as const, error: "Evento indisponível." };
   const r = await findCoupon(code.trim().toUpperCase(), ev.id);
   if (!r.ok) return r;
-  return { ok: true as const, code: r.coupon.code, percentOff: r.coupon.percentOff ?? 0, amountOffCents: r.coupon.amountOffCents ?? 0 };
+  return couponView(r.coupon);
+}
+
+function couponView(c: typeof coupons.$inferSelect) {
+  return { ok: true as const, code: c.code, percentOff: c.percentOff ?? 0, amountOffCents: c.amountOffCents ?? 0, amountPerTicket: c.amountPerTicket, sector: c.sector };
 }
 
 function pixCopyPaste(orderNumber: number, totalCents: number) {
@@ -77,26 +82,24 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const lines = [];
   for (const it of items) {
     const tt = ev.ticketTypes.find((t) => t.id === it.ticketTypeId);
-    if (!tt || tt.status !== "open") return { ok: false, error: "Um dos lotes não está mais disponível." };
+    if (!tt || tierStatus(tt) !== "open") return { ok: false, error: "Um dos lotes não está mais disponível." };
     if (tt.sold + it.quantity > tt.quantity) return { ok: false, error: `Restam só ${Math.max(0, tt.quantity - tt.sold)} ingressos em ${tt.name}.` };
     const forType = holders.filter((h) => h.ticketTypeId === tt.id).length;
     if (forType !== it.quantity) return { ok: false, error: "Informe o titular de cada ingresso." };
-    lines.push({ ticketTypeId: tt.id, priceCents: tt.priceCents, quantity: it.quantity });
+    lines.push({ ticketTypeId: tt.id, priceCents: tt.priceCents, quantity: it.quantity, sector: tt.sector, meiaOk: !tt.kind || tt.kind === "inteira" });
   }
+  // meia só onde o checkout oferece (tipos de inteira); meia/social já têm preço próprio
+  const meiaOk = new Map(lines.map((l) => [l.ticketTypeId, l.meiaOk]));
+  const cleanHolders = holders.map((h) => ({ ...h, meia: h.meia && meiaOk.get(h.ticketTypeId) !== false }));
 
-  let couponRow: { id: string; percentOff: number | null; amountOffCents: number | null } | null = null;
+  let couponRow: typeof coupons.$inferSelect | null = null;
   if (coupon) {
     const c = await findCoupon(coupon, ev.id);
     if (!c.ok) return { ok: false, error: c.error };
     couponRow = c.coupon;
   }
-  const p = priceOrder({
-    lines,
-    holders,
-    coupon: couponRow ? { percentOff: couponRow.percentOff ?? 0, amountOffCents: couponRow.amountOffCents ?? 0 } : null,
-    method,
-    installments,
-  });
+  const feeRate = ev.absorbFee ? 0 : SERVICE_FEE_RATE;
+  const p = priceOrder({ lines, holders: cleanHolders, coupon: couponRow ? couponView(couponRow) : null, method, installments, feeRate });
 
   const [order] = await db.insert(orders).values({
     userId: user.id, eventId: ev.id, status: "pending",
@@ -104,12 +107,12 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     interestCents: p.interest, installments: p.installments, totalCents: p.total,
     couponId: couponRow?.id ?? null, paymentMethod: method,
     buyerName: buyer.name.trim(), buyerEmail: buyer.email.trim().toLowerCase(), buyerPhone: digits(buyer.phone), buyerCpf: digits(buyer.cpf),
-    holders: holders.map((h) => ({ ticketTypeId: h.ticketTypeId, name: h.name.trim(), meia: h.meia })),
+    holders: cleanHolders.map((h) => ({ ticketTypeId: h.ticketTypeId, name: h.name.trim(), meia: h.meia })),
     expiresAt: new Date(Date.now() + 15 * 60_000),
   }).returning();
   await db.insert(orderItems).values(lines.map((l) => ({
     orderId: order.id, ticketTypeId: l.ticketTypeId, quantity: l.quantity, unitPriceCents: l.priceCents,
-    unitFeeCents: Math.round(l.priceCents * 0.1),
+    unitFeeCents: Math.round(l.priceCents * feeRate),
   })));
 
   // guarda celular e CPF no perfil para preencher da próxima vez

@@ -5,7 +5,7 @@ type Middleware = ReturnType<typeof auth.middleware>;
 let middleware: Middleware | undefined;
 
 /** Rotas que exigem login. O checkout (/checkout) é público: a conta é pedida dentro dele. */
-const PROTECTED = ["/meus-ingressos", "/conta", "/ingressos"];
+const PROTECTED = ["/meus-ingressos", "/conta", "/ingressos", "/criar-evento", "/meus-eventos"];
 
 /** Parâmetro com que o Neon Auth volta do Google; precisa ser trocado pela sessão. */
 const OAUTH_VERIFIER = "neon_auth_session_verifier";

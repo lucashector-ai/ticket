@@ -24,7 +24,7 @@ export function SiteFooter() {
               <li><Link href="/explorar">Explorar eventos</Link></li>
               <li><Link href="/#categorias">Categorias</Link></li>
               <li><Link href="/#destaque">Destaques</Link></li>
-              <li><Link href="/produtores">Criar evento</Link></li>
+              <li><Link href="/criar-evento">Criar evento</Link></li>
             </ul>
           </div>
           <div>

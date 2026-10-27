@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import { FavoritesHydrator } from "@/components/favorites";
 import { SiteFooter } from "@/components/site-footer";
 import { EventoView } from "@/components/evento/evento-view";
-import type { EventoData, LineupItem, OrganizerInfo, TierItem } from "@/components/evento/types";
+import type { EventoData, LineupItem, OrganizerInfo, SessionItem, TierItem } from "@/components/evento/types";
 import { getEventBySlug, listSimilarEvents, type EventDetail } from "@/lib/data/events";
 import { getUserFavoriteSlugs, isFollowing } from "@/lib/data/user";
 import { getSessionUser } from "@/lib/auth/server";
-import { dateFull, initials, timeLabel } from "@/lib/format";
+import { dateFull, hourLabel, initials, parts, timeLabel } from "@/lib/format";
+import { salesStartNote, tierStatus } from "@/lib/tickets/status";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,32 @@ function toData(e: EventDetail): EventoData {
   const organizer: OrganizerInfo | null = e.organizer
     ? { id: e.organizer.id, name: e.organizer.name, initials: e.organizer.initials ?? initials(e.organizer.name), bio: e.organizer.bio, verified: e.organizer.verified, email: e.organizer.contactEmail }
     : null;
-  const tiers: TierItem[] = e.ticketTypes.map((t) => ({ id: t.id, name: t.name, note: t.note, priceCents: t.priceCents, status: t.status, available: Math.max(0, t.quantity - t.sold) }));
+  const tiers: TierItem[] = e.ticketTypes.map((t) => {
+    const status = tierStatus(t);
+    return {
+      id: t.id, name: t.name, note: status === "upcoming" && t.salesStart ? salesStartNote(t.salesStart) : t.note, desc: t.description,
+      priceCents: t.priceCents, status, available: Math.max(0, t.quantity - t.sold),
+      sector: t.sector, sectorColor: t.sectorColor, sessionId: t.sessionId,
+    };
+  });
+  const form = (e.draft as { form?: { sectors?: { id: string; name: string; color: string }[] } } | null)?.form;
+  let venueMap: EventoData["venueMap"] = null;
+  if (e.ticketMode === "mapa" && e.venueMap && form?.sectors) {
+    const byId = new Map(form.sectors.map((k) => [k.id, { name: k.name.trim() || "Setor", color: k.color }]));
+    venueMap = {};
+    for (const [area, sid] of Object.entries(e.venueMap.areaSectors)) {
+      const sec = byId.get(sid);
+      if (sec) venueMap[area] = sec;
+    }
+  }
+  const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"], MS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  const sessions: SessionItem[] = e.sessions.length > 1
+    ? [...e.sessions].sort((a, b) => a.startAt.getTime() - b.startAt.getTime()).map((s) => {
+      const p = parts(s.startAt);
+      const sub = e.format === "turne" && s.venue ? s.venue.city.name : hourLabel(s.startAt);
+      return { id: s.id, wd: WD[p.wd], day: `${p.d} ${MS[p.m - 1]}`, sub };
+    })
+    : [];
   const open = tiers.filter((t) => t.status === "open");
   const paragraphs = e.descriptionParagraphs?.length ? e.descriptionParagraphs : e.description ? [e.description] : [];
   return {
@@ -74,6 +100,8 @@ function toData(e: EventDetail): EventoData {
     lineup,
     organizer,
     tiers,
+    sessions,
+    venueMap,
     maxPerOrder: e.maxPerOrder,
     minPriceCents: open.length ? Math.min(...open.map((t) => t.priceCents)) : e.minPriceCents,
   };
@@ -82,7 +110,8 @@ function toData(e: EventDetail): EventoData {
 export default async function EventoPage({ params }: Params) {
   const { slug } = await params;
   const [ev, user] = await Promise.all([getEventBySlug(slug), getSessionUser()]);
-  if (!ev || ev.status === "draft") notFound();
+  // rascunho: só quem criou vê (prévia)
+  if (!ev || (ev.status === "draft" && ev.createdByUserId !== user?.id)) notFound();
   const [similar, serverFavs, following] = await Promise.all([
     listSimilarEvents(ev.id, ev.primaryCategoryLabel),
     getUserFavoriteSlugs(user?.id),

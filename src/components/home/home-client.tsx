@@ -237,7 +237,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts }: P
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="4" /><path d="M4.5 20.5c1.3-3.8 4.2-5.8 7.5-5.8s6.2 2 7.5 5.8" /></svg>
                     {favs.length > 0 && <span className="badge">{favs.length}</span>}
                   </Link>
-                  <Link className="qb-new" href="/produtores">
+                  <Link className="qb-new" href="/criar-evento">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" /></svg>
                     <span>Criar evento</span>
                   </Link>

@@ -145,8 +145,9 @@ export const events = pgTable(
     descriptionParagraphs: jsonb("description_paragraphs").$type<string[]>(),
     status: eventStatus("status").notNull().default("published"),
     // identificadores dos designs de flyer/banner gerados pelo sistema
-    flyerId: varchar("flyer_id", { length: 40 }).notNull().default("baile"),
-    bannerId: varchar("banner_id", { length: 40 }),
+    // id de um design de flyer/banner do sistema ou caminho de imagem enviada (/midia/...)
+    flyerId: varchar("flyer_id", { length: 200 }).notNull().default("baile"),
+    bannerId: varchar("banner_id", { length: 200 }),
     coverUrl: text("cover_url"),
     accentColor: varchar("accent_color", { length: 9 }),
     startAt: timestamp("start_at", { withTimezone: true }).notNull(),
@@ -170,14 +171,47 @@ export const events = pgTable(
     featured: boolean("featured").notNull().default(false),
     heroOrder: integer("hero_order"),
     publishedAt: timestamp("published_at", { withTimezone: true }).defaultNow(),
+    /* ---- criado pelo produtor em /criar-evento ---- */
+    createdByUserId: text("created_by_user_id"),
+    /** fora da busca e da home: só quem tem o link vê */
+    unlisted: boolean("unlisted").notNull().default(false),
+    /** unica | temporada | turne */
+    format: varchar("format", { length: 16 }).notNull().default("unica"),
+    /** mapa | simples */
+    ticketMode: varchar("ticket_mode", { length: 16 }).notNull().default("simples"),
+    /** produtor paga a taxa de serviço (comprador não vê "+ taxas") */
+    absorbFee: boolean("absorb_fee").notNull().default(false),
+    /** imagens opcionais enviadas pelo produtor */
+    media: jsonb("media").$type<{ home?: string; strip?: string; share?: string }>(),
+    /** mapa do local: áreas ligadas aos setores */
+    venueMap: jsonb("venue_map").$type<{ prompt: string; areaSectors: Record<string, string>; sketchUrl?: string }>(),
+    /** estado completo do formulário de criação, para continuar editando */
+    draft: jsonb("draft").$type<Record<string, unknown>>(),
     ...timestamps,
   },
   (t) => [
     uniqueIndex("events_slug_idx").on(t.slug),
+    index("events_creator_idx").on(t.createdByUserId),
     index("events_start_idx").on(t.startAt),
     index("events_venue_idx").on(t.venueId),
     index("events_status_idx").on(t.status),
   ],
+);
+
+/** Datas de um evento com várias datas ou turnê (cada uma pode ter seu local). */
+export const eventSessions = pgTable(
+  "event_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+    doorsAt: timestamp("doors_at", { withTimezone: true }),
+    capacity: integer("capacity"),
+    venueId: uuid("venue_id").references(() => venues.id),
+    sortOrder: integer("sort_order").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [index("event_sessions_event_idx").on(t.eventId)],
 );
 
 export const eventCategories = pgTable(
@@ -196,7 +230,10 @@ export const eventArtists = pgTable(
     artistId: uuid("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
     sortOrder: integer("sort_order").notNull().default(0),
     timeLabel: varchar("time_label", { length: 10 }),
+    endLabel: varchar("end_label", { length: 10 }),
     role: varchar("role", { length: 80 }),
+    /** datas em que o artista toca (null = todas) */
+    sessionIds: jsonb("session_ids").$type<string[]>(),
   },
   (t) => [primaryKey({ columns: [t.eventId, t.artistId] }), index("event_artists_artist_idx").on(t.artistId)],
 );
@@ -217,9 +254,17 @@ export const ticketTypes = pgTable(
     salesEnd: timestamp("sales_end", { withTimezone: true }),
     sortOrder: integer("sort_order").notNull().default(0),
     maxPerOrder: integer("max_per_order").notNull().default(8),
+    /** data (sessão) a que o ingresso dá acesso; null = evento de data única */
+    sessionId: uuid("session_id").references(() => eventSessions.id, { onDelete: "cascade" }),
+    /** setor do mapa (Pista, Camarote...) e cor */
+    sector: varchar("sector", { length: 80 }),
+    sectorColor: varchar("sector_color", { length: 9 }),
+    /** inteira | meia | social | outro (null = legado: meia marcada no checkout) */
+    kind: varchar("kind", { length: 16 }),
+    description: text("description"),
     ...timestamps,
   },
-  (t) => [index("ticket_types_event_idx").on(t.eventId)],
+  (t) => [index("ticket_types_event_idx").on(t.eventId), index("ticket_types_session_idx").on(t.sessionId)],
 );
 
 export const coupons = pgTable(
@@ -230,6 +275,10 @@ export const coupons = pgTable(
     eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
     percentOff: integer("percent_off"),
     amountOffCents: integer("amount_off_cents"),
+    /** desconto em R$ vale por ingresso (e não por pedido) */
+    amountPerTicket: boolean("amount_per_ticket").notNull().default(false),
+    /** vale só para este setor (null = todos os ingressos) */
+    sector: varchar("sector", { length: 80 }),
     maxUses: integer("max_uses"),
     uses: integer("uses").notNull().default(0),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
@@ -369,6 +418,7 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   venue: one(venues, { fields: [events.venueId], references: [venues.id] }),
   organizer: one(organizers, { fields: [events.organizerId], references: [organizers.id] }),
   ticketTypes: many(ticketTypes),
+  sessions: many(eventSessions),
   eventArtists: many(eventArtists),
   eventCategories: many(eventCategories),
 }));
@@ -382,6 +432,12 @@ export const eventArtistsRelations = relations(eventArtists, ({ one }) => ({
 }));
 export const ticketTypesRelations = relations(ticketTypes, ({ one }) => ({
   event: one(events, { fields: [ticketTypes.eventId], references: [events.id] }),
+  session: one(eventSessions, { fields: [ticketTypes.sessionId], references: [eventSessions.id] }),
+}));
+export const eventSessionsRelations = relations(eventSessions, ({ one, many }) => ({
+  event: one(events, { fields: [eventSessions.eventId], references: [events.id] }),
+  venue: one(venues, { fields: [eventSessions.venueId], references: [venues.id] }),
+  ticketTypes: many(ticketTypes),
 }));
 export const ordersRelations = relations(orders, ({ one, many }) => ({
   event: one(events, { fields: [orders.eventId], references: [events.id] }),

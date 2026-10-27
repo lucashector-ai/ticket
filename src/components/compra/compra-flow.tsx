@@ -11,11 +11,15 @@ import { InlineAuth } from "./inline-auth";
 import { cardBrand, expOk, fmtCard, fmtCpf, fmtExp, fmtPhone, isEmail, isFullName, mmss, onlyDigits } from "./format";
 
 export type CompraStep = "resumo" | "dados" | "pagamento" | "pix" | "proc" | "done";
-export type CompraTier = { id: string; name: string; note: string; priceCents: number; open: boolean; sold: boolean };
+/** `meiaOk`: o titular pode marcar meia-entrada (tipos de inteira); meia e social já vêm com preço próprio. */
+export type CompraTier = { id: string; name: string; note: string; priceCents: number; open: boolean; sold: boolean; sector: string | null; meiaOk: boolean };
 export type CompraEvent = {
   slug: string; title: string; flyerId: string; dateNice: string; venue: string; city: string; maxPerOrder: number; tiers: CompraTier[];
+  /** 0 quando o produtor absorve a taxa de serviço */
+  feeRate: number;
 };
-type Coupon = { code: string; percentOff: number; amountOffCents: number };
+type Coupon = { code: string; percentOff: number; amountOffCents: number; amountPerTicket: boolean; sector: string | null };
+const couponOf = (r: Coupon) => ({ code: r.code, percentOff: r.percentOff, amountOffCents: r.amountOffCents, amountPerTicket: r.amountPerTicket, sector: r.sector });
 type Hold = { name: string; me: boolean; meia: boolean };
 type PixOrder = { orderId: string; number: number; totalCents: number; pixCode: string; pixQrSvg: string };
 
@@ -83,7 +87,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   useEffect(() => {
     if (!initialCoupon) return;
     void checkCoupon(initialCoupon, event.slug).then((r) => {
-      if (r.ok) setCoupon({ code: r.code, percentOff: r.percentOff, amountOffCents: r.amountOffCents });
+      if (r.ok) setCoupon(couponOf(r));
       else setCupErr(r.error);
     });
   }, [initialCoupon, event.slug]);
@@ -111,13 +115,16 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     return out;
   }, [event.tiers, qty]);
   const nq = holders.length;
-  const lines = event.tiers.filter((t) => t.open && (qty[t.id] ?? 0) > 0).map((t) => ({ ticketTypeId: t.id, priceCents: t.priceCents, quantity: qty[t.id] ?? 0, name: t.name }));
+  const lines = event.tiers.filter((t) => t.open && (qty[t.id] ?? 0) > 0)
+    .map((t) => ({ ticketTypeId: t.id, priceCents: t.priceCents, quantity: qty[t.id] ?? 0, name: t.name, sector: t.sector, meiaOk: t.meiaOk }));
+  const isMeia = (h: { key: string; tier: CompraTier }) => h.tier.meiaOk && !!hold[h.key]?.meia;
   const price = priceOrder({
     lines,
-    holders: holders.map((h) => ({ ticketTypeId: h.tier.id, meia: !!hold[h.key]?.meia })),
-    coupon: coupon ? { percentOff: coupon.percentOff, amountOffCents: coupon.amountOffCents } : null,
+    holders: holders.map((h) => ({ ticketTypeId: h.tier.id, meia: isMeia(h) })),
+    coupon,
     method: pay,
     installments: inst,
+    feeRate: event.feeRate,
   });
   const installments = installmentOptions(price.base);
 
@@ -149,7 +156,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     const c = couponInput.trim().toUpperCase();
     if (!c) return;
     const r = await checkCoupon(c, event.slug);
-    if (r.ok) { setCoupon({ code: r.code, percentOff: r.percentOff, amountOffCents: r.amountOffCents }); setCupErr(null); }
+    if (r.ok) { setCoupon(couponOf(r)); setCupErr(null); }
     else { setCoupon(null); setCupErr(r.error); }
   }
 
@@ -166,7 +173,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       items: lines.map((l) => ({ ticketTypeId: l.ticketTypeId, quantity: l.quantity })),
       coupon: coupon?.code ?? null,
       buyer: { name, email, phone, cpf },
-      holders: holders.map((h) => ({ ticketTypeId: h.tier.id, name: holdName(h), meia: !!hold[h.key]?.meia })),
+      holders: holders.map((h) => ({ ticketTypeId: h.tier.id, name: holdName(h), meia: isMeia(h) })),
       method,
       installments: method === "card" ? inst : 1,
     });
@@ -351,12 +358,14 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                           )}
                         </div>
                         <input className={tried && !isFullName(hd.name) ? "in2 bad" : "in2"} type="text" placeholder="Nome de quem vai usar" value={hd.name} onChange={(e) => upd({ name: e.target.value, me: false })} aria-label={`Nome do titular do ingresso ${h.n}`} />
-                        <button className={hd.meia ? "ckb on" : "ckb"} type="button" role="checkbox" aria-checked={hd.meia} onClick={() => upd({ meia: !hd.meia })}>
-                          <span className="ck-box" aria-hidden="true">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-                          </span>
-                          <span className="ck-t">Meia-entrada <span className="ck-sub">· {money(Math.round(h.tier.priceCents / 2))}, apresentar documento</span></span>
-                        </button>
+                        {h.tier.meiaOk && (
+                          <button className={hd.meia ? "ckb on" : "ckb"} type="button" role="checkbox" aria-checked={hd.meia} onClick={() => upd({ meia: !hd.meia })}>
+                            <span className="ck-box" aria-hidden="true">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                            </span>
+                            <span className="ck-t">Meia-entrada <span className="ck-sub">· {money(Math.round(h.tier.priceCents / 2))}, apresentar documento</span></span>
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -508,7 +517,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 <Row k="Subtotal" v={money(price.subtotal)} />
                 {price.meia > 0 && <Row k="Meia-entrada" v={`− ${money(price.meia)}`} ok />}
                 {price.discount > 0 && <Row k={`Cupom ${coupon?.code ?? ""}`} v={`− ${money(price.discount)}`} ok />}
-                <Row k="Taxa de serviço" v={money(price.fee)} />
+                <Row k="Taxa de serviço" v={event.feeRate ? money(price.fee) : "Inclusa no preço"} />
                 {price.interest > 0 && <Row k="Juros do parcelamento" v={money(price.interest)} />}
               </div>
               <div className="sm-tot">

@@ -1,4 +1,5 @@
 /* Banners (21:9 / 16:9 / preenchimento) dos eventos — gerados a partir do design Onde. */
+import { isImageArt } from "./flyer";
 export const BANNER_IDS = ["baile", "sintonia", "terreiro", "marea", "subsolo", "cypher", "noite", "luz", "orquestra", "mesa", "calourada", "guitarra"] as const;
 export type BannerId = (typeof BANNER_IDS)[number];
 export type BannerFit = "ratio" | "card" | "fill";
@@ -21,6 +22,15 @@ export function bannerVals(id: string, fit: BannerFit = "ratio"): BannerVals {
 
 /** Arte do banner de um evento. `fit="fill"` ocupa o container pai (position:absolute). */
 export function BannerArt({ id, fit = "ratio" }: { id: string; fit?: BannerFit }) {
+  if (isImageArt(id)) {
+    const v = bannerVals(id, fit);
+    return (
+      <div aria-hidden="true" style={{ position: v.pos, inset: "0", width: "100%", aspectRatio: v.ar, overflow: "hidden", background: "#111111" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={id} alt="" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+      </div>
+    );
+  }
   return <BannerTemplate v={bannerVals(id, fit)} />;
 }
 

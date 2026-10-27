@@ -30,7 +30,7 @@ const cardWith = {
 /** Eventos publicados que ainda não terminaram. */
 export async function listLiveEvents(): Promise<EventCard[]> {
   const rows = await db.query.events.findMany({
-    where: and(eq(events.status, "published"), gte(sql`coalesce(${events.endAt}, ${events.startAt})`, sql`now()`)),
+    where: and(eq(events.status, "published"), eq(events.unlisted, false), gte(sql`coalesce(${events.endAt}, ${events.startAt})`, sql`now()`)),
     with: cardWith,
     orderBy: [asc(events.startAt)],
   });
@@ -39,7 +39,7 @@ export async function listLiveEvents(): Promise<EventCard[]> {
 
 export async function listHeroEvents(): Promise<EventCard[]> {
   const rows = await db.query.events.findMany({
-    where: and(eq(events.status, "published"), sql`${events.heroOrder} is not null`),
+    where: and(eq(events.status, "published"), eq(events.unlisted, false), sql`${events.heroOrder} is not null`),
     with: cardWith,
     orderBy: [asc(events.heroOrder)],
   });
@@ -63,6 +63,7 @@ export async function getEventBySlug(slug: string) {
       venue: { with: { city: true } },
       organizer: true,
       ticketTypes: { orderBy: [asc(ticketTypes.sortOrder)] },
+      sessions: { with: { venue: { with: { city: true } } } },
       eventArtists: { with: { artist: true }, orderBy: [asc(eventArtists.sortOrder)] },
       eventCategories: { with: { category: true } },
     },
@@ -80,7 +81,7 @@ export async function listSimilarEvents(eventId: string, categoryLabel: string |
 }
 
 export async function listEventsByOrganizer(organizerId: string): Promise<EventCard[]> {
-  const rows = await db.query.events.findMany({ where: and(eq(events.organizerId, organizerId), eq(events.status, "published")), with: cardWith, orderBy: [asc(events.startAt)] });
+  const rows = await db.query.events.findMany({ where: and(eq(events.organizerId, organizerId), eq(events.status, "published"), eq(events.unlisted, false)), with: cardWith, orderBy: [asc(events.startAt)] });
   return rows.map(toCard);
 }
 

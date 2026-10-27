@@ -365,8 +365,25 @@ FORTALEZA          </span>
 
 const MAP: Record<FlyerId, () => React.JSX.Element> = { baile: Flyer_baile, subsolo: Flyer_subsolo, marea: Flyer_marea, cypher: Flyer_cypher, noite: Flyer_noite, luz: Flyer_luz, orquestra: Flyer_orquestra, mesa: Flyer_mesa, calourada: Flyer_calourada, guitarra: Flyer_guitarra, terreiro: Flyer_terreiro, sintonia: Flyer_sintonia };
 
+/** Cartaz enviado pelo produtor (caminho de imagem) em vez de um design do sistema. */
+export function isImageArt(id: string | null | undefined): id is string {
+  return !!id && (id.startsWith("/midia/") || id.startsWith("https://"));
+}
+
 export function FlyerArt({ id }: { id: string }) {
-  const Cmp = MAP[(id in MAP ? id : "baile") as FlyerId];
+  if (isImageArt(id)) {
+    return (
+      <div aria-hidden="true" style={{ position: "relative", width: "100%", aspectRatio: "3 / 4", overflow: "hidden", background: "#DDDDD8" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={id} alt="" loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+      </div>
+    );
+  }
+  if (!(id in MAP)) {
+    // evento ainda sem cartaz enviado
+    return <div aria-hidden="true" style={{ position: "relative", width: "100%", aspectRatio: "3 / 4", background: "repeating-linear-gradient(135deg,#F0F0EA 0 10px,#EAEAE4 10px 20px)" }} />;
+  }
+  const Cmp = MAP[id as FlyerId];
   return (
     <div aria-hidden="true" style={{ position: "relative", width: "100%", aspectRatio: "3 / 4", overflow: "hidden", containerType: "inline-size", background: "#DDDDD8", fontFamily: "'Space Mono', monospace", color: "#111111" }}>
       <Cmp />

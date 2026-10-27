@@ -16,10 +16,18 @@ export type TierItem = {
   id: string;
   name: string;
   note: string | null;
+  /** descrição do tipo (quem pode comprar, o que inclui) */
+  desc: string | null;
   priceCents: number;
   status: "upcoming" | "open" | "sold_out" | "closed";
   available: number;
+  sector: string | null;
+  sectorColor: string | null;
+  sessionId: string | null;
 };
+
+/** Uma data de um evento com várias datas ou turnê. */
+export type SessionItem = { id: string; wd: string; day: string; sub: string };
 
 export type OrganizerInfo = {
   id: string;
@@ -55,6 +63,9 @@ export type EventoData = {
   lineup: LineupItem[];
   organizer: OrganizerInfo | null;
   tiers: TierItem[];
+  sessions: SessionItem[];
+  /** mapa 3D do local: setor (nome e cor) ligado a cada área vendável */
+  venueMap: Record<string, { name: string; color: string }> | null;
   maxPerOrder: number;
   minPriceCents: number;
 };

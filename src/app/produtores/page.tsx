@@ -48,11 +48,11 @@ export default function ProdutoresPage() {
       lead="A Onde reúne quem produz e quem quer sair de casa. Publique seu evento, venda ingressos e faça o check-in com uma ferramenta só."
       actions={
         <>
-          <a className="btn-p" href={MAILTO}>
-            Falar com a Onde
+          <Link className="btn-p" href="/criar-evento">
+            Criar evento
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-          </a>
-          <Link className="btn-g" href="/entrar?next=%2Fprodutores">Entrar</Link>
+          </Link>
+          <a className="btn-g" href={MAILTO}>Falar com a Onde</a>
         </>
       }
     >
@@ -87,11 +87,11 @@ export default function ProdutoresPage() {
       <section className="in-cta" aria-labelledby="cta">
         <div>
           <h2 id="cta">Vamos colocar seu próximo evento no mapa?</h2>
-          <p>Conte um pouco sobre o evento e a gente responde em até um dia útil com os próximos passos. Já tem conta? É só entrar e pedir o acesso de produtor.</p>
+          <p>Crie o evento em poucos minutos: formato, datas, setores, ingressos e cupons. Dúvidas? A gente responde em até um dia útil.</p>
         </div>
         <div className="in-acts">
-          <a className="btn-p" href={MAILTO}>Falar com a Onde</a>
-          <Link className="btn-g" href="/entrar?next=%2Fprodutores">Entrar</Link>
+          <Link className="btn-p" href="/criar-evento">Criar evento</Link>
+          <a className="btn-g" href={MAILTO}>Falar com a Onde</a>
         </div>
       </section>
     </InstShell>
