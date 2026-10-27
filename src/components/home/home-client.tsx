@@ -14,6 +14,7 @@ import { applyFilters, DEFAULT_FILTERS, exploreHref, type Filters } from "./filt
 import { HomeCard, SkeletonCard } from "./home-card";
 import { Newsletter } from "./newsletter";
 import { QuickView } from "./quick-view";
+import { SpotifyStrip, type HomeSpotify } from "./spotify-strip";
 import type { CityOpt, HomeCategory, HomeEvent } from "./types";
 
 type Props = {
@@ -22,6 +23,7 @@ type Props = {
   heroEvents: HomeEvent[];
   categories: HomeCategory[];
   cityOpts: CityOpt[];
+  spotify: HomeSpotify;
 };
 
 const FIRST_N = 8;
@@ -31,7 +33,7 @@ function reduced() {
   try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; }
 }
 
-export function HomeClient({ user, events, heroEvents, categories, cityOpts }: Props) {
+export function HomeClient({ user, events, heroEvents, categories, cityOpts, spotify }: Props) {
   const router = useRouter();
   const { favs } = useFavorites();
 
@@ -296,6 +298,9 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts }: P
             )}
           </div>
         </section>
+
+        {/* SPOTIFY: shows dos artistas que a pessoa ouve */}
+        <SpotifyStrip spotify={spotify} events={events} onOpen={openEv} />
 
         {/* FAIXA ESPECIAL (Marea) */}
         {feat && (

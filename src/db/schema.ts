@@ -114,10 +114,26 @@ export const artists = pgTable(
     deezerUrl: text("deezer_url"),
     palette: jsonb("palette").$type<{ bg: string; fg: string; accent: string }>(),
     tracks: jsonb("tracks").$type<{ title: string; plays: string; duration: string }[]>(),
+    /** artista ligado ao Spotify: id do Spotify e o que puxamos de lá (atualizado de tempos em tempos) */
+    spotifyId: varchar("spotify_id", { length: 40 }),
+    spotifyData: jsonb("spotify_data").$type<SpotifyArtistData>(),
+    spotifySyncedAt: timestamp("spotify_synced_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [uniqueIndex("artists_slug_idx").on(t.slug)],
+  (t) => [uniqueIndex("artists_slug_idx").on(t.slug), uniqueIndex("artists_spotify_idx").on(t.spotifyId)],
 );
+
+export type SpotifyRelease = { id: string; name: string; type: string; year: string; image: string | null; url: string };
+export type SpotifyArtistData = { name: string; url: string; image: string | null; genres: string[]; followers: number | null; releases: SpotifyRelease[] };
+
+/** Spotify conectado por um usuário: guardamos só os artistas que ele ouve (sem tokens). */
+export const spotifyConnections = pgTable("spotify_connections", {
+  userId: text("user_id").primaryKey(),
+  spotifyUserId: varchar("spotify_user_id", { length: 120 }).notNull(),
+  displayName: varchar("display_name", { length: 160 }),
+  artists: jsonb("artists").$type<{ id: string; name: string }[]>().notNull().default([]),
+  ...timestamps,
+});
 
 /* ---------- catálogo ---------- */
 export const categories = pgTable(

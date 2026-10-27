@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { SiteFooter } from "@/components/site-footer";
 import { ArtistaView, type ArtistaProps } from "@/components/artista/artista-view";
 import { getSessionUser } from "@/lib/auth/server";
 import { getArtistBySlug, listArtistShows, listSimilarArtists } from "@/lib/data/events";
 import { isFollowing } from "@/lib/data/user";
 import { dayNum, kLabel, monShort } from "@/lib/format";
+import { canEditArtist, refreshArtistSpotify } from "@/lib/spotify-artists";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +36,10 @@ export default async function ArtistaPage({ params }: Params) {
   if (!artist) notFound();
 
   const [shows, similar, user] = await Promise.all([listArtistShows(artist), listSimilarArtists(artist), getSessionUser()]);
-  const following = await isFollowing(user?.id, "artist", artist.id);
+  const [following, canEdit] = await Promise.all([isFollowing(user?.id, "artist", artist.id), user ? canEditArtist(user.id, artist.id) : false]);
+  // dados do Spotify com mais de uma semana: atualiza depois de responder (a próxima visita já vê)
+  after(() => refreshArtistSpotify(artist));
+  const sp = artist.spotifyId && artist.spotifyData ? artist.spotifyData : null;
 
   const palette = artist.palette ?? DEFAULT_PALETTE;
   const ownIds = new Set(artist.eventArtists.map((x) => x.event.id));
@@ -46,10 +51,10 @@ export default async function ArtistaPage({ params }: Params) {
     artistId: artist.id,
     slug: artist.slug,
     name: artist.name,
-    genre: artist.genre ?? "Música",
+    genre: artist.genre ?? (sp?.genres[0] ? sp.genres[0].replace(/^./, (x) => x.toUpperCase()) : "Música"),
     city: [artist.cityName, artist.uf].filter(Boolean).join(", "),
     verified: artist.verified,
-    listeners: kLabel(artist.monthlyListeners),
+    listeners: artist.monthlyListeners ? `${kLabel(artist.monthlyListeners)} ouvintes mensais` : sp?.followers ? `${kLabel(sp.followers)} seguidores no Spotify` : null,
     palette,
     avatarGrad: avatarGrad(palette),
     bio: (artist.bio ?? "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
@@ -70,6 +75,8 @@ export default async function ArtistaPage({ params }: Params) {
       return { slug: a.slug, name: a.name, genre: a.genre ?? "Música", grad: avatarGrad(p), fg: p.fg };
     }),
     following,
+    canEdit,
+    spotify: sp && artist.spotifyId ? { id: artist.spotifyId, url: sp.url, image: sp.image, genres: sp.genres, releases: sp.releases } : null,
   };
 
   return (

@@ -6,11 +6,14 @@ import { useEffect, useState, useTransition } from "react";
 import { SiteHeader, type HeaderUser } from "@/components/site-header";
 import { useToast } from "@/components/toast";
 import { toggleFollow } from "@/lib/actions/social";
+import { connectArtistSpotify } from "@/lib/actions/spotify";
+import { SpotifyArtistSearch, SpotifyIcon } from "@/components/spotify-search";
 import { BustIcon, HeroArt } from "./hero-art";
 
 export type ArtistaTrack = { title: string; plays: string; duration: string; grad: string };
 export type ArtistaShow = { slug: string; title: string; venue: string; city: string; day: string; mon: string; own: boolean };
 export type ArtistaSimilar = { slug: string; name: string; genre: string; grad: string; fg: string };
+export type ArtistaSpotify = { id: string; url: string; image: string | null; genres: string[]; releases: { id: string; name: string; type: string; year: string; image: string | null; url: string }[] };
 
 export type ArtistaProps = {
   user: HeaderUser;
@@ -20,7 +23,8 @@ export type ArtistaProps = {
   genre: string;
   city: string;
   verified: boolean;
-  listeners: string;
+  /** "1,2 mi ouvintes mensais" / "80 mil seguidores no Spotify"; null quando não há número */
+  listeners: string | null;
   palette: { bg: string; fg: string; accent: string };
   avatarGrad: string;
   bio: string[];
@@ -31,6 +35,9 @@ export type ArtistaProps = {
   similar: ArtistaSimilar[];
   following: boolean;
   artistId: string;
+  /** dono de evento com este artista: pode ligar a página ao Spotify */
+  canEdit: boolean;
+  spotify: ArtistaSpotify | null;
 };
 
 const PREVIEW = 30;
@@ -86,7 +93,12 @@ export function ArtistaView(p: ArtistaProps) {
   const mine = track !== null;
   const on = mine && !paused;
   const heroLabel = on ? "Tocando" : mine ? "Continuar" : "Ouvir artista";
-  const playTop = () => { if (mine) setPaused((v) => !v); else if (p.tracks.length) plStart(0); else flash("Prévia disponível em breve."); };
+  const playTop = () => {
+    if (mine) setPaused((v) => !v);
+    else if (p.tracks.length) plStart(0);
+    else if (p.spotify) document.getElementById("ouvir")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    else flash("Prévia disponível em breve.");
+  };
 
   const back = () => {
     if (typeof window !== "undefined" && window.history.length > 1) router.back();
@@ -177,7 +189,7 @@ export function ArtistaView(p: ArtistaProps) {
               )}
               <h1 className="ah-n" id="ar-t">{p.name}</h1>
               <p className="ah-m">
-                {p.genre}{p.city ? ` · ${p.city}` : ""} · <b>{p.listeners}</b> ouvintes mensais
+                {p.genre}{p.city ? ` · ${p.city}` : ""}{p.listeners && <> · <b>{p.listeners.split(" ")[0]}</b> {p.listeners.split(" ").slice(1).join(" ")}</>}
               </p>
               <div className="ah-acts">
                 <button className="ah-play" type="button" onClick={playTop}>
@@ -193,7 +205,10 @@ export function ArtistaView(p: ArtistaProps) {
               </div>
             </div>
             <div className="ah2-ph">
-              <HeroArt accent={p.palette.accent} />
+              {p.spotify?.image
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img className="ah2-img" src={p.spotify.image} alt={`Foto de ${p.name}`} />
+                : <HeroArt accent={p.palette.accent} />}
             </div>
           </div>
         </section>
@@ -204,6 +219,9 @@ export function ArtistaView(p: ArtistaProps) {
               <div className="blk-s">
                 <h2>Sobre</h2>
                 {p.bio.map((t, i) => <p className="ab-bio" key={i}>{t}</p>)}
+                {p.spotify && p.spotify.genres.length > 0 && (
+                  <div className="ab-gen">{p.spotify.genres.map((g) => <span key={g}>{g}</span>)}</div>
+                )}
                 <div className="ab-st">
                   <div><b className="st-v">{p.stats.fans}</b><span className="st-l">Seguidores na Onde</span></div>
                   <div><b className="st-v">{p.stats.shows}</b><span className="st-l">Shows em 2026</span></div>
@@ -233,6 +251,32 @@ export function ArtistaView(p: ArtistaProps) {
                   </ul>
                 </div>
               )}
+
+              {p.spotify && !p.tracks.length && (
+                <div className="blk-s" id="ouvir">
+                  <h2>Ouça agora</h2>
+                  <iframe className="sp-emb" title={`${p.name} no Spotify`} src={`https://open.spotify.com/embed/artist/${p.spotify.id}?utm_source=generator&theme=0`}
+                    height="352" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" />
+                </div>
+              )}
+
+              {p.spotify && p.spotify.releases.length > 0 && (
+                <div className="blk-s">
+                  <h2>Lançamentos</h2>
+                  <div className="rel">
+                    {p.spotify.releases.map((r) => (
+                      <a className="rel-i" key={r.id} href={r.url} target="_blank" rel="noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {r.image ? <img src={r.image} alt="" loading="lazy" /> : <span className="rel-ph" />}
+                        <b>{r.name}</b>
+                        <span>{[r.type, r.year].filter(Boolean).join(" · ")}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {p.canEdit && <SpotifyLink artistId={p.artistId} name={p.name} linked={!!p.spotify} />}
 
               {social.length > 0 && (
                 <div className="blk-s">
@@ -313,5 +357,32 @@ export function ArtistaView(p: ArtistaProps) {
         </div>
       )}
     </>
+  );
+}
+
+/** Para quem tem evento com o artista: liga a página ao perfil do Spotify. */
+function SpotifyLink({ artistId, name, linked }: { artistId: string; name: string; linked: boolean }) {
+  const router = useRouter();
+  const { flash } = useToast();
+  const [open, setOpen] = useState(!linked);
+  const [q, setQ] = useState(name);
+  const [busy, startBusy] = useTransition();
+  const link = (spotify: string) => startBusy(async () => {
+    const r = await connectArtistSpotify(artistId, spotify).catch(() => ({ ok: false as const, error: "Não foi possível ligar agora." }));
+    if (!r.ok) { flash(r.error); return; }
+    flash("Página ligada ao Spotify.");
+    setOpen(false);
+    router.refresh();
+  });
+  if (!open) {
+    return <button className="sp-chg" type="button" onClick={() => setOpen(true)}><SpotifyIcon size={14} />Trocar perfil do Spotify</button>;
+  }
+  return (
+    <div className="sp-own">
+      <div className="sp-own-h"><SpotifyIcon size={22} /><div><b>{linked ? "Trocar o perfil do Spotify" : "Ligue esta página ao Spotify"}</b><span>Só você vê isto. Escolha o artista e a página ganha foto, gêneros, lançamentos e o player. Também dá para colar o link do perfil.</span></div></div>
+      <SpotifyArtistSearch value={q} onChange={setQ} onPick={(a) => link(a.id)} onPlain={(v) => link(v)} placeholder="Nome do artista ou link do Spotify" />
+      {busy && <span className="sp-own-b">Ligando…</span>}
+      {linked && <button className="sp-chg" type="button" onClick={() => setOpen(false)}>Cancelar</button>}
+    </div>
   );
 }

@@ -11,6 +11,8 @@ const GRIDS = [{ v: 0, label: "Livre" }, { v: 0.5, label: "0,5 m" }, { v: 1, lab
 /** distância (em px da tela) em que uma borda gruda na outra */
 const SNAP_PX = 7;
 const round1 = (n: number) => Math.round(n * 10) / 10;
+/** 5.5 → "5,5" (metros no padrão brasileiro) */
+const m = (n: number) => String(round1(n)).replace(".", ",");
 
 /** Procura o alvo mais perto de uma das bordas que se movem; devolve o ajuste e onde desenhar a guia. */
 function snapAxis(edges: number[], targets: number[], tol: number) {
@@ -188,12 +190,12 @@ export function PlanEditor({ c, plan, look, ticketsOf, sel, setSel, setPlan }: {
           const { name, color } = look(a);
           const on = sel === a.id;
           return (
-            <div key={a.id} className={on ? "pa sel" : "pa"} role="button" tabIndex={-1} aria-label={`${name}: ${a.w} × ${a.d} m`}
+            <div key={a.id} className={on ? "pa sel" : "pa"} role="button" tabIndex={-1} aria-label={`${name}: ${m(a.w)} × ${m(a.d)} m`}
               style={{ left: pct(a.x, plan.width), top: pct(a.y, plan.depth), width: pct(a.w, plan.width), height: pct(a.d, plan.depth), background: color }}
               onPointerDown={(e) => drag(e, a, "move")}>
               <span className={a.kind === "palco" || a.kind === "bar" || a.kind === "outro" ? "pa-n dark" : "pa-n"}>{name}</span>
               {on && HANDLES.map((h) => <span key={h} className={`pa-h h-${h}`} onPointerDown={(e) => drag(e, a, h)} aria-hidden="true" />)}
-              {on && <span className="pa-sz" aria-hidden="true">{a.w} × {a.d} m</span>}
+              {on && <span className="pa-sz" aria-hidden="true">{m(a.w)} × {m(a.d)} m</span>}
             </div>
           );
         })}

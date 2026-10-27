@@ -43,3 +43,10 @@ export async function getOrderForUser(orderId: string, userId: string) {
 export async function currentUser() {
   return getSessionUser();
 }
+
+/** Spotify conectado (artistas que a pessoa ouve), ou null. */
+export async function getSpotifyConnection(userId: string | null | undefined) {
+  if (!userId) return null;
+  const row = await db.query.spotifyConnections.findFirst({ where: eq(schema.spotifyConnections.userId, userId) });
+  return row ?? null;
+}

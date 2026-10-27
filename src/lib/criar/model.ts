@@ -11,7 +11,8 @@ export type MediaKey = "poster" | "banner" | "home" | "strip" | "share";
 export type DraftSession = { id: string; date: string; doors: string; time: string; cap: string; venue: string; city: string };
 export type DraftType = { id: string; kind: TypeKind; name: string; price: string; qty: string; desc: string };
 export type DraftSector = { id: string; name: string; color: string; open: boolean; types: DraftType[] };
-export type DraftArtist = { id: string; name: string; role: string; time: string; end: string; days: string[] | null };
+/** `spotifyId`/`image`: artista escolhido na busca do Spotify. */
+export type DraftArtist = { id: string; name: string; role: string; time: string; end: string; days: string[] | null; spotifyId?: string; image?: string | null };
 export type DraftCoupon = { id: string; code: string; kind: "pct" | "brl"; value: string; limit: string; until: string; scope: string };
 
 export type Draft = {

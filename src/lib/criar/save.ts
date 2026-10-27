@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { dateFull, dateNice, hourLabel, initials, parts, slugify } from "@/lib/format";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
+import { linkArtistSpotify } from "@/lib/spotify-artists";
 import { AREA_KINDS, KIND_COLOR, MAX_AREAS, normalizePlan } from "@/lib/criar/plan";
 import {
   CATEGORY_KINDS, effTypes, eventSlug, num, parseBrDateTime, parseCity, spDate, toCents,
@@ -20,7 +21,7 @@ const draftSchema = z.object({
   mode: z.enum(["unica", "temporada", "turne"]),
   tmode: z.enum(["mapa", "simples"]),
   title: str(200), cat: str(40), catOther: str(60), age: str(20), desc: str(6000),
-  lineup: z.array(z.object({ id, name: str(160), role: str(40), time: str(5), end: str(5), days: z.array(id).max(60).nullable() })).max(60),
+  lineup: z.array(z.object({ id, name: str(160), role: str(40), time: str(5), end: str(5), days: z.array(id).max(60).nullable(), spotifyId: z.string().regex(/^[A-Za-z0-9]{22}$/).optional(), image: z.string().regex(/^https:\/\/i\.scdn\.co\/[\w/]+$/).nullable().optional() })).max(60),
   media: z.object({ poster: media, banner: media, home: media, strip: media, share: media }),
   coupons: z.array(z.object({ id, code: str(40), kind: z.enum(["pct", "brl"]), value: str(12), limit: str(9), until: str(20), scope: id })).max(50),
   venue: z.object({ name: str(160), city: str(120) }),
@@ -323,14 +324,24 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     const aslug = slugify(name);
     if (!name || !aslug || seen.has(aslug)) continue;
     seen.add(aslug);
-    let artist = await db.query.artists.findFirst({ where: eq(artists.slug, aslug), columns: { id: true } });
+    // escolhido na busca do Spotify: o id do Spotify identifica o artista, mesmo com nomes iguais
+    const sid = a.spotifyId ?? null;
+    let artist: { id: string; spotifyId: string | null } | undefined = sid
+      ? await db.query.artists.findFirst({ where: eq(artists.spotifyId, sid), columns: { id: true, spotifyId: true } })
+      : undefined;
+    let slugFor = aslug;
+    if (!artist) {
+      artist = await db.query.artists.findFirst({ where: eq(artists.slug, aslug), columns: { id: true, spotifyId: true } });
+      if (artist && sid && artist.spotifyId && artist.spotifyId !== sid) { artist = undefined; slugFor = `${aslug}-${sid.slice(0, 5).toLowerCase()}`; }
+    }
     if (!artist) {
       const city = first?.city;
-      [artist] = await db.insert(artists).values({ slug: aslug, name, genre: catLabel, cityName: city?.name ?? null, uf: city?.uf ?? null })
-        .onConflictDoNothing().returning({ id: artists.id });
-      artist ??= await db.query.artists.findFirst({ where: eq(artists.slug, aslug), columns: { id: true } });
+      [artist] = await db.insert(artists).values({ slug: slugFor, name, genre: catLabel, cityName: city?.name ?? null, uf: city?.uf ?? null })
+        .onConflictDoNothing().returning({ id: artists.id, spotifyId: artists.spotifyId });
+      artist ??= await db.query.artists.findFirst({ where: eq(artists.slug, slugFor), columns: { id: true, spotifyId: true } });
     }
     if (!artist) continue;
+    if (sid && !artist.spotifyId) await linkArtistSpotify(artist.id, sid).catch(() => null);
     const days = a.days?.map((x) => dbMap.sessions[x]).filter(Boolean) ?? null;
     await db.insert(eventArtists).values({
       eventId, artistId: artist.id, sortOrder: i, role: a.role || null,

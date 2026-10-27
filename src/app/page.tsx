@@ -5,7 +5,8 @@ import type { HomeEvent } from "@/components/home/types";
 import { getSessionUser } from "@/lib/auth/server";
 import { listCategories, listCities, listHeroEvents, listLiveEvents, type EventCard } from "@/lib/data/events";
 import { listHomeExtras } from "@/lib/data/home";
-import { getUserFavoriteSlugs } from "@/lib/data/user";
+import { getSpotifyConnection, getUserFavoriteSlugs } from "@/lib/data/user";
+import { slugify } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   const [live, hero, cats, cities, user] = await Promise.all([listLiveEvents(), listHeroEvents(), listCategories(), listCities(), getSessionUser()]);
-  const [extras, serverFavs] = await Promise.all([listHomeExtras([...live, ...hero].map((e) => e.id)), getUserFavoriteSlugs(user?.id)]);
+  const [extras, serverFavs, spotifyConn] = await Promise.all([listHomeExtras([...live, ...hero].map((e) => e.id)), getUserFavoriteSlugs(user?.id), getSpotifyConnection(user?.id)]);
 
   const toHome = (e: EventCard): HomeEvent => ({
     slug: e.slug, title: e.title, flyerId: e.flyerId, bannerId: e.bannerId ?? e.flyerId,
@@ -39,12 +40,17 @@ export default async function Home() {
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
       .map((c) => ({ value: c.name, label: c.name })),
   ];
+  // shows dos artistas que a pessoa ouve no Spotify (pelo nome, como aparece no line-up)
+  const heard = new Set((spotifyConn?.artists ?? []).map((a) => slugify(a.name)));
+  const spotify = spotifyConn
+    ? { connected: true, name: spotifyConn.displayName, picks: events.filter((e) => e.lineup.some((n) => heard.has(slugify(n)))).map((e) => e.slug) }
+    : { connected: false, name: null, picks: [] };
   const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
 
   return (
     <>
       <FavoritesHydrator serverFavs={serverFavs} loggedIn={!!user} />
-      <HomeClient user={headerUser} events={events} heroEvents={heroEvents} categories={categories} cityOpts={cityOpts} />
+      <HomeClient user={headerUser} events={events} heroEvents={heroEvents} categories={categories} cityOpts={cityOpts} spotify={spotify} />
     </>
   );
 }

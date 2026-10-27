@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { FlyerArt } from "@/components/art/flyer";
 import { BannerArt } from "@/components/art/banner";
+import { SpotifyArtistSearch, SpotifyIcon, type SpotifyHit } from "@/components/spotify-search";
 import {
   AGES, CATEGORIES, effTypes, KIND_LABEL, MEIA_DESC, num, PALETTE, ROLES,
   type DraftSector, type DraftSession, type DraftType, type EventMode, type MediaKey, type TicketMode, type TypeKind,
@@ -136,10 +137,11 @@ export function InfoPane({ c, sessions }: { c: Ctx; sessions: DraftSession[] }) 
   const [draftArtist, setDraftArtist] = useState("");
   const mediaDone = MEDIA.filter((m) => d.media[m.id]).length;
   const setArt = (id: string, patch: Partial<(typeof d.lineup)[number]>) => upd((o) => ({ ...o, lineup: o.lineup.map((a) => (a.id === id ? { ...a, ...patch } : a)) }));
-  const addArtist = () => {
-    const v = draftArtist.trim();
+  const addArtist = (name: string, sp?: SpotifyHit) => {
+    const v = name.trim();
     if (!v) { c.flash("Digite o nome do artista."); return; }
-    upd((o) => ({ ...o, lineup: [...o.lineup, { id: c.nid("a"), name: v, role: o.lineup.length ? "Convidado" : "Headliner", time: "", end: "", days: null }] }));
+    if (sp && d.lineup.some((a) => a.spotifyId === sp.id)) { c.flash(`${sp.name} já está no line-up.`); setDraftArtist(""); return; }
+    upd((o) => ({ ...o, lineup: [...o.lineup, { id: c.nid("a"), name: v, role: o.lineup.length ? "Convidado" : "Headliner", time: "", end: "", days: null, ...(sp ? { spotifyId: sp.id, image: sp.image } : {}) }] }));
     setDraftArtist("");
   };
   return (
@@ -168,8 +170,16 @@ export function InfoPane({ c, sessions }: { c: Ctx; sessions: DraftSession[] }) 
               const ids = sessions.map((x) => x.id);
               return (
                 <div key={a.id} className="lur">
-                  <span className="lur-av" style={{ background: AV_BG[i % AV_BG.length] }} aria-hidden="true">{initials(a.name) || "?"}</span>
-                  <input className="in lur-n" type="text" value={a.name} onChange={(e) => setArt(a.id, { name: e.target.value })} placeholder="Nome do artista" aria-label="Nome do artista" />
+                  {a.image
+                    ? (
+                      <span className="lur-av img" aria-hidden="true">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={a.image} alt="" />
+                        <SpotifyIcon size={14} />
+                      </span>
+                    )
+                    : <span className="lur-av" style={{ background: AV_BG[i % AV_BG.length] }} aria-hidden="true">{initials(a.name) || "?"}</span>}
+                  <input className="in lur-n" type="text" value={a.name} onChange={(e) => setArt(a.id, { name: e.target.value, spotifyId: undefined, image: undefined })} placeholder="Nome do artista" aria-label="Nome do artista" title={a.spotifyId ? "Ligado ao Spotify. Mudar o nome desfaz a ligação." : undefined} />
                   <div className="lur-role">{ROLES.map((r) => <button key={r} className={a.role === r ? "rl on" : "rl"} type="button" onClick={() => setArt(a.id, { role: r })}>{r}</button>)}</div>
                   <label className="lur-t"><span className="tl-l2">Início</span><input className="in sm2" type="time" value={a.time} onChange={(e) => setArt(a.id, { time: e.target.value })} aria-label={`Horário de ${a.name}`} /></label>
                   <label className="lur-t"><span className="tl-l2">Fim</span><input className="in sm2" type="time" value={a.end} onChange={(e) => setArt(a.id, { end: e.target.value })} aria-label={`Fim de ${a.name}`} /></label>
@@ -198,10 +208,10 @@ export function InfoPane({ c, sessions }: { c: Ctx; sessions: DraftSession[] }) 
             })}
           </div>
           <div className="lu-add2">
-            <input className="in" type="text" value={draftArtist} onChange={(e) => setDraftArtist(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addArtist(); } }} placeholder="Nome do artista" />
-            <button className="b-sec" type="button" onClick={addArtist}>+ Adicionar artista</button>
+            <SpotifyArtistSearch value={draftArtist} onChange={setDraftArtist} onPick={(a) => addArtist(a.name, a)} onPlain={(v) => addArtist(v)} placeholder="Busque o artista no Spotify ou digite o nome" />
+            <button className="b-sec" type="button" onClick={() => addArtist(draftArtist)}>+ Adicionar artista</button>
           </div>
-          <span className="lf-h">Sem horário definido? Deixe em branco: a página do evento mostra o line-up sem horários.</span>
+          <span className="lf-h">Escolha o artista na lista do Spotify: a página dele ganha foto, gêneros, lançamentos e o player. Sem horário definido? Deixe em branco: a página do evento mostra o line-up sem horários.</span>
         </div>
       </div>
     </div>

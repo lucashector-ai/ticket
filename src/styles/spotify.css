@@ -1,0 +1,33 @@
+/* Busca de artistas no Spotify (line-up da criação e página do artista) */
+.spx{position:relative;min-width:0}
+.spx > .in,.spx > input{width:100%}
+.spx-busy{position:absolute;right:12px;top:50%;width:14px;height:14px;margin-top:-7px;border-radius:50%;border:2px solid #E4E4E7;border-top-color:#111;animation:spx-r .7s linear infinite}
+@keyframes spx-r{to{transform:rotate(360deg)}}
+.spx-l{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 6px);margin:0;padding:6px;list-style:none;background:#fff;border:1px solid #EAEAEA;border-radius:14px;box-shadow:0 18px 40px -12px rgba(0,0,0,.22);max-height:340px;overflow:auto}
+.spx-l li{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:10px;cursor:pointer;color:#111}
+.spx-l li.on{background:#F4F4F1}
+.spx-av{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;background:#EDEDEA;display:grid;place-items:center}
+.spx-av.plus{font-size:20px;font-weight:600;color:#6E6E73}
+.spx-t{display:flex;flex-direction:column;min-width:0;flex:1}
+.spx-t b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spx-t span{font-size:12.5px;color:#6E6E73;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:capitalize}
+.spx-l li.plain .spx-t span{text-transform:none}
+
+/* Home: convite e seção "Dos artistas que você ouve" */
+.spf{padding:56px 0 8px}
+.spf-cta{display:flex;align-items:center;gap:18px;padding:22px 24px;border-radius:24px;background:#111;color:#fff;transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+.spf-cta:hover{transform:translateY(-2px)}
+.spf-cta > svg{flex:none}
+.spf-t{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.spf-t b{font-family:'Inter Tight',sans-serif;font-size:20px;font-weight:600;letter-spacing:-.01em}
+.spf-t span{font-size:14.5px;color:rgba(255,255,255,.66)}
+.spf-b{flex:none;height:44px;padding:0 20px;display:inline-flex;align-items:center;border-radius:999px;background:#1ED760;color:#111;font-weight:600;font-size:14.5px}
+.spf-s{display:flex;align-items:center;gap:8px}
+.spf-off{border:0;background:none;padding:0;font:inherit;font-size:13.5px;font-weight:500;color:#6E6E73;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.spf-off:hover{color:#111}
+@media (max-width:760px){
+  .spf{padding:40px 0 0}
+  .spf-cta{flex-wrap:wrap;padding:20px;gap:14px}
+  .spf-t b{font-size:18px}
+  .spf-b{width:100%;justify-content:center}
+}

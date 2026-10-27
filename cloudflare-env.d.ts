@@ -15,6 +15,8 @@ interface __BaseEnv_CloudflareEnv {
 	NEON_AUTH_JWKS_URL: string;
 	NEON_AUTH_COOKIE_SECRET: string;
 	ANTHROPIC_API_KEY: string;
+	SPOTIFY_CLIENT_ID: string;
+	SPOTIFY_CLIENT_SECRET: string;
 	WORKER_SELF_REFERENCE: Fetcher /* ticket */;
 }
 declare namespace Cloudflare {
@@ -25,7 +27,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "NEXT_PUBLIC_SITE_URL" | "NEXT_INC_CACHE_R2_PREFIX" | "DATABASE_URL" | "DATABASE_URL_DEV" | "NEON_AUTH_BASE_URL" | "NEXT_PUBLIC_NEON_AUTH_URL" | "NEON_AUTH_JWKS_URL" | "ANTHROPIC_API_KEY">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "NEXT_PUBLIC_SITE_URL" | "NEXT_INC_CACHE_R2_PREFIX" | "DATABASE_URL" | "DATABASE_URL_DEV" | "NEON_AUTH_BASE_URL" | "NEXT_PUBLIC_NEON_AUTH_URL" | "NEON_AUTH_JWKS_URL" | "ANTHROPIC_API_KEY" | "SPOTIFY_CLIENT_ID" | "SPOTIFY_CLIENT_SECRET">> {}
 }
 declare module "*.txt" {
 	const value: string;
