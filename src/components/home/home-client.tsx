@@ -42,6 +42,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts }: P
   const [showAll, setShowAll] = useState(false);
   const [stuck, setStuck] = useState(false);
   const [heroIdx, setHeroIdx] = useState(0);
+  const touchX = useRef<number | null>(null);
   const [openSlug, setOpenSlug] = useState<string | null>(null);
 
   const gridRef = useRef<HTMLDivElement>(null);
@@ -153,17 +154,40 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts }: P
             aria-label="Eventos em destaque"
             onMouseEnter={() => { hovRef.current = true; }}
             onMouseLeave={() => { hovRef.current = false; }}
+            onTouchStart={(ev) => { touchX.current = ev.touches[0]?.clientX ?? null; }}
+            onTouchEnd={(ev) => {
+              const x0 = touchX.current, x1 = ev.changedTouches[0]?.clientX;
+              touchX.current = null;
+              if (x0 == null || x1 == null || Math.abs(x1 - x0) < 40) return;
+              if (x1 < x0) nextSlide(); else prevSlide();
+            }}
           >
             {heroEvents.map((b, i) => (
               <div key={b.slug} className={i === heroIdx ? "bnx-i on" : "bnx-i"} aria-hidden={i !== heroIdx}>
                 <span className="cfh-w"><BannerArt id={b.bannerId} fit="fill" /></span>
                 <span className="cfh-t"><FlyerArt id={b.flyerId} /></span>
+                {/* celular: banner 16:9 em destaque sobre o próprio banner desfocado */}
+                <span className="cfh-m">
+                  <span className="cfh-mb"><BannerArt id={b.bannerId} fit="card" /></span>
+                  <span className="cfh-mi">
+                    <span className="cfh-mk">{b.categoryLabel}</span>
+                    <b>{b.title}</b>
+                    <span>{b.dateNice} · {b.city}</span>
+                  </span>
+                </span>
               </div>
             ))}
             <span className="bn-shade" aria-hidden="true" />
             <span className="bnx-dim" aria-hidden="true" />
             {hero && (
               <Link className="bn-hit" href={`/eventos/${hero.slug}`} aria-label={`Ver ingressos de ${hero.title}, ${hero.dateNice}, ${hero.city}`} />
+            )}
+            {heroCount > 1 && (
+              <div className="bnm-dots" role="tablist" aria-label="Banners">
+                {heroEvents.map((b, i) => (
+                  <button key={b.slug} type="button" role="tab" aria-selected={i === heroIdx} aria-label={`Banner ${i + 1}: ${b.title}`} className={i === heroIdx ? "on" : undefined} onClick={() => setHeroIdx(i)} />
+                ))}
+              </div>
             )}
             {heroCount > 1 && (
               <>

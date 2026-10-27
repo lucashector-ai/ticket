@@ -603,3 +603,5 @@
     .blk-s{margin-top:44px}
   }
 }
+/* cabeçalho de 68px + 1px de borda: o topo sobe 69px (sem linha branca) */
+.pg-artista .ehero,.pg-artista .ah,.pg-artista .ah2{margin-top:-69px}
