@@ -65,9 +65,8 @@ const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 const rgb = (c: RGB) => `rgb(${c.join(",")})`;
 const hourOf = (s: string) => s.match(/\b(\d{1,2}h\d{0,2})\b/)?.[1] ?? null;
 
-/* pass.json no estilo ingresso (eventTicket), preto: logo e data no topo, a faixa com o picote e,
-   abaixo dele, o nome do evento (num campo secundário, de letra menor que o campo principal da
-   Apple) e uma linha com local, horário e setor. */
+/* pass.json no estilo ingresso (eventTicket), preto: logo e data no topo, nome do evento sobre a
+   faixa com o picote e, abaixo dele, em duas linhas, local/horário e titular/setor. */
 function passJson(d: PassData, s: Signer) {
   const iso = (x: Date) => x.toISOString().replace(/\.\d{3}Z$/, "Z");
   const show = hourLabel(d.start);
@@ -104,19 +103,18 @@ function passJson(d: PassData, s: Signer) {
     barcodes: [{ format: "PKBarcodeFormatQR", message: d.qr, messageEncoding: "iso-8859-1" }],
     eventTicket: {
       headerFields: [{ key: "date", label: day.toUpperCase(), value: show, textAlignment: right }],
-      primaryFields: [],
+      primaryFields: [{ key: "event", label: [d.city, d.uf].filter(Boolean).join(" – ").toUpperCase() || "EVENTO", value: d.title }],
       secondaryFields: [
-        { key: "event", label: [d.city, d.uf].filter(Boolean).join(" – ").toUpperCase() || "EVENTO", value: d.title },
-        ...(status ? [{ key: "status", label: "INGRESSO", value: status, textAlignment: right }] : []),
+        { key: "venue", label: "LOCAL", value: d.venue || d.city },
+        doors ? { key: "doors", label: "ABERTURA", value: doors, textAlignment: right } : { key: "show", label: "INÍCIO", value: show, textAlignment: right },
       ],
       auxiliaryFields: [
-        { key: "venue", label: "LOCAL", value: d.venue || d.city },
-        doors ? { key: "doors", label: "ABERTURA", value: doors } : { key: "show", label: "INÍCIO", value: show },
+        { key: "holder", label: "TITULAR", value: d.holder || "—" },
+        ...(status ? [{ key: "status", label: "INGRESSO", value: status }] : []),
         { key: "type", label: "SETOR", value: d.type, textAlignment: right },
       ],
       backFields: [
         { key: "when", label: "Data e horário", value: [d.when, d.doors || show].filter(Boolean).join(" · ") },
-        ...(d.holder ? [{ key: "holder", label: "Titular", value: d.holder }] : []),
         { key: "code", label: "Código do ingresso", value: d.code },
         ...(d.address ? [{ key: "address", label: "Endereço", value: d.address }] : []),
         { key: "link", label: "Seu ingresso no site", value: d.url, attributedValue: `<a href="${d.url}">Abrir no Tickets Win</a>` },
