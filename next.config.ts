@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  reactStrictMode: true,
+  images: {
+    // Imagens são servidas do R2 / Cloudflare Images; sem otimização no build.
+    unoptimized: true,
+  },
   turbopack: {
     rules: {
       "*.css": {
@@ -15,3 +18,6 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Permite usar bindings do Cloudflare (R2, KV) durante `next dev`.
+initOpenNextCloudflareForDev();

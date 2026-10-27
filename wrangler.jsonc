@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "onde",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-13",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "upload_source_maps": true,
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+  "placement": { "mode": "smart" },
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://onde.workers.dev",
+    "NEXT_INC_CACHE_R2_PREFIX": "incremental-cache"
+  },
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "onde-media" },
+    { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "onde-cache" }
+  ],
+  "kv_namespaces": [
+    { "binding": "KV", "id": "e0598640fff84473847be030aa1c2096" }
+  ],
+  "services": [
+    { "binding": "WORKER_SELF_REFERENCE", "service": "onde" }
+  ]
+}

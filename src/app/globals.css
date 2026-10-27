@@ -1,26 +1,19 @@
-@import "tailwindcss";
+/* Tailwind sem preflight: o design Onde traz o próprio reset em base.css */
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import "../styles/base.css";
+
+/* escopos de página (CSS nesting nativo) */
+@import "../styles/pages/evento.css";
+@import "../styles/pages/artista.css";
+@import "../styles/pages/entrar.css";
+@import "../styles/pages/meus-ingressos.css";
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  --color-ink: #111111;
+  --color-off: #f7f7f2;
+  --color-line: #eaeaea;
+  --color-mute: #6e6e73;
+  --color-acc: #d3f55b;
 }
