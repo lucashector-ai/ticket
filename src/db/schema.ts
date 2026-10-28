@@ -13,6 +13,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import type { Audience, Design } from "@/lib/mail/design";
 
 /* ---------- enums ---------- */
 export const eventStatus = pgEnum("event_status", ["draft", "published", "cancelled", "finished"]);
@@ -635,6 +636,93 @@ export const queueEntries = pgTable(
 );
 
 /* ---------- relations ---------- */
+
+/* ---------- e-mail do produtor ---------- */
+
+/** Campanha de e-mail: público, remetente, assunto, o design em blocos e o envio. */
+export const emailCampaigns = pgTable(
+  "email_campaigns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** produtor dono (ou só o usuário, quando ele ainda não tem página de produtor) */
+    organizerId: uuid("organizer_id").references(() => organizers.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    /** draft | scheduled | sending | sent | cancelled */
+    status: varchar("status", { length: 12 }).notNull().default("draft"),
+    subject: varchar("subject", { length: 200 }).notNull().default(""),
+    preheader: varchar("preheader", { length: 200 }).notNull().default(""),
+    fromName: varchar("from_name", { length: 120 }).notNull().default(""),
+    replyTo: varchar("reply_to", { length: 254 }).notNull().default(""),
+    audience: jsonb("audience").$type<Audience>().notNull(),
+    design: jsonb("design").$type<Design>().notNull(),
+    /** evento principal (modelo escolhido na criação); usado nos atalhos */
+    eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+    /** links do e-mail no momento do envio (o clique rastreado aponta para o índice) */
+    links: jsonb("links").$type<string[]>(),
+    /** cliques por link (índice → total) */
+    linkClicks: jsonb("link_clicks").$type<Record<string, number>>(),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    testSentAt: timestamp("test_sent_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("email_campaigns_org_idx").on(t.organizerId, t.createdAt), index("email_campaigns_user_idx").on(t.userId), index("email_campaigns_status_idx").on(t.status)],
+);
+
+/** Um e-mail de uma campanha para uma pessoa: fila de envio, aberturas, cliques e descadastro. */
+export const emailSends = pgTable(
+  "email_sends",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    campaignId: uuid("campaign_id").notNull().references(() => emailCampaigns.id, { onDelete: "cascade" }),
+    email: varchar("email", { length: 254 }).notNull(),
+    name: varchar("name", { length: 160 }),
+    /** link de descadastro, pixel e cliques */
+    token: varchar("token", { length: 32 }).notNull(),
+    /** queued | sent | failed */
+    status: varchar("status", { length: 10 }).notNull().default("queued"),
+    error: varchar("error", { length: 300 }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    openedAt: timestamp("opened_at", { withTimezone: true }),
+    opens: integer("opens").notNull().default(0),
+    clickedAt: timestamp("clicked_at", { withTimezone: true }),
+    clicks: integer("clicks").notNull().default(0),
+    unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("email_sends_token_idx").on(t.token), uniqueIndex("email_sends_campaign_email_idx").on(t.campaignId, t.email), index("email_sends_queue_idx").on(t.status, t.campaignId)],
+);
+
+/** Quem pediu para não receber: de um produtor, ou de todos (organizer_id vazio). */
+export const emailUnsubscribes = pgTable(
+  "email_unsubscribes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: varchar("email", { length: 254 }).notNull(),
+    organizerId: uuid("organizer_id").references(() => organizers.id, { onDelete: "cascade" }),
+    /** produtor sem página: descadastro ligado ao usuário que enviou */
+    senderUserId: text("sender_user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("email_unsubscribes_email_idx").on(t.email)],
+);
+
+/** Modelos salvos pelo produtor para reaproveitar o design. */
+export const emailTemplates = pgTable(
+  "email_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizerId: uuid("organizer_id").references(() => organizers.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    design: jsonb("design").$type<Design>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("email_templates_org_idx").on(t.organizerId), index("email_templates_user_idx").on(t.userId)],
+);
+
 export const citiesRelations = relations(cities, ({ many }) => ({ venues: many(venues) }));
 export const venuesRelations = relations(venues, ({ one, many }) => ({
   city: one(cities, { fields: [venues.cityId], references: [cities.id] }),
@@ -709,6 +797,14 @@ export const resaleListingsRelations = relations(resaleListings, ({ one }) => ({
 export const promotersRelations = relations(promoters, ({ one }) => ({
   organizer: one(organizers, { fields: [promoters.organizerId], references: [organizers.id] }),
   event: one(events, { fields: [promoters.eventId], references: [events.id] }),
+}));
+export const emailCampaignsRelations = relations(emailCampaigns, ({ one, many }) => ({
+  organizer: one(organizers, { fields: [emailCampaigns.organizerId], references: [organizers.id] }),
+  event: one(events, { fields: [emailCampaigns.eventId], references: [events.id] }),
+  sends: many(emailSends),
+}));
+export const emailSendsRelations = relations(emailSends, ({ one }) => ({
+  campaign: one(emailCampaigns, { fields: [emailSends.campaignId], references: [emailCampaigns.id] }),
 }));
 export const favoritesRelations = relations(favorites, ({ one }) => ({
   event: one(events, { fields: [favorites.eventId], references: [events.id] }),

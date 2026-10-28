@@ -229,8 +229,6 @@
   .hc-img{position:relative;border-radius:16px;overflow:hidden;background:#F2F2EE}
   .hc-img .in{transition:transform 1s var(--ease)}
   .hcard:hover .hc-img .in{transform:scale(1.04)}
-  .cshine{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(105deg,rgba(255,255,255,0) 35%,rgba(255,255,255,.55) 50%,rgba(255,255,255,0) 65%);transform:translateX(-130%);mix-blend-mode:soft-light}
-  .hcard:hover .cshine{transform:translateX(130%);transition:transform 1.1s cubic-bezier(.22,1,.36,1)}
   .hc-t{margin:16px 0 0;font-family:'Inter Tight',sans-serif;font-size:18px;font-weight:600;letter-spacing:-.02em;line-height:1.2}
   .hc-d{margin:8px 0 0;font-size:14px;font-weight:500}
   .hc-w{margin:4px 0 0;font-size:14px;color:#6E6E73;line-height:1.4}

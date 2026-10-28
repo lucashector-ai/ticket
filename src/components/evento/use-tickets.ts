@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { checkCoupon } from "@/lib/actions/compra";
 import { createGroup } from "@/lib/actions/grupo";
@@ -60,6 +60,20 @@ export function useTickets(e: EventoData) {
       else { setCoupon(null); setCouponError(r.error); }
     });
   }, [couponInput, e.slug]);
+
+  // link de e-mail com ?cupom=CODIGO: o cupom já entra aplicado
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("cupom")?.trim().toUpperCase();
+    if (!code) return;
+    let alive = true;
+    void checkCoupon(code, e.slug).then((r) => {
+      if (!alive) return;
+      setCouponInput(code);
+      if (r.ok) setCoupon({ code: r.code, percentOff: r.percentOff, amountOffCents: r.amountOffCents, amountPerTicket: r.amountPerTicket, sector: r.sector });
+      else setCouponError(r.error);
+    });
+    return () => { alive = false; };
+  }, [e.slug]);
 
   /** Vai para o checkout sem pedir login; a conta só é pedida lá, na etapa Dados. */
   const checkout = useCallback(() => {

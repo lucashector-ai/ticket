@@ -26,7 +26,6 @@ export function HomeCard({ e, delay, rank, onOpen, className = "card" }: Props) 
         <div className="in">
           <FlyerArt id={e.flyerId} />
         </div>
-        <span className="cshine" aria-hidden="true" />
       </div>
       <div className="cbody">
         {rank ? (
