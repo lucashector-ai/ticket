@@ -269,6 +269,8 @@ export const events = pgTable(
     queueMode: varchar("queue_mode", { length: 8 }).notNull().default("auto"),
     /** quantas pessoas podem comprar ao mesmo tempo antes de a fila ligar */
     queueLimit: integer("queue_limit").notNull().default(300),
+    /** o fã pode transferir o ingresso para outra pessoa */
+    transferEnabled: boolean("transfer_enabled").notNull().default(true),
     /** revenda oficial entre fãs e o preço máximo, em % do valor pago */
     resaleEnabled: boolean("resale_enabled").notNull().default(true),
     resaleMaxPct: integer("resale_max_pct").notNull().default(120),

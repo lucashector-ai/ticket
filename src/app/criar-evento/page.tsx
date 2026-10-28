@@ -23,10 +23,11 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
   let initial: Draft | null = null, dbMap: DbMap | null = null, slug: string | null = null;
   if (editId) {
     if (!/^[0-9a-f-]{36}$/.test(editId)) notFound();
-    const ev = await db.query.events.findFirst({ where: eq(schema.events.id, editId), columns: { id: true, slug: true, createdByUserId: true, draft: true } });
+    const ev = await db.query.events.findFirst({ where: eq(schema.events.id, editId), columns: { id: true, slug: true, createdByUserId: true, draft: true, transferEnabled: true, resaleEnabled: true } });
     if (!ev || ev.createdByUserId !== user.id) notFound();
     const saved = ev.draft as { form?: Draft; dbMap?: DbMap } | null;
-    initial = { ...emptyDraft(), ...(saved?.form ?? {}) };
+    // as regras de transferência/revenda também mudam pelo painel: vale o que está no evento
+    initial = { ...emptyDraft(), ...(saved?.form ?? {}), transfer: ev.transferEnabled, resale: ev.resaleEnabled };
     dbMap = saved?.dbMap ?? null;
     slug = ev.slug;
   }

@@ -26,7 +26,7 @@ const draftSchema = z.object({
   coupons: z.array(z.object({ id, code: str(40), kind: z.enum(["pct", "brl"]), value: str(12), limit: str(9), until: str(20), scope: id })).max(50),
   venue: z.object({ name: str(160), city: str(120) }),
   sessions: z.array(z.object({ id, date: str(10), doors: str(5), time: str(5), cap: str(9), venue: str(160), city: str(120) })).max(60),
-  autoMeia: z.boolean(), fee: z.boolean(),
+  autoMeia: z.boolean(), fee: z.boolean(), transfer: z.boolean().default(true), resale: z.boolean().default(true),
   sectors: z.array(z.object({
     id, name: str(80), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/), open: z.boolean(),
     types: z.array(z.object({ id, kind: z.enum(["inteira", "meia", "social", "outro"]), name: str(120), price: str(12), qty: str(9), desc: str(600) })).max(20),
@@ -253,7 +253,7 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     addressLabel: tour && citySet.size > 1 ? [...citySet].join(", ") : first?.city ? `${first.city.name} – ${first.city.uf}` : null,
     organizerId: organizer.id, primaryCategoryLabel: catLabel, kinds,
     minPriceCents: prices.length ? Math.min(...prices) : 0, maxPerOrder: 8,
-    format: d.mode, ticketMode: d.tmode, absorbFee: !d.fee,
+    format: d.mode, ticketMode: d.tmode, absorbFee: !d.fee, transferEnabled: d.transfer, resaleEnabled: d.resale,
     media: { home: d.media.home, strip: d.media.strip, share: d.media.share },
     venueMap: venueMapOf(d),
     createdByUserId: user.id,

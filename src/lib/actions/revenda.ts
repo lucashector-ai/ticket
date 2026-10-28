@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { resaleCap } from "@/lib/resale";
+import { getPainelScope } from "@/lib/data/painel";
 
 const { tickets, resaleListings, ticketTransfers } = schema;
 type R = { ok: true } | { ok: false; error: string };
@@ -44,5 +45,38 @@ export async function cancelListing(listingId: string): Promise<R> {
   if (l.status === "reserved" && l.reservedUntil && l.reservedUntil > new Date()) return { ok: false, error: "Alguém está pagando por este ingresso agora. Tente de novo em alguns minutos." };
   await db.update(resaleListings).set({ status: "cancelled" }).where(eq(resaleListings.id, l.id));
   revalidatePath("/meus-ingressos");
+  return { ok: true };
+}
+
+/* ---------- produtor: regras de transferência e revenda do evento ---------- */
+
+async function producerEvent(eventId: string) {
+  const user = await getSessionUser();
+  if (!user) return null;
+  const s = await getPainelScope(user);
+  if (s.role === "portaria") return null;
+  return s.events.find((e) => e.id === eventId) ?? null;
+}
+
+export async function saveTransferResale(eventId: string, input: { transferEnabled: boolean; resaleEnabled: boolean; resaleMaxPct: number }): Promise<R> {
+  const ev = await producerEvent(eventId);
+  if (!ev) return { ok: false, error: "Sem permissão para este evento." };
+  const pct = Math.round(input.resaleMaxPct);
+  if (!Number.isFinite(pct) || pct < 50 || pct > 300) return { ok: false, error: "O preço máximo vai de 50% a 300% do valor pago." };
+  await db.update(schema.events).set({ transferEnabled: !!input.transferEnabled, resaleEnabled: !!input.resaleEnabled, resaleMaxPct: pct }).where(eq(schema.events.id, ev.id));
+  // revenda desligada: os anúncios abertos saem do ar (quem estiver pagando agora termina a compra)
+  if (!input.resaleEnabled) await db.update(resaleListings).set({ status: "cancelled" }).where(and(eq(resaleListings.eventId, ev.id), eq(resaleListings.status, "active")));
+  revalidatePath(`/painel/evento/${ev.id}`);
+  revalidatePath(`/eventos/${ev.slug}`);
+  return { ok: true };
+}
+
+/** O produtor tira um anúncio do ar (preço abusivo, denúncia, ingresso com problema). */
+export async function producerCancelListing(listingId: string): Promise<R> {
+  const l = await db.query.resaleListings.findFirst({ where: eq(resaleListings.id, listingId), columns: { id: true, eventId: true, status: true } });
+  if (!l || !(await producerEvent(l.eventId))) return { ok: false, error: "Anúncio não encontrado." };
+  if (l.status !== "active") return { ok: false, error: l.status === "reserved" ? "Alguém está pagando por este ingresso agora." : "Este anúncio não está mais ativo." };
+  await db.update(resaleListings).set({ status: "cancelled" }).where(eq(resaleListings.id, l.id));
+  revalidatePath(`/painel/evento/${l.eventId}`);
   return { ok: true };
 }

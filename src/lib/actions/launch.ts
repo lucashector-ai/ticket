@@ -32,7 +32,7 @@ export async function signupLaunch(eventSlug: string, kind: "abertura" | "presal
   return { ok: true, message: row ? undefined : "Você já estava na lista." };
 }
 
-/* ---------- produtor: lançamento, fila e revenda ---------- */
+/* ---------- produtor: lançamento e fila ---------- */
 
 async function eventScope(eventId: string) {
   const user = await getSessionUser();
@@ -54,8 +54,6 @@ const launchSchema = z.object({
   presaleAt: z.string().max(20),
   queueMode: z.enum(["auto", "on", "off"]),
   queueLimit: z.number().int().min(10).max(100000),
-  resaleEnabled: z.boolean(),
-  resaleMaxPct: z.number().int().min(50).max(300),
 });
 
 export async function saveLaunch(input: z.input<typeof launchSchema>): Promise<R> {
@@ -76,7 +74,7 @@ export async function saveLaunch(input: z.input<typeof launchSchema>): Promise<R
     // mudou a data: os avisos voltam a sair na nova data
     ...(open?.getTime() !== cur?.salesOpenAt?.getTime() ? { openingSentAt: null } : {}),
     ...(pre?.getTime() !== cur?.presaleAt?.getTime() ? { presaleSentAt: null } : {}),
-    queueMode: d.queueMode, queueLimit: d.queueLimit, resaleEnabled: d.resaleEnabled, resaleMaxPct: d.resaleMaxPct,
+    queueMode: d.queueMode, queueLimit: d.queueLimit,
   }).where(eq(events.id, ev.id));
   revalidatePath(`/painel/evento/${ev.id}`);
   revalidatePath(`/eventos/${ev.slug}`);

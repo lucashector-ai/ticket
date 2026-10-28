@@ -20,18 +20,15 @@ export type LaunchProps = {
   queueMode: "auto" | "on" | "off";
   queueLimit: number;
   queueNow: { active: number; waiting: number };
-  resaleEnabled: boolean;
-  resaleMaxPct: number;
-  resaleNow: { active: number; sold: number };
   signups: Signup[];
 };
 
-/** Aba "Lançamento" do evento: abertura das vendas, pré-venda, fila virtual e revenda. */
+/** Aba "Lançamento" do evento: abertura das vendas, pré-venda e fila virtual. */
 export function PainelLancamento({ p }: { p: LaunchProps }) {
   const router = useRouter();
   const { flash } = useToast();
   const origin = useOrigin();
-  const [f, setF] = useState({ salesOpenAt: p.salesOpenAt, presaleAt: p.presaleAt, hasPresale: !!p.presaleAt, queueMode: p.queueMode, queueLimit: String(p.queueLimit), resaleEnabled: p.resaleEnabled, resaleMaxPct: String(p.resaleMaxPct) });
+  const [f, setF] = useState({ salesOpenAt: p.salesOpenAt, presaleAt: p.presaleAt, hasPresale: !!p.presaleAt, queueMode: p.queueMode, queueLimit: String(p.queueLimit) });
   const [dirty, setDirty] = useState(false);
   const [busy, start] = useTransition();
   const [list, setList] = useState<"presale" | "abertura">(p.signups.some((s) => s.kind === "presale") ? "presale" : "abertura");
@@ -40,7 +37,7 @@ export function PainelLancamento({ p }: { p: LaunchProps }) {
   const save = () => start(async () => {
     const r = await saveLaunch({
       eventId: p.eventId, salesOpenAt: f.salesOpenAt, presaleAt: f.hasPresale ? f.presaleAt : "",
-      queueMode: f.queueMode, queueLimit: Number(f.queueLimit) || 300, resaleEnabled: f.resaleEnabled, resaleMaxPct: Number(f.resaleMaxPct) || 120,
+      queueMode: f.queueMode, queueLimit: Number(f.queueLimit) || 300,
     });
     if (!r.ok) { flash(r.error); return; }
     setDirty(false); flash("Lançamento salvo."); router.refresh();
@@ -131,13 +128,6 @@ export function PainelLancamento({ p }: { p: LaunchProps }) {
                 {([["auto", "Automática"], ["on", "Sempre"], ["off", "Desligada"]] as const).map(([k, l]) => <button key={k} className={f.queueMode === k ? "sg on" : "sg"} type="button" onClick={() => set({ queueMode: k })}>{l}</button>)}
               </div>
               {f.queueMode !== "off" && <label className="fld"><span>Pessoas comprando ao mesmo tempo</span><input type="number" min={10} max={100000} value={f.queueLimit} onChange={(e) => set({ queueLimit: e.target.value })} /><small>{f.queueMode === "auto" ? "Passou disso, a fila liga sozinha e desliga quando o movimento cai." : "A fila fica ligada e libera essa quantidade de cada vez."}</small></label>}
-            </div>
-          </section>
-          <section className="cx">
-            <div className="card-h"><div><h2 className="card-t">Revenda oficial</h2><span className="card-s">Quem não puder ir revende aqui mesmo. Na venda, o QR antigo deixa de valer e o comprador recebe um novo.</span></div></div>
-            <div className="frm">
-              <label className="tg2"><span><b>Permitir revenda</b><small>{p.resaleNow.active} à venda agora · {p.resaleNow.sold} revendidos</small></span><input className="sr" type="checkbox" checked={f.resaleEnabled} onChange={(e) => set({ resaleEnabled: e.target.checked })} /><span className="sw" aria-hidden="true" /></label>
-              {f.resaleEnabled && <label className="fld"><span>Preço máximo na revenda</span><span className="pfx"><input type="number" min={50} max={300} value={f.resaleMaxPct} onChange={(e) => set({ resaleMaxPct: e.target.value })} /><em>% do valor pago</em></span><small>100% = pelo mesmo preço. Limitar o preço afasta cambistas.</small></label>}
             </div>
           </section>
         </aside>

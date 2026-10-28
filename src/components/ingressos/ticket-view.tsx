@@ -33,6 +33,8 @@ export type TicketViewData = {
   wallet: WalletFlags;
   /** revenda oficial: liberada pelo produtor, valores e o anúncio atual */
   resale: { enabled: boolean; faceCents: number; maxCents: number; listing: { id: string; priceCents: number; reserved: boolean } | null };
+  /** o produtor permite transferir */
+  transferEnabled: boolean;
   /** veio do atalho "Revender" da lista: já abre o anúncio */
   openResale?: boolean;
 };
@@ -109,7 +111,7 @@ export function TicketView({ data }: { data: TicketViewData }) {
 
       {/* atalhos: transferir, revender e agenda */}
       <div className="tka">
-        {valid && !listing && (
+        {valid && !listing && data.transferEnabled && (
           <button className="tka-i" type="button" onClick={() => setTransfer(true)}>
             <span className="tka-ic" aria-hidden="true"><IcoArrow /></span>
             <span className="tka-t"><b>Transferir</b><small>Envie para um amigo pelo e-mail</small></span>

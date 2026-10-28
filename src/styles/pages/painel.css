@@ -439,3 +439,15 @@
   .pfx input + em{padding:0 14px 0 6px}
   @media (max-width:640px){.ln-row{grid-template-columns:minmax(0,1fr) auto;row-gap:8px}}
 }
+
+/* Aba Revenda e transferência do evento */
+.pg-painel {
+  .rv-row{grid-template-columns:minmax(0,1fr) auto auto 96px}
+  .rv-row > .b2{justify-self:end}
+  .rv-p{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+  .rv-p small{font-size:12px;font-weight:400;color:#8A8A82}
+  .rv-p small.up{color:#B4530A}
+  .rv-w{display:block;padding:10px 12px;border-radius:10px;background:#FFF4E5;color:#8A4B08;font-size:12.5px;line-height:1.45}
+  .rv-how{margin:0;padding:12px 0 0 18px;border-top:1px solid #F0F0EB;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#6E6E68;line-height:1.45}
+  @media (max-width:640px){.rv-row{grid-template-columns:minmax(0,1fr) auto}.rv-p{align-items:flex-start}}
+}

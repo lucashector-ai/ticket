@@ -4,6 +4,7 @@ import { useState } from "react";
 import { brl } from "@/lib/format";
 import type { EventoData, TierItem } from "./types";
 import type { Tickets } from "./use-tickets";
+import { ResaleCard } from "./resale-card";
 
 type Group = { name: string | null; color: string | null; tiers: TierItem[] };
 
@@ -18,6 +19,8 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
   }
   return (
     <div className="buy" id="ingressos">
+      {/* a lista rola dentro do cartão; o total e o botão ficam sempre à vista no rodapé */}
+      <div className="buy-sc">
       <div className="buy-h">
         <h2>Ingressos</h2>
         <span className="mute" style={{ fontSize: 13 }}>Até {e.maxPerOrder} por pessoa</span>
@@ -88,6 +91,10 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
         <button type="button" onClick={t.applyCoupon} disabled={t.checking}>{t.checking ? "..." : "Aplicar"}</button>
       </div>
       {t.couponMessage && <p className={t.couponMessage.cls} role="status">{t.couponMessage.text}</p>}
+      <ResaleCard e={e} inline />
+      <p className="note">Meia-entrada conforme a lei. A taxa de serviço aparece antes do pagamento. Ingresso digital no app, com QR code.</p>
+      </div>
+      <div className="buy-ft">
       <div className="tot">
         {t.discount > 0 && t.coupon && (
           <div className="disc">
@@ -109,7 +116,7 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
         {t.grouping ? "Reservando…" : "Comprar em grupo"}
       </button>
       <span className="grp-s">{t.nq < 2 ? "Escolha 2 ou mais ingressos para dividir com os amigos." : "Reservamos por 60 min e cada um paga a sua parte pelo link."}</span>
-      <p className="note">Meia-entrada conforme a lei. A taxa de serviço aparece antes do pagamento. Ingresso digital no app, com QR code.</p>
+      </div>
     </div>
   );
 }

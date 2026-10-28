@@ -3,12 +3,12 @@ import { brl } from "@/lib/format";
 import type { EventoData } from "./types";
 
 /** Revenda oficial: ingressos anunciados por outros fãs, do mais barato ao mais caro. */
-export function ResaleCard({ e }: { e: EventoData }) {
+export function ResaleCard({ e, inline = false }: { e: EventoData; inline?: boolean }) {
   const offers = e.resale.offers;
   if (!offers.length) return null;
   const soldOut = e.tiers.length > 0 && e.tiers.every((t) => t.status !== "open" || t.available === 0);
   return (
-    <div className={soldOut ? "rsl hot" : "rsl"} id="revenda">
+    <div className={["rsl", soldOut && "hot", inline && "in-buy"].filter(Boolean).join(" ")} id="revenda">
       <div className="rsl-h">
         <h2>Revenda oficial</h2>
         <span>{offers.length} {offers.length === 1 ? "ingresso" : "ingressos"} de fãs</span>

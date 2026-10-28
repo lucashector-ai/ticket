@@ -60,3 +60,7 @@
 /* menu do celular: botão "Criar evento" com tamanho normal e nada por cima do menu */
 .mm .btn-p{display:inline-flex;justify-content:center;width:100%;height:56px;padding:0 24px;border-bottom:0;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;letter-spacing:0}
 body:has(.mm) .mbar{display:none}
+/* menu da conta na barra de busca da home (fixo no topo, fora da barra) */
+.acct-pop{position:fixed;z-index:90;min-width:230px}
+.acct-who{display:flex;flex-direction:column;gap:2px;padding:10px 12px 12px;margin-bottom:4px;border-bottom:1px solid #F0F0EB;font-size:14.5px;font-weight:600;color:#111}
+.acct-who small{font-size:12.5px;font-weight:400;color:#8A8A90;overflow:hidden;text-overflow:ellipsis}

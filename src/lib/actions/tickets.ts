@@ -21,8 +21,9 @@ export async function transferTicket(_prev: { ok?: boolean; error?: string } | n
   if (!user) return { error: "Faça login para transferir." };
   const parsed = z.object({ ticketId: z.string().uuid(), email: z.string().email("Confira o e-mail.") }).safeParse({ ticketId: formData.get("ticketId"), email: String(formData.get("email") ?? "").trim() });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const t = await db.query.tickets.findFirst({ where: and(eq(tickets.id, parsed.data.ticketId), eq(tickets.holderUserId, user.id)) });
+  const t = await db.query.tickets.findFirst({ where: and(eq(tickets.id, parsed.data.ticketId), eq(tickets.holderUserId, user.id)), with: { event: { columns: { transferEnabled: true } } } });
   if (!t) return { error: "Ingresso não encontrado." };
+  if (!t.event.transferEnabled) return { error: "O produtor deste evento não permite transferir ingressos." };
   if (t.status !== "valid") return { error: "Este ingresso não pode ser transferido." };
   const listed = await db.query.resaleListings.findFirst({ where: and(eq(schema.resaleListings.ticketId, t.id), inArray(schema.resaleListings.status, ["active", "reserved"])), columns: { id: true } });
   if (listed) return { error: "Este ingresso está na revenda. Tire do anúncio antes de transferir." };

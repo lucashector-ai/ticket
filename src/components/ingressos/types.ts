@@ -30,5 +30,7 @@ export type TicketGroup = {
   tier: string;
   /** o produtor permite a revenda oficial deste evento */
   resale: boolean;
+  /** o produtor permite transferir */
+  transfer: boolean;
   tickets: TicketItem[];
 };

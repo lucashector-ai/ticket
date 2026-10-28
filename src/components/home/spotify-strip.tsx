@@ -21,7 +21,7 @@ const FLAGS: Record<string, string> = {
 const LOGIN = `/api/spotify/login?next=${encodeURIComponent("/#pra-voce")}`;
 
 /** "Dos artistas que você ouve": shows a partir do Spotify da pessoa (ou o convite para conectar). */
-export function SpotifyStrip({ spotify, events, onOpen }: { spotify: HomeSpotify; events: HomeEvent[]; onOpen: (slug: string) => void }) {
+export function SpotifyStrip({ spotify, events }: { spotify: HomeSpotify; events: HomeEvent[] }) {
   const router = useRouter();
   const { flash } = useToast();
   const [busy, start] = useTransition();
@@ -68,7 +68,7 @@ export function SpotifyStrip({ spotify, events, onOpen }: { spotify: HomeSpotify
         </div>
         {picks.length > 0 && (
           <div className="grid">
-            {picks.slice(0, 8).map((e, i) => <HomeCard key={e.slug} e={e} delay={`${(i * 0.06).toFixed(2)}s`} onOpen={onOpen} />)}
+            {picks.slice(0, 8).map((e, i) => <HomeCard key={e.slug} e={e} delay={`${(i * 0.06).toFixed(2)}s`} />)}
           </div>
         )}
       </div>

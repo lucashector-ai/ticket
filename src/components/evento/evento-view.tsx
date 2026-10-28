@@ -16,7 +16,6 @@ import { OrganizerCard } from "./organizer-card";
 import { PlayerBar, usePlayer } from "./player";
 import { QueueGate } from "@/components/queue-gate";
 import { LaunchCard } from "./launch-card";
-import { ResaleCard } from "./resale-card";
 import { TicketsCard } from "./tickets-card";
 import type { EventoData } from "./types";
 import { useTickets } from "./use-tickets";
@@ -67,6 +66,13 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
   };
   // antes da abertura (ou na pré-venda sem o link), o cartão de ingressos vira contagem regressiva
   const waiting = e.launch.phase !== "open" && !e.launch.access;
+  /** leva até o cartão de ingressos e dá um destaque nele */
+  const goTickets = () => {
+    const el = document.getElementById("ingressos");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+  };
   const mbarGo = () => {
     if (tickets.nq && !waiting) tickets.checkout();
     else document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -138,6 +144,16 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
                   </div>
                 </li>
               </ul>
+              <div className="et-buy">
+                <div>
+                  <span>{waiting ? (e.launch.phase === "presale" ? "Pré-venda para cadastrados" : e.launch.presaleAt ? "Pré-venda em breve" : "Vendas em breve") : e.minPriceCents > 0 ? "Ingressos a partir de" : "Ingressos"}</span>
+                  <b>{e.minPriceCents > 0 ? brl(e.minPriceCents) : waiting ? "Fique de olho" : "Escolha o seu"}</b>
+                </div>
+                <button className="et-go" type="button" onClick={goTickets}>
+                  {waiting ? (e.launch.phase === "soon" && e.launch.presaleAt ? "Quero a pré-venda" : "Me avise") : "Comprar ingressos"}
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
+                </button>
+              </div>
             </div>
 
             <Description paragraphs={e.paragraphs} />
@@ -184,7 +200,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
           </div>
 
           <aside className="side">
-            {waiting ? <LaunchCard e={e} email={viewerEmail} /> : <><TicketsCard e={e} t={tickets} /><ResaleCard e={e} /></>}
+            {waiting ? <LaunchCard e={e} email={viewerEmail} /> : <TicketsCard e={e} t={tickets} />}
           </aside>
         </div>
 

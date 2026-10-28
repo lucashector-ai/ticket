@@ -13,10 +13,10 @@ import { CategoryGrid } from "./category-grid";
 import { applyFilters, DEFAULT_FILTERS, exploreHref, type Filters } from "./filters";
 import { HomeCard, SkeletonCard } from "./home-card";
 import { Newsletter } from "./newsletter";
-import { QuickView } from "./quick-view";
 import { SpotifyStrip, type HomeSpotify } from "./spotify-strip";
 import type { CityOpt, HomeCategory, HomeEvent } from "./types";
 import { BrandMark, BrandWord } from "@/components/brand-logo";
+import { signOut } from "@/lib/actions/auth";
 
 type Props = {
   user: HeaderUser;
@@ -46,7 +46,6 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
   const [stuck, setStuck] = useState(false);
   const [heroIdx, setHeroIdx] = useState(0);
   const touchX = useRef<number | null>(null);
-  const [openSlug, setOpenSlug] = useState<string | null>(null);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -72,21 +71,15 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* trava o scroll com o modal aberto */
-  useEffect(() => {
-    document.documentElement.style.overflow = openSlug ? "hidden" : "";
-    return () => { document.documentElement.style.overflow = ""; };
-  }, [openSlug]);
-
-  /* vitrine: autoplay a cada 7s (pausa no hover, com modal aberto, com a busca grudada ou com reduced-motion) */
+  /* vitrine: autoplay a cada 7s (pausa no hover, com a busca grudada ou com reduced-motion) */
   const heroCount = heroEvents.length;
   const nextSlide = useCallback(() => setHeroIdx((i) => (i + 1) % Math.max(1, heroCount)), [heroCount]);
   const prevSlide = useCallback(() => setHeroIdx((i) => (i + heroCount - 1) % Math.max(1, heroCount)), [heroCount]);
   useEffect(() => {
-    if (heroCount < 2 || openSlug || stuck) return;
+    if (heroCount < 2 || stuck) return;
     const id = setInterval(() => { if (hovRef.current || reduced()) return; nextSlide(); }, 7000);
     return () => clearInterval(id);
-  }, [heroCount, openSlug, stuck, nextSlide]);
+  }, [heroCount, stuck, nextSlide]);
 
   const scrollTo = useCallback((id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" });
@@ -117,13 +110,25 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
     else focusSearch();
   }, [filters, router, focusSearch]);
 
-  const close = useCallback(() => setOpenSlug(null), []);
-  const openEv = useCallback((slug: string) => setOpenSlug(slug), []);
-
   const view = useMemo(() => applyFilters(events, filters, favs), [events, filters, favs]);
   const top = useMemo(() => [...events].sort((a, b) => b.popularity - a.popularity).slice(0, 5), [events]);
   const feat = useMemo(() => events.find((e) => e.slug === "marea") ?? null, [events]);
-  const openEvent = useMemo(() => (openSlug ? [...events, ...heroEvents].find((e) => e.slug === openSlug) ?? null : null), [openSlug, events, heroEvents]);
+
+  /* menu da conta (fora da barra de busca, que recorta o que passa da borda) */
+  const [acct, setAcct] = useState(false);
+  const [acctAt, setAcctAt] = useState({ top: 72, right: 16 });
+  useEffect(() => {
+    if (!acct) return;
+    const close = () => setAcct(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    // fecha só quando a pessoa rola de verdade (a inércia do trackpad logo após o clique não conta)
+    const y0 = window.scrollY;
+    const onScroll = () => { if (Math.abs(window.scrollY - y0) > 80) close(); };
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { window.removeEventListener("click", close); window.removeEventListener("keydown", onKey); window.removeEventListener("scroll", onScroll); };
+  }, [acct]);
 
   const ok = !loading && !swap;
   const first = showAll ? view : view.slice(0, FIRST_N);
@@ -152,7 +157,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
         <section className="hero2" aria-labelledby="hero-t">
           <h1 className="sr" id="hero-t">Descubra os eventos que valem sair de casa.</h1>
           <div
-            className={openSlug ? "bnx paused" : "bnx"}
+            className="bnx"
             aria-roledescription="carrossel"
             aria-label="Eventos em destaque"
             onMouseEnter={() => { hovRef.current = true; }}
@@ -236,10 +241,21 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
                 </button>
                 <span className="qb-act">
                   <Link className="qb-lk" href="#categorias">Categorias</Link>
-                  <Link className="qb-ib" href={user ? "/meus-ingressos" : "/entrar"} aria-label={user ? "Sua conta" : "Entrar"}>
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="4" /><path d="M4.5 20.5c1.3-3.8 4.2-5.8 7.5-5.8s6.2 2 7.5 5.8" /></svg>
-                    {favs.length > 0 && <span className="badge">{favs.length}</span>}
-                  </Link>
+                  {user ? (
+                    <button className="qb-ib" type="button" aria-label="Sua conta" aria-haspopup="menu" aria-expanded={acct} onClick={(ev) => {
+                      ev.stopPropagation();
+                      const r = ev.currentTarget.getBoundingClientRect();
+                      setAcctAt({ top: r.bottom + 10, right: Math.max(12, window.innerWidth - r.right - 8) });
+                      setAcct((v) => !v);
+                    }}>
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="4" /><path d="M4.5 20.5c1.3-3.8 4.2-5.8 7.5-5.8s6.2 2 7.5 5.8" /></svg>
+                      {favs.length > 0 && <span className="badge">{favs.length}</span>}
+                    </button>
+                  ) : (
+                    <Link className="qb-ib" href="/entrar" aria-label="Entrar">
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="4" /><path d="M4.5 20.5c1.3-3.8 4.2-5.8 7.5-5.8s6.2 2 7.5 5.8" /></svg>
+                    </Link>
+                  )}
                   <Link className="qb-new" href="/criar-evento">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" /></svg>
                     <span>Criar evento</span>
@@ -272,7 +288,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
               {ok && view.length > 0 && (
                 <div className="grid">
                   {first.map((e, i) => (
-                    <HomeCard key={e.slug} e={e} delay={`${(Math.min(i, 8) * 0.06).toFixed(2)}s`} onOpen={openEv} />
+                    <HomeCard key={e.slug} e={e} delay={`${(Math.min(i, 8) * 0.06).toFixed(2)}s`} />
                   ))}
                 </div>
               )}
@@ -297,7 +313,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
         </section>
 
         {/* SPOTIFY: shows dos artistas que a pessoa ouve */}
-        <SpotifyStrip spotify={spotify} events={events} onOpen={openEv} />
+        <SpotifyStrip spotify={spotify} events={events} />
 
         {/* FAIXA ESPECIAL (Marea) */}
         {feat && (
@@ -340,7 +356,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
             {top.map((e, i) => (
               <article className="topi rv" key={e.slug}>
                 <span className="topn" aria-hidden="true">{i + 1}</span>
-                <HomeCard e={e} rank={i + 1} className="card topc" onOpen={openEv} />
+                <HomeCard e={e} rank={i + 1} className="card topc" />
               </article>
             ))}
           </div>
@@ -361,9 +377,18 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
         </section>
       </main>
 
+      {acct && user && (
+        <div className="umenu-pop acct-pop" role="menu" style={acctAt} onClick={(ev) => ev.stopPropagation()}>
+          <span className="acct-who">{user.name?.split(" ")[0] || "Sua conta"}<small>{user.email}</small></span>
+          <Link href="/meus-ingressos" role="menuitem">Meus ingressos</Link>
+          <Link href="/explorar?salvos=1" role="menuitem">Eventos salvos{favs.length > 0 ? ` (${favs.length})` : ""}</Link>
+          <Link href="/painel" role="menuitem">Painel do produtor</Link>
+          <Link href="/meus-eventos" role="menuitem">Meus eventos</Link>
+          <form action={signOut}><button type="submit" role="menuitem">Sair</button></form>
+        </div>
+      )}
       <SiteFooter />
 
-      {openEvent && <QuickView e={openEvent} onClose={close} />}
     </div>
   );
 }

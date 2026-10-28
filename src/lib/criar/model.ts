@@ -30,6 +30,9 @@ export type Draft = {
   sessions: DraftSession[];
   autoMeia: boolean;
   fee: boolean;
+  /** o fã pode transferir o ingresso / revender na revenda oficial */
+  transfer: boolean;
+  resale: boolean;
   sectors: DraftSector[];
   map: "empty" | "sketch" | "done";
   prompt: string;
@@ -66,7 +69,7 @@ export function emptyDraft(): Draft {
   return {
     mode: "unica", tmode: "simples", title: "", cat: "Show", catOther: "", age: "18+", desc: "",
     lineup: [], media: {}, coupons: [], venue: { name: "", city: "" }, sessions: [],
-    autoMeia: true, fee: true,
+    autoMeia: true, fee: true, transfer: true, resale: true,
     sectors: [{ id: "k1", name: "Ingressos", color: "#D3F55B", open: true, types: [{ id: "t1", kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "" }] }],
     map: "empty", prompt: "", sketchUrl: "", plan: null, vis: "publico", saleStart: "", refund: DEFAULT_REFUND,
   };

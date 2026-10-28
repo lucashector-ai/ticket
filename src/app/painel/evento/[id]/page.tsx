@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { PainelEvento, type EventoPainelProps } from "@/components/painel/evento";
 import { emailEnabled } from "@/lib/email";
 import { salePhase } from "@/lib/launch";
+import { resaleCap } from "@/lib/resale";
 import { listEventCoupons, listOrders, listParticipants, revenueByType } from "@/lib/data/painel";
 import { painelAccess } from "@/lib/painel/access";
 import { brl, dateNice, initials } from "@/lib/format";
@@ -33,9 +34,9 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
   if (!e) notFound();
   const now = nowMs();
 
-  const { eventSignups, queueEntries, resaleListings } = schema;
+  const { eventSignups, queueEntries, resaleListings, ticketTransfers } = schema;
   const fresh = new Date(nowMs() - 60_000);
-  const [orders, people, byType, cps, sessions, signups, [qActive], [qWaiting], resale] = await Promise.all([
+  const [orders, people, byType, cps, sessions, signups, [qActive], [qWaiting], resale, [transfers]] = await Promise.all([
     listOrders([e.id], new Map([[e.id, e.absorbFee]])),
     listParticipants(e.id),
     revenueByType(e.id),
@@ -44,7 +45,11 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
     db.query.eventSignups.findMany({ where: eq(eventSignups.eventId, e.id), orderBy: (x, { desc }) => [desc(x.createdAt)] }),
     db.select({ n: count() }).from(queueEntries).where(and(eq(queueEntries.eventId, e.id), isNotNull(queueEntries.admittedAt), gt(queueEntries.lastSeen, fresh))),
     db.select({ n: count() }).from(queueEntries).where(and(eq(queueEntries.eventId, e.id), isNull(queueEntries.admittedAt), gt(queueEntries.lastSeen, fresh))),
-    db.select({ status: resaleListings.status }).from(resaleListings).where(eq(resaleListings.eventId, e.id)),
+    db.query.resaleListings.findMany({
+      where: eq(resaleListings.eventId, e.id), orderBy: (x, { desc }) => [desc(x.createdAt)],
+      with: { ticket: { columns: { code: true, halfPrice: true } }, ticketType: { columns: { name: true, sector: true, priceCents: true } } },
+    }),
+    db.select({ n: count() }).from(ticketTransfers).innerJoin(schema.tickets, eq(schema.tickets.id, ticketTransfers.ticketId)).where(and(eq(schema.tickets.eventId, e.id), eq(ticketTransfers.status, "accepted"))),
   ]);
   const paid = orders.filter((o) => o.status === "paid");
   const refunded = orders.filter((o) => o.status === "refunded");
@@ -82,7 +87,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
   const st = statusOf(e, now);
   const days = Math.ceil((e.startAt.getTime() - now) / DAY);
   const props: EventoPainelProps = {
-    tab: aba === "participantes" || aba === "checkin" || aba === "financeiro" || aba === "lancamento" ? aba : "geral",
+    tab: aba === "participantes" || aba === "checkin" || aba === "financeiro" || aba === "lancamento" || aba === "revenda" ? aba : "geral",
     ev: {
       id: e.id, slug: e.slug, title: e.title, flyerId: e.flyerId, when: whenLabel(e), where: whereLabel(e), status: st.label, stCls: st.cls,
       countdown: ended(e, now) ? "" : days <= 0 ? "É hoje" : days === 1 ? "Amanhã" : `Faltam ${days} dias`, draft: e.status === "draft", absorbFee: e.absorbFee,
@@ -123,9 +128,24 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
     emailOn: emailEnabled(),
     queueMode: (["auto", "on", "off"].includes(e.queueMode) ? e.queueMode : "auto") as "auto" | "on" | "off", queueLimit: e.queueLimit,
     queueNow: { active: qActive?.n ?? 0, waiting: qWaiting?.n ?? 0 },
-    resaleEnabled: e.resaleEnabled, resaleMaxPct: e.resaleMaxPct,
-    resaleNow: { active: resale.filter((r) => r.status === "active" || r.status === "reserved").length, sold: resale.filter((r) => r.status === "sold").length },
     signups: signups.map((x) => ({ id: x.id, kind: x.kind === "presale" ? "presale" : "abertura", email: x.email, when: `${dm(x.createdAt)}, ${hm(x.createdAt)}`, notified: !!x.notifiedAt, used: !!x.usedAt, token: x.token })),
+  };
+  const rsSold = resale.filter((r) => r.status === "sold");
+  props.revenda = {
+    eventId: e.id, transferEnabled: e.transferEnabled, resaleEnabled: e.resaleEnabled, resaleMaxPct: e.resaleMaxPct,
+    kpis: {
+      active: resale.filter((r) => r.status === "active" || r.status === "reserved").length, sold: rsSold.length,
+      volume: brl(rsSold.reduce((s, r) => s + r.priceCents, 0)), transfers: transfers?.n ?? 0,
+    },
+    listings: resale.map((r) => {
+      const { faceCents } = resaleCap(r.ticketType.priceCents, r.ticket.halfPrice, 100);
+      return {
+        id: r.id, code: r.ticket.code, what: [r.ticketType.sector, r.ticketType.name].filter(Boolean).join(" · ") + (r.ticket.halfPrice ? " (meia)" : ""),
+        price: brl(r.priceCents), pct: faceCents ? Math.round((r.priceCents / faceCents) * 100) : 100,
+        status: (["active", "reserved", "sold", "cancelled"].includes(r.status) ? r.status : "cancelled") as "active" | "reserved" | "sold" | "cancelled",
+        when: `${dm(r.soldAt ?? r.createdAt)}, ${hm(r.soldAt ?? r.createdAt)}`,
+      };
+    }),
   };
   return <PainelEvento {...props} />;
 }

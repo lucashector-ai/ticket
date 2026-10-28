@@ -623,3 +623,27 @@
   .rsl-me{flex:none;height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:999px;background:#F1F1EC;font-size:12px;font-weight:600;color:#55554E}
   .rsl-more{display:block;margin-top:8px;font-size:12.5px;color:#8A8A90;text-align:center}
 }
+
+/* cartão de ingressos: lista rola dentro dele, total e botão sempre no rodapé */
+.pg-evento {
+  .buy .rsl.in-buy{margin:16px 0 0;padding:16px;border:0;border-radius:18px;background:#F7F7F2;box-shadow:none}
+  .buy-ft .tot{margin-top:16px}
+  @media (min-width:1025px){
+    .side .buy{display:flex;flex-direction:column;max-height:calc(100vh - 112px);padding:0;overflow:hidden;border:1.5px solid #111}
+    .side .buy-sc{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 22px 18px;scrollbar-width:thin}
+    .side .buy-ft{flex:none;padding:14px 22px 16px;background:#fff;border-top:1px solid #EAEAEA;box-shadow:0 -18px 28px -24px rgba(17,17,17,.35)}
+    .side .buy-ft .tot{margin-top:0;padding-top:0;border-top:0;gap:10px}
+    .side .buy-ft .tot b{font-size:26px}
+    .side .buy-ft .go{height:52px}
+    .side .buy-ft .grp-b{height:40px;margin-top:8px;font-size:13.5px}
+    .side .buy-ft .grp-s{margin-top:4px;font-size:11.5px}
+  }
+  /* chamada para os ingressos logo abaixo do nome do evento */
+  .et-buy{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:22px;padding:14px 14px 14px 22px;border-radius:22px;background:#111;color:#fff}
+  .et-buy span{display:block;font-size:13px;color:rgba(255,255,255,.65)}
+  .et-buy b{display:block;margin-top:2px;font:600 22px/1.1 'Inter Tight',sans-serif;letter-spacing:-.02em}
+  .et-go{flex:none;display:inline-flex;align-items:center;gap:8px;height:50px;padding:0 22px;border-radius:999px;background:#D3F55B;color:#111;font-size:15px;font-weight:700;transition:transform .3s var(--ease)}
+  .et-go:hover{transform:scale(1.03)}
+  .buy.flash{animation:buyFlash 1.2s ease}
+}
+@keyframes buyFlash{0%,100%{box-shadow:0 30px 60px -40px rgba(17,17,17,.25)}30%{box-shadow:0 0 0 6px #D3F55B,0 30px 60px -40px rgba(17,17,17,.25)}}

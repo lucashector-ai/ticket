@@ -162,7 +162,7 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
             const can = t.status === "valid" && !moved[t.id];
             return (
               <div className="tka">
-                {can && (
+                {can && f.transfer && (
                   <button className="tka-i" type="button" onClick={() => setTransfer({ group: f, ticket: t, cur: idx(f) + 1 })}>
                     <span className="tka-ic" aria-hidden="true"><IcoArrow /></span>
                     <span className="tka-t"><b>Transferir</b><small>Envie para um amigo pelo e-mail</small></span>
