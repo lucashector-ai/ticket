@@ -64,7 +64,6 @@ export function TicketView({ data }: { data: TicketViewData }) {
           <h1 className="mi-t">Seu ingresso</h1>
           <p className="mi-s">Mostre este QR code na entrada. Ele funciona mesmo sem internet.</p>
         </div>
-        <span className={`tk-st tk-st-${status}`}>{TICKET_STATUS_LABEL[status]}</span>
       </div>
 
       <article className="tkb" aria-label={`Ingresso para ${data.title}`}>
@@ -74,7 +73,7 @@ export function TicketView({ data }: { data: TicketViewData }) {
         <div className="tkb-i">
           <span className="tkb-k"><span className="tkb-dot" aria-hidden="true" />{kicker}</span>
           <h2 className="tkb-t">{data.title}</h2>
-          <ul className="tkb-l">
+          <ul className="tkb-g">
             <li>
               <span className="tkb-ic" aria-hidden="true"><IcoCalendar /></span>
               <div><b>{data.dateFull}</b>{data.doors && <span className="tkb-sub">{data.doors}</span>}</div>
@@ -89,36 +88,51 @@ export function TicketView({ data }: { data: TicketViewData }) {
             </li>
             <li>
               <span className="tkb-ic" aria-hidden="true"><IcoUser /></span>
-              <div><b>{t.holderName ?? "Titular não informado"}</b><span className="tkb-sub">{movedTo ? `Transferido para ${movedTo}` : `Status: ${TICKET_STATUS_LABEL[status]}`}</span></div>
+              <div><b>{t.holderName ?? "Titular não informado"}</b><span className="tkb-sub">{movedTo ? `Transferido para ${movedTo}` : "Titular do ingresso"}</span></div>
             </li>
           </ul>
-          <div className="tkb-a">
-            {valid && data.upcoming && (
-              <WalletButtons code={t.code} flags={data.wallet} />
-            )}
-            {valid && !listing && (
-              <button className="btn-g" type="button" onClick={() => setTransfer(true)}><IcoArrow />Transferir</button>
-            )}
-            {valid && data.upcoming && data.resale.enabled && !listing && (
-              <button className="btn-g" type="button" onClick={() => setResell(true)}>Revender</button>
-            )}
-            <Link className="btn-l" href="/meus-ingressos">Voltar</Link>
-          </div>
-          {valid && listing && (
-            <div className="rs-on">
-              <span><b>À venda na revenda por {money(listing.priceCents)}</b>{listing.reserved ? "Alguém está pagando por ele agora." : "Enquanto ninguém comprar, ele continua valendo para você."}</span>
-              <button type="button" onClick={() => void unlist()}>Tirar da revenda</button>
-            </div>
+          {valid && data.upcoming && (data.wallet.apple || data.wallet.google) && (
+            <div className="tkb-w"><WalletButtons code={t.code} flags={data.wallet} pills /></div>
           )}
         </div>
         <div className={valid ? "tkb-s" : "tkb-s off"}>
+          <span className={`tk-st sm tk-st-${status}`}>{TICKET_STATUS_LABEL[status]}</span>
           <button className="qr-b" type="button" onClick={() => setQrOpen(true)} aria-label="Ampliar QR code do ingresso">
             <div className="qr" dangerouslySetInnerHTML={{ __html: t.qrSvg }} />
           </button>
           <span className="tkb-code">{t.code}</span>
-          <span className="tkb-hold">{holder}</span>
+          {!valid && <span className="tkb-hold">{holder}</span>}
         </div>
       </article>
+
+      {/* atalhos: transferir, revender e agenda */}
+      <div className="tka">
+        {valid && !listing && (
+          <button className="tka-i" type="button" onClick={() => setTransfer(true)}>
+            <span className="tka-ic" aria-hidden="true"><IcoArrow /></span>
+            <span className="tka-t"><b>Transferir</b><small>Envie para um amigo pelo e-mail</small></span>
+            <IcoChevron />
+          </button>
+        )}
+        {valid && data.upcoming && data.resale.enabled && (listing ? (
+          <div className="tka-i on">
+            <span className="tka-ic" aria-hidden="true"><IcoTag /></span>
+            <span className="tka-t"><b>À venda por {money(listing.priceCents)}</b><small>{listing.reserved ? "Alguém está pagando agora" : "Vale para você até alguém comprar"}</small></span>
+            <button className="tka-x" type="button" onClick={() => void unlist()}>Tirar da revenda</button>
+          </div>
+        ) : (
+          <button className="tka-i" type="button" onClick={() => setResell(true)}>
+            <span className="tka-ic" aria-hidden="true"><IcoTag /></span>
+            <span className="tka-t"><b>Revender</b><small>Anuncie com segurança na Tickets Win</small></span>
+            <IcoChevron />
+          </button>
+        ))}
+        <a className="tka-i" href={`/api/ingressos/${t.code}/ics`} download={`ticketswin-${t.code}.ics`}>
+          <span className="tka-ic" aria-hidden="true"><IcoCalendar /></span>
+          <span className="tka-t"><b>Adicionar à agenda</b><small>Google, Apple ou Outlook</small></span>
+          <IcoChevron />
+        </a>
+      </div>
 
       <HelpStrip />
 
@@ -166,3 +180,6 @@ export function TicketView({ data }: { data: TicketViewData }) {
     </main>
   );
 }
+
+const IcoChevron = () => <svg className="tka-c" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>;
+const IcoTag = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12V4h8l9 9-8 8z" /><circle cx="7.5" cy="8.5" r="1.4" /></svg>;

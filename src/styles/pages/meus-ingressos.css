@@ -678,3 +678,34 @@
   .rs-get{font-size:16px}
   .rs-sum small{color:#8A8A82}
 }
+
+/* página do ingresso: informações em grade, carteiras lado a lado e atalhos abaixo do ingresso */
+.pg-meus-ingressos {
+  .tkb-g{list-style:none;margin:26px 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 28px}
+  .tkb-g li{display:flex;align-items:center;gap:12px;min-width:0}
+  .tkb-g li > div{min-width:0}
+  .tkb-g b{display:block;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+  .tkb-w{display:flex;flex-wrap:wrap;gap:10px;margin-top:auto;padding-top:26px}
+  .wl-p{display:inline-flex;align-items:center;gap:9px;height:44px;padding:0 18px 0 16px;border-radius:999px;font-size:14px;font-weight:600;transition:transform .25s,background .25s}
+  .wl-p:hover{transform:translateY(-1px)}
+  .wl-pa{background:#FFFFFF;color:#111}
+  .wl-pg{background:rgba(255,255,255,.1);color:#FFFFFF}
+  .wl-pg:hover{background:rgba(255,255,255,.16)}
+  .tk-st.sm{height:30px;padding:0 12px;font-size:12.5px;gap:7px}
+  .tk-st.sm::before{width:7px;height:7px}
+  .tka{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:20px}
+  .tka-i{display:flex;align-items:center;gap:14px;min-height:84px;padding:16px 18px 16px 20px;border-radius:22px;background:#F4F4F1;color:#111;text-align:left;transition:background .25s,transform .25s}
+  button.tka-i,a.tka-i{cursor:pointer}
+  button.tka-i:hover,a.tka-i:hover{background:#EDEDE8;transform:translateY(-1px)}
+  .tka-ic{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#FFFFFF;color:#111;box-shadow:0 1px 2px rgba(17,17,17,.06)}
+  .tka-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+  .tka-t b{font-size:15.5px;font-weight:600}
+  .tka-t small{font-size:13px;color:#77777C;overflow:hidden;text-overflow:ellipsis}
+  .tka-c{flex:none;color:#9A9AA0;transition:transform .25s}
+  .tka-i:hover .tka-c{transform:translateX(2px)}
+  .tka-i.on{background:#EEFBC4}
+  .tka-x{flex:none;height:34px;padding:0 12px;border-radius:999px;background:#111;color:#fff;font-size:12.5px;font-weight:600}
+  @media (max-width:1100px){.tkb-g{grid-template-columns:minmax(0,1fr);gap:12px}}
+  @media (max-width:900px){.tka{grid-template-columns:minmax(0,1fr)}}
+  @media (max-width:760px){.tkb-w{flex-wrap:nowrap}.wl-p{flex:1;justify-content:center;padding:0 12px;font-size:13.5px}}
+}

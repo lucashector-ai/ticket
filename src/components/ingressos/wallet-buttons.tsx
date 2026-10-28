@@ -20,8 +20,11 @@ const MSG: Record<string, string> = {
   "google-erro": "Não foi possível abrir o Google Wallet agora.",
 };
 
-/** "Adicionar à Apple Wallet" / "Salvar no Google Wallet" (os que estiverem configurados) + agenda. */
-export function WalletButtons({ code, flags }: { code: string; flags: WalletFlags }) {
+/**
+ * "Adicionar à Apple Wallet" / "Salvar no Google Wallet" (os que estiverem configurados) + agenda.
+ * `pills`: só as duas carteiras, em botões curtos lado a lado (página do ingresso; a agenda vai nos atalhos).
+ */
+export function WalletButtons({ code, flags, pills = false }: { code: string; flags: WalletFlags; pills?: boolean }) {
   const { flash } = useToast();
   // volta das rotas de carteira com ?wallet=… quando algo falha
   useEffect(() => {
@@ -32,6 +35,12 @@ export function WalletButtons({ code, flags }: { code: string; flags: WalletFlag
     u.searchParams.delete("wallet");
     window.history.replaceState(null, "", u.toString());
   }, [flash]);
+  if (pills) return (
+    <>
+      {flags.apple && <a className="wl-p wl-pa" href={`/api/ingressos/${code}/apple`}><AppleIcon />Apple Wallet</a>}
+      {flags.google && <a className="wl-p wl-pg" href={`/api/ingressos/${code}/google`}><GoogleIcon />Google Wallet</a>}
+    </>
+  );
   return (
     <>
       {flags.apple && <a className="btn-w wl-a" href={`/api/ingressos/${code}/apple`}><AppleIcon />Adicionar à Apple Wallet</a>}
