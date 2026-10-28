@@ -3,7 +3,8 @@
 export const AREA_KINDS = ["setor", "palco", "bar", "banheiro", "entrada", "outro"] as const;
 export type AreaKind = (typeof AREA_KINDS)[number];
 export const KIND_NAME: Record<AreaKind, string> = { setor: "Setor", palco: "Palco", bar: "Bar", banheiro: "Banheiros", entrada: "Entrada", outro: "Outro" };
-export const KIND_COLOR: Record<Exclude<AreaKind, "setor">, string> = { palco: "#3A3A40", bar: "#55555A", banheiro: "#E9E7E0", entrada: "#CFCFC8", outro: "#8A8A90" };
+/** Cores das áreas que não são setor, no estilo "massinha" do mapa 3D (palco em coral, o resto em tons suaves). */
+export const KIND_COLOR: Record<Exclude<AreaKind, "setor">, string> = { palco: "#FF6A4D", bar: "#8CC79E", banheiro: "#BFD8EE", entrada: "#E9DCC0", outro: "#D5CDBE" };
 
 /** x/y: canto de cima à esquerda, a partir do fundo do local (y = 0 é a parede do fundo). */
 export type PlanArea = { id: string; name: string; kind: AreaKind; x: number; y: number; w: number; d: number; h: number; cap: number; sector: string | null };

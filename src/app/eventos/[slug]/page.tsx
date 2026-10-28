@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DEFAULT_TEASER } from "@/lib/criar/model";
 import { notFound } from "next/navigation";
 import { FavoritesHydrator } from "@/components/favorites";
 import { SiteFooter } from "@/components/site-footer";
@@ -117,7 +118,7 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
         }];
       }) : [],
     },
-    launch: { phase: salePhase(e), openAt: e.salesOpenAt?.toISOString() ?? null, presaleAt: e.presaleAt?.toISOString() ?? null, access },
+    launch: { phase: salePhase(e), openAt: e.salesOpenAt?.toISOString() ?? null, presaleAt: e.presaleAt?.toISOString() ?? null, access, page: { ...DEFAULT_TEASER, ...e.launchPage } },
     minPriceCents: open.length ? Math.min(...open.map((t) => t.priceCents)) : e.minPriceCents,
   };
 }

@@ -1,3 +1,5 @@
+import type { Teaser } from "@/lib/criar/model";
+
 /* Dados serializáveis da página do evento (server → client). */
 
 export type LineupItem = {
@@ -82,7 +84,7 @@ export type EventoData = {
   resale: { offers: { id: string; label: string; color: string | null; session: string | null; priceCents: number; totalCents: number; mine: boolean }[] };
   /** fila virtual ligada (automática ou sempre) */
   queueOn: boolean;
-  launch: { phase: "soon" | "presale" | "open"; openAt: string | null; presaleAt: string | null; access: boolean };
+  launch: { phase: "soon" | "presale" | "open"; openAt: string | null; presaleAt: string | null; access: boolean; page: Teaser };
 };
 
 export type VenueMapData = {

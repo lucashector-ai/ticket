@@ -9,7 +9,8 @@ import { Spark, uploadImage, UploadIcon, type Ctx } from "./shared";
 
 const GEN_LABELS = ["Lendo o rascunho e as anotações", "Identificando palco, setores e circulação", "Estimando medidas e lotação", "Montando o modelo 3D"];
 
-export function MapaPane({ c }: { c: Ctx }) {
+/** `bare`: dentro da etapa Mapa do criar evento, que já tem o próprio título. */
+export function MapaPane({ c, bare = false }: { c: Ctx; bare?: boolean }) {
   const { d, set, upd } = c;
   const [genStep, setGenStep] = useState(0);
   const [generating, setGenerating] = useState(false);
@@ -82,8 +83,8 @@ export function MapaPane({ c }: { c: Ctx }) {
   const plan = d.map === "done" ? d.plan : null;
   return (
     <div className="pane">
-      <div className="ai-h"><h2 className="ce-ph">Mapa 3D do local</h2><span className="ai-badge"><Spark />Gerado por IA</span></div>
-      <p className="pp">Mande uma foto de um rascunho, uma planta ou só descreva o espaço. A IA identifica palco, setores, bares e entradas e monta o mapa 3D que o público usa para escolher onde ficar. Depois você ajusta tudo no editor.</p>
+      {!bare && <div className="ai-h"><h2 className="ce-ph">Mapa 3D do local</h2><span className="ai-badge"><Spark />Gerado por IA</span></div>}
+      {!bare && <p className="pp">Mande uma foto de um rascunho, uma planta ou só descreva o espaço. A IA identifica palco, setores, bares e entradas e monta o mapa 3D que o público usa para escolher onde ficar. Depois você ajusta tudo no editor.</p>}
       <input ref={file} className="sr" type="file" accept="image/jpeg,image/png,image/webp" tabIndex={-1} aria-label="Rascunho ou planta do local" onChange={(e) => void onSketch(e.target.files?.[0])} />
 
       {generating ? (

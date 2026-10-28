@@ -573,17 +573,6 @@
   .ln-pulse{width:7px;height:7px;border-radius:50%;background:#D3F55B;box-shadow:0 0 0 0 rgba(211,245,91,.6);animation:lnPulse 1.8s ease-out infinite}
   .ln-t{position:relative;margin:16px 0 14px;font-family:'Inter Tight',sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em;color:#fff}
   .lnch{container-type:inline-size}
-  /* relógio de dígitos que viram */
-  .fc{position:relative;display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:start;gap:0 5px}
-  .fc-u{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
-  .fc-ds{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:100%}
-  .fc-d{position:relative;aspect-ratio:.72;border-radius:clamp(6px,2.4cqw,10px);background:linear-gradient(180deg,#2C2C2C 0 50%,#232323 50% 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 8px 16px -8px rgba(0,0,0,.7);display:grid;place-items:center;overflow:hidden;perspective:240px}
-  .fc-d::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.6);box-shadow:0 1px 0 rgba(255,255,255,.04)}
-  .fc-d::before{content:"";position:absolute;left:-2px;right:-2px;top:calc(50% - 3px);height:6px;background:radial-gradient(circle at 0 50%,#111 2.5px,transparent 3px),radial-gradient(circle at 100% 50%,#111 2.5px,transparent 3px);z-index:1}
-  .fc-d b{display:block;font-family:'Inter Tight',sans-serif;font-size:clamp(20px,9cqw,40px);font-weight:600;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;color:#fff;transform-origin:50% 50%;animation:fcFlip .5s cubic-bezier(.3,.8,.25,1) both}
-  .fc-u-s .fc-d b{color:#D3F55B}
-  .fc-sep{font-style:normal;font-family:'Inter Tight',sans-serif;font-size:clamp(18px,7cqw,30px);font-weight:600;color:rgba(255,255,255,.35);line-height:1;padding-top:clamp(8px,4.5cqw,18px);animation:fcBlink 1s steps(1) infinite}
-  .fc-l{font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em}
   .mini-cd{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
   .ln-when{position:relative;display:block;margin-top:12px;font-size:13.5px;color:rgba(255,255,255,.7);text-align:center}
   .ln-steps{position:relative;list-style:none;margin:20px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
@@ -660,6 +649,3 @@
   .buy.flash{animation:buyFlash 1.2s ease}
 }
 @keyframes buyFlash{0%,100%{box-shadow:0 30px 60px -40px rgba(17,17,17,.25)}30%{box-shadow:0 0 0 6px #D3F55B,0 30px 60px -40px rgba(17,17,17,.25)}}
-@keyframes fcFlip{from{transform:rotateX(-80deg);opacity:0}60%{opacity:1}to{transform:none;opacity:1}}
-@keyframes fcBlink{50%{opacity:.25}}
-@media (prefers-reduced-motion:reduce){.pg-evento .fc-d b,.pg-evento .fc-sep{animation:none}}

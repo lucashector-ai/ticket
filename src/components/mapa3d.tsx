@@ -16,7 +16,7 @@ function shade(hex: string, f: number) {
 
 /** Nome e cor com que cada área aparece: setores usam o nome/cor do setor ligado. */
 export type AreaLook = (a: PlanArea) => { name: string; color: string };
-export const fixedLook = (a: PlanArea) => ({ name: a.name, color: a.kind === "setor" ? "#8A8A90" : KIND_COLOR[a.kind] });
+export const fixedLook = (a: PlanArea) => ({ name: a.name, color: a.kind === "setor" ? "#B9B2A4" : KIND_COLOR[a.kind] });
 
 /** `labels="popup"`: o nome de cada área fica num balão sempre aberto, de frente para quem vê (página do evento). */
 export function MapStage({ plan, look, sel, onPick, view, setView, tag, labels = "face" }: {
@@ -37,11 +37,14 @@ export function MapStage({ plan, look, sel, onPick, view, setView, tag, labels =
         <div className="m3-floor" style={{ left: ox - 20, top: oy - 20, right: SCENE_W - ox - plan.width * k - 20, bottom: SCENE_H - oy - plan.depth * k - 20 }} />
         {plan.areas.map((a) => {
           const { name, color } = look(a);
-          const dark = a.kind === "palco" || a.kind === "bar" || a.kind === "outro";
+          const dark = a.kind === "palco";
           const hpx = Math.min(48, Math.max(3, a.h * k * 3));
-          const style = { left: ox + a.x * k, top: oy + a.y * k, width: a.w * k, height: a.d * k, "--h": `${hpx}px`, "--c": color, "--cs": shade(color, 0.72) } as React.CSSProperties;
+          // cantos arredondados proporcionais ao tamanho (áreas pequenas ficam "pílulas")
+          const r = Math.min(14, Math.max(4, Math.min(a.w, a.d) * k * 0.22));
+          const style = { left: ox + a.x * k, top: oy + a.y * k, width: a.w * k, height: a.d * k, "--h": `${hpx}px`, "--c": color, "--cs": shade(color, 0.8), "--cd": shade(color, 0.68), "--r": `${r}px` } as React.CSSProperties;
           return (
             <button key={a.id} className={`ar${dark ? " dark" : ""}${sel === a.id ? " sel" : ""}`} type="button" onClick={() => onPick(a.id)} aria-label={name} style={style}>
+              <span className="fc fsh" aria-hidden="true" />
               <span className="fc ftop">{labels === "face" && <span className="fc-l" style={{ transform: `rotateZ(${-view.rot}deg)` }}>{name}</span>}</span>
               <span className="fc s" /><span className="fc e" /><span className="fc n" /><span className="fc w" />
             </button>

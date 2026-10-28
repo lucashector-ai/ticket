@@ -71,7 +71,7 @@ export async function saveLaunch(input: z.input<typeof launchSchema>): Promise<R
   const cur = await db.query.events.findFirst({ where: eq(events.id, ev.id), columns: { salesOpenAt: true, presaleAt: true, draft: true } });
   // o formulário de criação guarda o "Início das vendas": acompanha a nova abertura para não voltar a data antiga ao editar
   const draft = cur?.draft as { form?: Record<string, unknown> } | null;
-  const synced = draft?.form ? { draft: { ...draft, form: { ...draft.form, saleStart: open ? brDateTime(open) : "" } } } : {};
+  const synced = draft?.form ? { draft: { ...draft, form: { ...draft.form, saleStart: open ? brDateTime(open) : "", presaleStart: pre ? brDateTime(pre) : "" } } } : {};
   await db.update(events).set({
     salesOpenAt: open, presaleAt: pre,
     // mudou a data: os avisos voltam a sair na nova data

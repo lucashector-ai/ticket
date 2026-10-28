@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MapStage, VIEW_3D, type MapView } from "@/components/mapa3d";
-import { AREA_KINDS, type AreaKind, type VenuePlan } from "@/lib/criar/plan";
+import { AREA_KINDS, KIND_COLOR, type AreaKind, type VenuePlan } from "@/lib/criar/plan";
 import { brl } from "@/lib/format";
 import type { EventoData } from "./types";
 import type { Tickets } from "./use-tickets";
@@ -32,7 +32,7 @@ export function VenueMap({ e, t }: { e: EventoData; t: Tickets }) {
       <div className="m3 m3w vm">
         <MapStage
           plan={plan}
-          look={(a) => ({ name: byId.get(a.id)?.sectorName ?? a.name, color: byId.get(a.id)?.color ?? "#8A8A90" })}
+          look={(a) => ({ name: byId.get(a.id)?.sectorName ?? a.name, color: a.kind !== "setor" ? KIND_COLOR[a.kind] : byId.get(a.id)?.color ?? "#B9B2A4" })}
           sel={sel}
           onPick={(id) => { setSel(id); const s = byId.get(id)?.sectorName; if (s) pick(s); }}
           view={view}

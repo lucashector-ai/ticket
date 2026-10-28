@@ -15,7 +15,9 @@ import { Lineup } from "./lineup";
 import { OrganizerCard } from "./organizer-card";
 import { PlayerBar, usePlayer } from "./player";
 import { QueueGate } from "@/components/queue-gate";
-import { LaunchCard, launchTarget, MiniCountdown } from "./launch-card";
+import { LaunchCard } from "./launch-card";
+import { LaunchScreen } from "./launch-screen";
+import { launchTarget, MiniCountdown } from "./countdown";
 import { TicketsCard } from "./tickets-card";
 import type { EventoData } from "./types";
 import { useTickets } from "./use-tickets";
@@ -80,8 +82,16 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
 
   return (
     <>
-      <SiteHeader user={user} variant="default" onImage />
+      {/* no fundo lima da tela de contagem, o topo fica no padrão (texto escuro) */}
+      <SiteHeader user={user} variant="default" onImage={!(waiting && e.launch.openAt && e.launch.page.theme === "lima")} />
       <div id="topo">
+        {waiting && e.launch.openAt ? (
+          <LaunchScreen slug={e.slug} email={viewerEmail} x={{
+            page: e.launch.page, title: e.title, when: `${e.dateFull}${e.timed ? ` · ${e.startTime}` : ""}`, where: [e.venue, e.city].filter(Boolean).join(", "),
+            bannerId: e.bannerId, flyerId: e.flyerId, lineup: e.lineup.map((a) => a.name),
+            phase: e.launch.phase === "presale" ? "presale" : "soon", openAt: e.launch.openAt, presaleAt: e.launch.presaleAt,
+          }} />
+        ) : (
         <section className="ehero" aria-labelledby="ev-t">
           <div className="ebg" aria-hidden="true" style={{ backgroundColor: e.accentColor }}>
             <div className="ebg-in"><FlyerArt id={e.flyerId} /></div>
@@ -110,9 +120,10 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
             </div>
           </div>
         </section>
+        )}
       </div>
 
-      <main className="wrap">
+      <main className="wrap" id="sobre" style={{ scrollMarginTop: 80 }}>
         <div className="body2">
           <div className="col">
             <div className="et-l">
@@ -200,7 +211,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
           </div>
 
           <aside className="side">
-            {waiting ? <LaunchCard e={e} email={viewerEmail} /> : <TicketsCard e={e} t={tickets} />}
+            {waiting ? <LaunchCard e={e} email={viewerEmail} compact={!!e.launch.openAt} /> : <TicketsCard e={e} t={tickets} />}
           </aside>
         </div>
 

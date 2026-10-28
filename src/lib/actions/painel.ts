@@ -9,7 +9,7 @@ import { getSessionUser } from "@/lib/auth/server";
 import { checkinTicket, type CheckinResult } from "@/lib/checkin";
 import { organizerFor } from "@/lib/criar/save";
 import { getPainelScope, type PainelRole } from "@/lib/data/painel";
-import { parseBrDateTime } from "@/lib/criar/model";
+import { AGES, parseBrDateTime } from "@/lib/criar/model";
 
 const { coupons, organizerMembers, organizers } = schema;
 type R = { ok: true } | { ok: false; error: string };
@@ -141,7 +141,7 @@ const settingsSchema = z.object({
   contactEmail: z.union([z.literal(""), z.email("E-mail inválido.")]),
   legalName: opt(200), cnpj: opt(20),
   payout: z.object({ bank: opt(80), agency: opt(12), account: opt(24), kind: z.enum(["corrente", "poupanca"]), holder: opt(160), doc: opt(20), pixKey: opt(140) }),
-  defaults: z.object({ buyerPaysFee: z.boolean(), autoMeia: z.boolean(), age: z.enum(["Livre", "14+", "16+", "18+"]), refund: opt(300) }),
+  defaults: z.object({ buyerPaysFee: z.boolean(), autoMeia: z.boolean(), age: z.enum(AGES), refund: opt(300) }),
 });
 export type SettingsInput = z.input<typeof settingsSchema>;
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { FlyerArt } from "@/components/art/flyer";
 import { CopyButton } from "@/components/copy-button";
-import { useNowSec } from "@/components/evento/launch-card";
+import { useNowSec } from "@/components/evento/countdown";
 import { useOrigin } from "@/components/painel/use-origin";
 import { useToast } from "@/components/toast";
 import { cancelGroup } from "@/lib/actions/grupo";

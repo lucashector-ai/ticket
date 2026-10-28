@@ -25,7 +25,7 @@ const draftSchema = z.object({
   media: z.object({ poster: media, banner: media, home: media, strip: media, share: media }),
   coupons: z.array(z.object({ id, code: str(40), kind: z.enum(["pct", "brl"]), value: str(12), limit: str(9), until: str(20), scope: id })).max(50),
   venue: z.object({ name: str(160), city: str(120) }),
-  sessions: z.array(z.object({ id, date: str(10), doors: str(5), time: str(5), cap: str(9), venue: str(160), city: str(120) })).max(60),
+  sessions: z.array(z.object({ id, date: str(10), doors: str(5), time: str(5), end: z.string().max(5).optional(), cap: str(9), venue: str(160), city: str(120) })).max(60),
   autoMeia: z.boolean(), fee: z.boolean(), transfer: z.boolean().default(true), resale: z.boolean().default(true),
   sectors: z.array(z.object({
     id, name: str(80), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/), open: z.boolean(),
@@ -38,7 +38,10 @@ const draftSchema = z.object({
       id, name: str(60), kind: z.enum(AREA_KINDS), x: z.number(), y: z.number(), w: z.number(), d: z.number(), h: z.number(), cap: z.number(), sector: id.nullable(),
     })).max(MAX_AREAS),
   }).nullable().default(null),
-  vis: z.enum(["publico", "link", "rascunho"]), saleStart: str(40), refund: str(300),
+  vis: z.enum(["publico", "link", "rascunho"]), saleStart: str(40), presaleStart: str(40), minors: z.boolean().default(false), refund: str(300),
+  teaser: z.object({
+    theme: z.enum(["escuro", "lima", "arte", "foto"]), image: media, headline: str(80), message: str(280), lineup: z.boolean(),
+  }).default({ theme: "arte", headline: "", message: "", lineup: true }),
 });
 const mapSchema = z.object({ sessions: z.record(id, z.string().uuid()), types: z.record(z.string().max(90), z.string().uuid()) });
 
@@ -47,7 +50,9 @@ export type SaveEventResult =
   | { ok: false; error: string; step?: number };
 
 const fail = (error: string, step?: number): SaveEventResult => ({ ok: false, error, step });
-const AGE_TEXT: Record<string, string> = { Livre: "Livre", "14+": "14+ · menores acompanhados", "16+": "16+ com documento com foto", "18+": "18+ com documento com foto" };
+/** Texto da classificação na página: menores acompanhados só faz sentido entre Livre e 18+. */
+const ageText = (age: string, minors: boolean) =>
+  age === "Livre" ? "Livre" : age === "18+" || !minors ? `${age} com documento com foto` : `${age} · menores acompanhados dos pais ou responsáveis`;
 const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const ML = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -133,53 +138,60 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   const publish = d.vis !== "rascunho";
   const title = d.title.trim();
   const tour = d.mode === "turne";
-  const catLabel = d.cat === "Outros" ? d.catOther.trim() || "Outros" : d.cat;
+  const catLabel = d.cat === "Outros" || !d.cat ? d.catOther.trim() || "Outros" : d.cat;
 
   /* ---- regras para publicar ---- */
   if (!title) return fail("Dê um nome ao evento.", 1);
-  if (publish && (!d.media.poster || !d.media.banner)) return fail("Envie o cartaz (3:4) e o banner (16:9) antes de publicar.", 1);
+  if (publish && (!d.media.poster || !d.media.banner)) return fail("Envie o cartaz (3:4) e o banner (16:9) antes de publicar.", 6);
   const sessions = [...(d.mode === "unica" ? d.sessions.slice(0, 1) : d.sessions)].sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1));
   if (publish && !sessions.length) return fail("Adicione pelo menos uma data.", 2);
-  const sessRows: { id: string; start: Date; doors: Date | null; cap: number | null; venue: string; city: { name: string; uf: string } | null }[] = [];
+  const sessRows: { id: string; start: Date; end: Date | null; doors: Date | null; cap: number | null; venue: string; city: { name: string; uf: string } | null }[] = [];
   for (const s of sessions) {
     const start = spDate(s.date, s.time);
     if (!start) return fail("Uma das datas está sem dia ou horário válido.", 2);
     if (publish && start.getTime() < Date.now()) return fail("Uma das datas já passou. Escolha uma data futura.", 2);
     const venue = (tour ? s.venue : d.venue.name).trim();
     const city = parseCity(tour ? s.city : d.venue.city);
-    if (publish && (!venue || !city)) return fail(tour ? "Preencha o local e a cidade (ex.: São Paulo – SP) de cada data." : "Preencha o local e a cidade no formato São Paulo – SP.", 2);
-    sessRows.push({ id: s.id, start, doors: s.doors ? spDate(s.date, s.doors) : null, cap: num(s.cap) || null, venue, city });
+    if (publish && (!venue || !city)) return fail(tour ? "Preencha o local e a cidade (ex.: São Paulo – SP) de cada data." : "Preencha o local e a cidade no formato São Paulo – SP.", 3);
+    // término antes do início = vira a noite e acaba no dia seguinte
+    let end = s.end ? spDate(s.date, s.end) : null;
+    if (end && end <= start) end = new Date(end.getTime() + 86_400_000);
+    sessRows.push({ id: s.id, start, end, doors: s.doors ? spDate(s.date, s.doors) : null, cap: num(s.cap) || null, venue, city });
   }
 
   const sectorTypes = d.sectors.map((k) => ({ k, types: effTypes(k, d.autoMeia) }));
   const allTypes = sectorTypes.flatMap((x) => x.types);
   if (publish) {
-    if (!allTypes.length) return fail("Crie pelo menos um tipo de ingresso.", 3);
+    if (!allTypes.length) return fail("Crie pelo menos um tipo de ingresso.", 5);
     for (const t of allTypes) {
-      if (!t.name.trim()) return fail("Dê um nome a cada tipo de ingresso.", 3);
-      if (!t.free && toCents(t.price) <= 0) return fail(`Defina o preço de ${t.name} ou marque como grátis.`, 3);
-      if (num(t.qty) <= 0) return fail(`Defina a quantidade de ${t.name}.`, 3);
+      if (!t.name.trim()) return fail("Dê um nome a cada tipo de ingresso.", 5);
+      if (!t.free && toCents(t.price) <= 0) return fail(`Defina o preço de ${t.name} ou marque como grátis.`, 5);
+      if (num(t.qty) <= 0) return fail(`Defina a quantidade de ${t.name}.`, 5);
     }
   }
   const salesStart = parseBrDateTime(d.saleStart);
-  if (d.saleStart.trim() && !salesStart) return fail("Início das vendas: use o formato 28/10/2026 às 10:00, ou deixe em branco para vender já.", 5);
+  if (d.saleStart.trim() && !salesStart) return fail("Escolha o dia e o horário em que as vendas abrem.", 7);
+  const presaleStart = salesStart && d.presaleStart.trim() ? parseBrDateTime(d.presaleStart) : null;
+  if (salesStart && d.presaleStart.trim() && !presaleStart) return fail("Escolha o dia e o horário da pré-venda.", 7);
+  if (presaleStart && salesStart && presaleStart >= salesStart) return fail("A pré-venda precisa começar antes da venda geral.", 7);
+  if (d.teaser.theme === "foto" && !d.teaser.image) return fail("Envie a imagem de fundo da tela de contagem ou escolha outro estilo.", 7);
 
   const sectorName = new Map(d.sectors.map((k) => [k.id, k.name.trim() || "Ingressos"]));
   const couponRows: Omit<typeof coupons.$inferInsert, "eventId">[] = [];
   for (const c of d.coupons) {
     const code = c.code.trim().toUpperCase();
-    if (!/^[A-Z0-9_-]{3,40}$/.test(code)) return fail(`Cupom "${c.code}": use de 3 a 40 letras ou números, sem espaços.`, 3);
+    if (!/^[A-Z0-9_-]{3,40}$/.test(code)) return fail(`Cupom "${c.code}": use de 3 a 40 letras ou números, sem espaços.`, 5);
     const v = num(c.value);
-    if (v <= 0 || (c.kind === "pct" && v > 100)) return fail(`Cupom ${code}: desconto inválido.`, 3);
+    if (v <= 0 || (c.kind === "pct" && v > 100)) return fail(`Cupom ${code}: desconto inválido.`, 5);
     const until = c.until.trim() ? parseBrDateTime(c.until, true) : null;
-    if (c.until.trim() && !until) return fail(`Cupom ${code}: validade no formato dd/mm/aaaa.`, 3);
+    if (c.until.trim() && !until) return fail(`Cupom ${code}: validade no formato dd/mm/aaaa.`, 5);
     couponRows.push({
       code, percentOff: c.kind === "pct" ? Math.round(v) : null, amountOffCents: c.kind === "brl" ? Math.round(v * 100) : null,
       amountPerTicket: c.kind === "brl", sector: c.scope === "all" ? null : sectorName.get(c.scope) ?? null,
       maxUses: num(c.limit) > 0 ? Math.round(num(c.limit)) : null, expiresAt: until, active: true,
     });
   }
-  if (new Set(couponRows.map((c) => c.code)).size !== couponRows.length) return fail("Há dois cupons com o mesmo código.", 3);
+  if (new Set(couponRows.map((c) => c.code)).size !== couponRows.length) return fail("Há dois cupons com o mesmo código.", 5);
 
   /* ---- evento existente: só o criador edita ---- */
   let existing: (typeof events.$inferSelect & { sessions: (typeof eventSessions.$inferSelect)[]; ticketTypes: (typeof ticketTypes.$inferSelect)[] }) | null = null;
@@ -197,20 +209,20 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   const keepSess = new Set(sessKeys.map((k) => prevMap.sessions[k]).filter((x) => x && ownSess.has(x)));
   const keepTypes = new Set([...wantTypeKeys].map((k) => prevMap.types[k]).filter((x) => x && ownTypes.has(x)));
   for (const t of existing?.ticketTypes ?? []) {
-    if (!keepTypes.has(t.id) && t.sold > 0) return fail(`"${t.name}" já tem ${t.sold} ingresso(s) vendido(s) e não pode ser removido.`, 3);
+    if (!keepTypes.has(t.id) && t.sold > 0) return fail(`"${t.name}" já tem ${t.sold} ingresso(s) vendido(s) e não pode ser removido.`, 5);
   }
   for (const k of wantTypeKeys) {
     const dbId = prevMap.types[k];
     const row = dbId ? ownTypes.get(dbId) : undefined;
     const t = allTypes.find((x) => x.id === k.split(":")[1])!;
-    if (row && num(t.qty) < row.sold) return fail(`${t.name}: já foram vendidos ${row.sold}. A quantidade não pode ser menor.`, 3);
+    if (row && num(t.qty) < row.sold) return fail(`${t.name}: já foram vendidos ${row.sold}. A quantidade não pode ser menor.`, 5);
   }
 
   const conflicts = couponRows.length
     ? await db.query.coupons.findMany({ where: inArray(coupons.code, couponRows.map((c) => c.code)) })
     : [];
   const taken = conflicts.find((c) => c.eventId !== existing?.id);
-  if (taken) return fail(`O código ${taken.code} já é usado por outro cupom. Escolha outro.`, 3);
+  if (taken) return fail(`O código ${taken.code} já é usado por outro cupom. Escolha outro.`, 5);
 
   /* ---- gravação ---- */
   const organizer = await organizerFor(user);
@@ -248,8 +260,8 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     description: d.desc.trim() || null, descriptionParagraphs: paragraphs,
     status: (publish ? "published" : "draft") as "published" | "draft", unlisted: d.vis === "link",
     flyerId: d.media.poster ?? "none", bannerId: d.media.banner ?? d.media.poster ?? null, accentColor: "#111111",
-    startAt, endAt: new Date(lastStart.getTime() + 6 * 3_600_000), dateLabel: labels.label, dateFullLabel: labels.full, timed: true,
-    doorsLabel, ageRating: AGE_TEXT[d.age] ?? d.age, refundPolicy: d.refund.trim() || null,
+    startAt, endAt: sessRows[sessRows.length - 1]?.end ?? new Date(lastStart.getTime() + 6 * 3_600_000), dateLabel: labels.label, dateFullLabel: labels.full, timed: true,
+    doorsLabel, ageRating: ageText(d.age, d.minors), refundPolicy: d.refund.trim() || null,
     halfPriceInfo: hasMeia ? "Estudantes, PcD, jovens de baixa renda e maiores de 60, com documento." : null,
     venueId: first ? venueOf(first) : null, venueNameOverride: tour && citySet.size > 1 ? `Turnê · ${citySet.size} cidades` : null,
     addressLabel: tour && citySet.size > 1 ? [...citySet].join(", ") : first?.city ? `${first.city.name} – ${first.city.uf}` : null,
@@ -266,12 +278,14 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
    * Campo vazio limpa a abertura (e a pré-venda, que depende dela); ajustes feitos na aba Lançamento
    * voltam para este campo, então os dois ficam iguais.
    */
-  const launch = salesStart
-    ? { salesOpenAt: salesStart, ...(existing?.presaleAt && existing.presaleAt >= salesStart ? { presaleAt: null } : {}), ...(existing?.salesOpenAt?.getTime() !== salesStart.getTime() ? { openingSentAt: null } : {}) }
-    : existing?.salesOpenAt ? { salesOpenAt: null, presaleAt: null } : {};
+  const launch = {
+    salesOpenAt: salesStart, presaleAt: presaleStart, launchPage: d.teaser,
+    // mudou a data: os avisos voltam a sair na nova data
+    ...(existing?.salesOpenAt?.getTime() !== salesStart?.getTime() ? { openingSentAt: null } : {}),
+    ...(existing?.presaleAt?.getTime() !== presaleStart?.getTime() ? { presaleSentAt: null } : {}),
+  };
   // os lotes abrem junto com a pré-venda, se houver (quem tem o link já pode comprar)
-  const keepPresale = salesStart && existing?.presaleAt && existing.presaleAt < salesStart ? existing.presaleAt : null;
-  const typesStart = keepPresale ?? salesStart;
+  const typesStart = presaleStart ?? salesStart;
 
   let eventId: string, slug: string;
   if (existing) {
@@ -311,7 +325,8 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
           note: (multi ? label : t.desc.trim()).slice(0, 160) || null, description: t.desc.trim() || null,
           priceCents: price, feeCents: d.fee ? Math.round(price * SERVICE_FEE_RATE) : 0, quantity: Math.round(num(t.qty)),
           status: "open" as const, salesStart: typesStart, sortOrder: order++, maxPerOrder: limitOf(t),
-          sector: d.tmode === "mapa" ? k.name.trim() || "Setor" : null, sectorColor: k.color, kind: t.kind,
+          // com mapa ou com mais de um setor, o comprador vê os ingressos agrupados por setor
+          sector: d.tmode === "mapa" || d.sectors.length > 1 ? k.name.trim() || "Setor" : null, sectorColor: k.color, kind: t.kind,
         };
         const dbId = prevMap.types[key];
         if (dbId && keepTypes.has(dbId)) {

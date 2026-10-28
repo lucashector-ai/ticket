@@ -7,11 +7,12 @@ import { useToast } from "@/components/toast";
 import { saveSettings } from "@/lib/actions/painel";
 import { slugify } from "@/lib/format";
 import { useOrigin } from "./use-origin";
+import { AGES } from "@/lib/criar/model";
 
 type Form = {
   name: string; slug: string; contactEmail: string; legalName: string; cnpj: string;
   payout: { bank: string; agency: string; account: string; kind: "corrente" | "poupanca"; holder: string; doc: string; pixKey: string };
-  defaults: { buyerPaysFee: boolean; autoMeia: boolean; age: "Livre" | "14+" | "16+" | "18+"; refund: string };
+  defaults: { buyerPaysFee: boolean; autoMeia: boolean; age: (typeof AGES)[number]; refund: string };
 };
 
 export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boolean }) {
@@ -75,7 +76,7 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
             <div className="frm">
               <label className="tg2"><span><b>Comprador paga a taxa</b><small>{f.defaults.buyerPaysFee ? "A taxa de 10% vai à parte no checkout." : "Você absorve os 10%: o preço já inclui a taxa."}</small></span><input className="sr" type="checkbox" checked={f.defaults.buyerPaysFee} onChange={(e) => def({ buyerPaysFee: e.target.checked })} /><span className="sw" aria-hidden="true" /></label>
               <label className="tg2"><span><b>Meia-entrada automática</b><small>Cria a meia (50%) para cada inteira.</small></span><input className="sr" type="checkbox" checked={f.defaults.autoMeia} onChange={(e) => def({ autoMeia: e.target.checked })} /><span className="sw" aria-hidden="true" /></label>
-              <label className="fld"><span>Classificação</span><select value={f.defaults.age} onChange={(e) => def({ age: e.target.value as Form["defaults"]["age"] })}>{["Livre", "14+", "16+", "18+"].map((a) => <option key={a}>{a}</option>)}</select></label>
+              <label className="fld"><span>Classificação</span><select value={f.defaults.age} onChange={(e) => def({ age: e.target.value as Form["defaults"]["age"] })}>{AGES.map((a) => <option key={a}>{a}</option>)}</select></label>
               <label className="fld"><span>Política de reembolso</span><textarea value={f.defaults.refund} maxLength={300} onChange={(e) => def({ refund: e.target.value })} /></label>
             </div>
           </section>

@@ -1,0 +1,104 @@
+/* Contagem regressiva: relógio de dígitos que viram (cartão de ingressos, tela cheia e prévia do criar evento). */
+.flc{position:relative;display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:start;gap:0 5px}
+.flc-u{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+.flc-ds{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:100%}
+.flc-d{position:relative;aspect-ratio:.72;border-radius:clamp(6px,2.4cqw,12px);background:linear-gradient(180deg,#2C2C2C 0 50%,#232323 50% 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 8px 16px -8px rgba(0,0,0,.7);display:grid;place-items:center;overflow:hidden;perspective:240px}
+.flc-d::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.6);box-shadow:0 1px 0 rgba(255,255,255,.04)}
+.flc-d b{display:block;font-family:'Inter Tight',sans-serif;font-size:clamp(20px,9cqw,56px);font-weight:600;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;color:#fff;animation:flcFlip .5s cubic-bezier(.3,.8,.25,1) both}
+.flc-u-s .flc-d b{color:#D3F55B}
+.flc-sep{font-style:normal;font-family:'Inter Tight',sans-serif;font-size:clamp(18px,7cqw,40px);font-weight:600;color:rgba(255,255,255,.35);line-height:1;padding-top:clamp(8px,4.5cqw,26px);animation:flcBlink 1s steps(1) infinite}
+.flc-l{font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em}
+@keyframes flcFlip{from{transform:rotateX(-80deg);opacity:0}60%{opacity:1}to{transform:none;opacity:1}}
+@keyframes flcBlink{50%{opacity:.25}}
+
+/* Tela inteira antes da abertura (página do evento) e a mesma tela dentro do celular de prévia. */
+.ls{position:relative;isolation:isolate;container-type:inline-size;min-height:100svh;display:flex;flex-direction:column;overflow:hidden;background:#0E0E0E;color:#fff;font-family:Inter,system-ui,sans-serif}
+.ls.ls-prev{min-height:100%}
+/* na página do evento a tela passa por baixo do topo transparente (como a capa normal) */
+.pg-evento .ls:not(.ls-lima){margin-top:-68px}
+.ls-bg{position:absolute;inset:0;z-index:-1;overflow:hidden}
+.ls-art{position:absolute;inset:-10%;filter:blur(26px) saturate(1.25);opacity:.9;animation:lsDrift 24s ease-in-out infinite alternate}
+.ls-art > div{position:absolute!important;inset:0!important;height:100%!important;aspect-ratio:auto!important}
+.ls-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:lsZoom 28s ease-in-out infinite alternate}
+.ls-glow{position:absolute;width:70cqw;height:70cqw;right:-18cqw;top:-22cqw;border-radius:50%;background:radial-gradient(circle,rgba(211,245,91,.32),rgba(211,245,91,0) 65%);animation:lsGlow 9s ease-in-out infinite alternate}
+.ls-grid{position:absolute;inset:0;opacity:.5;background:linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px) 0 0/64px 64px,linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px) 0 0/64px 64px;mask-image:radial-gradient(120% 80% at 30% 40%,#000,transparent)}
+.ls-shade{position:absolute;inset:0}
+.ls-arte .ls-shade,.ls-foto .ls-shade{background:linear-gradient(90deg,rgba(8,8,8,.88) 0,rgba(8,8,8,.6) 55%,rgba(8,8,8,.35)),linear-gradient(0deg,rgba(8,8,8,.7),transparent 40%)}
+.ls-arte .ls-grid,.ls-foto .ls-grid{display:none}
+.ls-lima{background:#D3F55B;color:#111}
+.ls-lima .ls-glow{background:radial-gradient(circle,rgba(255,255,255,.6),rgba(255,255,255,0) 65%)}
+.ls-lima .ls-grid{background:linear-gradient(90deg,rgba(17,17,17,.06) 1px,transparent 1px) 0 0/64px 64px,linear-gradient(rgba(17,17,17,.06) 1px,transparent 1px) 0 0/64px 64px}
+
+.ls-in{flex:1;width:100%;max-width:1240px;margin:0 auto;padding:clamp(84px,11cqw,150px) clamp(16px,5cqw,48px) clamp(84px,9cqw,110px);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:clamp(24px,6cqw,80px);align-items:center}
+.ls-main{display:flex;flex-direction:column;align-items:flex-start;min-width:0}
+.ls-main > *{animation:lsUp .7s cubic-bezier(.22,1,.36,1) both}
+.ls-main > :nth-child(2){animation-delay:.06s}.ls-main > :nth-child(3){animation-delay:.12s}.ls-main > :nth-child(4){animation-delay:.18s}.ls-main > :nth-child(5){animation-delay:.24s}.ls-main > :nth-child(n+6){animation-delay:.3s}
+.ls-k{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:999px;background:rgba(255,255,255,.1);backdrop-filter:blur(10px);font-size:13px;font-weight:600;color:#D3F55B}
+.ls-k i{width:8px;height:8px;border-radius:50%;background:#D3F55B;animation:lsPulse 1.6s infinite}
+.ls-lima .ls-k{background:rgba(17,17,17,.08);color:#111}
+.ls-lima .ls-k i{background:#111;animation:none}
+.ls-title{margin:18px 0 0;max-width:15ch;font:600 clamp(34px,7.4cqw,96px)/.95 'Inter Tight',sans-serif;letter-spacing:-.045em;text-wrap:balance;overflow-wrap:anywhere}
+.ls-meta{margin-top:14px;font-size:clamp(14px,1.6cqw,17px);color:rgba(255,255,255,.72)}
+.ls-lima .ls-meta{color:rgba(17,17,17,.7)}
+.ls-clock{container-type:inline-size;width:100%;max-width:600px;margin-top:clamp(24px,4cqw,44px)}
+.ls-hl{display:block;margin-bottom:12px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.ls-lima .ls-hl,.ls-lima .flc-l{color:rgba(17,17,17,.6)}
+.ls-lima .flc-sep{color:rgba(17,17,17,.4)}
+.ls-when{display:block;margin-top:14px;font-size:14px;color:rgba(255,255,255,.65)}
+.ls-lima .ls-when{color:rgba(17,17,17,.65)}
+.ls-msg{margin:22px 0 0;max-width:540px;font-size:clamp(15px,1.7cqw,17px);line-height:1.55;color:rgba(255,255,255,.85);white-space:pre-line}
+.ls-lima .ls-msg{color:rgba(17,17,17,.85)}
+.ls-f{position:relative;display:flex;flex-wrap:wrap;gap:6px;width:100%;max-width:520px;margin-top:26px;padding:6px;border-radius:999px;background:rgba(255,255,255,.1);backdrop-filter:blur(12px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);transition:box-shadow .25s}
+.ls-f:focus-within{box-shadow:inset 0 0 0 2px #D3F55B}
+.ls-f input{flex:1;min-width:0;height:48px;padding:0 16px;border:0;outline:0;background:transparent;color:inherit;font:500 16px Inter,sans-serif}
+.ls-f input::placeholder{color:rgba(255,255,255,.45)}
+.ls-f button{flex:none;height:48px;padding:0 24px;border:0;border-radius:999px;background:#D3F55B;color:#111;font:700 15px Inter,sans-serif;cursor:pointer;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.ls-f button:hover{transform:translateY(-2px)}
+.ls-f button:active{transform:scale(.96)}
+.ls-lima .ls-f{background:rgba(17,17,17,.08);box-shadow:inset 0 0 0 1px rgba(17,17,17,.12)}
+.ls-lima .ls-f:focus-within{box-shadow:inset 0 0 0 2px #111}
+.ls-lima .ls-f input::placeholder{color:rgba(17,17,17,.45)}
+.ls-lima .ls-f button{background:#111;color:#D3F55B}
+.ls-err{position:absolute;left:18px;top:100%;margin:8px 0 0;font-size:13px;color:#FF8A7A}
+.ls-fine{margin-top:12px;font-size:12.5px;color:rgba(255,255,255,.5)}
+.ls-lima .ls-fine{color:rgba(17,17,17,.55)}
+.ls-ok{display:flex;align-items:center;gap:14px;margin-top:26px;padding:14px 20px 14px 14px;border-radius:20px;background:rgba(211,245,91,.14);animation:lsUp .5s cubic-bezier(.34,1.56,.64,1) both}
+.ls-ok > span{width:38px;height:38px;flex:none;border-radius:50%;background:#D3F55B;color:#111;display:grid;place-items:center}
+.ls-ok b{display:block;font-size:15px}
+.ls-ok small{display:block;margin-top:2px;font-size:13px;opacity:.7}
+.ls-lima .ls-ok{background:rgba(17,17,17,.08)}
+.ls-lima .ls-ok > span{background:#111;color:#D3F55B}
+.ls-steps{display:flex;gap:10px;margin:22px 0 0;padding:0;list-style:none;flex-wrap:wrap}
+.ls-steps li{display:grid;grid-template-columns:auto 1fr;column-gap:10px;padding:10px 16px 10px 12px;border-radius:16px;background:rgba(255,255,255,.07);font-size:13px}
+.ls-steps i{grid-row:span 2;align-self:center;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.3)}
+.ls-steps .cur i{background:#D3F55B;box-shadow:0 0 0 4px rgba(211,245,91,.2)}
+.ls-steps .ok i{background:#fff}
+.ls-steps span{opacity:.6;font-size:12px}
+.ls-lima .ls-steps li{background:rgba(17,17,17,.07)}
+.ls-lima .ls-steps .cur i{background:#111;box-shadow:none}
+.ls-lu{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:22px}
+.ls-lu span{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.55;margin-right:4px}
+.ls-lu b{height:30px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.1);font-size:13px;font-weight:600;display:inline-flex;align-items:center}
+.ls-lima .ls-lu b{background:rgba(17,17,17,.08)}
+.ls-poster{position:relative;width:clamp(220px,26cqw,360px);border-radius:24px;overflow:hidden;transform:rotate(3deg);box-shadow:0 40px 80px -30px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.08);animation:lsFloat 7s ease-in-out infinite}
+.ls-more{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:999px;background:rgba(255,255,255,.1);backdrop-filter:blur(10px);color:inherit;font-size:13.5px;font-weight:600;text-decoration:none;animation:lsBob 2.4s ease-in-out infinite}
+.ls-lima .ls-more{background:rgba(17,17,17,.08)}
+@container (max-width:760px){
+  .ls-in{grid-template-columns:minmax(0,1fr);align-content:start}
+  .ls-poster{display:none}
+  .ls-f{border-radius:22px}
+  .ls-f button{width:100%;border-radius:16px}
+  .ls-f input{flex-basis:100%}
+}
+.ls-pv .ls-in{padding:58px 18px 30px}
+.ls-pv .ls-title{font-size:30px}
+.ls-pv .ls-k{height:26px;font-size:11px;padding:0 10px}
+.ls-pv .ls-f input,.ls-pv .ls-f button{height:42px;font-size:13px}
+@keyframes lsUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes lsPulse{0%{box-shadow:0 0 0 0 rgba(211,245,91,.55)}100%{box-shadow:0 0 0 9px rgba(211,245,91,0)}}
+@keyframes lsGlow{to{transform:translate(-8cqw,10cqw) scale(1.15)}}
+@keyframes lsDrift{to{transform:scale(1.08) translate(-2%,1%)}}
+@keyframes lsZoom{to{transform:scale(1.08)}}
+@keyframes lsFloat{0%,100%{transform:rotate(3deg) translateY(0)}50%{transform:rotate(1.5deg) translateY(-12px)}}
+@keyframes lsBob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,6px)}}
+@media (prefers-reduced-motion:reduce){.flc-d b,.flc-sep,.ls *,.ls-art,.ls-img,.ls-glow{animation:none!important}}

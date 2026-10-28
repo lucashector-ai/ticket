@@ -8,13 +8,21 @@ export type TypeKind = "inteira" | "meia" | "social" | "outro";
 export type Visibility = "publico" | "link" | "rascunho";
 export type MediaKey = "poster" | "banner" | "home" | "strip" | "share";
 
-export type DraftSession = { id: string; date: string; doors: string; time: string; cap: string; venue: string; city: string };
+/** `end`: horário de término (vazio = 6 h depois do início; antes do início = passa da meia-noite). */
+export type DraftSession = { id: string; date: string; doors: string; time: string; end?: string; cap: string; venue: string; city: string };
 /** `free`: ingresso gratuito (sem preço nem taxa); `limit`: máximo que cada pessoa pode levar desse tipo. */
 export type DraftType = { id: string; kind: TypeKind; name: string; price: string; qty: string; desc: string; free?: boolean; limit?: string };
 export type DraftSector = { id: string; name: string; color: string; open: boolean; types: DraftType[] };
 /** `spotifyId`/`image`: artista escolhido na busca do Spotify. */
 export type DraftArtist = { id: string; name: string; role: string; time: string; end: string; days: string[] | null; spotifyId?: string; image?: string | null };
 export type DraftCoupon = { id: string; code: string; kind: "pct" | "brl"; value: string; limit: string; until: string; scope: string };
+
+/**
+ * Tela de contagem antes da abertura das vendas (ocupa a página inteira do evento).
+ * theme: escuro (preto da marca) · lima · arte (banner do evento) · foto (imagem enviada).
+ */
+export type Teaser = { theme: "escuro" | "lima" | "arte" | "foto"; image?: string; headline: string; message: string; lineup: boolean };
+export const DEFAULT_TEASER: Teaser = { theme: "arte", headline: "", message: "", lineup: true };
 
 export type Draft = {
   mode: EventMode;
@@ -42,6 +50,11 @@ export type Draft = {
   plan: VenuePlan | null;
   vis: Visibility;
   saleStart: string;
+  /** pré-venda para cadastrados (link secreto por e-mail), antes de saleStart */
+  presaleStart: string;
+  /** menores podem entrar acompanhados dos pais ou responsáveis */
+  minors: boolean;
+  teaser: Teaser;
   refund: string;
 };
 
@@ -49,7 +62,18 @@ export type Draft = {
 export type DbMap = { sessions: Record<string, string>; types: Record<string, string> };
 
 export const CATEGORIES = ["Show", "Festa", "Festival", "Teatro", "Arte & Cultura", "Experiência", "Outros"] as const;
-export const AGES = ["Livre", "14+", "16+", "18+"] as const;
+export const AGES = ["Livre", "12+", "14+", "16+", "18+"] as const;
+/** Cartões da primeira etapa: o tipo vira a categoria do evento. */
+export const EVENT_TYPES: { cat: string; sub: string; icon: string }[] = [
+  { cat: "Festa", sub: "Balada, baile, pista", icon: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" },
+  { cat: "Show", sub: "Artista no palco", icon: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3" },
+  { cat: "Festival", sub: "Vários palcos e dias", icon: "M3 21h18M5 21V10l7-6 7 6v11M9 21v-6h6v6" },
+  { cat: "Teatro", sub: "Peças e espetáculos", icon: "M4 4h16v6a8 8 0 0 1-16 0zM9 9h.01M15 9h.01M9 13c1.5 1.5 4.5 1.5 6 0" },
+  { cat: "Curso", sub: "Workshop e palestra", icon: "M22 10 12 5 2 10l10 5 10-5zM6 12v5c3 2 9 2 12 0v-5" },
+  { cat: "Esporte", sub: "Corrida, jogo, luta", icon: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" },
+  { cat: "Gastronomia", sub: "Jantar e degustação", icon: "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7" },
+  { cat: "Outros", sub: "Algo diferente", icon: "M12 5v14M5 12h14" },
+];
 export const ROLES = ["Headliner", "Convidado", "Abertura"] as const;
 export const PALETTE = ["#7DA2FF", "#D3F55B", "#FF8AD8", "#FFB547", "#7DF9FF", "#C9B6FF"];
 export const MEIA_DESC = "Estudantes, PcD, jovens de baixa renda e maiores de 60. Documento na entrada.";
@@ -69,16 +93,19 @@ export const CATEGORY_KINDS: Record<string, string[]> = {
   Teatro: ["arte"],
   "Arte & Cultura": ["arte"],
   "Experiência": ["experiencias"],
+  Curso: ["experiencias"],
+  Esporte: ["experiencias"],
+  Gastronomia: ["experiencias"],
   Outros: [],
 };
 
 export function emptyDraft(): Draft {
   return {
-    mode: "unica", tmode: "simples", title: "", cat: "Show", catOther: "", age: "18+", desc: "",
+    mode: "unica", tmode: "simples", title: "", cat: "", catOther: "", age: "18+", desc: "",
     lineup: [], media: {}, coupons: [], venue: { name: "", city: "" }, sessions: [],
     autoMeia: true, fee: true, transfer: true, resale: true,
     sectors: [{ id: "k1", name: "Ingressos", color: "#D3F55B", open: true, types: [{ id: "t1", kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "", limit: "6" }] }],
-    map: "empty", prompt: "", sketchUrl: "", plan: null, vis: "publico", saleStart: "", refund: DEFAULT_REFUND,
+    map: "empty", prompt: "", sketchUrl: "", plan: null, vis: "publico", saleStart: "", presaleStart: "", minors: false, teaser: { ...DEFAULT_TEASER }, refund: DEFAULT_REFUND,
   };
 }
 
@@ -145,5 +172,19 @@ export function brDateTime(d: Date) {
   for (const x of new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d)) o[x.type] = x.value;
   return `${o.day}/${o.month}/${o.year} às ${o.hour}:${o.minute}`;
 }
+
+/** "31/10/2026 às 20:00" ↔ { date: "2026-10-31", time: "20:00" } (campos de data e hora do formulário). */
+export function splitBr(v: string) {
+  const m = v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\D+(\d{1,2})[:h]?(\d{2})?)?/i);
+  if (!m) return { date: "", time: "" };
+  return { date: `${m[3]}-${pad(+m[2])}-${pad(+m[1])}`, time: m[4] ? `${pad(+m[4])}:${m[5] ?? "00"}` : "" };
+}
+export function joinBr(date: string, time: string) {
+  const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]} às ${/^\d{2}:\d{2}$/.test(time) ? time : "00:00"}` : "";
+}
+
+/** Etapas do criar evento, na ordem (a revisão vem depois da última). */
+export const STEP_LABELS = ["Tipo", "Informações", "Quando", "Onde", "Mapa", "Ingressos", "Artes", "Vendas"];
 
 export const KIND_LABEL: Record<TypeKind, string> = { inteira: "Inteira", meia: "Meia", social: "Social", outro: "Especial" };

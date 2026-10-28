@@ -1,10 +1,13 @@
 import type { Draft } from "@/lib/criar/model";
 
+/** Parte da prévia que pisca quando o produtor mexe no campo correspondente. */
+export type PvField = "type" | "name" | "age" | "desc" | "when" | "where" | "map" | "tk" | "art" | "banner" | "sale";
+
 /** O que cada etapa recebe para ler e alterar o formulário. */
 export type Ctx = {
   d: Draft;
-  set: (p: Partial<Draft>) => void;
-  upd: (fn: (o: Draft) => Draft) => void;
+  set: (p: Partial<Draft>, f?: PvField) => void;
+  upd: (fn: (o: Draft) => Draft, f?: PvField) => void;
   flash: (m: string) => void;
   go: (i: number) => void;
   nid: (prefix: string) => string;

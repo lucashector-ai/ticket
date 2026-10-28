@@ -3,10 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
-import { CriarFlow } from "@/components/criar/criar-flow";
-import { emptyDraft, type DbMap, type Draft } from "@/lib/criar/model";
+import { CriarFlow } from "@/components/criar/flow";
+import { brDateTime, emptyDraft, STEP_LABELS, type DbMap, type Draft } from "@/lib/criar/model";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Criar evento" };
@@ -23,11 +21,16 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
   let initial: Draft | null = null, dbMap: DbMap | null = null, slug: string | null = null;
   if (editId) {
     if (!/^[0-9a-f-]{36}$/.test(editId)) notFound();
-    const ev = await db.query.events.findFirst({ where: eq(schema.events.id, editId), columns: { id: true, slug: true, createdByUserId: true, draft: true, transferEnabled: true, resaleEnabled: true } });
+    const ev = await db.query.events.findFirst({ where: eq(schema.events.id, editId), columns: { id: true, slug: true, createdByUserId: true, draft: true, transferEnabled: true, resaleEnabled: true, salesOpenAt: true, presaleAt: true, launchPage: true } });
     if (!ev || ev.createdByUserId !== user.id) notFound();
     const saved = ev.draft as { form?: Draft; dbMap?: DbMap } | null;
-    // as regras de transferência/revenda também mudam pelo painel: vale o que está no evento
-    initial = { ...emptyDraft(), ...(saved?.form ?? {}), transfer: ev.transferEnabled, resale: ev.resaleEnabled };
+    // transferência, revenda, abertura e pré-venda também mudam pelo painel: vale o que está no evento
+    const base = emptyDraft();
+    initial = {
+      ...base, ...(saved?.form ?? {}), transfer: ev.transferEnabled, resale: ev.resaleEnabled,
+      saleStart: ev.salesOpenAt ? brDateTime(ev.salesOpenAt) : "", presaleStart: ev.presaleAt ? brDateTime(ev.presaleAt) : "",
+      teaser: { ...base.teaser, ...(saved?.form?.teaser ?? {}), ...(ev.launchPage ?? {}) },
+    };
     dbMap = saved?.dbMap ?? null;
     slug = ev.slug;
   }
@@ -38,13 +41,12 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
     const d = org?.defaults;
     if (d) defaults = { fee: d.buyerPaysFee ?? true, autoMeia: d.autoMeia ?? true, ...(d.age ? { age: d.age } : {}), ...(d.refund ? { refund: d.refund } : {}) };
   }
-  const headerUser = { id: user.id, name: user.name, email: user.email, image: user.image };
+  // ?etapa=vendas abre direto numa etapa (atalho do painel)
+  const etapa = typeof sp.etapa === "string" ? STEP_LABELS.findIndex((l) => l.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === sp.etapa) : -1;
 
   return (
     <div className="pg-criar">
-      <SiteHeader user={headerUser} variant="default" />
-      <CriarFlow key={editId ?? "novo"} initial={initial} defaults={defaults} eventId={editId} slug={slug} dbMap={dbMap} />
-      <SiteFooter />
+      <CriarFlow key={editId ?? "novo"} initial={initial} defaults={defaults} eventId={editId} slug={slug} dbMap={dbMap} startStep={etapa >= 0 ? etapa : editId ? STEP_LABELS.length : 0} />
     </div>
   );
 }

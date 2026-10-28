@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
@@ -79,7 +80,7 @@ export function PainelLancamento({ p }: { p: LaunchProps }) {
       <div className="cols">
         <div className="maincol">
           <section className="cx">
-            <div className="card-h"><div><h2 className="card-t">Abertura das vendas</h2><span className="card-s">Até a data, a página do evento mostra uma contagem regressiva e um campo para a pessoa deixar o e-mail.</span></div></div>
+            <div className="card-h"><div><h2 className="card-t">Abertura das vendas</h2><span className="card-s">Até a data, a página do evento vira uma tela cheia de contagem regressiva com um campo para a pessoa deixar o e-mail.</span></div><Link className="b2" href={`/criar-evento?editar=${p.eventId}&etapa=vendas`}>Personalizar a tela</Link></div>
             <div className="frm">
               <label className="fld"><span>Venda geral abre em</span><input type="datetime-local" value={f.salesOpenAt} onChange={(e) => set({ salesOpenAt: e.target.value })} /><small>Horário de Brasília. Vazio: o evento vende assim que é publicado.</small></label>
               <label className="tg2"><span><b>Pré-venda para cadastrados</b><small>Quem se cadastrar recebe um link secreto e compra antes da venda geral.</small></span><input className="sr" type="checkbox" checked={f.hasPresale} onChange={(e) => set({ hasPresale: e.target.checked })} /><span className="sw" aria-hidden="true" /></label>

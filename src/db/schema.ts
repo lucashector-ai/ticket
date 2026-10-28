@@ -270,6 +270,8 @@ export const events = pgTable(
     /** quando os links da pré-venda e o aviso de abertura foram enviados */
     presaleSentAt: timestamp("presale_sent_at", { withTimezone: true }),
     openingSentAt: timestamp("opening_sent_at", { withTimezone: true }),
+    /** tela de contagem antes da abertura (tema, imagem, título, mensagem); null = padrão */
+    launchPage: jsonb("launch_page").$type<{ theme: "escuro" | "lima" | "arte" | "foto"; image?: string; headline: string; message: string; lineup: boolean }>(),
     /** fila virtual: auto (liga sozinha quando muita gente entra ao mesmo tempo) | on | off */
     queueMode: varchar("queue_mode", { length: 8 }).notNull().default("auto"),
     /** quantas pessoas podem comprar ao mesmo tempo antes de a fila ligar */
