@@ -47,7 +47,7 @@ export async function googleSaveUrl(d: PassData, site: string) {
     ...(d.art ? { heroImage: { sourceUri: { uri: d.art }, contentDescription: txt(d.title) } } : {}),
     ...(d.venue || d.address ? { venue: { name: txt(d.venue || d.city), address: txt(d.address || d.city) } } : {}),
     dateTime: { start: d.start.toISOString(), end: d.end.toISOString() },
-    homepageUri: { uri: d.url, description: "Abrir no Tickets Win" },
+    homepageUri: { uri: d.url, description: "Ver ingresso no Tickets Win" },
   };
   const object = {
     id: `${issuer}.${gid(`ingresso-${d.code}`)}`,
@@ -57,11 +57,8 @@ export async function googleSaveUrl(d: PassData, site: string) {
     ticketNumber: d.code,
     ...(d.holder ? { ticketHolderName: d.holder } : {}),
     ticketType: txt(d.type),
-    textModulesData: [
-      { id: "data", header: "Data", body: d.when },
-      ...(d.doors ? [{ id: "portoes", header: "Portões", body: d.doors }] : []),
-    ],
-    linksModuleData: { uris: [{ uri: d.url, description: "Seu ingresso no Tickets Win", id: "site" }] },
+    // data e horário o Google já mostra pela classe (dateTime); o link do site vem do homepageUri
+    ...(d.doors ? { textModulesData: [{ id: "portoes", header: "Portões", body: d.doors }] } : {}),
   };
   const jwt = await signRS256({
     iss: sa.client_email, aud: "google", typ: "savetowallet", iat: Math.floor(Date.now() / 1000),
