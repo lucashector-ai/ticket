@@ -4,7 +4,8 @@ import { db, schema } from "@/db";
 import { emailEnabled } from "@/lib/email";
 import { DEFAULT_AUDIENCE, fillVars, reasonFor, SAMPLE_VARS, type Vars } from "./design";
 import { designEventIds, loadEvents, orgInfo, resolveAudience, siteUrl, upcomingIds, type Recipient, type Sender } from "./data";
-import { collectLinks, renderEmail, type RenderCtx } from "./render";
+import { campaignLinks, renderCampaign } from "./event-email";
+import type { RenderCtx } from "./render";
 
 const { emailCampaigns, emailSends, organizers, events } = schema;
 type Campaign = typeof emailCampaigns.$inferSelect;
@@ -34,7 +35,7 @@ export async function baseCtx(c: Campaign, fallbackName = "Produtor"): Promise<O
   const site = siteUrl();
   const { s, org } = await senderScope(c);
   const up = await upcomingIds(s);
-  const evs = await loadEvents([...designEventIds(c.design), ...up]);
+  const evs = await loadEvents([...designEventIds(c.design), ...(c.content?.eventId ? [c.content.eventId] : []), ...up]);
   const info = orgInfo(org ?? null, c.fromName || fallbackName);
   return {
     site, org: info, events: evs, upcoming: up.map((id) => evs[id]).filter(Boolean),
@@ -71,7 +72,7 @@ export async function sendTestEmail(c: Campaign, to: string, name: string) {
   if (!emailEnabled()) return { ok: false as const, error: "O envio de e-mails ainda não está ligado (falta a chave RESEND_API_KEY no Cloudflare)." };
   const base = await baseCtx(c, name);
   const vars = { ...SAMPLE_VARS, nome: name || SAMPLE_VARS.nome, primeiro_nome: firstName(name) || SAMPLE_VARS.primeiro_nome, email: to };
-  const { html, text } = renderEmail(c.design, { ...base, vars, unsubscribeUrl: `${base.site}/e/sair/teste` });
+  const { html, text } = renderCampaign(c, { ...base, vars, unsubscribeUrl: `${base.site}/e/sair/teste` });
   const r = await resendBatch([{ from: fromHeader(base.org.name), to: [to], subject: `[Teste] ${fillVars(c.subject || "(sem assunto)", vars)}`, html, text, ...(c.replyTo ? { reply_to: c.replyTo } : {}) }]);
   return r.ok ? { ok: true as const } : { ok: false as const, error: "O Resend recusou o envio. Confira o domínio do remetente no Resend." };
 }
@@ -84,7 +85,7 @@ export async function queueCampaign(campaignId: string) {
   const people = await resolveAudience(c.audience, s, ownIds);
   if (!people.length) return { ok: false as const, error: "Ninguém na lista com esse público." };
   const base = await baseCtx(c);
-  const links = collectLinks(c.design, { ...base, vars: SAMPLE_VARS, unsubscribeUrl: "" });
+  const links = campaignLinks(c, { ...base, vars: SAMPLE_VARS, unsubscribeUrl: "" });
   // trava: só uma chamada passa de rascunho/agendada para enviando
   const [locked] = await db.update(emailCampaigns).set({ status: "sending", startedAt: new Date(), links })
     .where(and(eq(emailCampaigns.id, c.id), inArray(emailCampaigns.status, ["draft", "scheduled"]))).returning({ id: emailCampaigns.id });
@@ -116,7 +117,7 @@ export async function processEmailQueue(limit = 300) {
         const vars = varsFor({ email: q.email, name: q.name ?? "" });
         const t = q.token;
         const unsub = `${base.site}/e/sair/${t}`;
-        const { html, text } = renderEmail(c.design, {
+        const { html, text } = renderCampaign(c, {
           ...base, vars, unsubscribeUrl: unsub, viewUrl: `${base.site}/e/ver/${t}`, pixelUrl: `${base.site}/e/o/${t}`,
           link: (u) => (linkIdx.has(u) ? `${base.site}/e/c/${t}/${linkIdx.get(u)}` : u),
         });

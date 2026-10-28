@@ -32,6 +32,7 @@ export async function loadEvents(ids: string[]): Promise<Record<string, EvInfo>>
     where: inArray(events.id, uniq),
     with: {
       venue: { with: { city: true } },
+      organizer: { columns: { name: true } },
       ticketTypes: { orderBy: (t, { asc }) => [asc(t.sortOrder), asc(t.priceCents)] },
       eventArtists: { with: { artist: { columns: { name: true, imageUrl: true } } }, orderBy: (x, { asc }) => [asc(x.sortOrder)] },
     },
@@ -64,6 +65,8 @@ export async function loadEvents(ids: string[]): Promise<Record<string, EvInfo>>
       lineup: e.eventArtists.slice(0, 12).map((x) => ({ name: x.artist.name, img: rel(x.artist.imageUrl), role: x.role ?? "" })),
       tiers: [...tiers.values()].map((t) => ({ name: t.name, price: t.cents === 0 ? "Grátis" : brl(t.cents), soldOut: t.soldOut })),
       startAt: e.startAt.getTime(),
+      description: (e.descriptionParagraphs?.length ? e.descriptionParagraphs.join("\n\n") : e.description ?? e.tagline ?? "").trim(),
+      organizer: e.organizer?.name ?? "",
     };
   }
   return out;

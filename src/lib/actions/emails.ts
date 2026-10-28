@@ -12,6 +12,9 @@ import { loadEvents, resolveAudience, searchPublicEvents } from "@/lib/mail/data
 import type { EvInfo } from "@/lib/mail/render";
 import { processEmailQueue, queueCampaign, sendTestEmail } from "@/lib/mail/send";
 import { fromTemplate, TEMPLATES, type TemplateKey } from "@/lib/mail/templates";
+import { MOTIVES, normalizeContent, type EventContent, type Motive } from "@/lib/mail/event-email";
+import { DEFAULT_AUDIENCE, DEFAULT_STYLE } from "@/lib/mail/design";
+import { dateNice } from "@/lib/format";
 
 const { emailCampaigns, emailTemplates } = schema;
 type R<T = object> = ({ ok: true } & T) | { ok: false; error: string };
@@ -51,6 +54,29 @@ export async function createCampaign(key: TemplateKey, eventId: string): Promise
   return { ok: true, id: row.id };
 }
 
+/** Campanha no modelo pronto da Tickets Win: só o evento e o motivo; o produtor escreve um recado se quiser. */
+export async function createEventCampaign(eventId: string, motive: Motive): Promise<R<{ id: string }>> {
+  const sc = await scope();
+  if (!sc) return { ok: false, error: "Sem permissão." };
+  const ev = sc.events.find((e) => e.id === eventId);
+  if (!ev) return { ok: false, error: "Escolha o evento." };
+  const m = MOTIVES[motive] ? motive : "novo";
+  const name = sc.org?.name ?? sc.user.name ?? "Produtor";
+  const when = ev.dateLabel || dateNice(ev.startAt);
+  // lembrete vai para quem comprou; os outros para todo o público, menos quem já comprou este evento
+  const audience = m === "lembrete"
+    ? { buyers: "events" as const, buyerEvents: [ev.id], followers: false, signups: false, excludeBuyersOf: [] }
+    : { ...DEFAULT_AUDIENCE, excludeBuyersOf: [ev.id] };
+  const content: EventContent = { eventId: ev.id, motive: m, message: "", coupon: "" };
+  const [row] = await db.insert(emailCampaigns).values({
+    organizerId: sc.org?.id ?? null, userId: sc.user.id, name: `${MOTIVES[m].label} · ${ev.title}`.slice(0, 160),
+    subject: MOTIVES[m].subject(ev.title, when).slice(0, 200), preheader: "", fromName: name, replyTo: sc.org?.contactEmail ?? sc.user.email ?? "",
+    audience, format: "evento", content, design: { v: 1, style: { ...DEFAULT_STYLE }, blocks: [] }, eventId: ev.id,
+  }).returning({ id: emailCampaigns.id });
+  revalidatePath("/painel/emails");
+  return { ok: true, id: row.id };
+}
+
 /** Começa uma campanha a partir de um modelo salvo pelo produtor. */
 export async function createFromSaved(templateId: string): Promise<R<{ id: string }>> {
   const sc = await scope();
@@ -65,7 +91,7 @@ export async function createFromSaved(templateId: string): Promise<R<{ id: strin
   return { ok: true, id: row.id };
 }
 
-export async function updateCampaign(id: string, patch: { name?: string; subject?: string; preheader?: string; fromName?: string; replyTo?: string; audience?: Audience }): Promise<R> {
+export async function updateCampaign(id: string, patch: { name?: string; subject?: string; preheader?: string; fromName?: string; replyTo?: string; audience?: Audience; content?: EventContent }): Promise<R> {
   const sc = await scope();
   const c = sc && (await campaignOf(sc, id));
   if (!c) return { ok: false, error: "Campanha não encontrada." };
@@ -81,6 +107,11 @@ export async function updateCampaign(id: string, patch: { name?: string; subject
     set.replyTo = v;
   }
   if (patch.audience !== undefined) set.audience = normalizeAudience(patch.audience);
+  if (patch.content !== undefined && c.format === "evento") {
+    const ct = normalizeContent(patch.content);
+    if (ct.eventId && !(await scope())?.events.some((e) => e.id === ct.eventId)) return { ok: false, error: "Evento não encontrado." };
+    set.content = ct; set.eventId = ct.eventId || null;
+  }
   await db.update(emailCampaigns).set(set).where(eq(emailCampaigns.id, c.id));
   return { ok: true };
 }
@@ -114,10 +145,13 @@ export async function sendTest(id: string): Promise<R<{ to: string }>> {
 }
 
 /** O que falta para poder enviar (o painel mostra a mesma lista). */
-function blockers(c: { subject: string; design: { blocks: unknown[] } }) {
+function blockers(c: { subject: string; format: string; content: EventContent | null; design: { blocks: unknown[] } }) {
   const out: string[] = [];
   if (!c.subject.trim()) out.push("Falta o assunto.");
-  if (!c.design.blocks.length) out.push("O e-mail está vazio.");
+  if (c.format === "evento") {
+    if (!c.content?.eventId) out.push("Escolha o evento.");
+    if (c.content?.motive === "cupom" && !c.content.coupon) out.push("Escolha o cupom.");
+  } else if (!c.design.blocks.length) out.push("O e-mail está vazio.");
   return out;
 }
 
@@ -168,7 +202,7 @@ export async function duplicateCampaign(id: string): Promise<R<{ id: string }>> 
   if (!c) return { ok: false, error: "Campanha não encontrada." };
   const [row] = await db.insert(emailCampaigns).values({
     organizerId: c.organizerId, userId: c.userId, name: `${c.name} (cópia)`.slice(0, 160), subject: c.subject, preheader: c.preheader,
-    fromName: c.fromName, replyTo: c.replyTo, audience: c.audience, design: c.design, eventId: c.eventId,
+    fromName: c.fromName, replyTo: c.replyTo, audience: c.audience, format: c.format, content: c.content, design: c.design, eventId: c.eventId,
   }).returning({ id: emailCampaigns.id });
   revalidatePath("/painel/emails");
   return { ok: true, id: row.id };

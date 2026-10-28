@@ -7,6 +7,8 @@ import { useToast } from "@/components/toast";
 import { audienceCount, duplicateCampaign, scheduleCampaign, sendNow, sendTest, unscheduleCampaign, updateCampaign } from "@/lib/actions/emails";
 import { fillVars, needsEvent, reasonFor, SAMPLE_VARS, type Audience, type Design } from "@/lib/mail/design";
 import { renderEmail, type EvInfo, type OrgInfo, type RenderCtx } from "@/lib/mail/render";
+import { renderCampaign, type EventContent } from "@/lib/mail/event-email";
+import { EventSetup } from "./event-setup";
 import { useOrigin } from "../use-origin";
 import { EmailEditor } from "./editor";
 import { STATUS } from "./list";
@@ -19,7 +21,7 @@ export type CampaignProps = {
   emailOn: boolean;
   userEmail: string;
   c: {
-    id: string; name: string; status: string; subject: string; preheader: string; fromName: string; replyTo: string;
+    id: string; name: string; status: string; format: "evento" | "livre"; content: EventContent | null; subject: string; preheader: string; fromName: string; replyTo: string;
     audience: Audience; design: Design; scheduledAt: string; scheduledLabel: string; sentLabel: string; tested: boolean;
   };
   count: number;
@@ -58,7 +60,7 @@ export function MailThumb({ html, scale = 0.7, height = 420 }: { html: string; s
 
 export function CampaignView(p: CampaignProps) {
   const sent = p.c.status === "sent" || p.c.status === "sending" || p.c.status === "cancelled";
-  return sent ? <Report p={p} /> : <Setup p={p} />;
+  return sent ? <Report p={p} /> : p.c.format === "evento" ? <EventSetup p={p} /> : <Setup p={p} />;
 }
 
 /* ---------- montagem da campanha ---------- */
@@ -286,11 +288,11 @@ function Setup({ p }: { p: CampaignProps }) {
   );
 }
 
-function Ico({ d }: { d: string }) {
+export function Ico({ d }: { d: string }) {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
 }
 
-function Row({ icon, tone, done, title, sub, open, onToggle, action }: { icon: string; tone: string; done: boolean; title: string; sub: React.ReactNode; open?: boolean; onToggle?: () => void; action?: React.ReactNode }) {
+export function Row({ icon, tone, done, title, sub, open, onToggle, action }: { icon: string; tone: string; done: boolean; title: string; sub: React.ReactNode; open?: boolean; onToggle?: () => void; action?: React.ReactNode }) {
   return (
     <div className="mc-row">
       <span className={`mc-ic ${tone}`}><Ico d={icon} />{done && <i className="mc-ok" aria-label="Pronto">✓</i>}</span>
@@ -301,7 +303,7 @@ function Row({ icon, tone, done, title, sub, open, onToggle, action }: { icon: s
 }
 
 /** Quem recebe: fontes e exclusões, com a contagem ao vivo. */
-function AudienceEdit({ aud, setAud, events, count, counting }: { aud: Audience; setAud: (a: Audience) => void; events: EvOpt[]; count: number; counting: boolean }) {
+export function AudienceEdit({ aud, setAud, events, count, counting }: { aud: Audience; setAud: (a: Audience) => void; events: EvOpt[]; count: number; counting: boolean }) {
   const set = (x: Partial<Audience>) => setAud({ ...aud, ...x });
   const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   return (
@@ -344,7 +346,7 @@ function Report({ p }: { p: CampaignProps }) {
   const [busy, start] = useTransition();
   const [tab, setTab] = useState<"all" | "open" | "click" | "no" | "unsub">("all");
   const ctx = useRenderCtx(p.ctx, p.c.preheader, p.c.audience);
-  const html = useMemo(() => renderEmail(p.c.design, ctx).html, [p.c.design, ctx]);
+  const html = useMemo(() => renderCampaign({ format: p.c.format, content: p.c.content, design: p.c.design }, ctx).html, [p.c.format, p.c.content, p.c.design, ctx]);
   useEffect(() => {
     if (p.c.status !== "sending") return;
     const t = setInterval(() => router.refresh(), 6000);

@@ -14,6 +14,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import type { Audience, Design } from "@/lib/mail/design";
+import type { EventContent } from "@/lib/mail/event-email";
 
 /* ---------- enums ---------- */
 export const eventStatus = pgEnum("event_status", ["draft", "published", "cancelled", "finished"]);
@@ -655,6 +656,9 @@ export const emailCampaigns = pgTable(
     fromName: varchar("from_name", { length: 120 }).notNull().default(""),
     replyTo: varchar("reply_to", { length: 254 }).notNull().default(""),
     audience: jsonb("audience").$type<Audience>().notNull(),
+    /** evento = modelo pronto da Tickets Win (evento + recado); livre = editor de blocos */
+    format: varchar("format", { length: 10 }).notNull().default("livre"),
+    content: jsonb("content").$type<EventContent>(),
     design: jsonb("design").$type<Design>().notNull(),
     /** evento principal (modelo escolhido na criação); usado nos atalhos */
     eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),

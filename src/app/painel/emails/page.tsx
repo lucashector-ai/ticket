@@ -42,7 +42,7 @@ export default async function PainelEmailsPage() {
     }),
     templates: TEMPLATES,
     saved: saved.map((t) => ({ id: t.id, name: t.name })),
-    events: events.filter((e) => e.status !== "draft").map((e) => ({ id: e.id, title: e.title, when: whenLabel(e), past: ended(e, now) })),
+    events: events.filter((e) => e.status !== "draft").map((e) => ({ id: e.id, title: e.title, when: whenLabel(e), past: ended(e, now), flyerId: e.flyerId })),
   };
   return <PainelEmails {...props} />;
 }

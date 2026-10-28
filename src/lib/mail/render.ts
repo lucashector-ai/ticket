@@ -19,6 +19,8 @@ export type EvInfo = {
   accent: string;
   minPrice: string | null;
   lineup: { name: string; img: string | null; role: string }[];
+  /** descrição do evento (parágrafos separados por linha em branco) e quem organiza */
+  description: string; organizer: string;
   tiers: { name: string; price: string; soldOut: boolean }[];
   startAt: number;
 };
@@ -89,10 +91,10 @@ function tones(s: MailStyle) {
   };
 }
 
-const absUrl = (u: string, c: RenderCtx) => (u.startsWith("/") ? c.site + u : u);
+export const absUrl = (u: string, c: Pick<RenderCtx, "site">) => (u.startsWith("/") ? c.site + u : u);
 
 /** Link com UTM (só para o site) e com o rastreio de clique, quando houver. "evento:<id>" vira a página do evento. */
-function href(url: string, c: RenderCtx) {
+export function href(url: string, c: RenderCtx) {
   if (!url) return "";
   let u = url.trim();
   if (u.startsWith("evento:")) u = c.events[u.slice(7)]?.url ?? "/";

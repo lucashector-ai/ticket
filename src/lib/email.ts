@@ -1,4 +1,5 @@
 import "server-only";
+import { brandShell, brandSimple, escHtml } from "@/lib/mail/brand";
 
 /*
  * E-mails transacionais pelo Resend (https://resend.com).
@@ -31,20 +32,10 @@ export async function sendEmails(list: Mail[]): Promise<number> {
   return sent;
 }
 
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-
-/** E-mail simples na cara da Tickets Win: título, parágrafos e um botão. */
+/** E-mail do sistema no formato Tickets Win: título, parágrafos e um botão, com o cabeçalho e o rodapé da marca. */
 export function mailLayout(o: { preheader: string; title: string; paragraphs: string[]; cta: { label: string; url: string }; foot?: string }): Pick<Mail, "html" | "text"> {
-  const ps = o.paragraphs.map((p) => `<p style="margin:0 0 14px;font-size:16px;line-height:1.5;color:#3a3a3e">${esc(p)}</p>`).join("");
-  const html = `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f2f2f6;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
-<span style="display:none;max-height:0;overflow:hidden">${esc(o.preheader)}</span>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f6;padding:32px 12px"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:18px;overflow:hidden">
-<tr><td style="background:#111111;padding:22px 28px;color:#dcf568;font-weight:800;font-size:18px;letter-spacing:-.2px">tickets<span style="color:#ffffff">win</span></td></tr>
-<tr><td style="padding:30px 28px 10px"><h1 style="margin:0 0 16px;font-size:24px;line-height:1.2;color:#111111">${esc(o.title)}</h1>${ps}</td></tr>
-<tr><td style="padding:6px 28px 30px"><a href="${esc(o.cta.url)}" style="display:inline-block;background:#111111;color:#dcf568;text-decoration:none;font-weight:700;font-size:16px;padding:14px 22px;border-radius:12px">${esc(o.cta.label)}</a></td></tr>
-${o.foot ? `<tr><td style="padding:0 28px 26px;font-size:13px;color:#8a8a90;line-height:1.5">${esc(o.foot)}</td></tr>` : ""}
-</table></td></tr></table></body></html>`;
+  const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://ticketswin.com.br").replace(/\/$/, "");
+  const html = brandShell({ site, preheader: o.preheader, body: brandSimple(o), note: o.foot ? [escHtml(o.foot)] : [] });
   const text = [o.title, "", ...o.paragraphs, "", `${o.cta.label}: ${o.cta.url}`, ...(o.foot ? ["", o.foot] : [])].join("\n");
   return { html, text };
 }

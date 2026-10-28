@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
-import { createCampaign, createFromSaved, deleteCampaign, deleteTemplate, duplicateCampaign } from "@/lib/actions/emails";
+import { FlyerArt } from "@/components/art/flyer";
+import { createCampaign, createEventCampaign, createFromSaved, deleteCampaign, deleteTemplate, duplicateCampaign } from "@/lib/actions/emails";
+import { MOTIVES, type Motive } from "@/lib/mail/event-email";
 import type { TemplateKey } from "@/lib/mail/templates";
 import { PainelPortal } from "./portal";
-import { TplArt } from "./tpl-art";
 
 type Row = { id: string; name: string; subject: string; status: string; when: string; recipients: number; open: string; click: string; progress: number };
 export type EmailsProps = {
@@ -16,7 +17,7 @@ export type EmailsProps = {
   campaigns: Row[];
   templates: { key: TemplateKey; name: string; desc: string; needsEvent: boolean }[];
   saved: { id: string; name: string }[];
-  events: { id: string; title: string; when: string; past: boolean }[];
+  events: { id: string; title: string; when: string; past: boolean; flyerId: string }[];
 };
 
 export const STATUS: Record<string, [string, string]> = {
@@ -59,7 +60,7 @@ export function PainelEmails(p: EmailsProps) {
       <div className="pg-h">
         <div><h1 className="pg-t">E-mails</h1><p className="pg-s">Anuncie eventos, mande cupons e lembretes para quem compra e segue você</p></div>
         <button className="b2 dark" type="button" onClick={() => setPicker(true)}>
-          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" /></svg>Nova campanha
+          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" /></svg>Novo e-mail
         </button>
       </div>
       {!p.emailOn && <div className="warn2"><b className="wr-t">Envio desligado.</b><span className="wr-s">Você já pode montar e agendar campanhas. Os e-mails começam a sair quando a chave do Resend for configurada no Cloudflare.</span></div>}
@@ -73,8 +74,8 @@ export function PainelEmails(p: EmailsProps) {
 
       {p.campaigns.length === 0 ? (
         <section className="cx ml-start">
-          <div className="card-h"><div><h2 className="card-t">Comece por um modelo</h2><span className="card-s">Cada modelo já vem com os blocos do seu evento: cartaz, line-up, ingressos, cupom e local. Depois é só ajustar o texto.</span></div></div>
-          <TemplateGrid p={p} busy={busy} onPick={(key, ev) => act(() => createCampaign(key, ev), "Campanha criada.")} />
+          <div className="card-h"><div><h2 className="card-t">Mande o primeiro e-mail</h2><span className="card-s">Escolha o evento e o motivo. O e-mail sai pronto no formato da Tickets Win, com cartaz, data, local e botão de compra.</span></div></div>
+          <NewCampaign p={p} busy={busy} onCreate={(ev, m) => act(() => createEventCampaign(ev, m), "E-mail criado.")} onAdvanced={() => act(() => createCampaign("branco", ""), "Campanha criada.")} />
         </section>
       ) : (
         <section className="cx">
@@ -114,8 +115,8 @@ export function PainelEmails(p: EmailsProps) {
         <PainelPortal>
         <div className="ml-ov" role="dialog" aria-modal="true" aria-label="Nova campanha" onClick={() => setPicker(false)}>
           <div className="ml-dlg" onClick={(e) => e.stopPropagation()}>
-            <div className="ml-dh"><div><h2 className="card-t">Nova campanha</h2><span className="card-s">Escolha um modelo. Tudo pode ser mudado depois no editor.</span></div><button className="ln-x" type="button" aria-label="Fechar" onClick={() => setPicker(false)}>×</button></div>
-            <TemplateGrid p={p} busy={busy} onPick={(key, ev) => act(() => createCampaign(key, ev), "Campanha criada.")} />
+            <div className="ml-dh"><div><h2 className="card-t">Novo e-mail</h2><span className="card-s">Escolha o evento e o motivo. Depois é só conferir e enviar.</span></div><button className="ln-x" type="button" aria-label="Fechar" onClick={() => setPicker(false)}>×</button></div>
+            <NewCampaign p={p} busy={busy} onCreate={(ev, m) => act(() => createEventCampaign(ev, m), "E-mail criado.")} onAdvanced={() => act(() => createCampaign("branco", ""), "Campanha criada.")} />
             {p.saved.length > 0 && (
               <div className="ml-saved">
                 <span className="ml-lbl">Seus modelos</span>
@@ -135,38 +136,37 @@ export function PainelEmails(p: EmailsProps) {
   );
 }
 
-/** Cartões dos modelos; os que precisam de evento pedem a escolha antes de criar. */
-function TemplateGrid({ p, busy, onPick }: { p: EmailsProps; busy: boolean; onPick: (key: TemplateKey, eventId: string) => void }) {
-  const [sel, setSel] = useState<TemplateKey | null>(null);
-  const upcoming = p.events.filter((e) => !e.past), past = p.events.filter((e) => e.past);
-  const tpl = p.templates.find((t) => t.key === sel);
-  const [ev, setEv] = useState("");
-  const list = sel === "pos" ? [...past, ...upcoming] : [...upcoming, ...past];
+/** Novo e-mail em dois passos: o evento e o motivo. O resto o modelo da Tickets Win monta sozinho. */
+function NewCampaign({ p, busy, onCreate, onAdvanced }: { p: EmailsProps; busy: boolean; onCreate: (eventId: string, motive: Motive) => void; onAdvanced: () => void }) {
+  const upcoming = p.events.filter((e) => !e.past);
+  const [ev, setEv] = useState(upcoming[0]?.id ?? "");
+  const [motive, setMotive] = useState<Motive>("novo");
   return (
-    <div className="ml-tg">
-      <div className="ml-grid">
-        {p.templates.map((t) => {
-          const off = t.needsEvent && !p.events.length;
-          return (
-            <button key={t.key} type="button" className={sel === t.key ? "ml-tc on" : "ml-tc"} disabled={busy || off} aria-pressed={sel === t.key}
-              onClick={() => { if (!t.needsEvent) onPick(t.key, ""); else { setSel(t.key); setEv(""); } }}>
-              <TplArt k={t.key} />
-              <b>{t.name}</b><small>{off ? "Publique um evento para usar" : t.desc}</small>
+    <div className="nc">
+      <div className="nc-step"><span className="nc-n">1</span><b>Qual evento?</b></div>
+      {upcoming.length ? (
+        <div className="nc-evs" role="radiogroup" aria-label="Evento">
+          {upcoming.map((e) => (
+            <button key={e.id} type="button" role="radio" aria-checked={ev === e.id} className={ev === e.id ? "nc-ev on" : "nc-ev"} onClick={() => setEv(e.id)}>
+              <span className="nc-art"><FlyerArt id={e.flyerId} /></span>
+              <span className="nc-et"><b>{e.title}</b><small>{e.when}</small></span>
+              <i className="nc-ck" aria-hidden="true" />
             </button>
-          );
-        })}
-      </div>
-      {tpl && (
-        <div className="ml-evp">
-          <label className="fld"><span>Evento do e-mail “{tpl.name}”</span>
-            <select value={ev} onChange={(e) => setEv(e.target.value)}>
-              <option value="">Escolha o evento</option>
-              {list.map((e) => <option key={e.id} value={e.id}>{e.title} · {e.when}{e.past ? " (já aconteceu)" : ""}</option>)}
-            </select>
-          </label>
-          <button className="b2 dark" type="button" disabled={!ev || busy} onClick={() => onPick(tpl.key, ev)}>{busy ? "Criando…" : "Criar campanha"}</button>
+          ))}
         </div>
-      )}
+      ) : <div className="empty2"><b className="em-t">Nenhum evento à venda</b><span className="em-s">Publique um evento para mandar e-mails sobre ele.</span></div>}
+      <div className="nc-step"><span className="nc-n">2</span><b>O que você quer avisar?</b></div>
+      <div className="nc-mo" role="radiogroup" aria-label="Motivo">
+        {(Object.entries(MOTIVES) as [Motive, (typeof MOTIVES)[Motive]][]).map(([k, m]) => (
+          <button key={k} type="button" role="radio" aria-checked={motive === k} className={motive === k ? "nc-m on" : "nc-m"} onClick={() => setMotive(k)}>
+            <b>{m.label}</b><small>{m.hint}</small>
+          </button>
+        ))}
+      </div>
+      <div className="nc-ft">
+        <button className="nc-adv" type="button" onClick={onAdvanced} disabled={busy}>Prefere montar do zero? Abrir o editor avançado</button>
+        <button className="b2 dark" type="button" disabled={!ev || busy} onClick={() => onCreate(ev, motive)}>{busy ? "Criando…" : "Continuar"}</button>
+      </div>
     </div>
   );
 }

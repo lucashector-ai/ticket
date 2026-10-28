@@ -58,7 +58,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const props: CampaignProps = {
     emailOn: emailEnabled(), userEmail: user.email ?? "",
     c: {
-      id: c.id, name: c.name, status: c.status, subject: c.subject, preheader: c.preheader, fromName: c.fromName, replyTo: c.replyTo,
+      id: c.id, name: c.name, status: c.status, format: c.format === "evento" && c.content ? "evento" : "livre", content: c.content ?? null, subject: c.subject, preheader: c.preheader, fromName: c.fromName, replyTo: c.replyTo,
       audience: c.audience, design, scheduledAt: localInput(c.scheduledAt), scheduledLabel: c.scheduledAt ? sp(c.scheduledAt) : "",
       sentLabel: c.sentAt ? sp(c.sentAt) : c.startedAt ? sp(c.startedAt) : "", tested: !!c.testSentAt,
     },
