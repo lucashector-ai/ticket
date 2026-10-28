@@ -17,7 +17,7 @@ export type PromotersProps = {
 };
 
 /** Links de divulgação com comissão: cada parceiro tem o seu link e uma página para acompanhar as vendas. */
-export function PainelPromoters({ p }: { p: PromotersProps }) {
+export function PainelPromoters({ p, ranked = false }: { p: PromotersProps; ranked?: boolean }) {
   const router = useRouter();
   const { flash } = useToast();
   const origin = useOrigin();
@@ -42,8 +42,8 @@ export function PainelPromoters({ p }: { p: PromotersProps }) {
   return (
     <section className="cx">
       <div className="card-h wrap2">
-        <div><h2 className="card-t">Links de comissão</h2><span className="card-s">Promoters, influenciadores e parceiros ganham um link próprio. Quem compra por ele em até 30 dias conta para o parceiro.</span></div>
-        <div className="ca"><button className="b2 dark" type="button" onClick={() => setOpen((v) => !v)}>{open ? "Cancelar" : "Novo parceiro"}</button></div>
+        <div><h2 className="card-t">{ranked ? "Ranking de promoters" : "Links de comissão"}</h2><span className="card-s">{ranked ? "Ordenado por valor vendido. Cada promoter tem um link próprio e uma página para acompanhar as vendas." : "Promoters, influenciadores e parceiros ganham um link próprio. Quem compra por ele em até 30 dias conta para o parceiro."}</span></div>
+        <div className="ca"><button className="b2 dark" type="button" onClick={() => setOpen((v) => !v)}>{open ? "Cancelar" : ranked ? "Novo promoter" : "Novo parceiro"}</button></div>
       </div>
 
       {open && (
@@ -69,8 +69,9 @@ export function PainelPromoters({ p }: { p: PromotersProps }) {
         </div>
       )}
       <div className="tbl">
-        {p.rows.map((r) => (
-          <div className={r.active ? "pr-row" : "pr-row off"} key={r.id}>
+        {p.rows.map((r, i) => (
+          <div className={`${r.active ? "pr-row" : "pr-row off"}${ranked ? " rk" : ""}`} key={r.id}>
+            {ranked && <span className={i < 3 && r.tickets > 0 ? `pr-rk top${i + 1}` : "pr-rk"} aria-label={`${i + 1}º lugar`}>{i + 1}</span>}
             <div className="pr-who">
               <b>{r.name}<span className="pr-pct">{r.pct}%</span></b>
               <span>{r.event}</span>

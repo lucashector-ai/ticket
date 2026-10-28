@@ -451,3 +451,34 @@
   .rv-how{margin:0;padding:12px 0 0 18px;border-top:1px solid #F0F0EB;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#6E6E68;line-height:1.45}
   @media (max-width:640px){.rv-row{grid-template-columns:minmax(0,1fr) auto}.rv-p{align-items:flex-start}}
 }
+
+/* Promoters (página própria) */
+.pg-painel {
+  .pm-h{align-items:flex-end}
+  .pm-ev{width:min(340px,100%)}
+  .pm-empty{padding:72px 16px}
+  .pr-row.rk{grid-template-columns:36px minmax(0,1.6fr) repeat(4,minmax(0,.7fr)) auto}
+  .pr-rk{width:30px;height:30px;border-radius:50%;background:#F1F1EC;color:#55554E;display:grid;place-items:center;font:700 13px 'Inter Tight',sans-serif}
+  .pr-rk.top1{background:#D3F55B;color:#111}
+  .pr-rk.top2,.pr-rk.top3{background:#111;color:#D3F55B}
+  .pm-steps{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;counter-reset:pm}
+  .pm-steps li{counter-increment:pm;display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:16px;background:#F5F5F1}
+  .pm-steps li::before{content:counter(pm);width:24px;height:24px;margin-bottom:6px;border-radius:50%;background:#111;color:#D3F55B;display:grid;place-items:center;font:700 12px Inter,sans-serif}
+  .pm-steps b{font-size:14.5px}
+  .pm-steps span{font-size:13px;line-height:1.5;color:#77776F}
+  .pm-link{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;flex-wrap:wrap}
+  @media (max-width:900px){.pm-steps{grid-template-columns:minmax(0,1fr)}.pr-row.rk{grid-template-columns:36px minmax(0,1fr)}}
+}
+
+/* Excluir evento */
+.pg-painel {
+  .ml-dlg.dl-dlg{max-width:480px;display:flex;flex-direction:column;gap:12px}
+  .dl-dlg form{display:flex;flex-direction:column;gap:14px}
+  .dl-ic{width:44px;height:44px;border-radius:50%;background:#FFE7E0;color:#B42318;display:grid;place-items:center;font:800 18px Inter,sans-serif}
+  .dl-ic.warn{background:#FFF1D9;color:#8A5400}
+  .dl-p{margin:0;font-size:14.5px;line-height:1.55;color:#55554E}
+  .dl-a{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+  .b2.danger{background:#B42318;color:#fff}
+  .b2.danger:hover{background:#9A1D14}
+  .b2.danger:disabled{background:#F0D5D1;color:#fff;cursor:not-allowed}
+}

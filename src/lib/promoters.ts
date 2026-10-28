@@ -18,7 +18,7 @@ export async function promoterForOrder(ev: { id: string; organizerId: string | n
 export type PromoterStats = { orders: number; tickets: number; revenueCents: number; commissionCents: number };
 
 /** Vendas pagas de cada parceiro: pedidos, ingressos, valor dos ingressos e comissão. */
-export async function promoterStats(ids: string[]): Promise<Map<string, PromoterStats>> {
+export async function promoterStats(ids: string[], eventId?: string): Promise<Map<string, PromoterStats>> {
   const out = new Map<string, PromoterStats>();
   if (!ids.length) return out;
   const { orders, orderItems } = schema;
@@ -30,7 +30,7 @@ export async function promoterStats(ids: string[]): Promise<Map<string, Promoter
     })
     .from(orders)
     .leftJoin(orderItems, eq(orderItems.orderId, orders.id))
-    .where(and(inArray(orders.promoterId, ids), eq(orders.status, "paid")))
+    .where(and(inArray(orders.promoterId, ids), eq(orders.status, "paid"), eventId ? eq(orders.eventId, eventId) : undefined))
     .groupBy(orders.promoterId);
   const money = await db
     .select({
@@ -39,7 +39,7 @@ export async function promoterStats(ids: string[]): Promise<Map<string, Promoter
       commission: sql<number>`coalesce(sum(${orders.commissionCents}), 0)::int`,
     })
     .from(orders)
-    .where(and(inArray(orders.promoterId, ids), eq(orders.status, "paid")))
+    .where(and(inArray(orders.promoterId, ids), eq(orders.status, "paid"), eventId ? eq(orders.eventId, eventId) : undefined))
     .groupBy(orders.promoterId);
   for (const r of rows) if (r.id) out.set(r.id, { orders: r.orders, tickets: r.tickets, revenueCents: 0, commissionCents: 0 });
   for (const m of money) if (m.id) { const x = out.get(m.id); if (x) { x.revenueCents = m.revenue; x.commissionCents = m.commission; } }

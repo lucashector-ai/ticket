@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { deleteEvent } from "@/lib/actions/eventos";
+import { PainelPortal } from "./emails/portal";
 import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { brl } from "@/lib/format";
@@ -35,6 +38,7 @@ export function PainelEvento(p: EventoPainelProps) {
   const { flash } = useToast();
   const [tab, setTab] = useState<Tab>(p.tab);
   const [more, setMore] = useState(false);
+  const [del, setDel] = useState(false);
   const url = `${useOrigin()}/eventos/${p.ev.slug}`;
   const pick = (t: Tab) => {
     setTab(t);
@@ -64,6 +68,7 @@ export function PainelEvento(p: EventoPainelProps) {
               <button className="mn-i" type="button" onClick={() => { setMore(false); exportCsv(p.ev.title, p.people); }}>Exportar participantes (CSV)</button>
               <button className="mn-i" type="button" onClick={() => { setMore(false); pick("financeiro"); }}>Ver financeiro</button>
               <Link className="mn-i" href={`/criar-evento?editar=${p.ev.id}`}>Gerenciar lotes e cupons</Link>
+              <button className="mn-i danger" type="button" onClick={() => { setMore(false); setDel(true); }}>Excluir evento</button>
             </div>
           )}
         </div>
@@ -80,7 +85,47 @@ export function PainelEvento(p: EventoPainelProps) {
       {tab === "financeiro" && <Fin p={p} />}
       {tab === "lancamento" && p.launch && <PainelLancamento p={p.launch} />}
       {tab === "revenda" && p.revenda && <PainelRevenda p={p.revenda} />}
+      {del && <DeleteEvent id={p.ev.id} title={p.ev.title} sold={p.kpis.sold + p.fin.refunds.length} onClose={() => setDel(false)} />}
     </div>
+  );
+}
+
+/** Confirmação para excluir: só eventos sem venda; pede o nome do evento para não excluir sem querer. */
+function DeleteEvent({ id, title, sold, onClose }: { id: string; title: string; sold: number; onClose: () => void }) {
+  const router = useRouter();
+  const { flash } = useToast();
+  const [typed, setTyped] = useState("");
+  const [busy, start] = useTransition();
+  const ok = typed.trim().toLowerCase() === title.trim().toLowerCase();
+  const go = () => start(async () => {
+    const r = await deleteEvent(id, typed);
+    if (!r.ok) { flash(r.error); return; }
+    flash(`“${title}” foi excluído.`);
+    router.push("/painel");
+  });
+  return (
+    <PainelPortal>
+      <div className="ml-ov" role="dialog" aria-modal="true" aria-label="Excluir evento" onClick={onClose}>
+        <div className="ml-dlg dl-dlg" onClick={(e) => e.stopPropagation()}>
+          {sold > 0 ? (
+            <>
+              <span className="dl-ic warn" aria-hidden="true">!</span>
+              <h2 className="card-t">Este evento já vendeu ingressos</h2>
+              <p className="dl-p">Quem comprou tem ingresso válido para “{title}”, então ele não pode ser excluído. Se o evento não vai acontecer, fale com a gente para cancelar e devolver o dinheiro de todos os compradores.</p>
+              <div className="dl-a"><button className="b2" type="button" onClick={onClose}>Fechar</button><Link className="b2 dark" href="/ajuda">Falar com o suporte</Link></div>
+            </>
+          ) : (
+            <form onSubmit={(e) => { e.preventDefault(); if (ok) go(); }}>
+              <span className="dl-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg></span>
+              <h2 className="card-t">Excluir “{title}”?</h2>
+              <p className="dl-p">O evento, os lotes, os cupons, a lista de aviso e os links de divulgação dele somem para sempre. Isso não dá para desfazer.</p>
+              <label className="fld"><span>Para confirmar, digite o nome do evento</span><input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={title} /></label>
+              <div className="dl-a"><button className="b2" type="button" onClick={onClose} disabled={busy}>Cancelar</button><button className="b2 danger" type="submit" disabled={!ok || busy}>{busy ? "Excluindo…" : "Excluir evento"}</button></div>
+            </form>
+          )}
+        </div>
+      </div>
+    </PainelPortal>
   );
 }
 

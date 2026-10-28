@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { createCoupon, setCouponActive } from "@/lib/actions/painel";
-import { PainelPromoters, type PromotersProps } from "./promoters";
+import type { PromotersProps } from "./promoters";
 import { useOrigin } from "./use-origin";
 
 export type MarketingProps = {
@@ -115,7 +115,10 @@ export function PainelMarketing(p: MarketingProps) {
           </section>
         </aside>
       </div>
-      {p.promoters && <div style={{ marginTop: 16 }}><PainelPromoters p={p.promoters} /></div>}
+      <section className="cx pm-link">
+        <div><h2 className="card-t">Promoters</h2><span className="card-s">Links com comissão, ranking de quem mais vende e a página de cada promoter.</span></div>
+        <Link className="b2 dark" href="/painel/promoters">Abrir promoters</Link>
+      </section>
     </div>
   );
 }
