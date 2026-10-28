@@ -35,7 +35,7 @@ export async function sendEmails(list: Mail[]): Promise<number> {
 /** E-mail do sistema no formato Tickets Win: título, parágrafos e um botão, com o cabeçalho e o rodapé da marca. */
 export function mailLayout(o: { preheader: string; title: string; paragraphs: string[]; cta: { label: string; url: string }; foot?: string }): Pick<Mail, "html" | "text"> {
   const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://ticketswin.com.br").replace(/\/$/, "");
-  const html = brandShell({ site, preheader: o.preheader, body: brandSimple(o), note: o.foot ? [escHtml(o.foot)] : [] });
+  const html = brandShell({ site, preheader: o.preheader, body: brandSimple(o), note: [...(o.foot ? [escHtml(o.foot)] : []), "Você recebeu este e-mail porque tem conta na Tickets Win."] });
   const text = [o.title, "", ...o.paragraphs, "", `${o.cta.label}: ${o.cta.url}`, ...(o.foot ? ["", o.foot] : [])].join("\n");
   return { html, text };
 }
