@@ -8,7 +8,7 @@ import { linkArtistSpotify } from "@/lib/spotify-artists";
 import { AREA_KINDS, KIND_COLOR, MAX_AREAS, normalizePlan } from "@/lib/criar/plan";
 import {
   CATEGORY_KINDS, effTypes, eventSlug, limitOf, MAX_LIMIT, num, parseBrDateTime, parseCity, spDate, toCents,
-  type DbMap, type Draft,
+  type DbMap, type Draft, type VenuePlace,
 } from "@/lib/criar/model";
 
 const { events, eventSessions, ticketTypes, venues, cities, organizers, artists, eventArtists, categories, eventCategories, coupons } = schema;
@@ -17,6 +17,8 @@ const { events, eventSessions, ticketTypes, venues, cities, organizers, artists,
 const str = (max: number) => z.string().max(max).default("");
 const id = z.string().min(1).max(40);
 const media = z.string().max(200).regex(/^\/midia\/eventos\/[\w/.-]+$/).optional();
+const place = z.object({ id: z.string().max(300), addr: str(300), hood: z.string().max(120).nullable(), lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) });
+
 const draftSchema = z.object({
   mode: z.enum(["unica", "temporada", "turne"]),
   tmode: z.enum(["mapa", "simples"]),
@@ -24,8 +26,8 @@ const draftSchema = z.object({
   lineup: z.array(z.object({ id, name: str(160), role: str(40), time: str(5), end: str(5), days: z.array(id).max(60).nullable(), spotifyId: z.string().regex(/^[A-Za-z0-9]{22}$/).optional(), image: z.string().regex(/^https:\/\/i\.scdn\.co\/[\w/]+$/).nullable().optional() })).max(60),
   media: z.object({ poster: media, banner: media, home: media, strip: media, share: media }),
   coupons: z.array(z.object({ id, code: str(40), kind: z.enum(["pct", "brl"]), value: str(12), limit: str(9), until: str(20), scope: id })).max(50),
-  venue: z.object({ name: str(160), city: str(120) }),
-  sessions: z.array(z.object({ id, date: str(10), doors: str(5), time: str(5), end: z.string().max(5).optional(), cap: str(9), venue: str(160), city: str(120) })).max(60),
+  venue: z.object({ name: str(160), city: str(120), place: place.optional() }),
+  sessions: z.array(z.object({ id, date: str(10), doors: str(5), time: str(5), end: z.string().max(5).optional(), cap: str(9), venue: str(160), city: str(120), place: place.optional() })).max(60),
   autoMeia: z.boolean(), fee: z.boolean(), transfer: z.boolean().default(true), resale: z.boolean().default(true),
   sectors: z.array(z.object({
     id, name: str(80), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/), open: z.boolean(),
@@ -80,11 +82,16 @@ async function findOrCreateCity(name: string, uf: string) {
   return row ?? (await db.query.cities.findFirst({ where: eq(cities.slug, slug) }))!;
 }
 
-async function findOrCreateVenue(name: string, city: { id: string; name: string }, capacity: number | null) {
+async function findOrCreateVenue(name: string, city: { id: string; name: string }, capacity: number | null, place: VenuePlace | null) {
   const slug = slugify(`${name}-${city.name}`);
+  const geo = place ? { placeId: place.id, address: place.addr || null, neighborhood: place.hood, lat: String(place.lat), lng: String(place.lng) } : null;
   const found = await db.query.venues.findFirst({ where: eq(venues.slug, slug) });
-  if (found) return found;
-  const [row] = await db.insert(venues).values({ slug, name, cityId: city.id, capacity }).onConflictDoNothing().returning();
+  if (found) {
+    // local cadastrado sem endereço ganha o do Google; um endereço que já existe não é trocado
+    if (geo && !found.lat) await db.update(venues).set({ ...geo, address: found.address ?? geo.address, neighborhood: found.neighborhood ?? geo.neighborhood }).where(eq(venues.id, found.id));
+    return found;
+  }
+  const [row] = await db.insert(venues).values({ slug, name, cityId: city.id, capacity, ...geo }).onConflictDoNothing().returning();
   return row ?? (await db.query.venues.findFirst({ where: eq(venues.slug, slug) }))!;
 }
 
@@ -145,7 +152,7 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   if (publish && (!d.media.poster || !d.media.banner)) return fail("Envie o cartaz (3:4) e o banner (16:9) antes de publicar.", 6);
   const sessions = [...(d.mode === "unica" ? d.sessions.slice(0, 1) : d.sessions)].sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1));
   if (publish && !sessions.length) return fail("Adicione pelo menos uma data.", 2);
-  const sessRows: { id: string; start: Date; end: Date | null; doors: Date | null; cap: number | null; venue: string; city: { name: string; uf: string } | null }[] = [];
+  const sessRows: { id: string; start: Date; end: Date | null; doors: Date | null; cap: number | null; venue: string; city: { name: string; uf: string } | null; place: VenuePlace | null }[] = [];
   for (const s of sessions) {
     const start = spDate(s.date, s.time);
     if (!start) return fail("Uma das datas está sem dia ou horário válido.", 2);
@@ -156,7 +163,7 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     // término antes do início = vira a noite e acaba no dia seguinte
     let end = s.end ? spDate(s.date, s.end) : null;
     if (end && end <= start) end = new Date(end.getTime() + 86_400_000);
-    sessRows.push({ id: s.id, start, end, doors: s.doors ? spDate(s.date, s.doors) : null, cap: num(s.cap) || null, venue, city });
+    sessRows.push({ id: s.id, start, end, doors: s.doors ? spDate(s.date, s.doors) : null, cap: num(s.cap) || null, venue, city, place: (tour ? s.place : d.venue.place) ?? null });
   }
 
   const sectorTypes = d.sectors.map((k) => ({ k, types: effTypes(k, d.autoMeia) }));
@@ -234,7 +241,7 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     const key = `${s.venue}|${s.city.name}|${s.city.uf}`;
     if (venueIds.has(key)) continue;
     const city = await findOrCreateCity(s.city.name, s.city.uf);
-    const venue = await findOrCreateVenue(s.venue, city, s.cap);
+    const venue = await findOrCreateVenue(s.venue, city, s.cap, s.place);
     venueIds.set(key, venue.id);
   }
   const venueOf = (s: (typeof sessRows)[number]) => (s.venue && s.city ? venueIds.get(`${s.venue}|${s.city.name}|${s.city.uf}`) ?? null : null);

@@ -8,8 +8,10 @@ export type TypeKind = "inteira" | "meia" | "social" | "outro";
 export type Visibility = "publico" | "link" | "rascunho";
 export type MediaKey = "poster" | "banner" | "home" | "strip" | "share";
 
+/** Lugar real escolhido na busca do Google: endereço, bairro e coordenadas. */
+export type VenuePlace = { id: string; addr: string; hood: string | null; lat: number; lng: number };
 /** `end`: horário de término (vazio = 6 h depois do início; antes do início = passa da meia-noite). */
-export type DraftSession = { id: string; date: string; doors: string; time: string; end?: string; cap: string; venue: string; city: string };
+export type DraftSession = { id: string; date: string; doors: string; time: string; end?: string; cap: string; venue: string; city: string; place?: VenuePlace };
 /** `free`: ingresso gratuito (sem preço nem taxa); `limit`: máximo que cada pessoa pode levar desse tipo. */
 export type DraftType = { id: string; kind: TypeKind; name: string; price: string; qty: string; desc: string; free?: boolean; limit?: string };
 export type DraftSector = { id: string; name: string; color: string; open: boolean; types: DraftType[] };
@@ -35,7 +37,7 @@ export type Draft = {
   lineup: DraftArtist[];
   media: Partial<Record<MediaKey, string>>;
   coupons: DraftCoupon[];
-  venue: { name: string; city: string };
+  venue: { name: string; city: string; place?: VenuePlace };
   sessions: DraftSession[];
   autoMeia: boolean;
   fee: boolean;

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SpotifyArtistSearch, SpotifyIcon, type SpotifyHit } from "@/components/spotify-search";
-import { searchVenues, type VenueHit } from "@/lib/actions/criar";
-import { AGES, EVENT_TYPES, num, parseCity, ROLES, type DraftSession, type EventMode } from "@/lib/criar/model";
+import { pickPlace, searchVenues, type VenueHit } from "@/lib/actions/criar";
+import { AGES, EVENT_TYPES, num, parseCity, ROLES, type DraftSession, type EventMode, type VenuePlace } from "@/lib/criar/model";
 import { initials } from "@/lib/format";
 import type { Derived } from "./flow";
 import { isoDate, MO, MONTHS, parseIso, Spark, WD, XIcon, type Ctx } from "./shared";
@@ -305,19 +305,74 @@ export function QuandoStep({ c, x }: { c: Ctx; x: Derived }) {
 }
 
 /* =========================== 4. ONDE =========================== */
+type Picked = { name: string; city: string; cap: number | null; place: VenuePlace | null };
+
+/** Busca de locais (cadastrados + Google). Um token por sessão de busca: o Google cobra a sessão só no local escolhido. */
+function useVenueSearch(q: string, active: boolean) {
+  const [hits, setHits] = useState<VenueHit[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const tok = useRef("");
+  useEffect(() => {
+    if (!active) return;
+    if (!tok.current) tok.current = crypto.randomUUID();
+    let alive = true;
+    const t = setTimeout(() => { void searchVenues(q, tok.current).then((r) => { if (alive) setHits(r); }); }, q.trim().length >= 3 ? 300 : 180);
+    return () => { alive = false; clearTimeout(t); };
+  }, [q, active]);
+  const pick = async (v: VenueHit): Promise<Picked> => {
+    if (!v.placeId) return { name: v.name, city: v.city, cap: v.cap, place: null };
+    setBusy(v.placeId);
+    const r = await pickPlace(v.placeId, tok.current).catch(() => null);
+    tok.current = "";
+    setBusy(null);
+    return { name: v.name, city: r?.city ?? "", cap: null, place: r?.place ?? null };
+  };
+  return { hits, busy, pick };
+}
+
+function VenueHits({ hits, busy, onPick, children }: { hits: VenueHit[]; busy: string | null; onPick: (v: VenueHit) => void; children?: ReactNode }) {
+  return (
+    <div className="cv-vl">
+      {hits.map((v, i) => (
+        <button key={v.placeId ?? v.name + v.city} className={v.placeId && busy === v.placeId ? "vr ld" : "vr"} type="button" disabled={!!busy} onClick={() => onPick(v)} style={{ animationDelay: `${i * 40}ms` }}>
+          <span className={v.placeId ? "pin g" : "pin"}><Ico d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11zM12 12.4a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8z" size={18} /></span>
+          <span className="tx"><b>{v.name}</b><span className="s">{[v.addr, v.city].filter(Boolean).join(" · ")}</span></span>
+          {v.cap ? <em>até {v.cap.toLocaleString("pt-BR")} pessoas</em> : !v.placeId ? <em>Na Tickets Win</em> : null}
+        </button>
+      ))}
+      {children}
+      {hits.some((v) => v.placeId) && <span className="cv-gattr">Locais do Google Maps</span>}
+    </div>
+  );
+}
+
+/** Campo de local de uma data da turnê, com as mesmas sugestões da busca principal. */
+function TourVenue({ s, label, onChange }: { s: DraftSession; label: string; onChange: (patch: Partial<DraftSession>) => void }) {
+  const [open, setOpen] = useState(false);
+  const { hits, busy, pick } = useVenueSearch(s.venue, open && s.venue.trim().length >= 2);
+  return (
+    <div className="cv-ac" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
+      <input className="cv-in" value={s.venue} onFocus={() => setOpen(true)} onChange={(e) => { onChange({ venue: e.target.value }); setOpen(true); }} onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} placeholder="Local (ex.: Arena Norte)" aria-label={label} autoComplete="off" />
+      {open && s.venue.trim().length >= 2 && hits.length > 0 && (
+        <div className="cv-acl" onMouseDown={(e) => e.preventDefault()}>
+          <VenueHits hits={hits} busy={busy} onPick={(v) => { void pick(v).then((p) => { onChange({ venue: p.name, ...(p.city ? { city: p.city } : {}), place: p.place ?? undefined, ...(p.cap ? { cap: String(p.cap) } : {}) }); setOpen(false); }); }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
   const { d, upd } = c;
   const [q, setQ] = useState("");
-  const [hits, setHits] = useState<VenueHit[]>([]);
   const [editing, setEditing] = useState(!d.venue.name.trim());
-  useEffect(() => {
-    if (!editing || x.tour) return;
-    let alive = true;
-    const t = setTimeout(() => { void searchVenues(q).then((r) => { if (alive) setHits(r); }); }, 220);
-    return () => { alive = false; clearTimeout(t); };
-  }, [q, editing, x.tour]);
-  const setVenue = (name: string, city: string, cap?: number | null) => {
-    upd((o) => ({ ...o, venue: { name, city }, sessions: o.sessions.map((s) => ({ ...s, venue: name, city, ...(cap ? { cap: String(cap) } : {}) })) }), "where");
+  const { hits, busy, pick } = useVenueSearch(q, editing && !x.tour);
+  /** `place`: undefined mantém o lugar do Google já escolhido; null tira (local digitado à mão). */
+  const setVenue = (name: string, city: string, cap?: number | null, place?: VenuePlace | null) => {
+    upd((o) => {
+      const pl = place === undefined ? o.venue.place : place ?? undefined;
+      return { ...o, venue: { name, city, ...(pl ? { place: pl } : {}) }, sessions: o.sessions.map((s) => ({ ...s, venue: name, city, ...(cap ? { cap: String(cap) } : {}) })) };
+    }, "where");
     setEditing(false);
   };
   const cap = x.sessions[0]?.cap ?? "500";
@@ -336,8 +391,8 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
             return (
               <div key={s.id} className="row" style={{ animationDelay: `${i * 40}ms` }}>
                 <span className="dd"><small>{WD[dt.getDay()]}</small><b>{dt.getDate()}</b><small>{MO[dt.getMonth()]}</small></span>
-                <input className="cv-in" value={s.venue} onChange={(e) => setOne(s.id, { venue: e.target.value })} placeholder="Local (ex.: Arena Norte)" aria-label={`Local de ${dt.getDate()}/${dt.getMonth() + 1}`} />
-                <input className={s.city && !okCity ? "cv-in bad" : "cv-in"} value={s.city} onChange={(e) => setOne(s.id, { city: e.target.value })} placeholder="Cidade – UF" aria-label={`Cidade de ${dt.getDate()}/${dt.getMonth() + 1}`} />
+                <TourVenue s={s} label={`Local de ${dt.getDate()}/${dt.getMonth() + 1}`} onChange={(p) => setOne(s.id, p)} />
+                <input className={s.city && !okCity ? "cv-in bad" : "cv-in"} value={s.city} onChange={(e) => setOne(s.id, { city: e.target.value, place: undefined })} placeholder="Cidade – UF" aria-label={`Cidade de ${dt.getDate()}/${dt.getMonth() + 1}`} />
                 <input className="cv-in cap" inputMode="numeric" value={s.cap} onChange={(e) => setOne(s.id, { cap: e.target.value.replace(/\D/g, "") })} aria-label="Lotação" title="Lotação" />
               </div>
             );
@@ -358,20 +413,13 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" /></svg>
               <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busque pelo nome do lugar ou da cidade" aria-label="Buscar local" autoFocus />
             </label>
-            <div className="cv-vl">
-              {hits.map((v, i) => (
-                <button key={v.name + v.city} className="vr" type="button" onClick={() => setVenue(v.name, v.city, v.cap)} style={{ animationDelay: `${i * 40}ms` }}>
-                  <span className="pin"><Ico d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11zM12 12.4a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8z" size={18} /></span>
-                  <span className="tx"><b>{v.name}</b><span className="s">{[v.addr, v.city].filter(Boolean).join(" · ")}</span></span>
-                  {v.cap ? <em>até {v.cap.toLocaleString("pt-BR")} pessoas</em> : null}
-                </button>
-              ))}
+            <VenueHits hits={hits} busy={busy} onPick={(v) => { void pick(v).then((p) => setVenue(p.name, p.city, p.cap, p.place)); }}>
               {q.trim().length > 1 && (
-                <button className="vr new" type="button" onClick={() => { upd((o) => ({ ...o, venue: { name: q.trim(), city: o.venue.city }, sessions: o.sessions.map((s) => ({ ...s, venue: q.trim() })) }), "where"); setEditing(false); }}>
+                <button className="vr new" type="button" disabled={!!busy} onClick={() => setVenue(q.trim(), d.venue.city, null, null)}>
                   <span className="pin">+</span><span className="tx"><b>Usar “{q.trim()}”</b><span className="s">Local novo: você informa a cidade em seguida</span></span>
                 </button>
               )}
-            </div>
+            </VenueHits>
           </>
         ) : (
           <>
@@ -379,11 +427,11 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
               <div className="gr" /><div className="rd" /><div className="rd2" /><div className="pk" />
               <span className="ring" />
               <svg className="mp" width="44" height="54" viewBox="0 0 44 54" aria-hidden="true"><path d="M22 54S2 34 2 21a20 20 0 0 1 40 0c0 13-20 33-20 33z" fill="#111" /><circle cx="22" cy="21" r="8" fill="#D3F55B" /></svg>
-              <div className="cv-mcard"><span className="tx"><b>{d.venue.name}</b><span className="s">{d.venue.city || "Falta a cidade"}</span></span><button className="chg" type="button" onClick={() => { setQ(""); setEditing(true); }}>Trocar</button></div>
+              <div className="cv-mcard"><span className="tx"><b>{d.venue.name}</b><span className="s">{d.venue.place?.addr || d.venue.city || "Falta a cidade"}</span></span><button className="chg" type="button" onClick={() => { setQ(""); setEditing(true); }}>Trocar</button></div>
             </div>
             <div className="cv-2">
               <label className="cv-fl"><span>Nome do local</span><input className="cv-in" value={d.venue.name} onChange={(e) => setVenue(e.target.value, d.venue.city)} /></label>
-              <label className="cv-fl"><span>Cidade</span><input className={d.venue.city && !cityOk ? "cv-in bad" : "cv-in"} value={d.venue.city} onChange={(e) => setVenue(d.venue.name, e.target.value)} placeholder="São Paulo – SP" autoFocus={!cityOk} /></label>
+              <label className="cv-fl"><span>Cidade</span><input className={d.venue.city && !cityOk ? "cv-in bad" : "cv-in"} value={d.venue.city} onChange={(e) => setVenue(d.venue.name, e.target.value, null, null)} placeholder="São Paulo – SP" autoFocus={!cityOk} /></label>
             </div>
             <div className="cv-tmb cap">
               <small>Lotação do local</small>

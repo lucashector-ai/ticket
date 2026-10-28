@@ -54,6 +54,8 @@ export const venues = pgTable(
     cityId: uuid("city_id").notNull().references(() => cities.id),
     lat: varchar("lat", { length: 24 }),
     lng: varchar("lng", { length: 24 }),
+    /** id do lugar no Google Places, quando o local veio da busca do Google */
+    placeId: varchar("place_id", { length: 300 }),
     capacity: integer("capacity"),
     accessible: boolean("accessible").notNull().default(true),
     ...timestamps,

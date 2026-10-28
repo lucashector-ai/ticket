@@ -95,7 +95,7 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     addr,
     city,
     uf,
-    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`,
+    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}${e.venue?.placeId ? `&query_place_id=${encodeURIComponent(e.venue.placeId)}` : ""}`,
     paragraphs,
     age: e.ageRating,
     halfPrice: e.halfPriceInfo,
