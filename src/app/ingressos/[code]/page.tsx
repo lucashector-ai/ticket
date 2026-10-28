@@ -25,8 +25,8 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
   return { title: `Ingresso ${code.toUpperCase()}` };
 }
 
-export default async function IngressoPage({ params }: { params: Promise<{ code: string }> }) {
-  const { code: raw } = await params;
+export default async function IngressoPage({ params, searchParams }: { params: Promise<{ code: string }>; searchParams: Promise<{ revender?: string }> }) {
+  const [{ code: raw }, { revender }] = await Promise.all([params, searchParams]);
   const code = raw.toUpperCase();
   const user = await getSessionUser();
   if (!user) redirect(`/entrar?next=${encodeURIComponent(`/ingressos/${code}`)}`);
@@ -50,6 +50,7 @@ export default async function IngressoPage({ params }: { params: Promise<{ code:
     resale: { enabled: e.resaleEnabled && e.status === "published", ...resaleCap(t.ticketType.priceCents, t.halfPrice, e.resaleMaxPct), listing: listing ? { id: listing.id, priceCents: listing.priceCents, reserved: listing.status === "reserved" && !!listing.reservedUntil && listing.reservedUntil > now } : null },
   };
 
+  data.openResale = revender === "1" && data.resale.enabled && !data.resale.listing && t.status === "valid";
   return (
     <div className="pg-meus-ingressos">
       <FavoritesHydrator serverFavs={favs} loggedIn />

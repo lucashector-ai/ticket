@@ -28,5 +28,7 @@ export type TicketGroup = {
   addr: string;
   city: string;
   tier: string;
+  /** o produtor permite a revenda oficial deste evento */
+  resale: boolean;
   tickets: TicketItem[];
 };

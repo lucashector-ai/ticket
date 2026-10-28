@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
-import { qtyLabel } from "@/lib/tickets/labels";
+import { qtyLabel, TICKET_STATUS_LABEL } from "@/lib/tickets/labels";
 import { HelpStrip } from "./help-strip";
 import { WalletButtons, type WalletFlags } from "./wallet-buttons";
-import { IcoArrow, IcoCalendar, IcoCheck, IcoClose, IcoNext, IcoPin, IcoPrev, IcoStar, IcoSun, IcoTicket } from "./icons";
+import { IcoArrow, IcoCalendar, IcoCheck, IcoChevron, IcoClose, IcoNext, IcoPin, IcoPrev, IcoStar, IcoSun, IcoTag, IcoTicket, IcoUser } from "./icons";
 import { Modal } from "./modal";
 import { TransferModal } from "./transfer-modal";
 import type { TicketGroup, TicketItem } from "./types";
@@ -106,39 +106,40 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
               <div className="tkb-i">
                 <span className="tkb-k"><span className="tkb-dot" aria-hidden="true" />Próximo evento · {f.countdown}</span>
                 <h2 className="tkb-t">{f.title}</h2>
-                <ul className="tkb-l">
-                  <li>
-                    <span className="tkb-ic" aria-hidden="true"><IcoCalendar /></span>
-                    <div><b>{f.dateFull}</b>{f.doors && <span className="tkb-sub">{f.doors}</span>}</div>
-                  </li>
-                  <li>
-                    <span className="tkb-ic" aria-hidden="true"><IcoPin /></span>
-                    <div><b>{f.venue}</b><span className="tkb-sub">{f.addr}</span></div>
-                  </li>
-                  <li>
-                    <span className="tkb-ic" aria-hidden="true"><IcoTicket /></span>
-                    <div><b>{qtyLabel(f.tickets.length)}</b><span className="tkb-sub">{f.tier}{f.orderNumber != null && <> · Pedido #{f.orderNumber}</>}</span></div>
-                  </li>
-                </ul>
-                <div className="tkb-a">
-                  {f.tickets[idx(f)].status === "valid" && <WalletButtons code={f.tickets[idx(f)].code} flags={wallet} />}
-                  {(() => {
-                    const t = f.tickets[idx(f)];
-                    const can = t.status === "valid" && !moved[t.id];
-                    return (
-                      <button className="btn-g" type="button" disabled={!can} onClick={() => can && setTransfer({ group: f, ticket: t, cur: idx(f) + 1 })}>
-                        <IcoArrow />Transferir
-                      </button>
-                    );
-                  })()}
-                  <Link className="btn-l" href={`/eventos/${f.eventSlug}`}>Ver evento</Link>
-                </div>
+                {(() => {
+                  const t = f.tickets[idx(f)];
+                  return (
+                    <ul className="tkb-g">
+                      <li>
+                        <span className="tkb-ic" aria-hidden="true"><IcoCalendar /></span>
+                        <div><b>{f.dateFull}</b>{f.doors && <span className="tkb-sub">{f.doors}</span>}</div>
+                      </li>
+                      <li>
+                        <span className="tkb-ic" aria-hidden="true"><IcoPin /></span>
+                        <div><b>{f.venue}</b><span className="tkb-sub">{f.addr}</span></div>
+                      </li>
+                      <li>
+                        <span className="tkb-ic" aria-hidden="true"><IcoTicket /></span>
+                        <div><b>{f.tier}</b><span className="tkb-sub">{qtyLabel(f.tickets.length)}{f.orderNumber != null && <> · Pedido #{f.orderNumber}</>}</span></div>
+                      </li>
+                      <li>
+                        <span className="tkb-ic" aria-hidden="true"><IcoUser /></span>
+                        <div><b>{t.holderName ?? "Titular não informado"}</b><span className="tkb-sub">{moved[t.id] ? `Transferido para ${moved[t.id]}` : "Titular do ingresso"}</span></div>
+                      </li>
+                    </ul>
+                  );
+                })()}
+                {f.tickets[idx(f)].status === "valid" && !moved[f.tickets[idx(f)].id] && (wallet.apple || wallet.google) && (
+                  <div className="tkb-w"><WalletButtons code={f.tickets[idx(f)].code} flags={wallet} pills /></div>
+                )}
               </div>
               {(() => {
                 const t = f.tickets[idx(f)];
                 const off = t.status !== "valid" || !!moved[t.id];
+                const st = moved[t.id] ? "transferred" : t.status;
                 return (
                   <div className={off ? "tkb-s off" : "tkb-s"}>
+                    <span className={`tk-st sm tk-st-${st}`}>{TICKET_STATUS_LABEL[st]}</span>
                     <button className="qr-b" type="button" onClick={() => setQrOf(f.key)} aria-label={`Ampliar QR code do ingresso ${idx(f) + 1} de ${f.tickets.length}`}>
                       <div className="qr" dangerouslySetInnerHTML={{ __html: t.qrSvg }} />
                     </button>
@@ -150,12 +151,40 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
                         <button className="pg-b" type="button" onClick={() => step(f, 1)} aria-label="Próximo ingresso"><IcoNext /></button>
                       </div>
                     )}
-                    <span className="tkb-hold">{holderLabel(t, moved)}</span>
+                    {off && <span className="tkb-hold">{holderLabel(t, moved)}</span>}
                   </div>
                 );
               })()}
             </article>
-          ) : (
+          ) : null}
+          {f && (() => {
+            const t = f.tickets[idx(f)];
+            const can = t.status === "valid" && !moved[t.id];
+            return (
+              <div className="tka">
+                {can && (
+                  <button className="tka-i" type="button" onClick={() => setTransfer({ group: f, ticket: t, cur: idx(f) + 1 })}>
+                    <span className="tka-ic" aria-hidden="true"><IcoArrow /></span>
+                    <span className="tka-t"><b>Transferir</b><small>Envie para um amigo pelo e-mail</small></span>
+                    <IcoChevron />
+                  </button>
+                )}
+                {can && f.resale && (
+                  <Link className="tka-i" href={`/ingressos/${t.code}?revender=1`}>
+                    <span className="tka-ic" aria-hidden="true"><IcoTag /></span>
+                    <span className="tka-t"><b>Revender</b><small>Anuncie com segurança na Tickets Win</small></span>
+                    <IcoChevron />
+                  </Link>
+                )}
+                <a className="tka-i" href={`/api/ingressos/${t.code}/ics`} download={`ticketswin-${t.code}.ics`}>
+                  <span className="tka-ic" aria-hidden="true"><IcoCalendar /></span>
+                  <span className="tka-t"><b>Adicionar à agenda</b><small>Google, Apple ou Outlook</small></span>
+                  <IcoChevron />
+                </a>
+              </div>
+            );
+          })()}
+          {!f && (
             <div className="empty mi-empty">
               <h3>Nenhum evento por vir</h3>
               <p>Seus próximos ingressos aparecem aqui assim que você comprar.</p>

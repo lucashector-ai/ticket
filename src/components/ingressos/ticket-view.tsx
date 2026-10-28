@@ -6,7 +6,7 @@ import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { TICKET_STATUS_LABEL } from "@/lib/tickets/labels";
 import { HelpStrip } from "./help-strip";
-import { IcoArrow, IcoBack, IcoCalendar, IcoClose, IcoPin, IcoSun, IcoTicket, IcoUser } from "./icons";
+import { IcoArrow, IcoBack, IcoCalendar, IcoChevron, IcoClose, IcoPin, IcoSun, IcoTag, IcoTicket, IcoUser } from "./icons";
 import { Modal } from "./modal";
 import { TransferModal } from "./transfer-modal";
 import { ResaleModal } from "./resale-modal";
@@ -33,6 +33,8 @@ export type TicketViewData = {
   wallet: WalletFlags;
   /** revenda oficial: liberada pelo produtor, valores e o anúncio atual */
   resale: { enabled: boolean; faceCents: number; maxCents: number; listing: { id: string; priceCents: number; reserved: boolean } | null };
+  /** veio do atalho "Revender" da lista: já abre o anúncio */
+  openResale?: boolean;
 };
 
 export function TicketView({ data }: { data: TicketViewData }) {
@@ -40,7 +42,7 @@ export function TicketView({ data }: { data: TicketViewData }) {
   const [transfer, setTransfer] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [movedTo, setMovedTo] = useState<string | null>(null);
-  const [resell, setResell] = useState(false);
+  const [resell, setResell] = useState(!!data.openResale);
   const [listing, setListing] = useState(data.resale.listing);
   const unlist = async () => {
     if (!listing) return;
@@ -180,6 +182,3 @@ export function TicketView({ data }: { data: TicketViewData }) {
     </main>
   );
 }
-
-const IcoChevron = () => <svg className="tka-c" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>;
-const IcoTag = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12V4h8l9 9-8 8z" /><circle cx="7.5" cy="8.5" r="1.4" /></svg>;
