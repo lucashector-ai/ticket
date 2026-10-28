@@ -1,11 +1,11 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
-import { spDate } from "@/lib/criar/model";
+import { brDateTime, spDate } from "@/lib/criar/model";
 import { getPainelScope } from "@/lib/data/painel";
 import { randomToken, salePhase } from "@/lib/launch";
 import { sendOpeningNotice, sendPresaleLinks } from "@/lib/launch-notify";
@@ -68,14 +68,24 @@ export async function saveLaunch(input: z.input<typeof launchSchema>): Promise<R
   if (d.presaleAt && !pre) return { ok: false, error: "Data da pré-venda inválida." };
   if (pre && !open) return { ok: false, error: "Para ter pré-venda, defina também a abertura da venda geral." };
   if (pre && open && pre >= open) return { ok: false, error: "A pré-venda precisa começar antes da venda geral." };
-  const cur = await db.query.events.findFirst({ where: eq(events.id, ev.id), columns: { salesOpenAt: true, presaleAt: true } });
+  const cur = await db.query.events.findFirst({ where: eq(events.id, ev.id), columns: { salesOpenAt: true, presaleAt: true, draft: true } });
+  // o formulário de criação guarda o "Início das vendas": acompanha a nova abertura para não voltar a data antiga ao editar
+  const draft = cur?.draft as { form?: Record<string, unknown> } | null;
+  const synced = draft?.form ? { draft: { ...draft, form: { ...draft.form, saleStart: open ? brDateTime(open) : "" } } } : {};
   await db.update(events).set({
     salesOpenAt: open, presaleAt: pre,
     // mudou a data: os avisos voltam a sair na nova data
     ...(open?.getTime() !== cur?.salesOpenAt?.getTime() ? { openingSentAt: null } : {}),
     ...(pre?.getTime() !== cur?.presaleAt?.getTime() ? { presaleSentAt: null } : {}),
-    queueMode: d.queueMode, queueLimit: d.queueLimit,
+    queueMode: d.queueMode, queueLimit: d.queueLimit, ...synced,
   }).where(eq(events.id, ev.id));
+  // lotes que abriam junto com a data antiga (vindos do Início das vendas) passam a abrir com a pré-venda ou a venda geral;
+  // viradas de lote com data própria ficam como estão
+  const old = [cur?.salesOpenAt, cur?.presaleAt].filter((x): x is Date => !!x);
+  if (old.length) {
+    await db.update(schema.ticketTypes).set({ salesStart: pre ?? open })
+      .where(and(eq(schema.ticketTypes.eventId, ev.id), inArray(schema.ticketTypes.salesStart, old)));
+  }
   revalidatePath(`/painel/evento/${ev.id}`);
   revalidatePath(`/eventos/${ev.slug}`);
   return { ok: true };

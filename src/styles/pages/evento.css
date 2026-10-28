@@ -572,10 +572,19 @@
   .ln-k{position:relative;display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12.5px;font-weight:600;color:#D3F55B;letter-spacing:.01em}
   .ln-pulse{width:7px;height:7px;border-radius:50%;background:#D3F55B;box-shadow:0 0 0 0 rgba(211,245,91,.6);animation:lnPulse 1.8s ease-out infinite}
   .ln-t{position:relative;margin:16px 0 14px;font-family:'Inter Tight',sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em;color:#fff}
-  .ln-cd{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-  .ln-c{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 0 10px;border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)}
-  .ln-c b{font-family:'Inter Tight',sans-serif;font-size:34px;font-weight:600;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums;color:#fff}
-  .ln-c span{font-size:11.5px;font-weight:500;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.06em}
+  .lnch{container-type:inline-size}
+  /* relógio de dígitos que viram */
+  .fc{position:relative;display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:start;gap:0 5px}
+  .fc-u{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+  .fc-ds{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:100%}
+  .fc-d{position:relative;aspect-ratio:.72;border-radius:clamp(6px,2.4cqw,10px);background:linear-gradient(180deg,#2C2C2C 0 50%,#232323 50% 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 8px 16px -8px rgba(0,0,0,.7);display:grid;place-items:center;overflow:hidden;perspective:240px}
+  .fc-d::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.6);box-shadow:0 1px 0 rgba(255,255,255,.04)}
+  .fc-d::before{content:"";position:absolute;left:-2px;right:-2px;top:calc(50% - 3px);height:6px;background:radial-gradient(circle at 0 50%,#111 2.5px,transparent 3px),radial-gradient(circle at 100% 50%,#111 2.5px,transparent 3px);z-index:1}
+  .fc-d b{display:block;font-family:'Inter Tight',sans-serif;font-size:clamp(20px,9cqw,40px);font-weight:600;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;color:#fff;transform-origin:50% 50%;animation:fcFlip .5s cubic-bezier(.3,.8,.25,1) both}
+  .fc-u-s .fc-d b{color:#D3F55B}
+  .fc-sep{font-style:normal;font-family:'Inter Tight',sans-serif;font-size:clamp(18px,7cqw,30px);font-weight:600;color:rgba(255,255,255,.35);line-height:1;padding-top:clamp(8px,4.5cqw,18px);animation:fcBlink 1s steps(1) infinite}
+  .fc-l{font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em}
+  .mini-cd{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
   .ln-when{position:relative;display:block;margin-top:12px;font-size:13.5px;color:rgba(255,255,255,.7);text-align:center}
   .ln-steps{position:relative;list-style:none;margin:20px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
   .ln-steps li{display:flex;gap:12px;align-items:flex-start;color:rgba(255,255,255,.55)}
@@ -601,7 +610,7 @@
   .ln-from b{color:#fff;font-weight:600}
   .ln-pv{display:flex;align-items:center;gap:8px;margin:-4px 0 14px;padding:10px 12px;border-radius:12px;background:#111;color:#D3F55B;font-size:13px;font-weight:600}
   .ln-pv i{width:7px;height:7px;border-radius:50%;background:#D3F55B}
-  @media (max-width:640px){.ln-c b{font-size:28px}}
+
 }
 
 /* revenda oficial: ofertas de outros fãs abaixo dos ingressos */
@@ -651,3 +660,6 @@
   .buy.flash{animation:buyFlash 1.2s ease}
 }
 @keyframes buyFlash{0%,100%{box-shadow:0 30px 60px -40px rgba(17,17,17,.25)}30%{box-shadow:0 0 0 6px #D3F55B,0 30px 60px -40px rgba(17,17,17,.25)}}
+@keyframes fcFlip{from{transform:rotateX(-80deg);opacity:0}60%{opacity:1}to{transform:none;opacity:1}}
+@keyframes fcBlink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.pg-evento .fc-d b,.pg-evento .fc-sep{animation:none}}

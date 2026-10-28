@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { signupLaunch } from "@/lib/actions/launch";
 import { brl } from "@/lib/format";
 import type { EventoData } from "./types";
@@ -12,6 +12,40 @@ const nowSec = () => Math.floor(Date.now() / 1000);
 const serverSec = () => 0;
 export function useNowSec() { return useSyncExternalStore(subscribe, nowSec, serverSec); }
 
+/** Quando a contagem termina: a pré-venda (se ainda não começou) ou a venda geral. */
+export const launchTarget = (L: EventoData["launch"]) => (L.phase === "soon" && L.presaleAt ? L.presaleAt : L.openAt);
+const split = (left: number) => ({ d: Math.floor(left / 86400), h: Math.floor((left % 86400) / 3600), m: Math.floor((left % 3600) / 60), s: left % 60 });
+const p2 = (v: number) => String(v).padStart(2, "0");
+
+/** Relógio de dígitos que viram (dias : horas : min : seg). Cada dígito anima quando muda. */
+export function FlipClock({ left, ready, label }: { left: number; ready: boolean; label: string }) {
+  const { d, h, m, s } = split(left);
+  const units: [string, string, string][] = [[p2(d), d === 1 ? "dia" : "dias", "d"], [p2(h), "horas", "h"], [p2(m), "min", "m"], [p2(s), "seg", "s"]];
+  return (
+    <div className="fc" role="timer" aria-label={`${label} ${d} dias, ${h} horas e ${m} minutos`}>
+      {units.map(([v, l, k], i) => (
+        <Fragment key={k}>
+          {i > 0 && <i className="fc-sep" aria-hidden="true">:</i>}
+          <div className={`fc-u fc-u-${k}`}>
+            <div className="fc-ds" aria-hidden="true">
+              {[...v].map((ch, j) => <span className="fc-d" key={j}><b key={ready ? ch : "-"}>{ready ? ch : "–"}</b></span>)}
+            </div>
+            <span className="fc-l">{l}</span>
+          </div>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+/** Contagem curta para as barras ("2d 14:22:05"). */
+export function MiniCountdown({ target }: { target: string }) {
+  const now = useNowSec();
+  const left = Math.max(0, Math.floor(new Date(target).getTime() / 1000) - now);
+  const { d, h, m, s } = split(left);
+  return <b className="mini-cd" role="timer">{now ? `${d ? `${d}d ` : ""}${p2(h)}:${p2(m)}:${p2(s)}` : "--:--:--"}</b>;
+}
+
 const DT = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const when = (iso: string) => DT.format(new Date(iso)).replace(/\./g, "").replace(",", "").replace(/^(\w)/, (c) => c.toUpperCase());
 
@@ -21,7 +55,7 @@ export function LaunchCard({ e, email: initialEmail }: { e: EventoData; email: s
   const router = useRouter();
   const now = useNowSec();
   const presaleSignup = L.phase === "soon" && !!L.presaleAt;
-  const target = L.phase === "soon" && L.presaleAt ? L.presaleAt : L.openAt!;
+  const target = launchTarget(L)!;
   const left = Math.max(0, Math.floor(new Date(target).getTime() / 1000) - now);
   const [email, setEmail] = useState(initialEmail);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -34,8 +68,6 @@ export function LaunchCard({ e, email: initialEmail }: { e: EventoData; email: s
     if (now && left === 0 && !refreshed.current) { refreshed.current = true; router.refresh(); }
   }, [now, left, router]);
 
-  const d = Math.floor(left / 86400), h = Math.floor((left % 86400) / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
-  const cells: [number, string][] = [[d, d === 1 ? "dia" : "dias"], [h, "horas"], [m, "min"], [s, "seg"]];
 
   const submit = (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -52,11 +84,7 @@ export function LaunchCard({ e, email: initialEmail }: { e: EventoData; email: s
     <div className="buy lnch" id="ingressos">
       <span className="ln-k"><i className="ln-pulse" aria-hidden="true" />{kick}</span>
       <h2 className="ln-t">{title}</h2>
-      <div className="ln-cd" role="timer" aria-label={`${title} ${d} dias, ${h} horas e ${m} minutos`}>
-        {cells.map(([v, l]) => (
-          <div className="ln-c" key={l}><b>{now ? String(v).padStart(2, "0") : "--"}</b><span>{l}</span></div>
-        ))}
-      </div>
+      <FlipClock left={left} ready={!!now} label={title} />
       <span className="ln-when">{when(target)}</span>
 
       {L.presaleAt && (

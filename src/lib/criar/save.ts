@@ -261,13 +261,25 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     createdByUserId: user.id,
   };
 
+  /*
+   * Início das vendas = abertura do evento: antes dela a página mostra a contagem regressiva.
+   * Campo vazio limpa a abertura (e a pré-venda, que depende dela); ajustes feitos na aba Lançamento
+   * voltam para este campo, então os dois ficam iguais.
+   */
+  const launch = salesStart
+    ? { salesOpenAt: salesStart, ...(existing?.presaleAt && existing.presaleAt >= salesStart ? { presaleAt: null } : {}), ...(existing?.salesOpenAt?.getTime() !== salesStart.getTime() ? { openingSentAt: null } : {}) }
+    : existing?.salesOpenAt ? { salesOpenAt: null, presaleAt: null } : {};
+  // os lotes abrem junto com a pré-venda, se houver (quem tem o link já pode comprar)
+  const keepPresale = salesStart && existing?.presaleAt && existing.presaleAt < salesStart ? existing.presaleAt : null;
+  const typesStart = keepPresale ?? salesStart;
+
   let eventId: string, slug: string;
   if (existing) {
     eventId = existing.id; slug = existing.slug;
-    await db.update(events).set({ ...values, publishedAt: publish ? existing.publishedAt ?? new Date() : existing.publishedAt }).where(eq(events.id, eventId));
+    await db.update(events).set({ ...values, ...launch, publishedAt: publish ? existing.publishedAt ?? new Date() : existing.publishedAt }).where(eq(events.id, eventId));
   } else {
     slug = await uniqueEventSlug(eventSlug(title));
-    const [row] = await db.insert(events).values({ ...values, slug, publishedAt: publish ? new Date() : null }).returning({ id: events.id });
+    const [row] = await db.insert(events).values({ ...values, ...launch, slug, publishedAt: publish ? new Date() : null }).returning({ id: events.id });
     eventId = row.id;
   }
 
@@ -298,7 +310,7 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
           eventId, sessionId: dbMap.sessions[s.id], name: t.name.trim() || "Ingresso",
           note: (multi ? label : t.desc.trim()).slice(0, 160) || null, description: t.desc.trim() || null,
           priceCents: price, feeCents: d.fee ? Math.round(price * SERVICE_FEE_RATE) : 0, quantity: Math.round(num(t.qty)),
-          status: "open" as const, salesStart, sortOrder: order++, maxPerOrder: limitOf(t),
+          status: "open" as const, salesStart: typesStart, sortOrder: order++, maxPerOrder: limitOf(t),
           sector: d.tmode === "mapa" ? k.name.trim() || "Setor" : null, sectorColor: k.color, kind: t.kind,
         };
         const dbId = prevMap.types[key];

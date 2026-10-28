@@ -139,4 +139,11 @@ export function parseBrDateTime(v: string, endOfDay = false) {
   return spDate(`${y}-${pad(+mo)}-${pad(+d)}`, time);
 }
 
+/** Date → "28/10/2026 às 10:00" no horário de Brasília (o formato do campo Início das vendas). */
+export function brDateTime(d: Date) {
+  const o: Record<string, string> = {};
+  for (const x of new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d)) o[x.type] = x.value;
+  return `${o.day}/${o.month}/${o.year} às ${o.hour}:${o.minute}`;
+}
+
 export const KIND_LABEL: Record<TypeKind, string> = { inteira: "Inteira", meia: "Meia", social: "Social", outro: "Especial" };
