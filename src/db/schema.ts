@@ -103,6 +103,8 @@ export const organizers = pgTable(
     payout: jsonb("payout").$type<OrganizerPayout>(),
     /** padrões aplicados aos eventos novos */
     defaults: jsonb("defaults").$type<OrganizerDefaults>(),
+    /** respostas do cadastro de produtor (tipo de evento, quantos por ano, público médio) */
+    onboarding: jsonb("onboarding").$type<OrganizerOnboarding>(),
     ...timestamps,
   },
   (t) => [uniqueIndex("organizers_slug_idx").on(t.slug)],
@@ -110,6 +112,7 @@ export const organizers = pgTable(
 
 export type OrganizerPolicies = { cancel?: string; meia?: string; transfer?: string; access?: string };
 export type OrganizerPayout = { bank?: string; agency?: string; account?: string; kind?: "corrente" | "poupanca"; holder?: string; doc?: string; pixKey?: string };
+export type OrganizerOnboarding = { kind: string; perYear: string; audience: string; doneAt: string };
 export type OrganizerDefaults = { buyerPaysFee?: boolean; autoMeia?: boolean; age?: string; refund?: string };
 
 /** Equipe do produtor: admin vê o painel inteiro; portaria só faz o check-in. Convite por e-mail. */

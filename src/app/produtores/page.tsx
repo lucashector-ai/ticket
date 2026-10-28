@@ -48,8 +48,8 @@ export default function ProdutoresPage() {
       lead="O Tickets Win reúne quem produz e quem quer sair de casa. Publique seu evento, venda ingressos e faça o check-in com uma ferramenta só."
       actions={
         <>
-          <Link className="btn-p" href="/criar-evento">
-            Criar evento
+          <Link className="btn-p" href="/produtores/cadastro">
+            Começar a vender
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
           <a className="btn-g" href={MAILTO}>Falar com o Tickets Win</a>
@@ -90,7 +90,7 @@ export default function ProdutoresPage() {
           <p>Crie o evento em poucos minutos: formato, datas, setores, ingressos e cupons. Dúvidas? A gente responde em até um dia útil.</p>
         </div>
         <div className="in-acts">
-          <Link className="btn-p" href="/criar-evento">Criar evento</Link>
+          <Link className="btn-p" href="/produtores/cadastro">Começar a vender</Link>
           <a className="btn-g" href={MAILTO}>Falar com o Tickets Win</a>
         </div>
       </section>

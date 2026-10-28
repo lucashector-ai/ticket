@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { PainelHome, type HomeProps } from "@/components/painel/home";
 import { listOrders } from "@/lib/data/painel";
 import { painelAccess } from "@/lib/painel/access";
@@ -10,7 +11,9 @@ type Props = { searchParams: Promise<{ q?: string }> };
 
 export default async function PainelInicio({ searchParams }: Props) {
   const { q } = await searchParams;
-  const { user, org, events } = await painelAccess("admin");
+  const { user, org, role, events } = await painelAccess("admin");
+  // quem ainda não é produtor (sem página e sem eventos) passa primeiro pelo cadastro
+  if (role === "owner" && !org?.onboarding && !events.length) redirect("/produtores/cadastro");
   const absorb = new Map(events.map((e) => [e.id, e.absorbFee]));
   const orders = await listOrders(events.map((e) => e.id), absorb);
   const paid = orders.filter((o) => o.status === "paid");
