@@ -548,6 +548,9 @@
   .tg.open .tg-c{transform:rotate(180deg)}
   .tg{transition:background .3s,box-shadow .3s}
   .tg.open{background:#F2F2EC}
+  /* setor com a cor do mapa: o fundo do grupo leva um tom da cor do setor */
+  .tg[style]{background:color-mix(in srgb,var(--sc) 13%,#FFFFFF)}
+  .tg[style].open{background:color-mix(in srgb,var(--sc) 20%,#FFFFFF)}
   .tg-h:hover .tg-c{transform:scale(1.08)}
   .tg.open .tg-h:hover .tg-c{transform:rotate(180deg) scale(1.08)}
   .tg-c{transition:transform .45s cubic-bezier(.2,.8,.2,1)}
@@ -629,7 +632,7 @@
   .buy .rsl.in-buy{margin:16px 0 0;padding:16px;border:0;border-radius:18px;background:#F7F7F2;box-shadow:none}
   .buy-ft .tot{margin-top:16px}
   @media (min-width:1025px){
-    .side .buy{display:flex;flex-direction:column;max-height:calc(100vh - 112px);padding:0;overflow:hidden;border:1.5px solid #111}
+    .side .buy{display:flex;flex-direction:column;max-height:calc(100vh - 112px);padding:0;overflow:hidden;border:0;box-shadow:0 0 0 1px rgba(17,17,17,.04),0 24px 60px -28px rgba(17,17,17,.28)}
     .side .buy-sc{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 22px 18px;scrollbar-width:thin}
     .side .buy-ft{flex:none;padding:14px 22px 16px;background:#fff;border-top:1px solid #EAEAEA;box-shadow:0 -18px 28px -24px rgba(17,17,17,.35)}
     .side .buy-ft .tot{margin-top:0;padding-top:0;border-top:0;gap:10px}

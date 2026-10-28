@@ -56,7 +56,7 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
           const open = openSecs[g.name] ?? (g === groups[0] || sel > 0 || t.sector === g.name);
           const from = Math.min(...g.tiers.map((x) => x.priceCents));
           return (
-            <div key={g.name} className={open ? "tg open" : "tg"}>
+            <div key={g.name} className={open ? "tg open" : "tg"} style={g.color ? ({ "--sc": g.color } as React.CSSProperties) : undefined}>
               <button className="tg-h" type="button" aria-expanded={open} onClick={() => setOpenSecs((o) => ({ ...o, [g.name!]: !open }))}>
                 <i className="sec-sw" style={{ background: g.color ?? "#111" }} aria-hidden="true" />
                 <b className="tg-t">{g.name}</b>
