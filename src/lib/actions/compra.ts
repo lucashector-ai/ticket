@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 import QRCode from "qrcode";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
@@ -32,7 +32,8 @@ const placeSchema = z.object({
     cpf: z.string().refine((v) => digits(v).length === 11, "CPF com 11 dígitos"),
   }),
   holders: z.array(z.object({ ticketTypeId: z.string().uuid(), name: fullName, meia: z.boolean() })),
-  method: z.enum(["pix", "card"]),
+  /** "free": pedido de valor zero (ingresso grátis ou cupom de 100%), confirmado sem pagamento */
+  method: z.enum(["pix", "card", "free"]),
   installments: z.number().int().min(1).max(6),
   /** parte de uma compra em grupo / anúncio da revenda (1 ingresso, preço travado) */
   groupShareId: z.string().uuid().optional().nullable(),
@@ -64,6 +65,34 @@ export async function checkCoupon(code: string, eventSlug: string) {
 
 function couponView(c: typeof coupons.$inferSelect) {
   return { ok: true as const, code: c.code, percentOff: c.percentOff ?? 0, amountOffCents: c.amountOffCents ?? 0, amountPerTicket: c.amountPerTicket, sector: c.sector };
+}
+
+/** Ingressos que a conta já comprou de cada tipo (pedidos pagos), para o limite por pessoa. */
+async function boughtByType(userId: string, typeIds: string[], exceptOrderId?: string) {
+  if (!typeIds.length) return new Map<string, number>();
+  const rows = await db.select({ id: orderItems.ticketTypeId, n: sql<number>`coalesce(sum(${orderItems.quantity}), 0)` })
+    .from(orderItems).innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(and(
+      eq(orders.userId, userId), eq(orders.status, "paid"), inArray(orderItems.ticketTypeId, typeIds),
+      sql`${orders.groupShareId} is null and ${orders.resaleListingId} is null`,
+      exceptOrderId ? ne(orders.id, exceptOrderId) : undefined,
+    ))
+    .groupBy(orderItems.ticketTypeId);
+  return new Map(rows.map((r) => [r.id, Number(r.n)]));
+}
+
+/** Confere o limite por pessoa de cada tipo; devolve a mensagem de erro ou null. */
+function overLimit(items: { ticketTypeId: string; quantity: number }[], types: { id: string; name: string; maxPerOrder: number }[], bought: Map<string, number>) {
+  for (const it of items) {
+    const tt = types.find((t) => t.id === it.ticketTypeId);
+    if (!tt) continue;
+    const had = bought.get(tt.id) ?? 0;
+    if (had + it.quantity > tt.maxPerOrder) {
+      const lim = `${tt.maxPerOrder} ${tt.maxPerOrder === 1 ? "ingresso" : "ingressos"} de ${tt.name} por pessoa`;
+      return had ? `O limite é ${lim} e você já tem ${had}.` : `O limite é ${lim}.`;
+    }
+  }
+  return null;
 }
 
 function pixCopyPaste(orderNumber: number, totalCents: number) {
@@ -106,6 +135,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     const totalQty = items.reduce((s, i) => s + i.quantity, 0);
     if (totalQty > ev.maxPerOrder) return { ok: false, error: `Máximo de ${ev.maxPerOrder} ingressos por pessoa.` };
     if (holders.length !== totalQty) return { ok: false, error: "Informe o titular de cada ingresso." };
+    const limitErr = overLimit(items, ev.ticketTypes, await boughtByType(user.id, items.map((i) => i.ticketTypeId)));
+    if (limitErr) return { ok: false, error: limitErr };
     const held = await heldByType(ev.id);
     for (const it of items) {
       const tt = ev.ticketTypes.find((t) => t.id === it.ticketTypeId);
@@ -114,7 +145,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       if (it.quantity > left) return { ok: false, error: `Restam só ${Math.max(0, left)} ingressos em ${tt.name}.` };
       const forType = holders.filter((h) => h.ticketTypeId === tt.id).length;
       if (forType !== it.quantity) return { ok: false, error: "Informe o titular de cada ingresso." };
-      lines.push({ ticketTypeId: tt.id, priceCents: tt.priceCents, quantity: it.quantity, sector: tt.sector, meiaOk: !tt.kind || tt.kind === "inteira" });
+      lines.push({ ticketTypeId: tt.id, priceCents: tt.priceCents, quantity: it.quantity, sector: tt.sector, meiaOk: (!tt.kind || tt.kind === "inteira") && tt.priceCents > 0 });
     }
   }
   // meia só onde o checkout oferece (tipos de inteira); meia/social já têm preço próprio
@@ -128,7 +159,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     couponRow = c.coupon;
   }
   const feeRate = ev.absorbFee ? 0 : SERVICE_FEE_RATE;
-  const p = priceOrder({ lines, holders: cleanHolders, coupon: couponRow ? couponView(couponRow) : null, method, installments, feeRate });
+  const p = priceOrder({ lines, holders: cleanHolders, coupon: couponRow ? couponView(couponRow) : null, method: method === "card" ? "card" : "pix", installments, feeRate });
+  if (method === "free" && p.total > 0) return { ok: false, error: "Este pedido tem valor a pagar. Escolha Pix ou cartão." };
+  const free = p.total === 0;
   // comissão do parceiro: % do valor dos ingressos (sem taxa e sem juros)
   const promoter = special?.kind === "revenda" ? null : await promoterForOrder(ev);
 
@@ -136,7 +169,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     userId: user.id, eventId: ev.id, status: "pending",
     subtotalCents: p.subtotal, meiaCents: p.meia, discountCents: p.discount, feeCents: p.fee,
     interestCents: p.interest, installments: p.installments, totalCents: p.total,
-    couponId: couponRow?.id ?? null, paymentMethod: method,
+    couponId: couponRow?.id ?? null, paymentMethod: free ? "free" : method,
     buyerName: buyer.name.trim(), buyerEmail: buyer.email.trim().toLowerCase(), buyerPhone: digits(buyer.phone), buyerCpf: digits(buyer.cpf),
     holders: cleanHolders.map((h) => ({ ticketTypeId: h.ticketTypeId, name: h.name.trim(), meia: h.meia })),
     expiresAt: new Date(Date.now() + 15 * 60_000),
@@ -157,7 +190,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
   const number = order.number ?? 0;
   const pixCode = pixCopyPaste(number, p.total);
-  const pixQrSvg = method === "pix" ? await QRCode.toString(pixCode, { type: "svg", margin: 0, errorCorrectionLevel: "M" }) : "";
+  const pixQrSvg = method === "pix" && !free ? await QRCode.toString(pixCode, { type: "svg", margin: 0, errorCorrectionLevel: "M" }) : "";
   return { ok: true, orderId: order.id, number, totalCents: p.total, pixCode, pixQrSvg };
 }
 
@@ -170,7 +203,7 @@ function ticketCode() {
 }
 
 export type ConfirmResult =
-  | { ok: true; number: number; totalCents: number; method: "pix" | "card"; installments: number; ticketCount: number; firstCode: string; ticketQrSvg: string; email: string }
+  | { ok: true; number: number; totalCents: number; method: "pix" | "card" | "free"; installments: number; ticketCount: number; firstCode: string; ticketQrSvg: string; email: string }
   | { ok: false; error: string };
 
 /** Confirma o pagamento (ambiente de teste: sem gateway) e emite os ingressos nominais. */
@@ -179,7 +212,7 @@ export async function confirmPayment(orderId: string): Promise<ConfirmResult> {
   if (!user) return { ok: false, error: "Sua sessão expirou. Entre de novo." };
   const order = await db.query.orders.findFirst({ where: and(eq(orders.id, orderId), eq(orders.userId, user.id)), with: { items: true, tickets: true } });
   if (!order) return { ok: false, error: "Pedido não encontrado." };
-  const method = (order.paymentMethod === "card" ? "card" : "pix") as "pix" | "card";
+  const method = (order.paymentMethod === "card" || order.paymentMethod === "free" ? order.paymentMethod : "pix") as "pix" | "card" | "free";
   if (order.status === "paid") {
     const first = order.tickets[0];
     return { ok: true, number: order.number ?? 0, totalCents: order.totalCents, method, installments: order.installments, ticketCount: order.tickets.length, firstCode: first?.code ?? "", ticketQrSvg: first ? await QRCode.toString(await qrPayload(first.code, first.secret), { type: "svg", margin: 0 }) : "", email: order.buyerEmail ?? "" };
@@ -189,13 +222,22 @@ export async function confirmPayment(orderId: string): Promise<ConfirmResult> {
     await db.update(orders).set({ status: "expired" }).where(eq(orders.id, order.id));
     return { ok: false, error: "O tempo da reserva acabou. Escolha os ingressos de novo." };
   }
+  if (!order.groupShareId && !order.resaleListingId) {
+    // limite por pessoa de novo na confirmação: outro pedido pode ter sido pago no meio do caminho
+    const types = await db.query.ticketTypes.findMany({ where: inArray(ticketTypes.id, order.items.map((i) => i.ticketTypeId)), columns: { id: true, name: true, maxPerOrder: true } });
+    const limitErr = overLimit(order.items, types, await boughtByType(user.id, types.map((t) => t.id), order.id));
+    if (limitErr) {
+      await db.update(orders).set({ status: "cancelled" }).where(eq(orders.id, order.id));
+      return { ok: false, error: `${limitErr} Nada foi cobrado.` };
+    }
+  }
   // link da pré-venda vale para uma compra só
   if (order.presaleSignupId) {
     const used = await db.update(eventSignups).set({ usedAt: new Date() })
       .where(and(eq(eventSignups.id, order.presaleSignupId), sql`${eventSignups.usedAt} is null`)).returning({ id: eventSignups.id });
     if (!used.length) return { ok: false, error: "Este link de pré-venda já foi usado em outra compra." };
   }
-  if (order.resaleListingId) return confirmResale(order, user.id, method);
+  if (order.resaleListingId) return confirmResale(order, user.id, method === "free" ? "pix" : method);
   if (order.groupShareId) {
     const sh = await db.query.groupShares.findFirst({ where: eq(groupShares.id, order.groupShareId), columns: { paidAt: true, userId: true } });
     if (!sh || sh.paidAt || sh.userId !== user.id) return { ok: false, error: "Esta parte do grupo já foi paga ou passou para outra pessoa. Nada foi cobrado." };
@@ -221,7 +263,7 @@ export async function confirmPayment(orderId: string): Promise<ConfirmResult> {
   }));
   const inserted = await db.insert(tickets).values(rows).returning({ code: tickets.code, secret: tickets.secret });
   if (order.couponId) await db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId));
-  await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: `TEST-${order.number}` }).where(eq(orders.id, order.id));
+  await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: `${method === "free" ? "FREE" : "TEST"}-${order.number}` }).where(eq(orders.id, order.id));
   if (order.groupShareId) await settleShare(order.groupShareId, order.id);
   const first = inserted[0];
   return {

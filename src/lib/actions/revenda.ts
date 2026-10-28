@@ -22,6 +22,7 @@ export async function createListing(ticketId: string, priceCents: number): Promi
   if (t.status !== "valid") return { ok: false, error: "Só ingressos válidos podem ir para a revenda." };
   if (!t.event.resaleEnabled || t.event.status !== "published") return { ok: false, error: "O produtor não liberou revenda para este evento." };
   if ((t.event.endAt ?? t.event.startAt) < new Date()) return { ok: false, error: "O evento já aconteceu." };
+  if (!t.ticketType.priceCents) return { ok: false, error: "Ingresso grátis não vai para a revenda. Se não puder ir, transfira para alguém." };
   const { maxCents } = resaleCap(t.ticketType.priceCents, t.halfPrice, t.event.resaleMaxPct);
   const price = Math.round(priceCents);
   if (!Number.isFinite(price) || price < 500) return { ok: false, error: "O preço mínimo na revenda é R$ 5." };

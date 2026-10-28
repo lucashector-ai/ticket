@@ -9,7 +9,8 @@ export type Visibility = "publico" | "link" | "rascunho";
 export type MediaKey = "poster" | "banner" | "home" | "strip" | "share";
 
 export type DraftSession = { id: string; date: string; doors: string; time: string; cap: string; venue: string; city: string };
-export type DraftType = { id: string; kind: TypeKind; name: string; price: string; qty: string; desc: string };
+/** `free`: ingresso gratuito (sem preço nem taxa); `limit`: máximo que cada pessoa pode levar desse tipo. */
+export type DraftType = { id: string; kind: TypeKind; name: string; price: string; qty: string; desc: string; free?: boolean; limit?: string };
 export type DraftSector = { id: string; name: string; color: string; open: boolean; types: DraftType[] };
 /** `spotifyId`/`image`: artista escolhido na busca do Spotify. */
 export type DraftArtist = { id: string; name: string; role: string; time: string; end: string; days: string[] | null; spotifyId?: string; image?: string | null };
@@ -53,6 +54,12 @@ export const ROLES = ["Headliner", "Convidado", "Abertura"] as const;
 export const PALETTE = ["#7DA2FF", "#D3F55B", "#FF8AD8", "#FFB547", "#7DF9FF", "#C9B6FF"];
 export const MEIA_DESC = "Estudantes, PcD, jovens de baixa renda e maiores de 60. Documento na entrada.";
 export const DEFAULT_REFUND = "Até 7 dias após a compra, com 48h de antecedência";
+export const MAX_LIMIT = 20;
+/** Limite por pessoa do tipo (rascunhos antigos não tinham o campo: 2 no personalizado, 6 nos outros). */
+export function limitOf(t: Pick<DraftType, "kind" | "limit">) {
+  const n = Math.round(num(t.limit));
+  return n > 0 ? Math.min(n, MAX_LIMIT) : t.kind === "outro" ? 2 : 6;
+}
 
 /** Categoria da criação → filtros (kinds) e categorias da home. */
 export const CATEGORY_KINDS: Record<string, string[]> = {
@@ -70,7 +77,7 @@ export function emptyDraft(): Draft {
     mode: "unica", tmode: "simples", title: "", cat: "Show", catOther: "", age: "18+", desc: "",
     lineup: [], media: {}, coupons: [], venue: { name: "", city: "" }, sessions: [],
     autoMeia: true, fee: true, transfer: true, resale: true,
-    sectors: [{ id: "k1", name: "Ingressos", color: "#D3F55B", open: true, types: [{ id: "t1", kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "" }] }],
+    sectors: [{ id: "k1", name: "Ingressos", color: "#D3F55B", open: true, types: [{ id: "t1", kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "", limit: "6" }] }],
     map: "empty", prompt: "", sketchUrl: "", plan: null, vis: "publico", saleStart: "", refund: DEFAULT_REFUND,
   };
 }
@@ -89,11 +96,12 @@ export function effTypes(k: DraftSector, autoMeia: boolean): EffType[] {
   const out: EffType[] = k.types.map((t) => ({ ...t, auto: false }));
   if (autoMeia && !k.types.some((u) => u.kind === "meia")) {
     for (const t of k.types) {
-      if (t.kind !== "inteira") continue;
+      // ingresso grátis não tem meia
+      if (t.kind !== "inteira" || t.free) continue;
       out.push({
         id: `${t.id}-m`, kind: "meia", name: k.types.filter((u) => u.kind === "inteira").length > 1 ? `Meia · ${t.name}` : "Meia-entrada",
         price: String(Math.round((num(t.price) / 2) * 100) / 100).replace(".", ","), qty: String(Math.round(num(t.qty) * 0.4)),
-        desc: MEIA_DESC, auto: true,
+        desc: MEIA_DESC, limit: t.limit, auto: true,
       });
     }
   }

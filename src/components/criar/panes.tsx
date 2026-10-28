@@ -5,7 +5,7 @@ import { FlyerArt } from "@/components/art/flyer";
 import { BannerArt } from "@/components/art/banner";
 import { SpotifyArtistSearch, SpotifyIcon, type SpotifyHit } from "@/components/spotify-search";
 import {
-  AGES, CATEGORIES, effTypes, KIND_LABEL, MEIA_DESC, num, PALETTE, ROLES,
+  AGES, CATEGORIES, effTypes, KIND_LABEL, limitOf, MAX_LIMIT, MEIA_DESC, num, PALETTE, ROLES,
   type DraftSector, type DraftSession, type DraftType, type EventMode, type MediaKey, type TicketMode, type TypeKind,
 } from "@/lib/criar/model";
 import { initials } from "@/lib/format";
@@ -312,11 +312,12 @@ export function DatasPane({ c, sessions, onSessionsChange }: { c: Ctx; sessions:
 }
 
 /* =========================== 4. SETORES E INGRESSOS =========================== */
-const ADD_TYPES: { kind: TypeKind; label: string; name: string; desc: string }[] = [
-  { kind: "inteira", label: "Inteira", name: "Inteira", desc: "" },
-  { kind: "meia", label: "Meia-entrada", name: "Meia-entrada", desc: MEIA_DESC },
-  { kind: "social", label: "Meia-social", name: "Meia-social", desc: "Meia-entrada solidária: quem compra doa 1 kg de alimento ou parte do valor vai para [instituição]." },
-  { kind: "outro", label: "Personalizado", name: "Novo tipo", desc: "" },
+const ADD_TYPES: { kind: TypeKind; label: string; name: string; desc: string; free?: boolean; limit: string }[] = [
+  { kind: "inteira", label: "Inteira", name: "Inteira", desc: "", limit: "6" },
+  { kind: "meia", label: "Meia-entrada", name: "Meia-entrada", desc: MEIA_DESC, limit: "6" },
+  { kind: "social", label: "Meia-social", name: "Meia-social", desc: "Meia-entrada solidária: quem compra doa 1 kg de alimento ou parte do valor vai para [instituição].", limit: "6" },
+  { kind: "outro", label: "Gratuito", name: "Ingresso gratuito", desc: "", free: true, limit: "2" },
+  { kind: "outro", label: "Personalizado", name: "Novo tipo", desc: "", limit: "2" },
 ];
 const MAP_SECTORS = ["Pista", "Pista Premium", "Camarote", "Área VIP", "Arquibancada", "Cadeira numerada"];
 
@@ -326,7 +327,7 @@ function SectorCard({ c, k, multiDates }: { c: Ctx; k: DraftSector; multiDates: 
   const setType = (tid: string, patch: Partial<DraftType>) => setSector((z) => ({ ...z, types: z.types.map((t) => (t.id === tid ? { ...t, ...patch } : t)) }));
   const types = effTypes(k, d.autoMeia);
   let inteira = 0, cap = 0;
-  for (const t of types) { cap += num(t.qty); if (t.kind === "inteira") inteira = num(t.price); }
+  for (const t of types) { cap += num(t.qty); if (t.kind === "inteira" && !t.free) inteira = num(t.price); }
   const ro = () => c.flash("Desligue a meia automática para editar este tipo.");
   return (
     <div className={k.open ? "sc open" : "sc"}>
@@ -340,20 +341,31 @@ function SectorCard({ c, k, multiDates }: { c: Ctx; k: DraftSector; multiDates: 
       {k.open && (
         <div className="sc-b">
           {types.map((t) => {
-            const sug = Math.round(inteira * 0.6), cur = num(t.price), isSoc = t.kind === "social" && inteira > 0;
+            const sug = Math.round(inteira * 0.6), cur = num(t.price), isSoc = t.kind === "social" && inteira > 0 && !t.free, lim = limitOf(t);
             return (
               <div key={t.id} className="ty">
                 <div className="ty-r1">
                   <span className={`kd ${t.kind}`}>{KIND_LABEL[t.kind]}</span>
                   <input className="in ty-n" type="text" value={t.name} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { name: e.target.value })} aria-label="Nome do tipo de ingresso" />
-                  <label className="ty-pr"><span className="ty-cur">R$</span><input className="in ty-p" type="text" inputMode="decimal" value={t.price} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { price: e.target.value.replace(/[^\d,]/g, "") })} aria-label={`Preço de ${t.name}`} placeholder="0" /></label>
+                  {t.free
+                    ? <button className="ty-pr ty-free" type="button" onClick={() => setType(t.id, { free: false })} title="Clique para cobrar por este ingresso">Grátis</button>
+                    : <label className="ty-pr"><span className="ty-cur">R$</span><input className="in ty-p" type="text" inputMode="decimal" value={t.price} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { price: e.target.value.replace(/[^\d,]/g, "") })} aria-label={`Preço de ${t.name}`} placeholder="0" /></label>}
                   <label className="ty-pr"><input className="in ty-q" type="text" inputMode="numeric" value={t.qty} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { qty: e.target.value.replace(/\D/g, "") })} aria-label={`Quantidade de ${t.name}`} /><span className="ty-cur">un.</span></label>
                   <button className="ty-x" type="button" onClick={t.auto ? ro : () => setSector((z) => ({ ...z, types: z.types.filter((u) => u.id !== t.id) }))} aria-label={`Remover ${t.name}`}><XIcon /></button>
                 </div>
                 <textarea className="in ty-d" rows={2} value={t.desc} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { desc: e.target.value })} placeholder="Descrição (opcional): quem pode comprar, o que inclui, documento exigido." />
                 <div className="ty-r2">
-                  <span className="ty-meta">1º lote</span>
-                  <span className="ty-meta">Máx. {t.kind === "outro" ? 2 : 6} por pedido</span>
+                  {!t.auto && (
+                    <button className={t.free ? "ty-tg on" : "ty-tg"} type="button" role="switch" aria-checked={!!t.free} onClick={() => setType(t.id, { free: !t.free })}>
+                      <span className="sw" aria-hidden="true"><i /></span>Ingresso grátis
+                    </button>
+                  )}
+                  <span className="ty-lim">
+                    <span className="ty-lim-l">Limite por pessoa</span>
+                    <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.max(1, lim - 1)) })} disabled={!t.auto && lim <= 1} aria-label={`Diminuir limite de ${t.name}`}>−</button>
+                    <b aria-live="polite">{lim}</b>
+                    <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.min(MAX_LIMIT, lim + 1)) })} disabled={!t.auto && lim >= MAX_LIMIT} aria-label={`Aumentar limite de ${t.name}`}>+</button>
+                  </span>
                   <span className="ty-meta">{multiDates ? "Todas as datas" : "Data única"}</span>
                   {t.auto && <span className="ty-auto">Gerado da Inteira</span>}
                 </div>
@@ -370,9 +382,9 @@ function SectorCard({ c, k, multiDates }: { c: Ctx; k: DraftSector; multiDates: 
           <div className="add-ty">
             <span className="add-l">Adicionar tipo:</span>
             {ADD_TYPES.map((a) => (
-              <button key={a.kind} className="add-b" type="button" onClick={() => {
+              <button key={a.label} className="add-b" type="button" onClick={() => {
                 const price = a.kind === "meia" && inteira ? String(inteira / 2).replace(".", ",") : "";
-                setSector((z) => ({ ...z, open: true, types: [...z.types, { id: c.nid("t"), kind: a.kind, name: a.name, price, qty: "100", desc: a.desc }] }));
+                setSector((z) => ({ ...z, open: true, types: [...z.types, { id: c.nid("t"), kind: a.kind, name: a.name, price, qty: "100", desc: a.desc, free: a.free, limit: a.limit }] }));
               }}>+ {a.label}</button>
             ))}
           </div>
@@ -389,7 +401,7 @@ export function IngressosPane({ c, sessions }: { c: Ctx; sessions: DraftSession[
   return (
     <div className="pane">
       <h2 className="ce-ph">{mapMode ? "Setores e ingressos" : "Ingressos"}</h2>
-      <p className="pp">{mapMode ? "Cada setor do mapa (Pista, Premium, Camarote…) pode ter vários tipos: inteira, meia-entrada (50% por lei), meia-social (um pouco acima da meia, valor definido por você) ou um tipo próprio, cada um com preço, quantidade e descrição." : "Crie os tipos de ingresso. Cada um pode ter descrição, preço e quantidade."}</p>
+      <p className="pp">{mapMode ? "Cada setor do mapa (Pista, Premium, Camarote…) pode ter vários tipos: inteira, meia-entrada (50% por lei), meia-social (um pouco acima da meia, valor definido por você) ou um tipo próprio, cada um com preço, quantidade e descrição." : "Crie os tipos de ingresso. Cada um tem preço (ou é grátis), quantidade, descrição e um limite por pessoa."}</p>
       <div className="opts">
         <button className={d.autoMeia ? "opt on" : "opt"} type="button" role="switch" aria-checked={d.autoMeia} onClick={() => set({ autoMeia: !d.autoMeia })}><span className="sw" aria-hidden="true"><i /></span><span className="op-i"><b className="op-t">Criar meia-entrada automaticamente</b><span className="op-s">Todo tipo Inteira ganha uma Meia-entrada por 50% do valor (Lei 12.933).</span></span></button>
         <button className={d.fee ? "opt on" : "opt"} type="button" role="switch" aria-checked={d.fee} onClick={() => set({ fee: !d.fee })}><span className="sw" aria-hidden="true"><i /></span><span className="op-i"><b className="op-t">Repassar taxa ao comprador</b><span className="op-s">O preço aparece com &quot;+ taxas&quot;. Desligado, a taxa de 10% sai do seu repasse.</span></span></button>
@@ -403,7 +415,7 @@ export function IngressosPane({ c, sessions }: { c: Ctx; sessions: DraftSession[
           {(mapMode ? MAP_SECTORS : ["Novo grupo"]).map((n) => (
             <button key={n} className="add-b" type="button" onClick={() => upd((o) => ({
               ...o,
-              sectors: [...o.sectors.map((z) => ({ ...z, open: false })), { id: c.nid("k"), name: n, color: PALETTE.find((x) => !o.sectors.some((z) => z.color === x)) ?? PALETTE[o.sectors.length % PALETTE.length], open: true, types: [{ id: c.nid("t"), kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "" }] }],
+              sectors: [...o.sectors.map((z) => ({ ...z, open: false })), { id: c.nid("k"), name: n, color: PALETTE.find((x) => !o.sectors.some((z) => z.color === x)) ?? PALETTE[o.sectors.length % PALETTE.length], open: true, types: [{ id: c.nid("t"), kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "", limit: "6" }] }],
             }))}>+ {n}</button>
           ))}
         </div>

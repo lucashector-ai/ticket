@@ -42,7 +42,7 @@ export function HomeCard({ e, delay, rank, onOpen, className = "card" }: Props) 
           </>
         )}
         <div className="cfoot">
-          <span className="cprice">A partir de <b>{brl(e.minPriceCents)}</b></span>
+          <span className="cprice">{e.minPriceCents ? <>A partir de <b>{brl(e.minPriceCents)}</b></> : <b>Grátis</b>}</span>
           {onOpen ? (
             <button className="cfx" type="button" style={{ zIndex: 3 }} onClick={() => onOpen(e.slug)} aria-label={`Visualização rápida de ${e.title}`}>
               <span className="cfx-l">Ver ingressos</span>

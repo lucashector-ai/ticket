@@ -11,6 +11,7 @@ import { brl } from "@/lib/format";
 import { Feed, type FeedRow } from "./home";
 import { PainelLancamento, type LaunchProps } from "./lancamento";
 import { PainelRevenda, type RevendaProps } from "./revenda";
+import { CheckinLinks, type CheckinLink } from "./checkin-links";
 import { useOrigin } from "./use-origin";
 
 type Tab = "geral" | "participantes" | "checkin" | "financeiro" | "lancamento" | "revenda";
@@ -26,7 +27,7 @@ export type EventoPainelProps = {
   methods: { name: string; pct: number; value: string }[];
   coupons: { code: string; uses: number; off: string; label: string }[];
   people: Person[];
-  checkin: { total: number; inside: number; perMin: string; sectors: { name: string; n: number; total: number; pct: number }[]; last: { id: string; name: string; what: string; at: string }[] };
+  checkin: { total: number; inside: number; perMin: string; links: CheckinLink[]; sectors: { name: string; n: number; total: number; pct: number }[]; last: { id: string; name: string; what: string; at: string }[] };
   fin: { gross: string; buyerFees: string; platform: string; net: string; refunds: { id: string; name: string; value: string; when: string }[]; refundPct: string };
   launch?: LaunchProps;
   revenda?: RevendaProps;
@@ -276,10 +277,7 @@ function Checkin({ p }: { p: EventoPainelProps }) {
           <span className="ci-note">{p.ev.countdown ? `${p.ev.countdown} para o evento. ` : ""}Atualize a página para ver as entradas mais recentes.</span>
         </section>
         <div className="ci-r">
-          <section className="cx scan">
-            <div className="sc-qr" aria-hidden="true"><span className="sc-c c1" /><span className="sc-c c2" /><span className="sc-c c3" /><span className="sc-c c4" /><span className="sc-line" /></div>
-            <div className="sc-i"><b className="card-t">Leitura dos QR codes</b><span className="card-s">Cada ingresso tem um QR code assinado, que só vale uma vez. O app de portaria para a sua equipe ler pelo celular chega na próxima fase.</span></div>
-          </section>
+          <CheckinLinks eventId={p.ev.id} links={c.links} />
           <section className="cx">
             <div className="card-h"><h2 className="card-t">Por setor</h2></div>
             {c.sectors.length ? c.sectors.map((s) => <div className="src2" key={s.name}><span className="sr-n">{s.name}</span><span className="bar"><i style={{ width: `${s.pct}%` }} /></span><b className="sr-v">{n(s.n)}/{n(s.total)}</b></div>) : <span className="card-s">Sem ingressos emitidos ainda.</span>}

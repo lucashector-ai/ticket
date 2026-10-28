@@ -44,7 +44,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   else for (const part of one("itens").split(",")) {
     const [id, q] = part.split(":");
     const n = Number.parseInt(q ?? "", 10);
-    if (id && Number.isFinite(n) && n > 0 && e.ticketTypes.some((t) => t.id === id && tierStatus(t) === "open")) qty[id] = Math.min(n, 8);
+    const tt = e.ticketTypes.find((t) => t.id === id && tierStatus(t) === "open");
+    if (tt && Number.isFinite(n) && n > 0) qty[tt.id] = Math.min(n, tt.maxPerOrder, e.maxPerOrder);
   }
   const profile = user ? await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, user.id) }) : null;
 
@@ -72,7 +73,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         id: t.id, name: t.sector ? `${t.sector} · ${t.name}` : t.name, type: t.name, note: t.note ?? "", desc: t.description,
         priceCents: special ? special.priceCents : t.priceCents,
         open: special ? true : tierStatus(t) === "open" && left > 0, sold: special ? false : t.status === "sold_out" || left <= 0,
-        sector: t.sector, sectorColor: t.sectorColor, sessionId: special ? null : t.sessionId, meiaOk: special ? false : !t.kind || t.kind === "inteira",
+        sector: t.sector, sectorColor: t.sectorColor, sessionId: special ? null : t.sessionId, meiaOk: special ? false : (!t.kind || t.kind === "inteira") && t.priceCents > 0,
+        limit: special ? 1 : Math.min(t.maxPerOrder, e.maxPerOrder),
       };
     }),
     sessions: special ? [] : sessions,

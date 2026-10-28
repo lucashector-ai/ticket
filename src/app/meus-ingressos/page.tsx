@@ -40,7 +40,7 @@ async function groupTickets(rows: TicketWithEvent[], now: Date): Promise<TicketG
       key, orderNumber: list[0].order?.number ?? null, eventSlug: e.slug, title: e.title, flyerId: e.flyerId,
       startAt: e.startAt.toISOString(), upcoming: end.getTime() >= now.getTime(), countdown: countdownLabel(e.startAt, now),
       dateFull: L.dateFull, dateNice: L.dateNice, datePast: datePast(e.startAt), doors: L.doors, venue: L.venue, addr: L.addr, city: L.city,
-      tier: tiers.join(" + "), resale: e.resaleEnabled, transfer: e.transferEnabled, tickets,
+      tier: tiers.join(" + "), resale: e.resaleEnabled && list.some((t) => t.ticketType.priceCents > 0), transfer: e.transferEnabled, tickets,
     });
   }
   return groups;

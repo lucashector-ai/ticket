@@ -1,6 +1,7 @@
 "use server";
 
-import { and, eq, ne } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db, schema } from "@/db";
@@ -28,6 +29,31 @@ export async function scanTicket(eventId: string, input: string): Promise<Omit<C
   if (!s || !s.events.some((e) => e.id === eventId)) return { ok: false, auth: false, error: "Sem permissão para este evento." };
   const r = await checkinTicket(input, new Set([eventId]));
   return { ok: r.ok, error: r.error, checkedInAt: r.checkedInAt, ticket: r.ticket, auth: true };
+}
+
+/* ---------- check-in pelo celular: links externos ---------- */
+
+export async function createCheckinLink(eventId: string, label: string): Promise<{ ok: true; id: string; token: string } | { ok: false; error: string }> {
+  const s = await scope("admin");
+  if (!s || !s.events.some((e) => e.id === eventId)) return { ok: false, error: "Sem permissão para este evento." };
+  const name = label.trim().slice(0, 60) || "Portaria";
+  const open = await db.select({ id: schema.checkinLinks.id }).from(schema.checkinLinks)
+    .where(and(eq(schema.checkinLinks.eventId, eventId), isNull(schema.checkinLinks.revokedAt)));
+  if (open.length >= 20) return { ok: false, error: "Este evento já tem 20 links ativos. Desligue algum antes de criar outro." };
+  const token = randomBytes(18).toString("base64url");
+  const [row] = await db.insert(schema.checkinLinks).values({ eventId, token, label: name, createdByUserId: s.user.id }).returning({ id: schema.checkinLinks.id });
+  revalidatePath(`/painel/evento/${eventId}`);
+  return { ok: true, id: row.id, token };
+}
+
+export async function revokeCheckinLink(id: string): Promise<R> {
+  const s = await scope("admin");
+  if (!s) return { ok: false, error: "Sem permissão." };
+  const link = await db.query.checkinLinks.findFirst({ where: eq(schema.checkinLinks.id, id), columns: { eventId: true } });
+  if (!link || !s.events.some((e) => e.id === link.eventId)) return { ok: false, error: "Link não encontrado." };
+  await db.update(schema.checkinLinks).set({ revokedAt: new Date() }).where(eq(schema.checkinLinks.id, id));
+  revalidatePath(`/painel/evento/${link.eventId}`);
+  return { ok: true };
 }
 
 /* ---------- marketing: cupons ---------- */

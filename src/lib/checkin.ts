@@ -1,6 +1,6 @@
 import "server-only";
 import { timingSafeEqual } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { qrPayload } from "@/lib/actions/tickets";
 import { getTicketByCode } from "@/lib/data/ingressos";
@@ -48,4 +48,26 @@ export async function checkinTicket(input: string, eventIds: Set<string> | null)
   await db.update(schema.resaleListings).set({ status: "cancelled" })
     .where(and(eq(schema.resaleListings.ticketId, ticket.id), inArray(schema.resaleListings.status, ["active", "reserved"])));
   return { ok: true, status: 200, checkedInAt: now, ticket: info };
+}
+
+/** Link externo de check-in ainda ligado (não revogado e o evento não acabou há mais de um dia). */
+export async function activeCheckinLink(token: string) {
+  if (!/^[A-Za-z0-9_-]{16,48}$/.test(token)) return null;
+  const link = await db.query.checkinLinks.findFirst({
+    where: and(eq(schema.checkinLinks.token, token), isNull(schema.checkinLinks.revokedAt)),
+    with: { event: { columns: { id: true, title: true, slug: true, flyerId: true, status: true, startAt: true, endAt: true, dateLabel: true } } },
+  });
+  if (!link || link.event.status === "draft") return null;
+  const end = (link.event.endAt ?? link.event.startAt).getTime();
+  return end + 86_400_000 < Date.now() ? null : link;
+}
+
+/** Ingressos válidos do evento e quantos já entraram. */
+export async function checkinCounts(eventId: string) {
+  const t = schema.tickets;
+  const [c] = await db.select({
+    total: sql<number>`count(*)`,
+    inside: sql<number>`count(*) filter (where ${t.checkedInAt} is not null)`,
+  }).from(t).where(and(eq(t.eventId, eventId), inArray(t.status, ["valid", "used"])));
+  return { total: Number(c?.total ?? 0), inside: Number(c?.inside ?? 0) };
 }

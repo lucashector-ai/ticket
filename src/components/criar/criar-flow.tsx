@@ -55,7 +55,7 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
   const sessions = useMemo(() => [...d.sessions].sort((a, b) => (a.date < b.date ? -1 : 1)), [d.sessions]);
   const nSess = Math.max(1, sessions.length);
   let totalQty = 0, gross = 0, nTypes = 0;
-  for (const k of d.sectors) for (const t of effTypes(k, d.autoMeia)) { nTypes++; totalQty += num(t.qty) * nSess; gross += num(t.qty) * num(t.price) * nSess; }
+  for (const k of d.sectors) for (const t of effTypes(k, d.autoMeia)) { nTypes++; totalQty += num(t.qty) * nSess; gross += t.free ? 0 : num(t.qty) * num(t.price) * nSess; }
   const net = d.fee ? gross : gross * 0.9;
   const catName = d.cat === "Outros" ? d.catOther || "Outros" : d.cat;
   const cities = sessions.map((x) => x.city).filter((c, i, a) => c && a.indexOf(c) === i);
@@ -204,14 +204,14 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
             <div className="acc">
               {d.sectors.map((k) => {
                 const types = effTypes(k, d.autoMeia);
-                const prices = types.map((t) => num(t.price)).filter(Boolean);
+                const prices = types.flatMap((t) => (t.free ? [0] : num(t.price) > 0 ? [num(t.price)] : []));
                 const open = !!pvOpen[k.id];
                 return (
                   <div key={k.id} className={open ? "ac open" : "ac"}>
                     <button className="acc-h" type="button" onClick={() => setPvOpen((o) => ({ ...o, [k.id]: !o[k.id] }))} aria-expanded={open}>
                       <span className="acc-sw" style={{ background: k.color }} aria-hidden="true" />
                       <b className="acc-t">{k.name}</b>
-                      <span className="acc-from">{prices.length ? `a partir de ${brMoney(Math.min(...prices))}` : ""}</span>
+                      <span className="acc-from">{prices.length ? (Math.min(...prices) === 0 ? "Grátis" : `a partir de ${brMoney(Math.min(...prices))}`) : ""}</span>
                       <span className="acc-c" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4" /></svg></span>
                     </button>
                     {open && (
@@ -221,7 +221,7 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
                             <b className="at-n">{t.name}</b>
                             {t.desc && <span className="at-d">{t.desc}</span>}
                             <div className="at-r">
-                              <span className="at-p">{brMoney(num(t.price))}<span className="at-tx">{d.fee ? "+ taxas" : ""}</span></span>
+                              <span className="at-p">{t.free ? "Grátis" : brMoney(num(t.price))}<span className="at-tx">{d.fee && !t.free ? "+ taxas" : ""}</span></span>
                               <span className="at-q"><span className="at-v">0</span><span className="at-plus" aria-hidden="true">+</span></span>
                             </div>
                           </div>

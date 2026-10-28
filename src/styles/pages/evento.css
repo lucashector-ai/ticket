@@ -518,6 +518,8 @@
   .pd-c{font-size:10.5px;opacity:.7;max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pd-n{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#D3F55B;color:#111;font-size:10px;font-style:normal;font-weight:700;display:grid;place-items:center}
   .sec-sw{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:7px;vertical-align:1px}
+  .tier .pr.free{color:#3D5200}
+  .tier .plim{display:block;margin-top:2px;font-size:12px;font-weight:500;letter-spacing:0;color:#8A8A90}
   .tdesc{display:block;font-size:12.5px;line-height:1.4;color:#6E6E73;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 }
 .pg-evento {

@@ -38,6 +38,7 @@ export async function createGroup(input: z.input<typeof groupSchema>): Promise<{
     if (!tt || tierStatus(tt) !== "open") return { ok: false, error: "Um dos lotes não está mais disponível." };
     const left = tt.quantity - tt.sold - (held.get(tt.id) ?? 0);
     if (it.quantity > left) return { ok: false, error: `Restam só ${Math.max(0, left)} ingressos em ${tt.name}.` };
+    if (!tt.priceCents) return { ok: false, error: "Ingresso grátis não entra na compra em grupo: cada pessoa garante o seu." };
     for (let k = 0; k < it.quantity; k++) shares.push({ ticketTypeId: tt.id, priceCents: tt.priceCents });
   }
   const code = randomToken(10);

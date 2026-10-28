@@ -7,7 +7,7 @@ import { SERVICE_FEE_RATE } from "@/lib/pricing";
 import { linkArtistSpotify } from "@/lib/spotify-artists";
 import { AREA_KINDS, KIND_COLOR, MAX_AREAS, normalizePlan } from "@/lib/criar/plan";
 import {
-  CATEGORY_KINDS, effTypes, eventSlug, num, parseBrDateTime, parseCity, spDate, toCents,
+  CATEGORY_KINDS, effTypes, eventSlug, limitOf, MAX_LIMIT, num, parseBrDateTime, parseCity, spDate, toCents,
   type DbMap, type Draft,
 } from "@/lib/criar/model";
 
@@ -29,7 +29,7 @@ const draftSchema = z.object({
   autoMeia: z.boolean(), fee: z.boolean(), transfer: z.boolean().default(true), resale: z.boolean().default(true),
   sectors: z.array(z.object({
     id, name: str(80), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/), open: z.boolean(),
-    types: z.array(z.object({ id, kind: z.enum(["inteira", "meia", "social", "outro"]), name: str(120), price: str(12), qty: str(9), desc: str(600) })).max(20),
+    types: z.array(z.object({ id, kind: z.enum(["inteira", "meia", "social", "outro"]), name: str(120), price: str(12), qty: str(9), desc: str(600), free: z.boolean().optional(), limit: z.string().max(3).optional() })).max(20),
   })).min(1).max(20),
   map: z.enum(["empty", "sketch", "done"]), prompt: str(1000), sketchUrl: z.union([z.literal(""), media.unwrap()]).default(""),
   plan: z.object({
@@ -157,7 +157,7 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     if (!allTypes.length) return fail("Crie pelo menos um tipo de ingresso.", 3);
     for (const t of allTypes) {
       if (!t.name.trim()) return fail("Dê um nome a cada tipo de ingresso.", 3);
-      if (toCents(t.price) <= 0) return fail(`Defina o preço de ${t.name}.`, 3);
+      if (!t.free && toCents(t.price) <= 0) return fail(`Defina o preço de ${t.name} ou marque como grátis.`, 3);
       if (num(t.qty) <= 0) return fail(`Defina a quantidade de ${t.name}.`, 3);
     }
   }
@@ -236,7 +236,9 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   const doorsLabel = first?.doors
     ? `Portões ${hourLabel(first.doors)} · início ${hourLabel(first.start)}${doorsSet.size > 1 ? " (varia por data)" : ""}`
     : first ? `Início ${hourLabel(first.start)}` : null;
-  const prices = allTypes.map((t) => toCents(t.price)).filter((p) => p > 0);
+  const prices = allTypes.map((t) => (t.free ? 0 : toCents(t.price)));
+  // teto do pedido: o maior limite por pessoa, nunca abaixo de 8 (vários tipos no mesmo pedido)
+  const orderCap = Math.min(MAX_LIMIT, Math.max(8, ...allTypes.map(limitOf)));
   const kinds = CATEGORY_KINDS[d.cat] ?? [];
   const paragraphs = d.desc.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
   const hasMeia = allTypes.some((t) => t.kind === "meia" || t.kind === "social");
@@ -252,7 +254,7 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     venueId: first ? venueOf(first) : null, venueNameOverride: tour && citySet.size > 1 ? `Turnê · ${citySet.size} cidades` : null,
     addressLabel: tour && citySet.size > 1 ? [...citySet].join(", ") : first?.city ? `${first.city.name} – ${first.city.uf}` : null,
     organizerId: organizer.id, primaryCategoryLabel: catLabel, kinds,
-    minPriceCents: prices.length ? Math.min(...prices) : 0, maxPerOrder: 8,
+    minPriceCents: prices.length ? Math.min(...prices) : 0, maxPerOrder: orderCap,
     format: d.mode, ticketMode: d.tmode, absorbFee: !d.fee, transferEnabled: d.transfer, resaleEnabled: d.resale,
     media: { home: d.media.home, strip: d.media.strip, share: d.media.share },
     venueMap: venueMapOf(d),
@@ -291,12 +293,12 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     for (const { k, types } of sectorTypes) {
       for (const t of types) {
         const key = `${s.id}:${t.id}`;
-        const price = toCents(t.price);
+        const price = t.free ? 0 : toCents(t.price);
         const v = {
           eventId, sessionId: dbMap.sessions[s.id], name: t.name.trim() || "Ingresso",
           note: (multi ? label : t.desc.trim()).slice(0, 160) || null, description: t.desc.trim() || null,
           priceCents: price, feeCents: d.fee ? Math.round(price * SERVICE_FEE_RATE) : 0, quantity: Math.round(num(t.qty)),
-          status: "open" as const, salesStart, sortOrder: order++, maxPerOrder: t.kind === "outro" ? 2 : 6,
+          status: "open" as const, salesStart, sortOrder: order++, maxPerOrder: limitOf(t),
           sector: d.tmode === "mapa" ? k.name.trim() || "Setor" : null, sectorColor: k.color, kind: t.kind,
         };
         const dbId = prevMap.types[key];

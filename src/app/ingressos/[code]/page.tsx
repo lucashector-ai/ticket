@@ -48,7 +48,7 @@ export default async function IngressoPage({ params, searchParams }: { params: P
     tier: t.ticketType.name, orderNumber: t.order?.number ?? null,
     checkedInLabel: t.checkedInAt ? dateNice(t.checkedInAt) : null,
     transferEnabled: e.transferEnabled,
-    resale: { enabled: e.resaleEnabled && e.status === "published", ...resaleCap(t.ticketType.priceCents, t.halfPrice, e.resaleMaxPct), listing: listing ? { id: listing.id, priceCents: listing.priceCents, reserved: listing.status === "reserved" && !!listing.reservedUntil && listing.reservedUntil > now } : null },
+    resale: { enabled: e.resaleEnabled && e.status === "published" && t.ticketType.priceCents > 0, ...resaleCap(t.ticketType.priceCents, t.halfPrice, e.resaleMaxPct), listing: listing ? { id: listing.id, priceCents: listing.priceCents, reserved: listing.status === "reserved" && !!listing.reservedUntil && listing.reservedUntil > now } : null },
   };
 
   data.openResale = revender === "1" && data.resale.enabled && !data.resale.listing && t.status === "valid";

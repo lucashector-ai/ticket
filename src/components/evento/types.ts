@@ -22,7 +22,10 @@ export type TierItem = {
   note: string | null;
   /** descrição do tipo (quem pode comprar, o que inclui) */
   desc: string | null;
+  /** 0 = ingresso grátis */
   priceCents: number;
+  /** máximo por pessoa deste tipo */
+  limit: number;
   status: "upcoming" | "open" | "sold_out" | "closed";
   available: number;
   sector: string | null;

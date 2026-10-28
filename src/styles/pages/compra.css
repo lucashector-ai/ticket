@@ -66,6 +66,7 @@
   .tr-o{display:block;font-size:13.5px;color:#6E6E73;margin-top:3px}
   .tr-p{font-family:'Inter Tight',sans-serif;font-size:19px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
   .trw.so .tr-p{text-decoration:line-through}
+  .tr-p.free{color:#3D5200}
   .tr-so{font-size:13px;font-weight:600;color:#B3261E;min-width:132px;text-align:center}
   .qt{display:inline-flex;align-items:center;gap:4px;height:46px;padding:0 6px;border-radius:999px;background:#FFFFFF;min-width:132px;justify-content:space-between;box-sizing:border-box}
   .trw.sel .qt{background:#F4F4F1}

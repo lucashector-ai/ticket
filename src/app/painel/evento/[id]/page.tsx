@@ -34,9 +34,9 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
   if (!e) notFound();
   const now = nowMs();
 
-  const { eventSignups, queueEntries, resaleListings, ticketTransfers } = schema;
+  const { eventSignups, queueEntries, resaleListings, ticketTransfers, checkinLinks } = schema;
   const fresh = new Date(nowMs() - 60_000);
-  const [orders, people, byType, cps, sessions, signups, [qActive], [qWaiting], resale, [transfers]] = await Promise.all([
+  const [orders, people, byType, cps, sessions, signups, [qActive], [qWaiting], resale, [transfers], links] = await Promise.all([
     listOrders([e.id], new Map([[e.id, e.absorbFee]])),
     listParticipants(e.id),
     revenueByType(e.id),
@@ -50,6 +50,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
       with: { ticket: { columns: { code: true, halfPrice: true } }, ticketType: { columns: { name: true, sector: true, priceCents: true } } },
     }),
     db.select({ n: count() }).from(ticketTransfers).innerJoin(schema.tickets, eq(schema.tickets.id, ticketTransfers.ticketId)).where(and(eq(schema.tickets.eventId, e.id), eq(ticketTransfers.status, "accepted"))),
+    db.query.checkinLinks.findMany({ where: and(eq(checkinLinks.eventId, e.id), isNull(checkinLinks.revokedAt)), orderBy: (x, { asc }) => [asc(x.createdAt)] }),
   ]);
   const paid = orders.filter((o) => o.status === "paid");
   const refunded = orders.filter((o) => o.status === "refunded");
@@ -67,7 +68,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
     const [status, stCls] = t.quantity > 0 && t.sold >= t.quantity ? TT_STATUS.sold_out : TT_STATUS[t.status] ?? TT_STATUS.open;
     return {
       id: t.id, name: [t.sector, t.name].filter(Boolean).join(" · "), sub: (t.sessionId && sessLabel.get(t.sessionId)) || t.note || "",
-      color: t.sectorColor ?? "#111", price: brl(t.priceCents), sold: t.sold, total: t.quantity,
+      color: t.sectorColor ?? "#111", price: t.priceCents ? brl(t.priceCents) : "Grátis", sold: t.sold, total: t.quantity,
       pct: t.quantity ? Math.min(100, Math.round((t.sold / t.quantity) * 100)) : 0, revenue: brl(r?.cents ?? 0), status, stCls,
     };
   });
@@ -110,6 +111,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
     }),
     checkin: {
       total: valid.length, inside: inside.length, perMin: (lastHour / 15).toFixed(1).replace(".", ","),
+      links: links.map((l) => ({ id: l.id, label: l.label, token: l.token, scans: l.scans, used: l.lastUsedAt ? ago(l.lastUsedAt, now) : null })),
       sectors: [...sectors].map(([name, x]) => ({ name, n: x.inn, total: x.n, pct: x.n ? Math.round((x.inn / x.n) * 100) : 0 })),
       last: inside.sort((a, b) => b.checkedInAt!.getTime() - a.checkedInAt!.getTime()).slice(0, 8).map((p) => ({ id: p.id, name: p.holder || p.buyer || "Participante", what: [p.sector, p.type].filter(Boolean).join(" · "), at: hm(p.checkedInAt!) })),
     },

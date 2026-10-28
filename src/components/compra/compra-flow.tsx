@@ -20,7 +20,11 @@ export type CompraStep = "resumo" | "dados" | "pagamento" | "pix" | "proc" | "do
 export type CompraTier = {
   id: string; name: string; type: string; note: string; desc: string | null; priceCents: number; open: boolean; sold: boolean;
   sector: string | null; sectorColor: string | null; sessionId: string | null; meiaOk: boolean;
+  /** máximo por pessoa deste tipo */
+  limit: number;
 };
+/** "Grátis" no lugar de R$ 0,00 */
+const priceOf = (cents: number) => (cents ? money(cents) : "Grátis");
 /** Uma data de evento com várias datas: pílula (`wd`, `day`, `sub`) e rótulo do resumo ("Sex, 30 Out · 21h"). */
 export type CompraSession = { id: string; wd: string; day: string; sub: string; label: string };
 export type CompraEvent = {
@@ -177,6 +181,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     feeRate: event.feeRate,
   });
   const installments = installmentOptions(price.base);
+  /** pedido sem valor (ingressos grátis ou cupom de 100%): pula o pagamento */
+  const free = nq > 0 && price.total === 0;
 
   /* resumo: ingressos da data escolhida agrupados por setor (na ordem em que aparecem); sem setor, lista simples */
   const multiDay = event.sessions.length > 0;
@@ -207,6 +213,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
 
   const setTierQty = (id: string, delta: number) => {
     if (lock) return;
+    const tier = event.tiers.find((t) => t.id === id);
+    if (delta > 0 && tier && (qty[id] ?? 0) >= tier.limit) { flash(`Máximo de ${tier.limit} ${tier.limit === 1 ? "ingresso" : "ingressos"} de ${tier.name} por pessoa.`); return; }
     setQty((o) => {
       const total = Object.values(o).reduce((s, v) => s + v, 0);
       if (delta > 0 && total >= event.maxPerOrder) { flash(`Máximo de ${event.maxPerOrder} ingressos por pessoa.`); return o; }
@@ -229,7 +237,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     flash("Entre ou crie sua conta para continuar.");
   }
 
-  async function submitOrder(method: "pix" | "card") {
+  async function submitOrder(method: "pix" | "card" | "free") {
     setBusy(true);
     const r = await placeOrder({
       eventSlug: event.slug,
@@ -253,7 +261,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   async function finish(orderId: string) {
     go("proc");
     const r = await confirmPayment(orderId);
-    if (!r.ok) { flash(r.error); go("pagamento"); return; }
+    if (!r.ok) { flash(r.error); go(free ? "dados" : "pagamento"); return; }
     setDone(r);
     go("done");
     // parte de grupo / revenda: recarregar a página levaria de volta ao grupo (a vaga já está paga)
@@ -268,6 +276,12 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     } else if (step === "dados") {
       if (!user) { setTried(true); nudgeLogin(); return; }
       if (dadosErr.length) { setTried(true); return; }
+      if (free) {
+        // nada a pagar: o pedido é confirmado e os ingressos saem na hora
+        const r = await submitOrder("free");
+        if (r) await finish(r.orderId);
+        return;
+      }
       go("pagamento");
     } else if (step === "pagamento") {
       if (pay === "pix") {
@@ -283,13 +297,14 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
 
   const prev = () => go(step === "dados" ? "resumo" : step === "pagamento" ? "dados" : "pagamento");
   const idx = STEP_INDEX[step];
-  const steps = ["Resumo", "Dados", "Pagamento", "Confirmação"].map((label, i) => ({
+  const steps = ["Resumo", "Dados", free ? "Sem pagamento" : "Pagamento", "Confirmação"].map((label, i) => ({
     label, n: String(i + 1), cls: i < idx ? "ok" : i === idx ? "cur" : "",
     go: () => { if (i < idx && idx < 3 && step !== "proc") go((["resumo", "dados", "pagamento"] as const)[i]); },
   }));
-  const ctaLabel = step === "resumo" ? "Continuar" : step === "dados" ? (user ? "Ir para pagamento" : "Entrar para continuar") : step === "pagamento" ? (pay === "card" ? `Pagar ${money(price.total)}` : "Gerar código Pix") : "";
-  const payLabel = done ? (done.method === "card" ? `Cartão · ${done.installments}x` : "Pix") : pay === "card" ? `Cartão ${cardBrand(cc.num)} · ${inst}x` : "Pix";
-  const totalLabel = money(done ? done.totalCents : order && step === "pix" ? order.totalCents : price.total);
+  const ctaLabel = step === "resumo" ? "Continuar" : step === "dados" ? (user ? (free ? "Garantir ingresso" : "Ir para pagamento") : "Entrar para continuar") : step === "pagamento" ? (pay === "card" ? `Pagar ${money(price.total)}` : "Gerar código Pix") : "";
+  const payLabel = done ? (done.method === "free" ? "Gratuito" : done.method === "card" ? `Cartão · ${done.installments}x` : "Pix") : free ? "Gratuito" : pay === "card" ? `Cartão ${cardBrand(cc.num)} · ${inst}x` : "Pix";
+  const totalCents = done ? done.totalCents : order && step === "pix" ? order.totalCents : price.total;
+  const totalLabel = nq || done ? priceOf(totalCents) : money(0);
 
   return (
     <main className="wrap ck">
@@ -342,7 +357,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                           ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="9" cy="8" r="3.2" /><circle cx="17" cy="9.5" r="2.6" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M14.5 19a4 4 0 0 1 6.5-3" /></svg>
                           : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h13l-3-3M20 17H7l3 3" /></svg>}</span>
                         <span className="lk-i"><b>{l.name}</b><small>1 ingresso · {lock.kind === "grupo" ? "parte do grupo" : "revenda oficial"}</small></span>
-                        <b className="lk-p">{money(l.priceCents)}</b>
+                        <b className="lk-p">{priceOf(l.priceCents)}</b>
                       </div>
                     ))}
                     <p className="lk-n">{lock.note}</p>
@@ -378,7 +393,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                           <i className="sec-sw" style={{ background: g.color ?? "#111" }} aria-hidden="true" />
                           <b className="tg-t">{g.name}</b>
                           {sel > 0 && <i className="tg-n">{sel}</i>}
-                          <span className="tg-from">a partir de {money(from)}</span>
+                          <span className="tg-from">{from ? `a partir de ${money(from)}` : "Grátis"}</span>
                           <span className="tg-c" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4" /></svg></span>
                         </button>
                         {/* sempre montado: a altura anima de 0 até o conteúdo (grid 0fr → 1fr) */}
@@ -415,7 +430,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
             {step === "dados" && (
               <div className="pane">
                 <h1 className="ck-h">Seus dados</h1>
-                <p className="ck-p">Usamos esses dados para enviar os ingressos e emitir o comprovante.</p>
+                <p className="ck-p">{free ? "Usamos esses dados para enviar os ingressos. Nada é cobrado: o ingresso é grátis." : "Usamos esses dados para enviar os ingressos e emitir o comprovante."}</p>
                 {user ? (
                   <span className="hint ck-acc">
                     Comprando como <b className="hint-b">{user.email}</b>
@@ -584,14 +599,14 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               <div className="pane proc">
                 <div className="ld-tk proc-tk" aria-hidden="true">
                   <div className="ld-main">
-                    <span className="ld-k">Tickets Win · Pagamento</span>
+                    <span className="ld-k">Tickets Win · {free ? "Ingressos" : "Pagamento"}</span>
                     <b className="ld-t">{event.title}</b>
                     <span className="ld-d">{totalLabel} · {payLabel}</span>
                     <span className="ld-bar"><i /></span>
                   </div>
                   <div className="ld-stub"><span className="ld-code" /></div>
                 </div>
-                <h1 className="ck-h">Processando pagamento</h1>
+                <h1 className="ck-h">{free ? "Emitindo seus ingressos" : "Processando pagamento"}</h1>
                 <p className="ck-p">Isso leva só alguns segundos. Não feche esta página.</p>
               </div>
             )}
@@ -615,7 +630,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                       {/* várias datas: a data saiu das linhas do resumo, então aparece aqui */}
                       {l.quantity > 0 && dayLabel(l.ticketTypeId) && <small className="sm-ld">{dayLabel(l.ticketTypeId)}</small>}
                     </span>
-                    <span className="sm-lv">{money(l.quantity * l.priceCents)}</span>
+                    <span className="sm-lv">{l.quantity && !l.priceCents ? "Grátis" : money(l.quantity * l.priceCents)}</span>
                   </li>
                 ))}
               </ul>
@@ -623,7 +638,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 <Row k="Subtotal" v={money(price.subtotal)} />
                 {price.meia > 0 && <Row k="Meia-entrada" v={`− ${money(price.meia)}`} ok />}
                 {price.discount > 0 && <Row k={`Cupom ${coupon?.code ?? ""}`} v={`− ${money(price.discount)}`} ok />}
-                <Row k="Taxa de serviço" v={event.feeRate ? money(price.fee) : "Inclusa no preço"} />
+                <Row k="Taxa de serviço" v={free ? "Sem taxa" : event.feeRate ? money(price.fee) : "Inclusa no preço"} />
                 {price.interest > 0 && <Row k="Juros do parcelamento" v={money(price.interest)} />}
               </div>
               <div className="sm-tot">
@@ -676,7 +691,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
           </div>
           <div className="done-sum">
             <div className="ds"><span className="ds-k">Pagamento</span><b className="ds-v">{payLabel}</b></div>
-            <div className="ds"><span className="ds-k">Total pago</span><b className="ds-v">{money(done.totalCents)}</b></div>
+            <div className="ds"><span className="ds-k">Total pago</span><b className="ds-v">{priceOf(done.totalCents)}</b></div>
             <div className="ds"><span className="ds-k">Pedido</span><b className="ds-v">#{done.number}</b></div>
           </div>
         </div>
@@ -693,7 +708,7 @@ function TierRow({ t, q, label = t.name, sub, onQty, delay }: { t: CompraTier; q
         <b className="tr-n">{label}</b>
         {sub && <span className="tr-o">{sub}</span>}
       </div>
-      <span className="tr-p">{money(t.priceCents)}</span>
+      <span className={t.priceCents ? "tr-p" : "tr-p free"}>{priceOf(t.priceCents)}</span>
       {t.open ? (
         <div className="qt">
           <button className="qt-b" type="button" onClick={() => onQty(t.id, -1)} aria-label={`Remover um ${t.name}`}>−</button>

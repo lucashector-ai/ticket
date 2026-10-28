@@ -8,8 +8,14 @@ import { ResaleCard } from "./resale-card";
 
 type Group = { name: string | null; color: string | null; tiers: TierItem[] };
 
+const price = (cents: number) => (cents ? brl(cents) : "Grátis");
+
 export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
   const [openSecs, setOpenSecs] = useState<Record<string, boolean>>({});
+  // um limite só para todos os tipos vai no topo; limites diferentes aparecem em cada tipo
+  const limits = new Set(e.tiers.map((x) => x.limit));
+  const oneLimit = limits.size === 1 ? [...limits][0] : null;
+  const allFree = t.nq > 0 && t.subtotal === 0;
   // ingressos agrupados por setor (na ordem em que aparecem); sem setor, lista simples
   const groups: Group[] = [];
   for (const tier of t.visibleTiers) {
@@ -23,10 +29,10 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
       <div className="buy-sc">
       <div className="buy-h">
         <h2>Ingressos</h2>
-        <span className="mute" style={{ fontSize: 13 }}>Até {e.maxPerOrder} por pessoa</span>
+        {oneLimit !== null && <span className="mute" style={{ fontSize: 13 }}>Até {oneLimit} por pessoa</span>}
       </div>
       {e.launch.access && <p className="ln-pv"><i aria-hidden="true" />Pré-venda liberada para você · uma compra com este link</p>}
-      {e.minPriceCents > 0 && <p className="from">A partir de <b>{brl(e.minPriceCents)}</b></p>}
+      {e.minPriceCents > 0 ? <p className="from">A partir de <b>{brl(e.minPriceCents)}</b></p> : e.tiers.some((x) => x.priceCents === 0) && <p className="from">Entrada <b>grátis</b></p>}
       {e.sessions.length > 1 && (
         <>
           <span className="sess-l">Escolha a data</span>
@@ -51,7 +57,7 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
       )}
       <div className="tiers">
         {groups.map((g) => {
-          if (!g.name) return g.tiers.map((tier) => <TierRow key={tier.id} tier={tier} t={t} />);
+          if (!g.name) return g.tiers.map((tier) => <TierRow key={tier.id} tier={tier} t={t} showLimit={oneLimit === null} />);
           const sel = g.tiers.reduce((acc, x) => acc + (t.qty[x.id] ?? 0), 0);
           const open = openSecs[g.name] ?? (g === groups[0] || sel > 0 || t.sector === g.name);
           const from = Math.min(...g.tiers.map((x) => x.priceCents));
@@ -61,13 +67,13 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
                 <i className="sec-sw" style={{ background: g.color ?? "#111" }} aria-hidden="true" />
                 <b className="tg-t">{g.name}</b>
                 {sel > 0 && <i className="tg-n">{sel}</i>}
-                <span className="tg-from">a partir de {brl(from)}</span>
+                <span className="tg-from">{from ? `a partir de ${brl(from)}` : "Grátis"}</span>
                 <span className="tg-c" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4" /></svg></span>
               </button>
               {/* sempre montado: a altura anima de 0 até o conteúdo (grid 0fr → 1fr) */}
               <div className="tg-bw" inert={!open}>
                 <div className="tg-bi">
-                  <div className="tg-b">{g.tiers.map((tier, i) => <TierRow key={tier.id} tier={tier} t={t} inGroup delay={i} />)}</div>
+                  <div className="tg-b">{g.tiers.map((tier, i) => <TierRow key={tier.id} tier={tier} t={t} inGroup delay={i} showLimit={oneLimit === null} />)}</div>
                 </div>
               </div>
             </div>
@@ -104,24 +110,24 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
         )}
         <div>
           <span>{t.qtyLabel}</span>
-          <b>{brl(t.total)}</b>
+          <b>{allFree ? "Grátis" : brl(t.total)}</b>
         </div>
         <button className="go" type="button" onClick={t.checkout} disabled={t.nq === 0 || t.pending}>
-          {t.pending ? "Criando pedido…" : "Continuar para pagamento"}
+          {t.pending ? "Criando pedido…" : allFree ? "Garantir ingresso" : "Continuar para pagamento"}
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
         </button>
       </div>
-      <button className="grp-b" type="button" onClick={t.group} disabled={t.nq < 2 || t.grouping || t.pending}>
+      <button className="grp-b" type="button" onClick={t.group} disabled={t.nq < 2 || allFree || t.grouping || t.pending}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2" /><circle cx="17" cy="9.5" r="2.6" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M14.5 19a4 4 0 0 1 6.5-3" /></svg>
         {t.grouping ? "Reservando…" : "Comprar em grupo"}
       </button>
-      <span className="grp-s">{t.nq < 2 ? "Escolha 2 ou mais ingressos para dividir com os amigos." : "Reservamos por 60 min e cada um paga a sua parte pelo link."}</span>
+      <span className="grp-s">{allFree ? "Ingresso grátis não precisa dividir: cada um garante o seu." : t.nq < 2 ? "Escolha 2 ou mais ingressos para dividir com os amigos." : "Reservamos por 60 min e cada um paga a sua parte pelo link."}</span>
       </div>
     </div>
   );
 }
 
-function TierRow({ tier, t, inGroup = false, delay }: { tier: TierItem; t: Tickets; inGroup?: boolean; delay?: number }) {
+function TierRow({ tier, t, inGroup = false, delay, showLimit }: { tier: TierItem; t: Tickets; inGroup?: boolean; delay?: number; showLimit?: boolean }) {
   const q = t.qty[tier.id] ?? 0;
   const open = tier.status === "open" && tier.available > 0;
   const sold = tier.status === "sold_out" || tier.status === "closed" || (tier.status === "open" && tier.available === 0);
@@ -133,7 +139,7 @@ function TierRow({ tier, t, inGroup = false, delay }: { tier: TierItem; t: Ticke
       <div className="tn">
         <b>{tier.sector && !inGroup && <i className="sec-sw" style={{ background: tier.sectorColor ?? "#111" }} aria-hidden="true" />}{label}</b>
         {tier.desc && <small className="tdesc">{tier.desc}</small>}
-        <span className="pr">{brl(tier.priceCents)}</span>
+        <span className={tier.priceCents ? "pr" : "pr free"}>{price(tier.priceCents)}{showLimit && <small className="plim">Até {tier.limit} por pessoa</small>}</span>
       </div>
       {open && (
         <div className="qty">

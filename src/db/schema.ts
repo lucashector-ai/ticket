@@ -730,6 +730,26 @@ export const emailTemplates = pgTable(
   (t) => [index("email_templates_org_idx").on(t.organizerId), index("email_templates_user_idx").on(t.userId)],
 );
 
+/**
+ * Link externo de check-in: abre uma tela própria no celular para validar ingressos sem conta no painel
+ * (um por portão ou por pessoa da equipe). Quem tem o link valida; revogar desliga na hora.
+ */
+export const checkinLinks = pgTable(
+  "checkin_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    token: varchar("token", { length: 48 }).notNull(),
+    label: varchar("label", { length: 60 }).notNull(),
+    createdByUserId: text("created_by_user_id"),
+    scans: integer("scans").notNull().default(0),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("checkin_links_token_idx").on(t.token), index("checkin_links_event_idx").on(t.eventId)],
+);
+
 export const citiesRelations = relations(cities, ({ many }) => ({ venues: many(venues) }));
 export const venuesRelations = relations(venues, ({ one, many }) => ({
   city: one(cities, { fields: [venues.cityId], references: [cities.id] }),
@@ -812,6 +832,9 @@ export const emailCampaignsRelations = relations(emailCampaigns, ({ one, many })
 }));
 export const emailSendsRelations = relations(emailSends, ({ one }) => ({
   campaign: one(emailCampaigns, { fields: [emailSends.campaignId], references: [emailCampaigns.id] }),
+}));
+export const checkinLinksRelations = relations(checkinLinks, ({ one }) => ({
+  event: one(events, { fields: [checkinLinks.eventId], references: [events.id] }),
 }));
 export const favoritesRelations = relations(favorites, ({ one }) => ({
   event: one(events, { fields: [favorites.eventId], references: [events.id] }),

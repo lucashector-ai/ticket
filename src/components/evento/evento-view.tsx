@@ -147,7 +147,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
               <div className="et-buy">
                 <div>
                   <span>{waiting ? (e.launch.phase === "presale" ? "Pré-venda para cadastrados" : e.launch.presaleAt ? "Pré-venda em breve" : "Vendas em breve") : e.minPriceCents > 0 ? "Ingressos a partir de" : "Ingressos"}</span>
-                  <b>{e.minPriceCents > 0 ? brl(e.minPriceCents) : waiting ? "Fique de olho" : "Escolha o seu"}</b>
+                  <b>{e.minPriceCents > 0 ? brl(e.minPriceCents) : waiting ? "Fique de olho" : e.tiers.some((t) => t.priceCents === 0) ? "Grátis" : "Escolha o seu"}</b>
                 </div>
                 <button className="et-go" type="button" onClick={goTickets}>
                   {waiting ? (e.launch.phase === "soon" && e.launch.presaleAt ? "Quero a pré-venda" : "Me avise") : "Comprar ingressos"}

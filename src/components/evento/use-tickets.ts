@@ -44,6 +44,7 @@ export function useTickets(e: EventoData) {
     if (sum >= e.maxPerOrder) { flash(`Máximo de ${e.maxPerOrder} ingressos por pessoa.`); return; }
     const cur = qty[id] ?? 0;
     if (cur >= tier.available) { flash(`Restam só ${tier.available} ingressos em ${tier.name}.`); return; }
+    if (cur >= tier.limit) { flash(`Máximo de ${tier.limit} ${tier.limit === 1 ? "ingresso" : "ingressos"} de ${tier.name} por pessoa.`); return; }
     setQty({ ...qty, [id]: cur + 1 });
   }, [e.tiers, e.maxPerOrder, qty, flash]);
 

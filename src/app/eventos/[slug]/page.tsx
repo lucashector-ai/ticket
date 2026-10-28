@@ -60,7 +60,7 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     const status = tierStatus(t);
     return {
       id: t.id, name: t.name, note: status === "upcoming" && t.salesStart ? salesStartNote(t.salesStart) : t.note, desc: t.description,
-      priceCents: t.priceCents, status, available: Math.max(0, t.quantity - t.sold - (held.get(t.id) ?? 0)),
+      priceCents: t.priceCents, limit: Math.min(t.maxPerOrder, e.maxPerOrder), status, available: Math.max(0, t.quantity - t.sold - (held.get(t.id) ?? 0)),
       sector: t.sector, sectorColor: t.sectorColor, sessionId: t.sessionId,
     };
   });

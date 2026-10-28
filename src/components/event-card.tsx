@@ -35,7 +35,7 @@ export function EventCard({ e, delay, className = "card rv" }: { e: EventCardDat
         <p className="cmeta">{e.venue}</p>
         <p className="cmeta mute">{e.city}, {e.uf}</p>
         <div className="cfoot">
-          <span className="price"><small>A partir de</small>{brl(e.minPriceCents)}</span>
+          <span className="price">{e.minPriceCents ? <><small>A partir de</small>{brl(e.minPriceCents)}</> : "Grátis"}</span>
           <Link className="go" href={`/eventos/${e.slug}`} aria-label={`Ingressos para ${e.title}`}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
