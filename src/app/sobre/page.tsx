@@ -59,7 +59,7 @@ export default function SobrePage() {
                 <b>{j.t}</b>
                 <span>{j.s}</span>
               </div>
-              <a className="btn-g" href={`mailto:vagas@onde.app?subject=${encodeURIComponent(j.t)}`}>Candidatar-se</a>
+              <a className="btn-g" href={`mailto:vagas@ticketswin.com.br?subject=${encodeURIComponent(j.t)}`}>Candidatar-se</a>
             </div>
           ))}
         </div>
@@ -70,7 +70,7 @@ export default function SobrePage() {
         <div className="in-press">
           <article className="in-card">
             <b>Contato para jornalistas</b>
-            <p>Entrevistas, dados sobre o mercado de eventos e pautas sobre a cena cultural das cidades em que atuamos: <a href="mailto:imprensa@onde.app">imprensa@onde.app</a>. Respondemos no mesmo dia útil.</p>
+            <p>Entrevistas, dados sobre o mercado de eventos e pautas sobre a cena cultural das cidades em que atuamos: <a href="mailto:imprensa@ticketswin.com.br">imprensa@ticketswin.com.br</a>. Respondemos no mesmo dia útil.</p>
           </article>
           <article className="in-card">
             <b>Kit de marca</b>

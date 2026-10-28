@@ -12,6 +12,14 @@ const OAUTH_VERIFIER = "neon_auth_session_verifier";
 
 export default function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
+  // www.ticketswin.com.br → ticketswin.com.br (um endereço só)
+  const host = request.headers.get("host") ?? "";
+  if (host.startsWith("www.")) {
+    const url = request.nextUrl.clone();
+    url.host = host.slice(4);
+    url.port = "";
+    return NextResponse.redirect(url, 308);
+  }
   const isProtected = PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`)) || pathname.startsWith("/checkout/");
   const returningFromOAuth = searchParams.has(OAUTH_VERIFIER);
   if (!isProtected && !returningFromOAuth) return NextResponse.next();

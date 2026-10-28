@@ -5,7 +5,7 @@ import { mailLayout, sendEmails, type Mail } from "@/lib/email";
 import { dateNice } from "@/lib/format";
 
 const { events, eventSignups } = schema;
-const site = () => process.env.NEXT_PUBLIC_SITE_URL ?? "https://ticket.oobo-site.workers.dev";
+const site = () => process.env.NEXT_PUBLIC_SITE_URL ?? "https://ticketswin.com.br";
 
 type Ev = { id: string; slug: string; title: string; salesOpenAt: Date | null };
 

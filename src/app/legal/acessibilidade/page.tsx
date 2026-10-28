@@ -34,7 +34,7 @@ export default function AcessibilidadePage() {
       </ul>
 
       <h2 id="contato">5. Encontrou uma barreira?</h2>
-      <p>Conte para a gente em <a href="mailto:acessibilidade@onde.app">acessibilidade@onde.app</a>, descrevendo a página e a tecnologia assistiva que usa. Respondemos em até 2 dias úteis e priorizamos a correção.</p>
+      <p>Conte para a gente em <a href="mailto:acessibilidade@ticketswin.com.br">acessibilidade@ticketswin.com.br</a>, descrevendo a página e a tecnologia assistiva que usa. Respondemos em até 2 dias úteis e priorizamos a correção.</p>
     </>
   );
 }

@@ -30,7 +30,7 @@ export default function CookiesPage() {
       <p>O checkout carrega o componente do nosso processador de pagamentos, que pode gravar cookies próprios de antifraude durante a compra. O login com Google grava cookies do Google apenas quando você escolhe essa opção. Nenhum deles é usado pelo Tickets Win para rastrear você fora do site.</p>
 
       <h2 id="mais">4. Mais informações</h2>
-      <p>Como tratamos os dados coletados por esses cookies está descrito na <Link href="/legal/privacidade">Política de privacidade</Link>. Dúvidas: <a href="mailto:privacidade@onde.app">privacidade@onde.app</a>.</p>
+      <p>Como tratamos os dados coletados por esses cookies está descrito na <Link href="/legal/privacidade">Política de privacidade</Link>. Dúvidas: <a href="mailto:privacidade@ticketswin.com.br">privacidade@ticketswin.com.br</a>.</p>
     </>
   );
 }

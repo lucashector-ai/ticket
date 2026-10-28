@@ -507,7 +507,7 @@ function About({ p, onEdit }: { p: ProdutorProps; onEdit: () => void }) {
             </div>
           )}
         </div>
-        {!p.isOwner && <a className="rep" href={`mailto:ajuda@onde.app?subject=${encodeURIComponent(`Denúncia: perfil ${o.name}`)}`}>Denunciar este perfil</a>}
+        {!p.isOwner && <a className="rep" href={`mailto:ajuda@ticketswin.com.br?subject=${encodeURIComponent(`Denúncia: perfil ${o.name}`)}`}>Denunciar este perfil</a>}
       </aside>
     </div>
   );

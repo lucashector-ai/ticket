@@ -12,7 +12,7 @@
   "observability": { "enabled": true },
   "placement": { "mode": "smart" },
   "vars": {
-    "NEXT_PUBLIC_SITE_URL": "https://ticket.oobo-site.workers.dev",
+    "NEXT_PUBLIC_SITE_URL": "https://ticketswin.com.br",
     "NEXT_INC_CACHE_R2_PREFIX": "incremental-cache"
   },
   "r2_buckets": [

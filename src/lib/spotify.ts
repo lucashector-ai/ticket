@@ -104,7 +104,7 @@ export async function fetchArtist(id: string): Promise<SpotifyArtistData | null>
 
 /* ---------- "Sobre" pela Wikipédia (o Spotify não expõe a bio na API) ---------- */
 
-const WIKI_UA = { "user-agent": "TicketsWin/1.0 (https://ticket.oobo-site.workers.dev)", accept: "application/json" };
+const WIKI_UA = { "user-agent": "TicketsWin/1.0 (https://ticketswin.com.br)", accept: "application/json" };
 const fold = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const MUSIC = /m[uú]sic|cantor|cantora|banda|dj\b|rapper|rap\b|produtor|compositor|grupo musical|duo|singer|musician|band\b|record producer|songwriter|disc jockey|rapper|group/i;
 

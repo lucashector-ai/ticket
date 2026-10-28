@@ -36,13 +36,13 @@ export default function PrivacidadePage() {
       <p>Dados da conta ficam armazenados enquanto ela existir. Registros de compra são mantidos por 5 anos após o evento, por obrigação fiscal e para defesa em processos. Dados de navegação são agregados ou apagados em até 12 meses.</p>
 
       <h2 id="direitos">4. Seus direitos</h2>
-      <p>Você pode, a qualquer momento, confirmar que tratamos seus dados, acessá-los, corrigi-los, pedir a portabilidade, a anonimização ou a exclusão, e revogar consentimentos. Para isso, escreva para <a href="mailto:privacidade@onde.app">privacidade@onde.app</a>. Respondemos em até 15 dias.</p>
+      <p>Você pode, a qualquer momento, confirmar que tratamos seus dados, acessá-los, corrigi-los, pedir a portabilidade, a anonimização ou a exclusão, e revogar consentimentos. Para isso, escreva para <a href="mailto:privacidade@ticketswin.com.br">privacidade@ticketswin.com.br</a>. Respondemos em até 15 dias.</p>
 
       <h2 id="seguranca">5. Segurança</h2>
       <p>Usamos criptografia em trânsito e em repouso, autenticação com senha protegida por hash e acesso restrito aos dados por função. Em caso de incidente com risco relevante, avisaremos você e a ANPD conforme a lei.</p>
 
       <h2 id="encarregado">6. Encarregado (DPO)</h2>
-      <p>Nosso encarregado pelo tratamento de dados pode ser contatado em <a href="mailto:dpo@onde.app">dpo@onde.app</a> ou no endereço da sede, em São Paulo – SP.</p>
+      <p>Nosso encarregado pelo tratamento de dados pode ser contatado em <a href="mailto:dpo@ticketswin.com.br">dpo@ticketswin.com.br</a> ou no endereço da sede, em São Paulo – SP.</p>
     </>
   );
 }

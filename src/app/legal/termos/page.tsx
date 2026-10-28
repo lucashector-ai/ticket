@@ -18,7 +18,7 @@ export default function TermosPage() {
       <ul>
         <li>Você precisa ter pelo menos 18 anos, ou ser representado por um responsável, para criar uma conta.</li>
         <li>Os dados informados (nome, e-mail e, quando solicitado, CPF) devem ser verdadeiros e atuais. Eles aparecem no ingresso e podem ser conferidos na entrada.</li>
-        <li>A senha é pessoal. Avise-nos imediatamente em ajuda@onde.app se suspeitar de uso indevido.</li>
+        <li>A senha é pessoal. Avise-nos imediatamente em ajuda@ticketswin.com.br se suspeitar de uso indevido.</li>
       </ul>
 
       <h2 id="compras">3. Compras, taxas e pagamentos</h2>
@@ -35,7 +35,7 @@ export default function TermosPage() {
       <p>O Tickets Win não responde por alterações feitas pelo produtor (atrações, horários, local), por recusa de entrada em razão do descumprimento da política do evento, nem por danos indiretos. Nossa responsabilidade, quando houver, fica limitada ao valor pago pelos ingressos.</p>
 
       <h2 id="alteracoes">7. Alterações e contato</h2>
-      <p>Podemos atualizar estes Termos. Mudanças relevantes serão comunicadas por e-mail com pelo menos 15 dias de antecedência. Dúvidas: <a href="mailto:legal@onde.app">legal@onde.app</a>. Fica eleito o foro da comarca de São Paulo – SP.</p>
+      <p>Podemos atualizar estes Termos. Mudanças relevantes serão comunicadas por e-mail com pelo menos 15 dias de antecedência. Dúvidas: <a href="mailto:legal@ticketswin.com.br">legal@ticketswin.com.br</a>. Fica eleito o foro da comarca de São Paulo – SP.</p>
     </>
   );
 }

@@ -21,7 +21,7 @@ const FAQ = [
   { q: "O evento foi cancelado ou adiado. E agora?", a: "Se for cancelado, o reembolso é automático e integral, inclusive a taxa de serviço. Se for adiado, seu ingresso continua válido para a nova data; se não puder ir, você pode pedir o reembolso em até 7 dias após o anúncio." },
   { q: "Meu QR Code não está carregando.", a: "Abra o ingresso pela sua conta com a internet ligada ao menos uma vez: ele fica salvo para funcionar offline. Se ainda assim não aparecer, procure a equipe do Tickets Win na portaria com um documento com foto." },
   { q: "Posso comprar para outra pessoa?", a: "Pode. No checkout você informa o nome de quem vai usar cada ingresso. Depois, é só transferir pela sua conta (veja a seção Transferir ingresso)." },
-  { q: "Como falo com o produtor do evento?", a: "Na página do evento há o contato do organizador. Para dúvidas sobre pagamento, reembolso e conta, fale com a gente em ajuda@onde.app." },
+  { q: "Como falo com o produtor do evento?", a: "Na página do evento há o contato do organizador. Para dúvidas sobre pagamento, reembolso e conta, fale com a gente em ajuda@ticketswin.com.br." },
 ];
 
 export default function AjudaPage() {
@@ -30,7 +30,7 @@ export default function AjudaPage() {
       activePath="/ajuda"
       eyebrow="Central de ajuda"
       title="Como podemos ajudar?"
-      lead="Respostas rápidas para as dúvidas mais comuns. Se não encontrar o que procura, escreva para ajuda@onde.app: respondemos em até um dia útil."
+      lead="Respostas rápidas para as dúvidas mais comuns. Se não encontrar o que procura, escreva para ajuda@ticketswin.com.br: respondemos em até um dia útil."
     >
       <nav className="in-grid" aria-label="Tópicos de ajuda">
         {TOPICS.map((t) => (
@@ -92,7 +92,7 @@ export default function AjudaPage() {
           <p>Escreva para a gente contando o evento e o número do pedido. Respondemos em até um dia útil, todos os dias.</p>
         </div>
         <div className="in-acts">
-          <a className="btn-p" href="mailto:ajuda@onde.app">Falar com o suporte</a>
+          <a className="btn-p" href="mailto:ajuda@ticketswin.com.br">Falar com o suporte</a>
           <Link className="btn-g" href="/meus-ingressos">Meus ingressos</Link>
         </div>
       </section>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "Publique seu evento no Tickets Win, venda ingressos sem complicação e acompanhe tudo em tempo real.",
 };
 
-const MAILTO = "mailto:produtores@onde.app?subject=Quero%20criar%20um%20evento%20no%20Tickets%20Win";
+const MAILTO = "mailto:produtores@ticketswin.com.br?subject=Quero%20criar%20um%20evento%20no%20Tickets%20Win";
 
 const BENEFITS = [
   {
