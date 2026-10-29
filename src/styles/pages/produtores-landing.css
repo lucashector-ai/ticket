@@ -40,6 +40,8 @@
   .pdl-hero{display:grid;grid-template-columns:minmax(0,1fr) 560px;gap:64px;align-items:center;padding-top:72px}
   .pdl-hero-tx>.pdl-k{animation:pdlRise .8s var(--pdl-ease) both}
   .pdl-h1{margin:18px 0 0;font:600 72px/.98 'Inter Tight',sans-serif;letter-spacing:-.05em}
+  /* 1181–1300px: a coluna de texto (100vw − 704px) fica estreita para 72px e cada linha quebrava em duas */
+  @media (min-width:1181px){.pdl-h1{font-size:clamp(56px,calc((100vw - 704px) / 8.1),72px)}}
   .pdl-h1 .ln{display:block;overflow:hidden;padding-bottom:.12em;margin-bottom:-.12em}
   .pdl-h1 .ln>span{display:block;animation:pdlLine 1s .1s var(--pdl-ease) both}
   .pdl-h1 .ln+.ln>span{animation-delay:.2s}
@@ -312,7 +314,8 @@
   /* ---------- responsivo ---------- */
   @media (max-width:1180px){
     .pdl-hero{grid-template-columns:minmax(0,1fr) 470px;gap:40px}
-    .pdl-h1{font-size:60px}
+    /* a 1ª linha ("Do primeiro lote ao") precisa caber na coluna de texto (100vw − 590px) sem quebrar */
+    .pdl-h1{font-size:clamp(40px,calc((100vw - 590px) / 8.4),60px)}
     .pdl-vis{height:520px}
     .pdl-tk{right:-8px}
     .pdl-price{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}

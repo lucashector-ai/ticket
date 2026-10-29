@@ -653,6 +653,6 @@
 /* Mobile: a barra fixa de compra (.mbar, 64px a 12px do fundo) ocupa a base da tela;
    o botão de acessibilidade sobe para ficar acima dela em vez de cobrir o preço. */
 @media (max-width:640px){
-  body:has(.pg-evento .mbar) .a11y-tab{bottom:calc(88px + env(safe-area-inset-bottom))}
+  body:has(.pg-evento .mbar):not(:has(.mm)) .a11y-tab{bottom:calc(88px + env(safe-area-inset-bottom))}
   body:has(.pg-evento .mbar) .ftr{padding-bottom:160px}
 }

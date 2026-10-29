@@ -160,3 +160,10 @@
 @keyframes soIn{from{opacity:0}to{opacity:1}}
 @keyframes soUp{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
 
+
+/* receber ingresso enviado na compra (/transferencia/<token>) */
+.pg-grupo {
+  .gp-st strong{color:#111;font-weight:600;overflow-wrap:anywhere}
+  .gp-st.off{background:#FFF4DE}
+  .gp-foot{gap:12px;flex-wrap:wrap}
+}

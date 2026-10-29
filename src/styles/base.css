@@ -382,9 +382,15 @@ input,select{font:inherit;color:inherit}
 @media (max-width:760px){
   .cue2{bottom:186px}
   .qwrap.stuck .qbar{height:auto}
-  .qwrap.stuck .qb-logo span,.qb-new span{display:none}
-  .qb-new{width:40px;padding:0;justify-content:center}
+  .qwrap.stuck .qb-logo span{display:none}
 }
+/* barra de busca grudada (tablet e celular): "Criar evento" vira só o ícone (o texto continua para leitores de tela)
+   e, abaixo de 900px, o logo perde a palavra; antes o campo de busca encolhia até sumir */
+@media (max-width:1100px){
+  .qb-new{position:relative;width:40px;padding:0;justify-content:center}
+  .qb-new span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+}
+@media (max-width:900px){.qwrap.stuck .qb-logo span{display:none}}
 .strip-b{position:relative;z-index:4;background:#FFFFFF}
 .bnx .bn-arr2{width:34px;height:34px;margin-top:-80px;background:rgba(17,17,17,.3);border:1px solid rgba(255,255,255,.24);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 4px 14px -8px rgba(0,0,0,.18)}
 .bnx .bn-arr2 svg{width:14px;height:14px}
@@ -521,6 +527,9 @@ input,select{font:inherit;color:inherit}
 .fbar{display:grid;grid-template-columns:minmax(0,1.7fr) repeat(4,minmax(0,1fr));gap:4px;background:#fff;border:1px solid #EAEAEA;border-radius:22px;padding:6px;box-shadow:0 1px 2px rgba(17,17,17,.03),0 12px 32px -24px rgba(17,17,17,.14)}
 .fld{position:relative;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:10px 18px;border-radius:16px;min-width:0;transition:background .3s;cursor:pointer}
 .fld:hover,.fld:focus-within{background:#F7F7F2}
+/* foco de teclado visível nos filtros (o fundo #F7F7F2 sozinho quase não aparece) */
+.fld:has(:focus-visible){box-shadow:inset 0 0 0 2px #111}
+.cityp:has(select:focus-visible){outline:2px solid currentColor;outline-offset:2px}
 .fld>span{font-size:12px;font-weight:500;color:#6E6E73}
 .fld select,.fld input{appearance:none;-webkit-appearance:none;border:0;background:transparent;font-size:15px;font-weight:500;outline:none;width:100%;padding:0;height:22px;cursor:pointer;letter-spacing:-.01em}
 .fld input{cursor:text}

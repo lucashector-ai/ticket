@@ -79,8 +79,8 @@
     .in-team{grid-template-columns:repeat(2,minmax(0,1fr))}
     .in-layout{grid-template-columns:minmax(0,1fr);gap:32px}
     .in-side{position:static;flex-direction:row;flex-wrap:wrap;gap:6px}
-    .in-side small{width:100%}
-    .in-side a{padding:8px 14px;border-radius:999px;border:1px solid #EAEAEA}
+    .in-side small{width:100%;padding-left:0}
+    .in-side a{padding:10px 14px;border-radius:999px;border:1px solid #EAEAEA}
   }
   @media (max-width:760px){
     .in-hero{padding:40px 0 28px}
