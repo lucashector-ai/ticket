@@ -6,6 +6,7 @@ import { brl } from "@/lib/format";
 import { ended, nowMs } from "@/lib/painel/build";
 import { BancoCard } from "@/components/painel/banco-card";
 import { bankCredential, bankUrl, destLabel, hasDestination, RELEASE_DAYS, walletFor } from "@/lib/bank";
+import { mfaSettings } from "@/lib/mfa";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Financeiro" };
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "Financeiro" };
 /** Financeiro de todos os eventos do produtor. */
 export default async function PainelFinanceiro() {
   const { org, events, role, user } = await painelAccess("admin");
-  const [wallet, cred] = role === "owner" ? await Promise.all([walletFor(user.id), bankCredential(user.id)]) : [null, null];
+  const [wallet, cred, mfa] = role === "owner" ? await Promise.all([walletFor(user.id), bankCredential(user.id), mfaSettings(user.id)]) : [null, null, null];
   const dm = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "America/Sao_Paulo" }).replace(".", "");
   const orders = await listOrders(events.map((e) => e.id), new Map(events.map((e) => [e.id, e.absorbFee])));
   const now = nowMs();
@@ -38,7 +39,7 @@ export default async function PainelFinanceiro() {
       <div className="pg-h"><div><h1 className="pg-t">Financeiro</h1><p className="pg-s">Todos os eventos de {org?.name ?? "você"}</p></div></div>
       {wallet && (
         <BancoCard
-          url={bankUrl()} hasPassword={!!cred} releaseDays={RELEASE_DAYS}
+          url={bankUrl()} hasPassword={!!cred} hasApp={mfa?.method === "totp"} releaseDays={RELEASE_DAYS}
           available={brl(wallet.available)} pending={brl(wallet.pending)} inFlight={brl(wallet.inFlight)} paidOut={brl(wallet.paidOut)}
           nextRelease={wallet.nextRelease ? dm(wallet.nextRelease) : null}
           destination={hasDestination(wallet.destination) ? destLabel(wallet.destination) : null}

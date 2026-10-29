@@ -76,10 +76,12 @@ export const userProfiles = pgTable("user_profiles", {
   avatarUrl: text("avatar_url"),
   marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
   address: jsonb("address").$type<UserAddress>(),
-  /** verificação em duas etapas: por onde chega o código no login (null = desligada) */
-  mfaMethod: varchar("mfa_method", { length: 16 }).$type<"email" | "whatsapp">(),
-  /** celular confirmado para receber o código pelo WhatsApp */
-  mfaPhone: varchar("mfa_phone", { length: 32 }),
+  /** verificação em duas etapas: app autenticador ou código por e-mail (null = desligada) */
+  mfaMethod: varchar("mfa_method", { length: 16 }).$type<"email" | "totp">(),
+  /** segredo do app autenticador, cifrado (AES-GCM) */
+  mfaTotp: text("mfa_totp"),
+  /** hashes dos códigos de recuperação ainda não usados */
+  mfaRecovery: jsonb("mfa_recovery").$type<string[]>(),
   ...timestamps,
 });
 

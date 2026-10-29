@@ -10,6 +10,5 @@ export const metadata: Metadata = { title: "Entrar" };
 export default async function BancoEntrar() {
   const base = await bankBase();
   if (await bankUserId()) redirect(base || "/");
-  const site = base ? "" : (process.env.NEXT_PUBLIC_SITE_URL ?? "https://ticketswin.com.br");
-  return <BancoLogin base={base} human={turnstileSiteKey()} painel={`${site}/painel/financeiro`} pending={!!(await bankPendingUserId())} />;
+  return <BancoLogin base={base} human={turnstileSiteKey()} pending={!!(await bankPendingUserId())} />;
 }

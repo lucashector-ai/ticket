@@ -4,16 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
-  changePassword, confirmMfa, confirmMfaOff, revokeDevice, revokeOtherDevices, setMarketing, startMfa, startMfaOff, type DeviceRow,
+  changePassword, confirmEmailMfa, confirmMfaOff, confirmTotp, renewRecovery, revokeDevice, revokeOtherDevices, setMarketing, startEmailMfa, startMfaOff,
+  startTotp, type DeviceRow,
 } from "@/lib/actions/conta";
 import { useToast } from "@/components/toast";
-import { maskPhone } from "@/components/auth/fields";
 import { CodeBoxes } from "@/components/auth/verify-form";
 
 type Props = {
-  mfa: { method: "email" | "whatsapp" | null; to: string | null };
-  whatsapp: boolean;
-  phone: string;
+  mfa: { method: "email" | "totp" | null; to: string | null; recoveryLeft: number };
+  login: { password: boolean; google: boolean };
   email: string;
   devices: DeviceRow[];
   activity: { id: string; kind: string; detail: string | null; ip: string | null; device: string; at: string }[];
@@ -31,7 +30,7 @@ export function ContaSeguranca(p: Props) {
         <p className="ct-s">Proteja sua conta e seus ingressos. Recomendamos ligar a verificação em duas etapas.</p>
       </header>
       <MfaCard {...p} />
-      <PasswordCard />
+      <PasswordCard login={p.login} />
       <DevicesCard devices={p.devices} />
       <ActivityCard activity={p.activity} />
       <PrivacyCard marketing={p.marketing} />
@@ -39,91 +38,147 @@ export function ContaSeguranca(p: Props) {
   );
 }
 
-function MfaCard({ mfa, whatsapp, phone, email }: Props) {
+function MfaCard({ mfa, email }: Props) {
   const router = useRouter();
   const { flash } = useToast();
-  const [mode, setMode] = useState<"idle" | "pick" | "code" | "off">("idle");
-  const [method, setMethod] = useState<"email" | "whatsapp">(mfa.method ?? "email");
-  const [tel, setTel] = useState(maskPhone(phone));
+  type Mode = "idle" | "pick" | "totp-cur" | "totp" | "email" | "off" | "renew" | "codes";
+  const [mode, setMode] = useState<Mode>("idle");
+  const [setup, setSetup] = useState<{ qr: string; key: string; uri: string } | null>(null);
   const [to, setTo] = useState("");
   const [code, setCode] = useState("");
+  const [codes, setCodes] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [rec, setRec] = useState(false);
 
-  const reset = () => { setMode("idle"); setCode(""); setErr(null); };
-  async function send() {
+  const reset = () => { setMode("idle"); setCode(""); setErr(null); setSetup(null); setRec(false); };
+  const fail = (e?: string) => { setErr(e ?? "Não deu certo. Tente de novo."); setCode(""); };
+
+  async function beginTotp(current?: string) {
     setBusy(true); setErr(null);
-    const r = mode === "off" ? await startMfaOff() : await startMfa(method, tel);
+    const r = await startTotp(current);
     setBusy(false);
-    if (!r.ok) { setErr(r.error ?? "Não foi possível enviar o código."); return; }
-    setTo(r.to ?? ""); setCode("");
-    if (mode !== "off") setMode("code");
+    if (!r.ok) { fail(r.error); return; }
+    setSetup({ qr: r.qr!, key: r.key!, uri: r.uri! }); setCode(""); setMode("totp");
+  }
+  async function beginEmail() {
+    setBusy(true); setErr(null);
+    const r = await startEmailMfa();
+    setBusy(false);
+    if (!r.ok) { fail(r.error); return; }
+    setTo(r.to ?? ""); setCode(""); setMode("email");
+  }
+  async function beginOff() {
+    setBusy(true); setErr(null);
+    const r = await startMfaOff();
+    setBusy(false);
+    if (!r.ok) { fail(r.error); return; }
+    setTo(r.totp ? "" : r.to ?? ""); setCode(""); setMode("off");
   }
   async function confirm(v = code) {
-    if (v.length !== 6) return;
+    if (busy || (!rec && v.length !== 6)) return;
     setBusy(true); setErr(null);
-    const r = mode === "off" ? await confirmMfaOff(v) : await confirmMfa(v);
+    if (mode === "totp-cur") { setBusy(false); await beginTotp(v); return; }
+    const r = mode === "totp" ? await confirmTotp(v) : mode === "email" ? await confirmEmailMfa(v) : mode === "renew" ? await renewRecovery(v) : await confirmMfaOff(v);
     setBusy(false);
-    if (!r.ok) { setErr(r.error ?? "Código incorreto."); setCode(""); return; }
+    if (!r.ok) { fail(r.error); return; }
+    const got = (r as { codes?: string[] }).codes;
+    if (got) { setCodes(got); setMode("codes"); setSetup(null); setCode(""); router.refresh(); return; }
     flash(mode === "off" ? "Verificação em duas etapas desligada" : "Verificação em duas etapas ligada");
     reset();
     router.refresh();
   }
 
   const on = !!mfa.method;
+  const codeBox = (label: React.ReactNode, cta: string) => (
+    <div className="ct-sub">
+      <p className="ct-note">{label}</p>
+      {rec
+        ? <input className="ct-in ct-rec" value={code} onChange={(e) => { setCode(e.target.value.toUpperCase().slice(0, 9)); setErr(null); }} placeholder="XXXX-XXXX" autoFocus aria-label="Código de recuperação" />
+        : <CodeBoxes value={code} onChange={(v) => { setCode(v); setErr(null); }} onDone={(v) => void confirm(v)} disabled={busy} />}
+      {mfa.method === "totp" && (mode === "off" || mode === "totp-cur") && <button className="ct-link" type="button" onClick={() => { setRec((x) => !x); setCode(""); setErr(null); }}>{rec ? "Usar o código do app" : "Perdi o celular: usar código de recuperação"}</button>}
+      {err && <p className="ct-err" role="alert">{err}</p>}
+      <div className="ct-act">
+        <button className="ct-b ghost" type="button" onClick={reset}>Cancelar</button>
+        <button className="ct-b dark" type="button" onClick={() => void confirm()} disabled={busy || (rec ? code.replace(/[^A-Z0-9]/g, "").length !== 8 : code.length !== 6)}>{busy ? "Confirmando…" : cta}</button>
+      </div>
+    </div>
+  );
+
   return (
     <section className="ct-card" aria-labelledby="mf-t">
       <div className="ct-row">
         <div>
           <h2 className="ct-h" id="mf-t">Verificação em duas etapas {on ? <span className="ct-pill ok">Ligada</span> : <span className="ct-pill warn">Desligada</span>}</h2>
-          <p className="ct-v">{on
-            ? <>Ao entrar com a senha, pedimos um código enviado {mfa.method === "whatsapp" ? "pelo WhatsApp" : "por e-mail"} para <b>{mfa.to}</b>.</>
-            : "Além da senha, pedimos um código enviado por e-mail ou WhatsApp. Mesmo que alguém descubra sua senha, não entra na conta."}</p>
+          <p className="ct-v">{mfa.method === "totp"
+            ? <>Ao entrar, pedimos o código de 6 números do seu <b>app autenticador</b>. {mfa.recoveryLeft} {mfa.recoveryLeft === 1 ? "código" : "códigos"} de recuperação sobrando.</>
+            : mfa.method === "email"
+              ? <>Ao entrar com a senha, pedimos um código enviado por e-mail para <b>{mfa.to}</b>. Para mais segurança, use um app autenticador.</>
+              : "Além da senha, pedimos um código do seu app autenticador (ou do e-mail). Mesmo que alguém descubra sua senha, não entra na conta."}</p>
         </div>
         {mode === "idle" && (on
-          ? <span className="ct-acts"><button className="ct-b" type="button" onClick={() => { setMode("pick"); setErr(null); }}>Trocar</button><button className="ct-b ghost" type="button" onClick={() => { setMode("off"); setTo(""); setErr(null); }}>Desligar</button></span>
+          ? <span className="ct-acts">
+              {mfa.method === "email" && <button className="ct-b dark" type="button" onClick={() => void beginTotp()} disabled={busy}>Usar app autenticador</button>}
+              {mfa.method === "totp" && <button className="ct-b" type="button" onClick={() => { setMode("totp-cur"); setErr(null); }}>Trocar de celular</button>}
+              <button className="ct-b ghost" type="button" onClick={() => void beginOff()} disabled={busy}>Desligar</button>
+            </span>
           : <button className="ct-b dark" type="button" onClick={() => setMode("pick")}>Ligar agora</button>)}
       </div>
+      {mode === "idle" && mfa.method === "totp" && <button className="ct-link" type="button" onClick={() => { setMode("renew"); setErr(null); }}>Gerar novos códigos de recuperação</button>}
+      {mode === "idle" && err && <p className="ct-err" role="alert">{err}</p>}
 
       {mode === "pick" && (
         <div className="ct-sub">
-          <div className="ct-opts" role="radiogroup" aria-label="Como receber o código">
-            <button type="button" role="radio" aria-checked={method === "email"} className={method === "email" ? "ct-opt on" : "ct-opt"} onClick={() => setMethod("email")}>
-              <span className="ct-opt-i" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M4 7l8 6 8-6" /></svg></span>
-              <b>E-mail</b><small>{email}</small>
+          <div className="ct-opts">
+            <button type="button" className="ct-opt on" onClick={() => void beginTotp()} disabled={busy}>
+              <span className="ct-opt-i" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3" /><path d="M12 8v4l2.5 1.5" /></svg></span>
+              <b>App autenticador <em>recomendado</em></b><small>Google Authenticator, 1Password, iCloud Senhas…</small>
             </button>
-            <button type="button" role="radio" aria-checked={method === "whatsapp"} disabled={!whatsapp} className={method === "whatsapp" ? "ct-opt on" : "ct-opt"} onClick={() => setMethod("whatsapp")}>
-              <span className="ct-opt-i wa" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a9.5 9.5 0 0 0-8.2 14.3L2.5 21.5l4.8-1.3A9.5 9.5 0 1 0 12 2.5zm0 17.3c-1.5 0-3-.4-4.2-1.2l-.3-.2-2.9.8.8-2.8-.2-.3A7.8 7.8 0 1 1 12 19.8zm4.3-5.8c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8.9-.3.2-.5.1a6.4 6.4 0 0 1-3.2-2.8c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.7-1.7c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 4.9 4.9 0 0 0 1 2.6 11.2 11.2 0 0 0 4.3 3.8c1.6.7 2.2.7 3 .6.5-.1 1.4-.6 1.6-1.1s.2-1 .1-1.1-.2-.2-.4-.3z" /></svg></span>
-              <b>WhatsApp</b><small>{whatsapp ? "Código no seu celular" : "Em breve"}</small>
+            <button type="button" className="ct-opt" onClick={() => void beginEmail()} disabled={busy}>
+              <span className="ct-opt-i" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M4 7l8 6 8-6" /></svg></span>
+              <b>Código por e-mail</b><small>{email}</small>
             </button>
           </div>
-          {method === "whatsapp" && whatsapp && (
-            <label className="ct-f"><span className="ct-l">Celular com WhatsApp</span><input className="ct-in" type="tel" inputMode="tel" value={tel} onChange={(e) => setTel(maskPhone(e.target.value))} placeholder="(11) 98765-4321" autoComplete="tel-national" /></label>
-          )}
+          {err && <p className="ct-err" role="alert">{err}</p>}
+          <div className="ct-act"><button className="ct-b ghost" type="button" onClick={reset}>Cancelar</button></div>
+        </div>
+      )}
+
+      {mode === "totp-cur" && codeBox(<>Para cadastrar outro celular, digite primeiro o código do app que você usa hoje.</>, "Continuar")}
+
+      {mode === "totp" && setup && (
+        <div className="ct-sub">
+          <div className="ct-totp">
+            <span className="ct-qr" aria-label="QR code para o app autenticador" role="img" dangerouslySetInnerHTML={{ __html: setup.qr }} />
+            <ol className="ct-steps">
+              <li>Abra seu app autenticador ou o gerenciador de senhas (Google Authenticator, Microsoft Authenticator, 1Password, iCloud Senhas…).</li>
+              <li>Escaneie o QR code. No celular, toque em <a href={setup.uri}>abrir no app</a>, ou digite a chave:<code className="ct-key">{setup.key}</code></li>
+              <li>Digite abaixo o código de 6 números que aparece para a Tickets Win.</li>
+            </ol>
+          </div>
+          <CodeBoxes value={code} onChange={(v) => { setCode(v); setErr(null); }} onDone={(v) => void confirm(v)} disabled={busy} autoFocus={false} />
           {err && <p className="ct-err" role="alert">{err}</p>}
           <div className="ct-act">
             <button className="ct-b ghost" type="button" onClick={reset}>Cancelar</button>
-            <button className="ct-b dark" type="button" onClick={() => void send()} disabled={busy}>{busy ? "Enviando…" : "Enviar código"}</button>
+            <button className="ct-b dark" type="button" onClick={() => void confirm()} disabled={busy || code.length !== 6}>{busy ? "Confirmando…" : "Ativar"}</button>
           </div>
         </div>
       )}
 
-      {(mode === "code" || mode === "off") && (
+      {mode === "email" && codeBox(<>Digite o código que enviamos para <b>{to}</b>.</>, "Ativar")}
+      {mode === "renew" && codeBox(<>Digite o código do app autenticador para gerar novos códigos. Os antigos deixam de valer.</>, "Gerar códigos")}
+      {mode === "off" && codeBox(mfa.method === "totp"
+        ? <>Para desligar, digite o código do app autenticador. Sem ele, o Banco Tickets Win fica bloqueado.</>
+        : <>Para desligar, digite o código que enviamos para <b>{to}</b>.</>, "Desligar")}
+
+      {mode === "codes" && (
         <div className="ct-sub">
-          {mode === "off" && !to ? (
-            <p className="ct-note">Para desligar, confirme com um código enviado para o seu método atual.</p>
-          ) : (
-            <>
-              <p className="ct-note">Digite o código que enviamos {method === "whatsapp" && mode === "code" ? "pelo WhatsApp " : ""}para <b>{to}</b>.</p>
-              <CodeBoxes value={code} onChange={(v) => { setCode(v); setErr(null); }} onDone={(v) => void confirm(v)} disabled={busy} />
-            </>
-          )}
-          {err && <p className="ct-err" role="alert">{err}</p>}
+          <p className="ct-note"><b>Guarde estes códigos de recuperação</b> no seu gerenciador de senhas ou em um lugar seguro. Cada um vale uma vez e serve para entrar se você perder o celular. Eles não aparecem de novo.</p>
+          <ul className="ct-codes">{codes.map((c) => <li key={c}><code>{c}</code></li>)}</ul>
           <div className="ct-act">
-            <button className="ct-b ghost" type="button" onClick={reset}>Cancelar</button>
-            {mode === "off" && !to
-              ? <button className="ct-b dark" type="button" onClick={() => void send()} disabled={busy}>{busy ? "Enviando…" : "Enviar código"}</button>
-              : <button className="ct-b dark" type="button" onClick={() => void confirm()} disabled={busy || code.length !== 6}>{busy ? "Confirmando…" : mode === "off" ? "Desligar" : "Ativar"}</button>}
+            <button className="ct-b ghost" type="button" onClick={() => { void navigator.clipboard?.writeText(codes.join("\n")); flash("Códigos copiados"); }}>Copiar</button>
+            <a className="ct-b ghost" download="tickets-win-codigos-de-recuperacao.txt" href={`data:text/plain;charset=utf-8,${encodeURIComponent(`Tickets Win: códigos de recuperação (${email})\n\n${codes.join("\n")}\n`)}`}>Baixar .txt</a>
+            <button className="ct-b dark" type="button" onClick={() => { setCodes([]); reset(); flash("Verificação em duas etapas ligada"); }}>Já guardei</button>
           </div>
         </div>
       )}
@@ -131,7 +186,7 @@ function MfaCard({ mfa, whatsapp, phone, email }: Props) {
   );
 }
 
-function PasswordCard() {
+function PasswordCard({ login }: { login: Props["login"] }) {
   const { flash } = useToast();
   const [open, setOpen] = useState(false);
   const [cur, setCur] = useState("");
@@ -153,12 +208,29 @@ function PasswordCard() {
     setOpen(false); setCur(""); setNw(""); setConf("");
   }
 
+  // conta criada pelo Google: a senha é a da conta Google
+  if (!login.password) {
+    return (
+      <section className="ct-card" aria-labelledby="pw-t">
+        <div className="ct-row">
+          <div>
+            <h2 className="ct-h" id="pw-t">Acesso pelo Google <span className="ct-pill">Google</span></h2>
+            <p className="ct-v">{login.google
+              ? "Sua conta entra com o Google, então não tem senha na Tickets Win para trocar. A senha e a segurança do acesso ficam na sua conta Google."
+              : "Sua conta não tem senha na Tickets Win."}</p>
+          </div>
+          {login.google && <a className="ct-b" href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer">Segurança do Google</a>}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="ct-card" aria-labelledby="pw-t">
       <div className="ct-row">
         <div>
           <h2 className="ct-h" id="pw-t">Senha</h2>
-          <p className="ct-v">Use uma senha longa, que você não usa em outros sites.</p>
+          <p className="ct-v">{login.google ? "Você entra com o Google ou com esta senha. " : ""}Use uma senha longa, que você não usa em outros sites.</p>
         </div>
         {!open && <button className="ct-b" type="button" onClick={() => setOpen(true)}>Trocar senha</button>}
       </div>
@@ -170,7 +242,7 @@ function PasswordCard() {
             <label className="ct-f"><span className="ct-l">Confirme a nova senha</span><input className="ct-in" type="password" value={conf} onChange={(e) => { setConf(e.target.value); setErr(null); }} autoComplete="new-password" /></label>
           </div>
           <label className="ct-check"><input type="checkbox" checked={others} onChange={(e) => setOthers(e.target.checked)} /> Desconectar os outros aparelhos</label>
-          <p className="ct-note">Entrou só com o Google e não tem senha? <Link href="/esqueci-senha">Crie uma por aqui</Link>.</p>
+          <p className="ct-note">Esqueceu a senha atual? <Link href="/esqueci-senha">Redefina pelo e-mail</Link>.</p>
           {err && <p className="ct-err" role="alert">{err}</p>}
           <div className="ct-act">
             <button className="ct-b ghost" type="button" onClick={() => { setOpen(false); setErr(null); }}>Cancelar</button>

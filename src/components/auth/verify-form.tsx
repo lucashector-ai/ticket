@@ -46,12 +46,13 @@ export function CodeBoxes({ value, onChange, onDone, disabled, autoFocus = true 
   );
 }
 
-export function VerifyForm({ next, whatsapp }: { next: string; whatsapp: boolean }) {
+export function VerifyForm({ next }: { next: string }) {
   const [code, setCode] = useState("");
+  const [rec, setRec] = useState<string | null>(null);
   const [trust, setTrust] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [info, setInfo] = useState<{ ch?: "email" | "whatsapp"; to?: string } | null>(null);
+  const [info, setInfo] = useState<{ ch?: "email" | "totp"; to?: string } | null>(null);
   const [wait, setWait] = useState(45);
 
   useEffect(() => {
@@ -64,44 +65,52 @@ export function VerifyForm({ next, whatsapp }: { next: string; whatsapp: boolean
     return () => { alive = false; };
   }, []);
   useEffect(() => {
-    if (wait <= 0) return;
+    if (wait <= 0 || info?.ch !== "email") return;
     const t = setTimeout(() => setWait((w) => w - 1), 1000);
     return () => clearTimeout(t);
-  }, [wait]);
+  }, [wait, info]);
 
-  async function submit(v = code) {
-    if (v.length !== 6 || busy) return;
+  async function submit(v = rec ?? code) {
+    if (busy || (rec === null ? v.length !== 6 : v.replace(/[^a-z0-9]/gi, "").length !== 8)) return;
     setBusy(true); setErr(null);
     const r = await verifyLoginCode(v, trust);
     if (r.ok) { window.location.href = next; return; }
     setBusy(false); setErr(r.error ?? "Código incorreto."); setCode("");
   }
-  async function resend(want?: "email") {
+  async function resend() {
     setBusy(true); setErr(null);
-    const r = await resendLoginCode(want);
+    const r = await resendLoginCode();
     setBusy(false);
     if (r.ch) setInfo({ ch: r.ch, to: r.to });
     if (r.error) setErr(r.error); else setWait(45);
   }
 
-  const where = info?.ch === "whatsapp" ? `pelo WhatsApp para ${info.to}` : info?.to ? `para ${info.to}` : "para você";
+  const totp = info?.ch === "totp";
+  const text = rec !== null
+    ? "Digite um dos códigos de recuperação que você guardou ao ligar a verificação. Cada código vale uma vez só."
+    : totp
+      ? "Abra seu app autenticador (Google Authenticator, 1Password, iCloud Senhas…) e digite o código de 6 números da Tickets Win."
+      : `Sua conta tem verificação em duas etapas. Digite o código que enviamos ${info?.to ? `para ${info.to}` : "para o seu e-mail"}.`;
   return (
     <form className="lx-box" onSubmit={(e) => { e.preventDefault(); void submit(); }} noValidate>
       <span className="vf-ic" aria-hidden="true">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7.5 3v5.5c0 4.4-3.1 8.2-7.5 9.5-4.4-1.3-7.5-5.1-7.5-9.5V6z" /><path d="M8.8 12.2l2.2 2.2 4.4-4.6" /></svg>
       </span>
-      <h1 className="lx-t">Confirme que é você</h1>
-      <p className="lx-s">Sua conta tem verificação em duas etapas. Digite o código que enviamos {where}.</p>
+      <h1 className="lx-t">{rec !== null ? "Código de recuperação" : "Confirme que é você"}</h1>
+      <p className="lx-s">{info ? text : "Carregando…"}</p>
       {err && <FormError>{err}</FormError>}
-      <CodeBoxes value={code} onChange={(v) => { setCode(v); if (err) setErr(null); }} onDone={(v) => void submit(v)} disabled={busy} />
+      {rec !== null
+        ? <input className="in vf-rec" value={rec} onChange={(e) => { setRec(e.target.value.toUpperCase().slice(0, 9)); setErr(null); }} placeholder="XXXX-XXXX" autoComplete="off" autoFocus aria-label="Código de recuperação" />
+        : <CodeBoxes value={code} onChange={(v) => { setCode(v); if (err) setErr(null); }} onDone={(v) => void submit(v)} disabled={busy} />}
       <button className={trust ? "ck on" : "ck"} type="button" role="checkbox" aria-checked={trust} onClick={() => setTrust((t) => !t)}>
         <span className="ck-b" aria-hidden="true"><CheckIcon /></span>
         <span className="ck-t">Confiar neste aparelho por 30 dias</span>
       </button>
-      <button className="lx-btn" type="submit" disabled={busy || code.length !== 6} aria-busy={busy}>{busy ? "Confirmando…" : "Confirmar e entrar"}</button>
+      <button className="lx-btn" type="submit" disabled={busy || (rec === null ? code.length !== 6 : rec.replace(/[^A-Z0-9]/g, "").length !== 8)} aria-busy={busy}>{busy ? "Confirmando…" : "Confirmar e entrar"}</button>
       <div className="vf-alt">
-        <button type="button" className="au-lk" onClick={() => void resend()} disabled={busy || wait > 0}>{wait > 0 ? `Reenviar em ${wait}s` : "Reenviar código"}</button>
-        {whatsapp && info?.ch === "whatsapp" && <button type="button" className="au-lk" onClick={() => void resend("email")} disabled={busy || wait > 0}>Receber por e-mail</button>}
+        {totp
+          ? <button type="button" className="au-lk" onClick={() => { setRec(rec === null ? "" : null); setErr(null); }}>{rec === null ? "Perdi o celular: usar código de recuperação" : "Usar o app autenticador"}</button>
+          : info?.ch === "email" && <button type="button" className="au-lk" onClick={() => void resend()} disabled={busy || wait > 0}>{wait > 0 ? `Reenviar em ${wait}s` : "Reenviar código"}</button>}
       </div>
       <p className="lx-sw">Não é você? <button type="button" className="au-lk" onClick={() => void signOut()}>Entrar com outra conta</button></p>
     </form>

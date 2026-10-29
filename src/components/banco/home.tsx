@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { bankLogout, cancelPayout, requestPayout } from "@/lib/actions/banco";
 import type { BankEntry } from "@/lib/bank";
+import { CodeBoxes } from "@/components/auth/verify-form";
 import { BancoMark } from "./mark";
 
 type Props = {
@@ -26,18 +27,20 @@ export function BancoHome({ base, name, email, configUrl, wallet, rules }: Props
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
 
   const list = useMemo(() => (wallet?.entries ?? []).filter((e) => filter === "tudo" || (filter === "entradas" ? e.kind === "venda" : e.kind === "saque")), [wallet, filter]);
 
   async function logout() { await bankLogout(); router.replace(`${base}/entrar`); }
-  async function withdraw() {
+  async function withdraw(v = code) {
+    if (v.length !== 6 || busy) return;
     setBusy(true); setMsg(null);
-    const r = await requestPayout(amount);
+    const r = await requestPayout(amount, v);
     setBusy(false);
-    if (!r.ok) { setMsg({ ok: false, t: r.error ?? "Não foi possível pedir o saque." }); return; }
+    if (!r.ok) { setMsg({ ok: false, t: r.error ?? "Não foi possível pedir o saque." }); setCode(""); return; }
     setMsg({ ok: true, t: `Saque de ${brl(amount)} pedido. Cai em até 2 dias úteis.` });
-    setOpen(false); setAmount(0);
+    setOpen(false); setAmount(0); setCode("");
     router.refresh();
   }
   async function cancel(id: string) {
@@ -91,9 +94,11 @@ export function BancoHome({ base, name, email, configUrl, wallet, rules }: Props
             {[0.25, 0.5, 1].map((f) => <button key={f} type="button" className={amount === Math.floor(w.available * f) ? "on" : undefined} onClick={() => setAmount(Math.floor(w.available * f))}>{f === 1 ? "Tudo" : `${f * 100}%`}</button>)}
           </div>
           <p className="bk-note">Vai para <b>{w.destination}</b>. Cai em até 2 dias úteis. Você pode cancelar enquanto o pedido estiver em análise.</p>
+          <p className="bk-k bk-k2">Confirme com o código do app autenticador</p>
+          <CodeBoxes value={code} onChange={setCode} onDone={(v) => void withdraw(v)} disabled={busy || amount < rules.min} autoFocus={false} />
           <div className="bk-act">
-            <button className="bk-b ghost" type="button" onClick={() => setOpen(false)}>Cancelar</button>
-            <button className="bk-go" type="button" disabled={busy || amount < rules.min} onClick={() => void withdraw()}>{busy ? "Pedindo…" : `Sacar ${brl(amount)}`}</button>
+            <button className="bk-b ghost" type="button" onClick={() => { setOpen(false); setCode(""); }}>Cancelar</button>
+            <button className="bk-go" type="button" disabled={busy || amount < rules.min || code.length !== 6} onClick={() => void withdraw()}>{busy ? "Pedindo…" : `Sacar ${brl(amount)}`}</button>
           </div>
         </section>
       )}

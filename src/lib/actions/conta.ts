@@ -6,9 +6,12 @@ import { after } from "next/server";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { auth, getAuthState } from "@/lib/auth/server";
-import { checkCode, clearSession, currentDevice, devicesOf, issueCode, rememberDevice, logSecurity, maskEmail, maskPhone, mfaSettings, type MfaMethod } from "@/lib/mfa";
+import QRCode from "qrcode";
+import {
+  checkCode, checkSecondFactor, clearSession, currentDevice, devicesOf, dropTotpSetup, issueCode, logSecurity, maskEmail, mfaSettings,
+  newRecoveryCodes, newTotpSecret, rememberDevice, sealSecret, stashTotpSetup, takeTotpSetup, totpUri, verifyTotp,
+} from "@/lib/mfa";
 import { mailPasswordChanged, mailSecurityNotice } from "@/lib/notify";
-import { waNumber, whatsappEnabled } from "@/lib/whatsapp";
 
 type R = { ok: boolean; error?: string };
 
@@ -152,56 +155,106 @@ export async function revokeOtherDevices(): Promise<R> {
   return { ok: true };
 }
 
+/** Como a pessoa entra: senha própria e/ou Google (conta criada pelo Google não tem senha aqui). */
+export async function loginMethods(): Promise<{ password: boolean; google: boolean }> {
+  await me();
+  const r = await auth.listAccounts().catch(() => null);
+  const ids = ((r?.data ?? []) as { providerId?: string }[]).map((a) => a.providerId);
+  return { password: ids.includes("credential"), google: ids.includes("google") };
+}
+
 /* ============================== duas etapas ============================== */
 
-/** Liga (ou troca) a verificação em duas etapas: manda um código para o novo destino. */
-export async function startMfa(method: MfaMethod, phone?: string): Promise<R & { to?: string }> {
+/** Código por e-mail: manda um código para confirmar que o e-mail é da pessoa. */
+export async function startEmailMfa(): Promise<R & { to?: string }> {
   const { user } = await me();
   const s = await mfaSettings(user.id);
-  if (method === "whatsapp") {
-    if (!whatsappEnabled()) return { ok: false, error: "O código pelo WhatsApp ainda não está disponível. Use o e-mail." };
-    const n = waNumber(phone ?? "");
-    if (!n) return { ok: false, error: "Digite o celular com DDD." };
-    const r = await issueCode(user.id, "setup", "whatsapp", n, s.name);
-    return r.ok ? { ok: true, to: maskPhone(n) } : r;
-  }
+  if (s.method === "totp") return { ok: false, error: "Desligue o app autenticador antes de trocar para o e-mail." };
   const email = s.email || user.email;
-  const r = await issueCode(user.id, "setup", "email", email, s.name);
+  const r = await issueCode(user.id, "setup", email, s.name);
   return r.ok ? { ok: true, to: maskEmail(email) } : r;
 }
 
-export async function confirmMfa(code: string): Promise<R> {
+export async function confirmEmailMfa(code: string): Promise<R> {
   const { user, sessionId } = await me();
   const r = await checkCode(user.id, "setup", code);
   if (!r.ok) return r;
-  await upsertProfile(user.id, { mfaMethod: r.ch, mfaPhone: r.ch === "whatsapp" ? r.to : null });
+  await upsertProfile(user.id, { mfaMethod: "email", mfaTotp: null, mfaRecovery: null });
   // esta sessão já provou o código: continua liberada
   await clearSession(user.id, sessionId, false);
-  const how = r.ch === "whatsapp" ? `pelo WhatsApp ${maskPhone(r.to)}` : "por e-mail";
-  await logSecurity(user.id, "mfa_on", r.ch === "whatsapp" ? `WhatsApp ${maskPhone(r.to)}` : "Código por e-mail");
-  after(() => mailSecurityNotice(user.email, "Verificação em duas etapas ligada", `A partir de agora, ao entrar na sua conta com a senha, vamos pedir um código enviado ${how}.`));
+  await logSecurity(user.id, "mfa_on", "Código por e-mail");
+  after(() => mailSecurityNotice(user.email, "Verificação em duas etapas ligada", "A partir de agora, ao entrar na sua conta com a senha, vamos pedir um código enviado por e-mail."));
   revalidatePath("/conta/seguranca");
   return { ok: true };
 }
 
-/** Desligar pede o código do método atual. */
-export async function startMfaOff(): Promise<R & { to?: string }> {
+/**
+ * App autenticador, passo 1: gera o segredo e o QR code para cadastrar no app.
+ * Se já existe um app cadastrado, trocar exige o código dele (`current`).
+ */
+export async function startTotp(current?: string): Promise<R & { qr?: string; key?: string; uri?: string }> {
+  const { user } = await me();
+  const s = await mfaSettings(user.id);
+  if (s.method === "totp") {
+    const ok = await checkSecondFactor(user.id, "off", current ?? "");
+    if (!ok.ok) return { ok: false, error: current ? ok.error : "Digite o código do app atual para trocar de aparelho." };
+  }
+  const secretB32 = newTotpSecret();
+  await stashTotpSetup(user.id, secretB32);
+  const uri = totpUri(secretB32, s.email || user.email);
+  const qr = await QRCode.toString(uri, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#111111ff", light: "#ffffffff" } });
+  return { ok: true, qr, uri, key: secretB32.match(/.{1,4}/g)!.join(" ") };
+}
+
+/** App autenticador, passo 2: confere o primeiro código e liga. Devolve os códigos de recuperação (mostrados uma vez só). */
+export async function confirmTotp(code: string): Promise<R & { codes?: string[] }> {
+  const { user, sessionId } = await me();
+  const secretB32 = await takeTotpSetup(user.id);
+  if (!secretB32) return { ok: false, error: "O tempo para cadastrar acabou. Comece de novo." };
+  if (!(await verifyTotp(secretB32, code))) return { ok: false, error: "Código incorreto. Confira se o horário do celular está automático e digite o código atual." };
+  const { codes, hashes } = newRecoveryCodes(user.id);
+  await upsertProfile(user.id, { mfaMethod: "totp", mfaTotp: await sealSecret(secretB32), mfaRecovery: hashes });
+  await dropTotpSetup(user.id);
+  await clearSession(user.id, sessionId, false);
+  await logSecurity(user.id, "mfa_on", "App autenticador");
+  after(() => mailSecurityNotice(user.email, "App autenticador cadastrado", "A verificação em duas etapas da sua conta agora usa um app autenticador. Ao entrar, vamos pedir o código de 6 números do app."));
+  revalidatePath("/conta/seguranca");
+  return { ok: true, codes };
+}
+
+/** Códigos de recuperação novos (os antigos deixam de valer). Exige o código do app. */
+export async function renewRecovery(code: string): Promise<R & { codes?: string[] }> {
+  const { user } = await me();
+  const s = await mfaSettings(user.id);
+  if (s.method !== "totp") return { ok: false, error: "Os códigos de recuperação são do app autenticador." };
+  if (/[a-z]/i.test(code)) return { ok: false, error: "Use o código do app autenticador." };
+  const r = await checkSecondFactor(user.id, "off", code);
+  if (!r.ok) return r;
+  const { codes, hashes } = newRecoveryCodes(user.id);
+  await upsertProfile(user.id, { mfaRecovery: hashes });
+  await logSecurity(user.id, "mfa_on", "Novos códigos de recuperação");
+  revalidatePath("/conta/seguranca");
+  return { ok: true, codes };
+}
+
+/** Desligar: no e-mail manda um código; no app autenticador pede o código do app (ou de recuperação). */
+export async function startMfaOff(): Promise<R & { to?: string; totp?: boolean }> {
   const { user } = await me();
   const s = await mfaSettings(user.id);
   if (!s.method) return { ok: false, error: "A verificação em duas etapas já está desligada." };
-  const wa = s.method === "whatsapp" && !!s.phone;
-  const to = wa ? s.phone! : s.email || user.email;
-  const r = await issueCode(user.id, "off", wa ? "whatsapp" : "email", to, s.name);
-  return r.ok ? { ok: true, to: wa ? maskPhone(to) : maskEmail(to) } : r;
+  if (s.method === "totp") return { ok: true, totp: true };
+  const email = s.email || user.email;
+  const r = await issueCode(user.id, "off", email, s.name);
+  return r.ok ? { ok: true, to: maskEmail(email) } : r;
 }
 
 export async function confirmMfaOff(code: string): Promise<R> {
   const { user } = await me();
-  const r = await checkCode(user.id, "off", code);
+  const r = await checkSecondFactor(user.id, "off", code);
   if (!r.ok) return r;
-  await db.update(userProfiles).set({ mfaMethod: null, mfaPhone: null }).where(eq(userProfiles.userId, user.id));
+  await db.update(userProfiles).set({ mfaMethod: null, mfaTotp: null, mfaRecovery: null }).where(eq(userProfiles.userId, user.id));
   await logSecurity(user.id, "mfa_off");
-  after(() => mailSecurityNotice(user.email, "Verificação em duas etapas desligada", "A verificação em duas etapas da sua conta foi desligada. Ao entrar, vamos pedir só a senha."));
+  after(() => mailSecurityNotice(user.email, "Verificação em duas etapas desligada", "A verificação em duas etapas da sua conta foi desligada. Ao entrar, vamos pedir só a senha. O Banco Tickets Win fica bloqueado até você cadastrar um app autenticador de novo."));
   revalidatePath("/conta/seguranca");
   return { ok: true };
 }

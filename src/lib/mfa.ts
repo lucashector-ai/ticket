@@ -5,16 +5,16 @@ import { eq } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
 import { mailMfaCode } from "@/lib/notify";
-import { sendWhatsappCode, whatsappEnabled } from "@/lib/whatsapp";
 
 /*
  * Verificação em duas etapas da Tickets Win (por cima do login do Neon Auth).
- * Depois da senha (ou do Google), quem ligou as duas etapas recebe um código por e-mail ou WhatsApp.
+ * Depois da senha (ou do Google), quem ligou as duas etapas digita o código do app autenticador
+ * (Google Authenticator, 1Password, iCloud Senhas...) ou um código enviado por e-mail.
  * Enquanto o código não é confirmado a sessão existe, mas o site trata a pessoa como deslogada.
  * Confirmado o código, o cookie `tw_mfa` libera aquela sessão; "confiar neste aparelho" pula o código por 30 dias.
  */
 
-export type MfaMethod = "email" | "whatsapp";
+export type MfaMethod = "email" | "totp";
 export type CodePurpose = "login" | "setup" | "off" | "email" | "bank";
 
 const PASS_COOKIE = "tw_mfa";
@@ -36,10 +36,11 @@ async function kv() {
   return env.KV;
 }
 
-export async function mfaSettings(userId: string): Promise<{ method: MfaMethod | null; phone: string | null; email: string | null; name: string | null }> {
-  const p = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, userId), columns: { mfaMethod: true, mfaPhone: true, email: true, name: true } });
-  const method = p?.mfaMethod === "whatsapp" && !whatsappEnabled() ? "email" : (p?.mfaMethod ?? null);
-  return { method, phone: p?.mfaPhone ?? null, email: p?.email ?? null, name: p?.name ?? null };
+export async function mfaSettings(userId: string): Promise<{ method: MfaMethod | null; email: string | null; name: string | null; recoveryLeft: number }> {
+  const p = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, userId), columns: { mfaMethod: true, mfaTotp: true, mfaRecovery: true, email: true, name: true } });
+  // app autenticador sem segredo salvo não vale (cai no e-mail)
+  const method: MfaMethod | null = p?.mfaMethod === "totp" ? (p.mfaTotp ? "totp" : "email") : p?.mfaMethod === "email" ? "email" : null;
+  return { method, email: p?.email ?? null, name: p?.name ?? null, recoveryLeft: p?.mfaRecovery?.length ?? 0 };
 }
 
 /** A sessão atual já passou pela segunda etapa (ou o aparelho é confiável)? */
@@ -69,15 +70,14 @@ export async function forgetDevice() {
 }
 
 export const maskEmail = (e: string) => e.replace(/^(.)(.*)(.@.*)$/, (_m, a: string, mid: string, b: string) => a + "•".repeat(Math.min(6, Math.max(2, mid.length))) + b);
-export const maskPhone = (p: string) => { const d = p.replace(/\D/g, "").replace(/^55/, ""); return d.length >= 10 ? `(${d.slice(0, 2)}) •••••-${d.slice(-4)}` : "seu celular"; };
 
-type Stored = { h: string; n: number; at: number; ch: MfaMethod; to: string };
+type Stored = { h: string; n: number; at: number; to: string };
 
 /**
- * Gera e envia um código de 6 dígitos. `to` é o e-mail ou celular de destino.
+ * Gera e envia por e-mail um código de 6 dígitos para `to`.
  * Respeita intervalo entre reenvios e um limite por hora.
  */
-export async function issueCode(userId: string, purpose: CodePurpose, ch: MfaMethod, to: string, name?: string | null): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function issueCode(userId: string, purpose: CodePurpose, to: string, name?: string | null): Promise<{ ok: true } | { ok: false; error: string }> {
   const store = await kv();
   const key = `mfa:${purpose}:${userId}`;
   const prev = await store.get<Stored>(key, "json");
@@ -86,15 +86,14 @@ export async function issueCode(userId: string, purpose: CodePurpose, ch: MfaMet
   const sent = Number((await store.get(countKey)) ?? 0);
   if (sent >= MAX_SENDS_HOUR) return { ok: false, error: "Muitos códigos pedidos. Tente de novo daqui a uma hora." };
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-  const ok = ch === "whatsapp" ? await sendWhatsappCode(to, code) : await mailMfaCode(to, code, purpose, name);
-  if (!ok) return { ok: false, error: ch === "whatsapp" ? "Não conseguimos enviar pelo WhatsApp agora. Tente por e-mail." : "Não conseguimos enviar o e-mail agora. Tente de novo." };
-  await store.put(key, JSON.stringify({ h: hashCode(userId, purpose, code), n: 0, at: Date.now(), ch, to } satisfies Stored), { expirationTtl: CODE_TTL });
+  if (!(await mailMfaCode(to, code, purpose, name))) return { ok: false, error: "Não conseguimos enviar o e-mail agora. Tente de novo." };
+  await store.put(key, JSON.stringify({ h: hashCode(userId, purpose, code), n: 0, at: Date.now(), to } satisfies Stored), { expirationTtl: CODE_TTL });
   await store.put(countKey, String(sent + 1), { expirationTtl: 3600 });
   return { ok: true };
 }
 
-/** Confere o código. Até 5 tentativas; depois disso é preciso pedir outro. Devolve o destino confirmado. */
-export async function checkCode(userId: string, purpose: CodePurpose, code: string): Promise<{ ok: true; to: string; ch: MfaMethod } | { ok: false; error: string }> {
+/** Confere o código do e-mail. Até 5 tentativas; depois disso é preciso pedir outro. */
+export async function checkCode(userId: string, purpose: CodePurpose, code: string): Promise<{ ok: true; to: string } | { ok: false; error: string }> {
   const store = await kv();
   const key = `mfa:${purpose}:${userId}`;
   const s = await store.get<Stored>(key, "json");
@@ -102,7 +101,7 @@ export async function checkCode(userId: string, purpose: CodePurpose, code: stri
   const clean = code.replace(/\D/g, "");
   if (clean.length === 6 && same(s.h, hashCode(userId, purpose, clean))) {
     await store.delete(key);
-    return { ok: true, to: s.to, ch: s.ch };
+    return { ok: true, to: s.to };
   }
   if (s.n + 1 >= MAX_TRIES) {
     await store.delete(key);
@@ -115,7 +114,144 @@ export async function checkCode(userId: string, purpose: CodePurpose, code: stri
 /** Quando o último código foi enviado (para mostrar "reenviar em…"). */
 export async function lastSent(userId: string, purpose: CodePurpose) {
   const s = await (await kv()).get<Stored>(`mfa:${purpose}:${userId}`, "json");
-  return s ? { at: s.at, ch: s.ch } : null;
+  return s ? { at: s.at } : null;
+}
+
+/* ============================== app autenticador (TOTP, RFC 6238) ============================== */
+
+const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const STEP = 30;
+const MAX_TOTP_TRIES = 6;
+
+function base32(buf: Uint8Array) {
+  let bits = 0, value = 0, out = "";
+  for (const b of buf) {
+    value = (value << 8) | b; bits += 8;
+    while (bits >= 5) { out += B32[(value >>> (bits - 5)) & 31]; bits -= 5; }
+  }
+  if (bits > 0) out += B32[(value << (5 - bits)) & 31];
+  return out;
+}
+function unbase32(s: string) {
+  const clean = s.replace(/[\s=-]/g, "").toUpperCase();
+  let bits = 0, value = 0;
+  const out: number[] = [];
+  for (const ch of clean) {
+    const i = B32.indexOf(ch);
+    if (i < 0) continue;
+    value = (value << 5) | i; bits += 5;
+    if (bits >= 8) { out.push((value >>> (bits - 8)) & 255); bits -= 8; }
+  }
+  return Buffer.from(out);
+}
+function hotp(key: Buffer, counter: number) {
+  const msg = Buffer.alloc(8);
+  msg.writeUInt32BE(Math.floor(counter / 2 ** 32), 0);
+  msg.writeUInt32BE(counter >>> 0, 4);
+  const h = createHmac("sha1", key).update(msg).digest();
+  const o = h[h.length - 1] & 15;
+  return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, "0");
+}
+
+/** Segredo novo (160 bits) em base32, como os apps autenticadores esperam. */
+export function newTotpSecret() {
+  return base32(crypto.getRandomValues(new Uint8Array(20)));
+}
+
+/** Link otpauth:// que vira o QR code (o app mostra "Tickets Win (e-mail)"). */
+export function totpUri(secretB32: string, account: string) {
+  const label = encodeURIComponent(`Tickets Win:${account}`);
+  return `otpauth://totp/${label}?secret=${secretB32}&issuer=${encodeURIComponent("Tickets Win")}&algorithm=SHA1&digits=6&period=${STEP}`;
+}
+
+/** Confere o código do app (aceita 30s de relógio adiantado/atrasado). `userId` liga a proteção contra reuso. */
+export async function verifyTotp(secretB32: string, code: string, userId?: string) {
+  const clean = code.replace(/\D/g, "");
+  if (clean.length !== 6) return false;
+  const key = unbase32(secretB32);
+  const now = Math.floor(Date.now() / 1000 / STEP);
+  const store = userId ? await kv() : null;
+  const last = store ? Number((await store.get(`totp:last:${userId}`)) ?? 0) : 0;
+  for (const step of [now, now - 1, now + 1]) {
+    if (step <= last) continue; // o mesmo código não entra duas vezes
+    if (same(hotp(key, step), clean)) {
+      if (store) await store.put(`totp:last:${userId}`, String(step), { expirationTtl: 3 * STEP });
+      return true;
+    }
+  }
+  return false;
+}
+
+/* o segredo fica cifrado no banco (AES-GCM com chave derivada do segredo do servidor) */
+async function aesKey() {
+  const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${secret()}:totp`));
+  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+export async function sealSecret(plain: string) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await aesKey(), new TextEncoder().encode(plain)));
+  return `${Buffer.from(iv).toString("base64url")}.${Buffer.from(ct).toString("base64url")}`;
+}
+export async function openSecret(sealed: string) {
+  const [iv, ct] = sealed.split(".");
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: Buffer.from(iv, "base64url") }, await aesKey(), Buffer.from(ct, "base64url"));
+  return new TextDecoder().decode(pt);
+}
+
+/** Segredo do app autenticador esperando a confirmação (15 min), cifrado no KV. */
+export async function stashTotpSetup(userId: string, secretB32: string) {
+  await (await kv()).put(`totp:setup:${userId}`, await sealSecret(secretB32), { expirationTtl: 900 });
+}
+export async function takeTotpSetup(userId: string) {
+  const v = await (await kv()).get(`totp:setup:${userId}`);
+  return v ? openSecret(v) : null;
+}
+export async function dropTotpSetup(userId: string) {
+  await (await kv()).delete(`totp:setup:${userId}`);
+}
+
+/* códigos de recuperação: 10 códigos de uso único, guardados só como hash */
+const RC = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+const rcHash = (userId: string, c: string) => createHash("sha256").update(`${secret()}:rc:${userId}:${c.replace(/[^A-Z0-9]/gi, "").toUpperCase()}`).digest("base64url");
+export function newRecoveryCodes(userId: string) {
+  const codes = Array.from({ length: 10 }, () => {
+    const r = crypto.getRandomValues(new Uint8Array(8));
+    const s = Array.from(r, (b) => RC[b % RC.length]).join("");
+    return `${s.slice(0, 4)}-${s.slice(4)}`;
+  });
+  return { codes, hashes: codes.map((c) => rcHash(userId, c)) };
+}
+
+/**
+ * Segunda etapa conforme o método da conta: app autenticador (ou um código de recuperação) ou o código do e-mail.
+ * Limita as tentativas do app a 6 a cada 5 minutos.
+ */
+export async function checkSecondFactor(userId: string, purpose: CodePurpose, input: string): Promise<{ ok: true; how: "totp" | "recovery" | "email" } | { ok: false; error: string }> {
+  const s = await mfaSettings(userId);
+  if (s.method !== "totp") {
+    const r = await checkCode(userId, purpose, input);
+    return r.ok ? { ok: true, how: "email" } : r;
+  }
+  const store = await kv();
+  const triesKey = `totp:tries:${userId}`;
+  const tries = Number((await store.get(triesKey)) ?? 0);
+  if (tries >= MAX_TOTP_TRIES) return { ok: false, error: "Muitas tentativas. Espere 5 minutos e tente de novo." };
+  const p = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, userId), columns: { mfaTotp: true, mfaRecovery: true } });
+  const clean = input.trim();
+  if (/[a-z]/i.test(clean)) {
+    const h = rcHash(userId, clean);
+    const left = p?.mfaRecovery ?? [];
+    if (left.includes(h)) {
+      await db.update(schema.userProfiles).set({ mfaRecovery: left.filter((x) => x !== h) }).where(eq(schema.userProfiles.userId, userId));
+      await store.delete(triesKey);
+      return { ok: true, how: "recovery" };
+    }
+  } else if (p?.mfaTotp && (await verifyTotp(await openSecret(p.mfaTotp), clean, userId))) {
+    await store.delete(triesKey);
+    return { ok: true, how: "totp" };
+  }
+  await store.put(triesKey, String(tries + 1), { expirationTtl: 300 });
+  return { ok: false, error: /[a-z]/i.test(clean) ? "Código de recuperação inválido ou já usado." : "Código incorreto. Confira o horário do celular e o código da Tickets Win no app." };
 }
 
 function reqDevice(h: Headers) {

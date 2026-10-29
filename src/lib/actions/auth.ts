@@ -31,15 +31,14 @@ const tokenOf = (data: unknown) => (data as { token?: string } | null)?.token ??
 
 /**
  * Depois da senha: se a conta tem verificação em duas etapas (e o aparelho não é confiável),
- * envia o código e devolve true (a pessoa vai para /verificacao). Senão registra a entrada.
+ * devolve true (a pessoa vai para /verificacao); no método por e-mail o código já sai agora. Senão registra a entrada.
  */
 async function secondStep(userId: string | null, token: string | null): Promise<boolean> {
   if (!userId) return false;
   await rememberDevice(token);
   const s = await mfaSettings(userId);
   if (s.method && !(await sessionCleared(userId, ""))) {
-    const to = s.method === "whatsapp" ? s.phone : s.email;
-    if (to) await issueCode(userId, "login", s.method, to, s.name);
+    if (s.method === "email" && s.email) await issueCode(userId, "login", s.email, s.name);
     return true;
   }
   await logSecurity(userId, "login", "E-mail e senha");

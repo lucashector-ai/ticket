@@ -717,6 +717,7 @@
   .otp6 input:focus{border-color:#111;box-shadow:0 0 0 4px rgba(211,245,91,.55)}
   .otp6 input:disabled{opacity:.6}
   .vf-alt{display:flex;justify-content:center;gap:18px;margin-top:4px}
+  .vf-rec{text-align:center;font:600 22px 'Inter Tight',sans-serif;letter-spacing:.12em;text-transform:uppercase}
   .vf-alt .au-lk{background:none;border:0;cursor:pointer}
   .vf-alt .au-lk:disabled{color:#8A8A90;text-decoration:none;cursor:default}
   .lx-sw button.au-lk{background:none;border:0;cursor:pointer;padding:0}

@@ -151,6 +151,23 @@ export async function openBankSession(userId: string) {
   c.delete(PENDING);
   c.set(SESSION, pack(userId, Date.now() + SESSION_MIN * 60e3), { ...opts, maxAge: SESSION_MIN * 60 });
 }
+/* criar/recuperar o acesso: cada etapa vencida fica num cookie assinado (15 min): e-mail confirmado → app autenticador → senha */
+const SETUP = "tw_banco_c";
+export type SetupStage = "email" | "totp";
+export async function setBankSetup(userId: string, stage: SetupStage) {
+  const exp = Date.now() + 15 * 60e3;
+  (await cookies()).set(SETUP, `${userId}.${stage}.${exp}.${mac(`setup:${userId}:${stage}:${exp}`)}`, { ...opts, maxAge: 900 });
+}
+export async function bankSetup(): Promise<{ userId: string; stage: SetupStage } | null> {
+  const [u, st, e, m] = (await cookies()).get(SETUP)?.value?.split(".") ?? [];
+  if (!u || !st || !e || !m || Number(e) < Date.now() || (st !== "email" && st !== "totp")) return null;
+  const want = mac(`setup:${u}:${st}:${e}`);
+  return want.length === m.length && timingSafeEqual(Buffer.from(want), Buffer.from(m)) ? { userId: u, stage: st } : null;
+}
+export async function clearBankSetup() {
+  (await cookies()).delete(SETUP);
+}
+
 export async function closeBankSession() {
   const c = await cookies();
   c.delete(SESSION);
