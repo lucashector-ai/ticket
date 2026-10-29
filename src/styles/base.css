@@ -153,8 +153,8 @@ input,select{font:inherit;color:inherit}
 .qk:hover .qk-ic{background:#D3F55B;transform:rotate(-6deg)}
 .qk b{display:block;font-size:16.5px;font-weight:600;letter-spacing:-.015em}
 .qk span>span{display:block;font-size:14px;color:#6E6E73;margin-top:2px}
-.hdr.on-img{background:rgba(255,255,255,0);border-bottom-color:rgba(255,255,255,.18);-webkit-backdrop-filter:none;backdrop-filter:none}
-.hdr.on-img .logo,.hdr.on-img .nav a,.hdr.on-img .lnk,.hdr.on-img .ib{color:#FFFFFF}
+.hdr.on-img{background:linear-gradient(rgba(17,17,17,.3),rgba(17,17,17,0));border-bottom-color:rgba(255,255,255,.18);-webkit-backdrop-filter:none;backdrop-filter:none}
+.hdr.on-img .logo,.hdr.on-img .nav a,.hdr.on-img .lnk,.hdr.on-img .ib{color:#FFFFFF;text-shadow:0 1px 3px rgba(0,0,0,.3)}
 .hdr.on-img .logo-c{fill:#FFFFFF}
 .hdr.on-img .nav a:hover,.hdr.on-img .lnk:hover,.hdr.on-img .ib:hover{background:rgba(255,255,255,.14);color:#FFFFFF}
 .hdr.on-img .cityp{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3);color:#FFFFFF}

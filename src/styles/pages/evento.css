@@ -82,6 +82,8 @@
   .more-h{display:flex;justify-content:space-between;align-items:flex-end;margin:56px 0 28px}
   .more-h h2{font-family:'Inter Tight',sans-serif;font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0}
   .more-h a{font-size:14px;font-weight:500;color:#6E6E73}
+  .more-h{gap:16px}
+  .more-h a{flex:none;white-space:nowrap}
   .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:48px 32px}
   .card{position:relative;text-align:left;transition:transform .55s var(--ease)}
   .card:hover{transform:translateY(-5px)}
@@ -124,8 +126,8 @@
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
 }
   .hdr{transition:background .45s,box-shadow .45s}
-  .hdr.on-img{background:rgba(255,255,255,0);-webkit-backdrop-filter:none;backdrop-filter:none}
-  .hdr.on-img .logo,.hdr.on-img .nav a,.hdr.on-img .lnk{color:#FFFFFF}
+  .hdr.on-img{background:linear-gradient(rgba(17,17,17,.3),rgba(17,17,17,0));-webkit-backdrop-filter:none;backdrop-filter:none}
+  .hdr.on-img .logo,.hdr.on-img .nav a,.hdr.on-img .lnk{color:#FFFFFF;text-shadow:0 1px 3px rgba(0,0,0,.3)}
   .hdr.on-img .logo-c{fill:#FFFFFF}
   .hdr.on-img .nav a:hover,.hdr.on-img .lnk:hover{background:rgba(255,255,255,.14)}
   .hdr.on-img .hs{background:rgba(255,255,255,.14);color:rgba(255,255,255,.85);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
@@ -652,4 +654,5 @@
    o botão de acessibilidade sobe para ficar acima dela em vez de cobrir o preço. */
 @media (max-width:640px){
   body:has(.pg-evento .mbar) .a11y-tab{bottom:calc(88px + env(safe-area-inset-bottom))}
+  body:has(.pg-evento .mbar) .ftr{padding-bottom:160px}
 }

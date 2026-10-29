@@ -39,7 +39,7 @@
   .ins-ct{margin:0;font:600 26px/1.1 'Inter Tight',sans-serif;letter-spacing:-.03em}
   .ins-fine{font-size:13.5px !important;color:#6E6E73 !important}
   .ins-fine a,.ins-card p a{color:#111;font-weight:600;text-decoration:underline;text-underline-offset:3px}
-  .ins-form fieldset{margin:0;padding:18px 0 0;border:0;border-top:1px solid #F0F0EA;display:flex;flex-direction:column;gap:14px}
+  .ins-form fieldset{min-width:0;margin:0;padding:18px 0 0;border:0;border-top:1px solid #F0F0EA;display:flex;flex-direction:column;gap:14px}
   .ins-form legend{float:left;width:100%;margin-bottom:2px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A8A90}
   .ins-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .ins-g2.city{grid-template-columns:minmax(0,1fr) 110px}
