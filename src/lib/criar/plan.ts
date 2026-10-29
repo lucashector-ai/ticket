@@ -6,9 +6,17 @@ export const KIND_NAME: Record<AreaKind, string> = { setor: "Setor", palco: "Pal
 /** Cores das áreas que não são setor, no estilo "massinha" do mapa 3D (palco em coral, o resto em tons suaves). */
 export const KIND_COLOR: Record<Exclude<AreaKind, "setor">, string> = { palco: "#FF6A4D", bar: "#8CC79E", banheiro: "#BFD8EE", entrada: "#E9DCC0", outro: "#D5CDBE" };
 
-/** x/y: canto de cima à esquerda, a partir do fundo do local (y = 0 é a parede do fundo). */
-export type PlanArea = { id: string; name: string; kind: AreaKind; x: number; y: number; w: number; d: number; h: number; cap: number; sector: string | null };
-export type VenuePlan = { width: number; depth: number; areas: PlanArea[]; notes: string[]; source: "ia" | "modelo" };
+/** Cor do tabuleiro (fundo) do mapa 3D quando o produtor não escolhe outra. */
+export const DEFAULT_FLOOR = "#F1E5CA";
+/** Paleta sugerida no editor (tons de massinha); qualquer cor pode ser escolhida. */
+export const MAP_SWATCHES = ["#FF6A4D", "#FF8AD8", "#D7F264", "#8FB8FF", "#8CC79E", "#BFD8EE", "#FFC764", "#B79CFF", "#E9DCC0", "#3A3A3C"];
+export const isHex = (v: unknown): v is string => typeof v === "string" && /^#[0-9A-Fa-f]{6}$/.test(v);
+
+/** x/y: canto de cima à esquerda, a partir do fundo do local (y = 0 é a parede do fundo).
+ *  `color`: cor escolhida para áreas que não são setor (setores usam a cor do setor de ingressos). */
+export type PlanArea = { id: string; name: string; kind: AreaKind; x: number; y: number; w: number; d: number; h: number; cap: number; sector: string | null; color?: string };
+/** `floor`: cor do tabuleiro (fundo) do mapa. */
+export type VenuePlan = { width: number; depth: number; areas: PlanArea[]; notes: string[]; source: "ia" | "modelo"; floor?: string };
 
 /** Pessoas por m² em pé (pista); usada para sugerir a lotação de uma área. */
 export const STANDING_DENSITY = 2.5;
@@ -46,9 +54,10 @@ export function normalizePlan(p: VenuePlan, sectorIds: string[]): VenuePlan {
       h: Math.min(6, Math.max(0.1, Math.round((a.h || 0.3) * 10) / 10)),
       cap: kind === "setor" ? Math.min(200_000, Math.max(0, Math.round(a.cap || 0))) : 0,
       sector: kind === "setor" && a.sector && sectorIds.includes(a.sector) ? a.sector : null,
+      ...(isHex(a.color) ? { color: a.color } : {}),
     };
   });
-  return { width, depth, areas, notes: p.notes.slice(0, 8).map((n) => n.slice(0, 240)), source: p.source };
+  return { width, depth, areas, notes: p.notes.slice(0, 8).map((n) => n.slice(0, 240)), source: p.source, ...(isHex(p.floor) ? { floor: p.floor } : {}) };
 }
 
 export const planCapacity = (p: VenuePlan) => p.areas.reduce((s, a) => s + (a.kind === "setor" ? a.cap : 0), 0);

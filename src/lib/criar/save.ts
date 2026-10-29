@@ -38,8 +38,10 @@ const draftSchema = z.object({
   map: z.enum(["empty", "sketch", "done"]), prompt: str(1000), sketchUrl: z.union([z.literal(""), media.unwrap()]).default(""),
   plan: z.object({
     width: z.number(), depth: z.number(), source: z.enum(["ia", "modelo"]), notes: z.array(z.string().max(300)).max(10),
+    floor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
     areas: z.array(z.object({
       id, name: str(60), kind: z.enum(AREA_KINDS), x: z.number(), y: z.number(), w: z.number(), d: z.number(), h: z.number(), cap: z.number(), sector: id.nullable(),
+      color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
     })).max(MAX_AREAS),
   }).nullable().default(null),
   vis: z.enum(["publico", "link", "rascunho"]), saleStart: str(40), presaleStart: str(40), minors: z.boolean().default(false), refund: str(300),
@@ -129,10 +131,10 @@ function venueMapOf(d: Draft) {
   return {
     prompt: d.prompt, sketchUrl: d.sketchUrl || undefined,
     plan: {
-      width: plan.width, depth: plan.depth,
+      width: plan.width, depth: plan.depth, ...(plan.floor ? { floor: plan.floor } : {}),
       areas: plan.areas.map(({ sector, ...a }) => {
         const k = sector ? sec.get(sector) : undefined;
-        return { ...a, sectorName: k ? k.name.trim() || "Setor" : null, color: k ? k.color : a.kind === "setor" ? "#8A8A90" : KIND_COLOR[a.kind] };
+        return { ...a, sectorName: k ? k.name.trim() || "Setor" : null, color: k ? k.color : a.color ?? (a.kind === "setor" ? "#8A8A90" : KIND_COLOR[a.kind]) };
       }),
     },
   };

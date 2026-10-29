@@ -33,7 +33,7 @@ export function MapaPane({ c, bare = false }: { c: Ctx; bare?: boolean }) {
 
   const secById = new Map(d.sectors.map((k) => [k.id, k]));
   const look = (a: PlanArea) => {
-    if (a.kind !== "setor") return { name: a.name, color: KIND_COLOR[a.kind] };
+    if (a.kind !== "setor") return { name: a.name, color: a.color ?? KIND_COLOR[a.kind] };
     const k = a.sector ? secById.get(a.sector) : undefined;
     return { name: k?.name || a.name, color: k?.color ?? "#8A8A90" };
   };

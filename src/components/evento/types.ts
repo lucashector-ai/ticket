@@ -90,6 +90,8 @@ export type EventoData = {
 export type VenueMapData = {
   width: number;
   depth: number;
+  /** cor do tabuleiro escolhida pelo produtor */
+  floor?: string;
   /** sem lotação: o público não vê quantos ingressos existem por área */
   areas: { id: string; name: string; kind: string; x: number; y: number; w: number; d: number; h: number; sectorName: string | null; color: string }[];
 };

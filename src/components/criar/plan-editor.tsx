@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { AREA_KINDS, KIND_NAME, MAX_AREAS, type AreaKind, type PlanArea, type VenuePlan } from "@/lib/criar/plan";
+import { useEffect, useRef, useState } from "react";
+import { AREA_KINDS, DEFAULT_FLOOR, KIND_NAME, MAP_SWATCHES, MAX_AREAS, type AreaKind, type PlanArea, type VenuePlan } from "@/lib/criar/plan";
 import { XIcon, type Ctx } from "./shared";
 
 type Handle = "move" | "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
@@ -13,6 +13,26 @@ const SNAP_PX = 7;
 const round1 = (n: number) => Math.round(n * 10) / 10;
 /** 5.5 → "5,5" (metros no padrão brasileiro) */
 const m = (n: number) => String(round1(n)).replace(".", ",");
+
+/** Texto preto ou branco, o que ler melhor sobre a cor. */
+const ink = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return r * 0.299 + g * 0.587 + b * 0.114 > 150 ? "#111111" : "#FFFFFF";
+};
+
+/** Cores sugeridas + qualquer cor pelo seletor do sistema. */
+function ColorPick({ value, onChange, label }: { value: string; onChange: (hex: string) => void; label: string }) {
+  return (
+    <div className="pe-col" role="group" aria-label={label}>
+      {MAP_SWATCHES.map((c) => (
+        <button key={c} type="button" className={value.toLowerCase() === c.toLowerCase() ? "sw on" : "sw"} style={{ background: c }} onClick={() => onChange(c)} aria-label={`${label}: ${c}`} />
+      ))}
+      <label className="sw any" title="Outra cor" style={{ background: MAP_SWATCHES.some((c) => c.toLowerCase() === value.toLowerCase()) ? undefined : value }}>
+        <input type="color" value={value} onChange={(e) => onChange(e.target.value.toUpperCase())} aria-label={`${label}: outra cor`} />
+      </label>
+    </div>
+  );
+}
 
 /** Procura o alvo mais perto de uma das bordas que se movem; devolve o ajuste e onde desenhar a guia. */
 function snapAxis(edges: number[], targets: number[], tol: number) {
@@ -33,6 +53,10 @@ export function PlanEditor({ c, plan, look, ticketsOf, sel, setSel, setPlan }: {
 }) {
   const { d } = c;
   const box = useRef<HTMLDivElement>(null);
+  const [floorOpen, setFloorOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  // ao abrir o editor, a planta inteira fica visível acima da barra de ações
+  useEffect(() => { wrap.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, []);
   const [grid, setGrid] = useState(0.5);
   const [smart, setSmart] = useState(true);
   const [showSketch, setShowSketch] = useState(true);
@@ -162,7 +186,7 @@ export function PlanEditor({ c, plan, look, ticketsOf, sel, setSel, setPlan }: {
   const major = `${(5 / plan.width) * 100}% ${(5 / plan.depth) * 100}%`;
 
   return (
-    <div className="pe">
+    <div className="pe" ref={wrap}>
       <div className="pe-tb" role="toolbar" aria-label="Ferramentas da planta">
         <div className="pe-grp">
           <button className="pe-ib" type="button" onClick={undo} disabled={!hist.past.length} aria-label="Desfazer (Ctrl+Z)" title="Desfazer (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-3" /></svg></button>
@@ -174,11 +198,15 @@ export function PlanEditor({ c, plan, look, ticketsOf, sel, setSel, setPlan }: {
         </div>
         <button className={smart ? "pe-sg on" : "pe-sg"} type="button" aria-pressed={smart} onClick={() => setSmart((v) => !v)} title="Grudar nas bordas e centros das outras áreas">Guias de alinhamento</button>
         {d.sketchUrl && <button className={showSketch ? "pe-sg on" : "pe-sg"} type="button" aria-pressed={showSketch} onClick={() => setShowSketch((v) => !v)}>Rascunho por baixo</button>}
+        <div className="pe-fl">
+          <button className={floorOpen ? "pe-sg on" : "pe-sg"} type="button" onClick={() => setFloorOpen((v) => !v)} aria-expanded={floorOpen}><i style={{ background: plan.floor ?? DEFAULT_FLOOR }} />Cor do fundo</button>
+          {floorOpen && <div className="pe-pop"><ColorPick label="Cor do fundo" value={plan.floor ?? DEFAULT_FLOOR} onChange={(hex) => { checkpoint(); setPlan((p) => ({ ...p, floor: hex })); }} /></div>}
+        </div>
         <label className="pe-dim">Local <input className="in sm2" inputMode="decimal" value={plan.width} onFocus={checkpoint} onChange={(e) => setPlan((p) => ({ ...p, width: Math.max(5, num(e.target.value)) }))} aria-label="Largura do local em metros" /> × <input className="in sm2" inputMode="decimal" value={plan.depth} onFocus={checkpoint} onChange={(e) => setPlan((p) => ({ ...p, depth: Math.max(5, num(e.target.value)) }))} aria-label="Profundidade do local em metros" /> m</label>
       </div>
 
       <div className="pe-c" ref={box} tabIndex={0} onKeyDown={onKey} aria-label="Planta do local. Setas movem a área selecionada; Delete remove; Ctrl+D duplica; Ctrl+Z desfaz."
-        style={{ aspectRatio: `${plan.width} / ${plan.depth}`, backgroundSize: `${minor}, ${minor}, ${major}, ${major}` }}
+        style={{ aspectRatio: `${plan.width} / ${plan.depth}`, width: `min(100%, calc((100vh - 330px) * ${(plan.width / plan.depth).toFixed(3)}))`, backgroundSize: `${minor}, ${minor}, ${major}, ${major}`, backgroundColor: plan.floor ?? DEFAULT_FLOOR }}
         onPointerDown={(e) => { if (e.target === e.currentTarget) setSel(null); }}>
         {d.sketchUrl && showSketch && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -193,7 +221,7 @@ export function PlanEditor({ c, plan, look, ticketsOf, sel, setSel, setPlan }: {
             <div key={a.id} className={on ? "pa sel" : "pa"} role="button" tabIndex={-1} aria-label={`${name}: ${m(a.w)} × ${m(a.d)} m`}
               style={{ left: pct(a.x, plan.width), top: pct(a.y, plan.depth), width: pct(a.w, plan.width), height: pct(a.d, plan.depth), background: color }}
               onPointerDown={(e) => drag(e, a, "move")}>
-              <span className={a.kind === "palco" || a.kind === "bar" || a.kind === "outro" ? "pa-n dark" : "pa-n"}>{name}</span>
+              <span className="pa-n" style={{ color: ink(color) }}>{name}</span>
               {on && HANDLES.map((h) => <span key={h} className={`pa-h h-${h}`} onPointerDown={(e) => drag(e, a, h)} aria-hidden="true" />)}
               {on && <span className="pa-sz" aria-hidden="true">{m(a.w)} × {m(a.d)} m</span>}
             </div>
@@ -226,13 +254,22 @@ export function PlanEditor({ c, plan, look, ticketsOf, sel, setSel, setPlan }: {
               </label>
             )}
           </div>
+          <div className="pe-cr">
+            <span className="tl-l2">{area.kind === "setor" ? "Cor (vale para o setor de ingressos)" : "Cor"}</span>
+            <ColorPick label={`Cor de ${area.name}`} value={look(area).color}
+              onChange={(hex) => {
+                if (area.kind === "setor" && area.sector) c.upd((o) => ({ ...o, sectors: o.sectors.map((k) => (k.id === area.sector ? { ...k, color: hex } : k)) }), "map");
+                else change(area.id, { color: hex });
+              }} />
+            {area.kind !== "setor" && area.color && <button className="pe-sg" type="button" onClick={() => change(area.id, { color: undefined })}>Cor padrão</button>}
+          </div>
           <div className="pe-r">
-            {([["x", "X (m)"], ["y", "Y (m)"], ["w", "Largura (m)"], ["d", "Profundidade (m)"], ["h", "Altura (m)"]] as const).map(([key, label]) => (
+            {([["x", "X (m)"], ["y", "Y (m)"], ["w", "Largura (m)"], ["d", "Profundidade (m)"]] as const).map(([key, label]) => (
               <label key={key} className="lf"><span className="tl-l2">{label}</span>
                 <input className="in sm2" inputMode="decimal" value={area[key]} onFocus={checkpoint} onChange={(e) => {
                   const v = num(e.target.value);
-                  const lim = { x: plan.width - area.w, y: plan.depth - area.d, w: plan.width - area.x, d: plan.depth - area.y, h: 6 }[key];
-                  const min = key === "x" || key === "y" ? 0 : key === "h" ? 0.1 : 1;
+                  const lim = { x: plan.width - area.w, y: plan.depth - area.d, w: plan.width - area.x, d: plan.depth - area.y }[key];
+                  const min = key === "x" || key === "y" ? 0 : 1;
                   setArea(area.id, { [key]: Math.min(lim, Math.max(min, v)) });
                 }} />
               </label>

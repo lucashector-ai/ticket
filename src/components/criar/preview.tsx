@@ -52,7 +52,7 @@ export function Phone({ d, x, lf, teaser }: { d: Draft; x: Derived; lf: { f: PvF
 
   const secs = v.secs.slice(0, 3), minP = v.minP;
   const plan = d.tmode === "mapa" && d.map === "done" ? d.plan : null;
-  const color = (sid: string | null, kind: string) => (sid ? d.sectors.find((k) => k.id === sid)?.color : null) ?? (kind === "setor" ? "#8A8A90" : KIND_COLOR[kind as keyof typeof KIND_COLOR] ?? "#555");
+  const color = (sid: string | null, kind: string, own?: string) => (sid ? d.sectors.find((k) => k.id === sid)?.color : null) ?? own ?? (kind === "setor" ? "#8A8A90" : KIND_COLOR[kind as keyof typeof KIND_COLOR] ?? "#555");
   return (
     <div className="cv-ph"><div className="sc">
       <div className={`pv-bn${hl("banner")}`}>
@@ -70,9 +70,9 @@ export function Phone({ d, x, lf, teaser }: { d: Draft; x: Derived; lf: { f: PvF
         {d.lineup.length > 0 && <div className={`pv-lu${hl("desc")}`}>{d.lineup.slice(0, 5).map((a) => <span key={a.id}>{a.name}</span>)}</div>}
         {plan && (
           <div className={`pv-map${hl("map")}`}>
-            <div className="pl" style={{ aspectRatio: `${plan.width} / ${plan.depth}` }}>
+            <div className="pl" style={{ aspectRatio: `${plan.width} / ${plan.depth}`, ...(plan.floor ? { background: plan.floor } : {}) }}>
               {plan.areas.map((a, i) => (
-                <i key={a.id} style={{ left: `${(a.x / plan.width) * 100}%`, top: `${(a.y / plan.depth) * 100}%`, width: `${(a.w / plan.width) * 100}%`, height: `${(a.d / plan.depth) * 100}%`, background: color(a.sector, a.kind), animationDelay: `${i * 60}ms` }} />
+                <i key={a.id} style={{ left: `${(a.x / plan.width) * 100}%`, top: `${(a.y / plan.depth) * 100}%`, width: `${(a.w / plan.width) * 100}%`, height: `${(a.d / plan.depth) * 100}%`, background: color(a.sector, a.kind, a.color), animationDelay: `${i * 60}ms` }} />
               ))}
             </div>
             <span className="t">Mapa 3D · toque para escolher</span>

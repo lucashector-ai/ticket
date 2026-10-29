@@ -1,25 +1,23 @@
 /* Mapa 3D do local: usado na criação do evento e na página do evento (.m3w). */
 .m3w {
   &.m3{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:20px;align-items:start}
-  .m3-stage{position:relative;height:440px;border-radius:28px;background:radial-gradient(120% 90% at 50% 15%,#FFFDF8 0%,#F3EDE2 55%,#E9E1D2 100%);overflow:hidden;perspective:1400px;perspective-origin:50% 30%;box-shadow:inset 0 0 0 1px rgba(17,17,17,.05)}
-  .m3-scene{position:absolute;left:50%;top:50%;width:520px;height:360px;margin:-200px 0 0 -260px;transform-style:preserve-3d;transition:transform .7s var(--ease)}
-  /* base de "massinha": tabuleiro bege arredondado, com espessura e sombra macia */
-  .m3-floor{position:absolute;inset:-20px;border-radius:30px;background:#F1E5CA;background-image:radial-gradient(rgba(176,150,100,.16) 1.2px,transparent 1.4px);background-size:22px 22px;box-shadow:inset 0 2px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(150,120,70,.15);transform-style:preserve-3d}
-  .m3-floor::before{content:"";position:absolute;inset:0;border-radius:inherit;background:#DCCBA6;transform:translateZ(-14px)}
-  .m3-floor::after{content:"";position:absolute;inset:6% -2% -10% 6%;border-radius:inherit;background:rgba(120,95,50,.22);filter:blur(22px);transform:translateZ(-30px)}
-  .ar{position:absolute;transform-style:preserve-3d;padding:0;border:0;background:none;cursor:pointer}
-  .fc{position:absolute;display:block;background:var(--c)}
-  /* topo arredondado com brilho em cima e borda mais escura embaixo, como peça de massinha */
-  .fc.ftop{inset:0;transform:translateZ(var(--h));border-radius:var(--r,10px);display:grid;place-items:center;transition:filter .25s,transform .45s cubic-bezier(.34,1.56,.64,1);box-shadow:inset 0 3px 0 rgba(255,255,255,.45),inset 0 -4px 0 rgba(0,0,0,.1),inset 0 0 0 1px rgba(0,0,0,.04);background-image:radial-gradient(120% 90% at 30% 20%,rgba(255,255,255,.35),transparent 60%)}
-  .fc.s{left:var(--r,10px);right:var(--r,10px);top:calc(100% - 1px);height:var(--h);transform-origin:top;transform:rotateX(90deg);background:var(--cd);border-radius:0 0 6px 6px}
-  .fc.n{left:var(--r,10px);right:var(--r,10px);bottom:calc(100% - 1px);height:var(--h);transform-origin:bottom;transform:rotateX(-90deg);background:var(--cs);border-radius:6px 6px 0 0}
-  .fc.e{left:calc(100% - 1px);top:var(--r,10px);bottom:var(--r,10px);width:var(--h);transform-origin:left;transform:rotateY(-90deg);background:var(--cd);border-radius:0 6px 6px 0}
-  .fc.w{right:calc(100% - 1px);top:var(--r,10px);bottom:var(--r,10px);width:var(--h);transform-origin:right;transform:rotateY(90deg);background:var(--cs);border-radius:6px 0 0 6px}
-  .fc.fsh{inset:8% -4% -12% 10%;border-radius:var(--r,10px);background:rgba(110,85,40,.28);filter:blur(7px);transform:translateZ(1px)}
-  .fc-l{max-width:92%;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:rgba(17,17,17,.78);white-space:nowrap;transition:transform .7s var(--ease)}
-  .ar.dark .fc-l{color:#FFFFFF}
-  .ar:hover .fc.ftop{filter:brightness(1.06) saturate(1.1)}
-  .ar.sel .fc.ftop{filter:brightness(1.08);box-shadow:inset 0 3px 0 rgba(255,255,255,.45),inset 0 0 0 3px #111}
+  .m3-stage{position:relative;height:440px;border-radius:28px;background:radial-gradient(120% 90% at 50% 15%,#FFFFFF 0%,var(--bg1,#F7F2E8) 55%,var(--bg2,#EADFC9) 100%);overflow:hidden;perspective:1400px;perspective-origin:50% 30%;box-shadow:inset 0 0 0 1px rgba(17,17,17,.05)}
+  .m3-scene{position:absolute;left:50%;top:50%;width:520px;height:360px;margin:-196px 0 0 -260px;transform-style:preserve-3d;transition:transform .7s var(--ease)}
+  /* tabuleiro de "massinha": cor escolhida pelo produtor, com espessura e sombra macia */
+  .m3-floor{position:absolute;border-radius:30px;background-color:var(--fl,#F1E5CA);background-image:radial-gradient(rgba(90,70,30,.13) 1.2px,transparent 1.4px);background-size:22px 22px;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),inset 0 -2px 0 rgba(0,0,0,.08);transform-style:preserve-3d;transition:background-color .3s}
+  .m3-floor::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--fl2,#DCCBA6);transform:translateZ(-12px)}
+  .m3-floor::after{content:"";position:absolute;inset:6% -2% -10% 6%;border-radius:inherit;background:rgba(80,60,30,.22);filter:blur(22px);transform:translateZ(-28px)}
+  .ar{position:absolute;transform-style:preserve-3d;padding:0;border:0;background:none;cursor:pointer;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+  .fc{position:absolute;inset:0;display:block;border-radius:var(--r,10px);pointer-events:none}
+  /* bloco sólido: fatias da mesma forma arredondada empilhadas, na cor mais escura */
+  .fc.sl{background:var(--cd)}
+  /* topo com brilho em cima e borda mais escura embaixo, como peça de massinha */
+  .fc.ftop{background:var(--c);background-image:radial-gradient(120% 90% at 30% 20%,rgba(255,255,255,.38),transparent 62%);box-shadow:inset 0 2px 0 rgba(255,255,255,.5),inset 0 -3px 0 rgba(0,0,0,.08),inset 0 0 0 1px rgba(0,0,0,.05);transition:filter .25s,box-shadow .25s}
+  .fc.fsh{inset:6% -3% -10% 8%;background:rgba(80,60,30,.26);filter:blur(7px);transform:translateZ(.5px)}
+  .ar:hover{transform:translateZ(3px)}
+  .ar:hover .fc.ftop{filter:brightness(1.05) saturate(1.08)}
+  .ar.sel{transform:translateZ(5px)}
+  .ar.sel .fc.ftop{filter:brightness(1.06);box-shadow:inset 0 2px 0 rgba(255,255,255,.5),inset 0 0 0 3px #111}
   .m3-ctl{position:absolute;left:14px;bottom:14px;display:flex;gap:6px}
   .m3-b{height:36px;min-width:36px;padding:0 12px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:#FFFFFF;color:#111;font-size:13px;font-weight:600;box-shadow:0 4px 12px -4px rgba(90,70,30,.3);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
   .m3-b:hover{transform:translateY(-2px)}
@@ -38,7 +36,7 @@
   .al-sel{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border-radius:999px;background:#111;color:#FFFFFF;font-size:12px;font-weight:600;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis}
   .al-fx{font-size:12px;color:#6E6E73}
   @media (max-width:900px){&.m3{grid-template-columns:minmax(0,1fr)}}
-  @media (max-width:640px){.m3-stage{height:300px}.m3-scene{scale:.62}}
+  @media (max-width:640px){.m3-stage{height:320px}}
 }
 /* balões com o nome de cada área, sempre de frente para a câmera */
 .m3w {
@@ -46,7 +44,7 @@
   .mpin-b{position:absolute;left:0;bottom:16px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;background:#FFFFFF;color:#111;font-size:11.5px;font-weight:700;white-space:nowrap;box-shadow:0 8px 18px -8px rgba(90,70,30,.55);pointer-events:auto;cursor:pointer;transition:background .2s,transform .3s cubic-bezier(.34,1.56,.64,1)}
   .mpin-b:hover{transform:translateX(-50%) translateY(-2px)}
   .mpin-b::after{content:"";position:absolute;left:50%;bottom:-5px;width:10px;height:10px;margin-left:-5px;background:inherit;transform:rotate(45deg);border-radius:2px}
-  .mpin-b:not(.sec){background:rgba(255,255,255,.82);color:#3A3A3C;font-weight:600;font-size:10.5px}
+  .mpin-b:not(.sec){background:rgba(255,255,255,.86);color:#3A3A3C;font-weight:600;font-size:10.5px}
   .mpin-b.on{background:#D3F55B}
   .mpin-b i{width:8px;height:8px;border-radius:3px;flex:none}
 }

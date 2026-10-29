@@ -93,9 +93,9 @@ function PageMock({ d, x }: { d: Draft; x: Derived }) {
             <>
               <h2>Mapa do local</h2>
               <div className="m3 m3w">
-                <MapStage plan={plan} sel={sel} onPick={setSel} view={view} setView={setView} labels="popup"
+                <MapStage plan={plan} sel={sel} onPick={setSel} view={view} setView={setView}
                   look={(a) => {
-                    if (a.kind !== "setor") return { name: a.name, color: KIND_COLOR[a.kind] };
+                    if (a.kind !== "setor") return { name: a.name, color: a.color ?? KIND_COLOR[a.kind] };
                     const k = a.sector ? secById.get(a.sector) : undefined;
                     return { name: k?.name || a.name, color: k?.color ?? "#B9B2A4" };
                   }} />

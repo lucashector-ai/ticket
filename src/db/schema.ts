@@ -260,7 +260,7 @@ export const events = pgTable(
     /** mapa do local: áreas ligadas aos setores */
     venueMap: jsonb("venue_map").$type<{
       prompt: string; sketchUrl?: string;
-      plan: { width: number; depth: number; areas: { id: string; name: string; kind: string; x: number; y: number; w: number; d: number; h: number; cap: number; sectorName: string | null; color: string }[] };
+      plan: { width: number; depth: number; floor?: string; areas: { id: string; name: string; kind: string; x: number; y: number; w: number; d: number; h: number; cap: number; sectorName: string | null; color: string }[] };
     }>(),
     /** estado completo do formulário de criação, para continuar editando */
     draft: jsonb("draft").$type<Record<string, unknown>>(),

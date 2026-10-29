@@ -67,7 +67,7 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
   });
   const plan = e.ticketMode === "mapa" && e.venueMap?.plan?.areas?.length ? e.venueMap.plan : null;
   const venueMap: EventoData["venueMap"] = plan
-    ? { width: plan.width, depth: plan.depth, areas: plan.areas.map(({ id, name, kind, x, y, w, d, h, sectorName, color }) => ({ id, name, kind, x, y, w, d, h, sectorName, color })) }
+    ? { width: plan.width, depth: plan.depth, floor: plan.floor, areas: plan.areas.map(({ id, name, kind, x, y, w, d, h, sectorName, color }) => ({ id, name, kind, x, y, w, d, h, sectorName, color })) }
     : null;
   const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"], MS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const sessions: SessionItem[] = e.sessions.length > 1

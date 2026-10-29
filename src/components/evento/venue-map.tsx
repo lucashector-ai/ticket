@@ -13,7 +13,7 @@ export function VenueMap({ e, t }: { e: EventoData; t: Tickets }) {
   const [view, setView] = useState<MapView>(VIEW_3D);
   const [sel, setSel] = useState<string | null>(null);
   const plan: VenuePlan = useMemo(() => ({
-    width: data.width, depth: data.depth, notes: [], source: "ia",
+    width: data.width, depth: data.depth, notes: [], source: "ia", floor: data.floor,
     areas: data.areas.map((a) => ({ ...a, cap: 0, kind: ((AREA_KINDS as readonly string[]).includes(a.kind) ? a.kind : "outro") as AreaKind, sector: a.sectorName })),
   }), [data]);
   const byId = new Map(data.areas.map((a) => [a.id, a]));
@@ -32,12 +32,11 @@ export function VenueMap({ e, t }: { e: EventoData; t: Tickets }) {
       <div className="m3 m3w vm">
         <MapStage
           plan={plan}
-          look={(a) => ({ name: byId.get(a.id)?.sectorName ?? a.name, color: a.kind !== "setor" ? KIND_COLOR[a.kind] : byId.get(a.id)?.color ?? "#B9B2A4" })}
+          look={(a) => ({ name: byId.get(a.id)?.sectorName ?? a.name, color: byId.get(a.id)?.color ?? (a.kind !== "setor" ? KIND_COLOR[a.kind] : "#B9B2A4") })}
           sel={sel}
           onPick={(id) => { setSel(id); const s = byId.get(id)?.sectorName; if (s) pick(s); }}
           view={view}
           setView={setView}
-          labels="popup"
         />
         {sectors.length > 0 && (
           <div className="m3-side">
