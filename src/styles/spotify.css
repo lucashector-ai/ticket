@@ -15,13 +15,17 @@
 
 /* Home: convite e seção "Dos artistas que você ouve" */
 .spf{padding:56px 0 8px}
-.spf-cta{display:flex;align-items:center;gap:18px;padding:22px 24px;border-radius:24px;background:#111;color:#fff;transition:transform .4s cubic-bezier(.2,.8,.2,1)}
-.spf-cta:hover{transform:translateY(-2px)}
+.spf-cta{display:flex;align-items:center;gap:18px;padding:22px 24px;border-radius:24px;background:#111;color:#fff}
+/* o card inteiro é um link: no hover nada muda (o título não pode ficar preto); só o botão reage */
+.spf-cta:hover,.spf-cta:focus-visible{color:#fff;transform:none}
+.spf-cta:hover .spf-t b,.spf-cta:hover .spf-t span{color:inherit}
+.spf-cta:hover .spf-t span{color:rgba(255,255,255,.66)}
 .spf-cta > svg{flex:none}
 .spf-t{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
 .spf-t b{font-family:'Inter Tight',sans-serif;font-size:20px;font-weight:600;letter-spacing:-.01em}
 .spf-t span{font-size:14.5px;color:rgba(255,255,255,.66)}
-.spf-b{flex:none;height:44px;padding:0 20px;display:inline-flex;align-items:center;border-radius:999px;background:#1ED760;color:#111;font-weight:600;font-size:14.5px}
+.spf-b{flex:none;height:44px;padding:0 20px;display:inline-flex;align-items:center;border-radius:999px;background:#1ED760;color:#111;font-weight:600;font-size:14.5px;transition:background .2s,transform .2s}
+.spf-cta:hover .spf-b{background:#3BE477;color:#111;transform:translateY(-1px)}
 .spf-s{display:flex;align-items:center;gap:8px}
 .spf-off{border:0;background:none;padding:0;font:inherit;font-size:13.5px;font-weight:500;color:#6E6E73;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .spf-off:hover{color:#111}
