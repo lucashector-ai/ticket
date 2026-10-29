@@ -62,10 +62,10 @@ export function SiteFooter() {
               <p><b>E-mail:</b> <a href={`mailto:${SUPPORT.email}`}>{SUPPORT.email}</a></p>
               <p><b>WhatsApp:</b> <a href={SUPPORT.whatsappUrl} target="_blank" rel="noopener noreferrer">{SUPPORT.whatsapp}</a></p>
               <p>Respondemos em até 1 dia útil.</p>
-            </div>
-            <div className="ft-press">
-              <h4>Imprensa e parcerias</h4>
-              <a href={`mailto:${SUPPORT.press}`}>{SUPPORT.press}</a>
+              <div className="ft-press">
+                <h4>Imprensa e parcerias</h4>
+                <a href={`mailto:${SUPPORT.press}`}>{SUPPORT.press}</a>
+              </div>
             </div>
             {social.length > 0 && (
               <div className="ft-press">

@@ -5,15 +5,12 @@ import { ContaShell } from "@/components/conta/shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { contaUser, listOrders } from "@/lib/data/conta";
-import { brl } from "@/lib/format";
+import { brl, dateTimeShort } from "@/lib/format";
+import { orderPill } from "@/lib/pedido";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Minhas compras", robots: { index: false } };
 
-const STATUS: Record<string, { label: string; cls: string }> = {
-  paid: { label: "Pago", cls: "ok" }, pending: { label: "Aguardando pagamento", cls: "warn" }, cancelled: { label: "Cancelado", cls: "" },
-  refunded: { label: "Reembolsado", cls: "" }, expired: { label: "Expirado", cls: "" },
-};
 const METHOD: Record<string, string> = { pix: "Pix", card: "Cartão", free: "Grátis", test: "Teste" };
 const day = (d: Date) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Sao_Paulo" }).replace(".", "");
 
@@ -35,7 +32,7 @@ export default async function ComprasPage() {
           <ul className="ct-orders">
             {orders.map((o) => {
               const pendingExpired = o.status === "pending" && !!o.expiresAt && o.expiresAt < now;
-              const st = STATUS[pendingExpired ? "expired" : o.status] ?? STATUS.cancelled;
+              const st = orderPill(o, now);
               const qty = o.items.reduce((s, i) => s + i.quantity, 0);
               const where = [o.event.venueNameOverride ?? o.event.venue?.name, o.event.venue?.city.name].filter(Boolean).join(" · ");
               return (
@@ -45,13 +42,14 @@ export default async function ComprasPage() {
                     <span className={`ct-pill ${st.cls}`}>{st.label}</span>
                     <b>{o.event.title}</b>
                     <small>{day(o.event.startAt)}{where ? ` · ${where}` : ""}</small>
-                    <small>Pedido nº {o.number} · {day(o.createdAt)} · {qty} {qty === 1 ? "ingresso" : "ingressos"}{o.paymentMethod ? ` · ${METHOD[o.paymentMethod] ?? ""}` : ""}</small>
+                    <small>Pedido nº {o.number} · <time dateTime={o.createdAt.toISOString()}>{dateTimeShort(o.createdAt)}</time> · {qty} {qty === 1 ? "ingresso" : "ingressos"}{o.paymentMethod ? ` · ${METHOD[o.paymentMethod] ?? ""}` : ""}</small>
                   </span>
                   <span className="ct-o-r">
                     <b>{o.totalCents ? brl(o.totalCents) : "Grátis"}</b>
                     <span className="ct-o-a">
                       {o.status === "paid" && <Link className="ct-b sm" href="/meus-ingressos">Ingressos</Link>}
-                      <Link className="ct-b sm ghost" href={`/checkout/${o.id}`}>{o.status === "pending" && !pendingExpired ? "Pagar" : "Detalhes"}</Link>
+                      {o.status === "pending" && !pendingExpired && <Link className="ct-b sm dark" href={`/checkout?pedido=${o.id}`}>Pagar</Link>}
+                      <Link className="ct-b sm ghost" href={`/conta/compras/${o.id}`} aria-label={`Detalhes do pedido nº ${o.number}`}>Detalhes</Link>
                     </span>
                   </span>
                 </li>

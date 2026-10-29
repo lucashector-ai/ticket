@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
-import { meuReembolso } from "@/lib/data/meu-reembolso";
+import { meuReembolso, planMyCancel } from "@/lib/data/meu-reembolso";
 import { refundTickets } from "@/lib/payments/refund";
 import { cancelWindow, policyOf } from "@/lib/refund-policy";
 
@@ -41,6 +41,45 @@ export async function cancelMyTicket(code: string, expectCents: number): Promise
   revalidatePath("/meus-ingressos");
   revalidatePath(`/ingressos/${c}`);
   return { ok: true, amountCents: r.amountCents, free: r.free };
+}
+
+const orderCancelSchema = z.object({
+  orderId: z.string().uuid(),
+  codes: z.array(z.string().toUpperCase().regex(CODE_RE)).min(1).max(50),
+});
+
+/** Detalhes do pedido: quanto volta se cancelar estes ingressos (o mesmo cálculo do cancelamento). */
+export async function previewMyCancel(input: z.input<typeof orderCancelSchema>): Promise<R<{ amountCents: number; keptFeeCents: number; full: boolean }>> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Entre na sua conta de novo." };
+  const p = orderCancelSchema.safeParse(input);
+  if (!p.success) return { ok: false, error: "Escolha os ingressos." };
+  const plan = await planMyCancel(p.data.orderId, user.id, p.data.codes);
+  if (!plan.ok) return plan;
+  return { ok: true, amountCents: plan.amountCents, keptFeeCents: plan.keptFeeCents, full: plan.full };
+}
+
+/** Detalhes do pedido: o comprador cancela o pedido inteiro ou os ingressos escolhidos, pela política do evento. */
+export async function cancelMyTickets(input: z.input<typeof orderCancelSchema> & { expectCents: number }): Promise<R<{ amountCents: number; free: boolean; tickets: number }>> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Entre na sua conta de novo." };
+  const p = orderCancelSchema.extend({ expectCents: z.number().int().min(0) }).safeParse(input);
+  if (!p.success) return { ok: false, error: "Escolha os ingressos." };
+  const [recent] = await db.select({ n: count() }).from(orderRefunds).where(and(eq(orderRefunds.actorUserId, user.id), eq(orderRefunds.kind, "buyer"), gt(orderRefunds.createdAt, new Date(Date.now() - 3_600_000))));
+  if ((recent?.n ?? 0) >= 10) return { ok: false, error: "Muitos cancelamentos em pouco tempo. Tente de novo mais tarde." };
+  // dono do pedido, ingressos ainda com ele, mesma regra da caixa do ingresso, dentro do prazo
+  const plan = await planMyCancel(p.data.orderId, user.id, p.data.codes);
+  if (!plan.ok) return plan;
+  if (plan.amountCents !== p.data.expectCents) return { ok: false, error: "O valor mudou. Atualize a página e confira antes de cancelar." };
+  const r = await refundTickets({
+    orderId: p.data.orderId, ticketIds: plan.ticketIds, kind: "buyer", actor: { userId: user.id, name: user.name || user.email || "Comprador" }, keepFee: plan.keepFee,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  revalidatePath("/meus-ingressos");
+  revalidatePath("/conta/compras");
+  revalidatePath(`/conta/compras/${p.data.orderId}`);
+  for (const c of plan.codes) revalidatePath(`/ingressos/${c}`);
+  return { ok: true, amountCents: r.amountCents, free: r.free, tickets: r.tickets };
 }
 
 const reqSchema = z.object({ code: z.string().regex(CODE_RE), message: z.string().trim().max(500, "Mensagem: até 500 caracteres.") });

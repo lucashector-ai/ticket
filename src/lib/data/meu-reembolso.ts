@@ -81,3 +81,40 @@ export async function meuReembolso(ticketId: string, userId: string): Promise<Me
   };
   return base;
 }
+
+export type MyCancelPlan =
+  | { ok: true; ticketIds: string[]; codes: string[]; amountCents: number; keptFeeCents: number; keepFee: boolean; free: boolean; test: boolean; full: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Cancelar vários ingressos de um pedido pelo comprador (detalhes do pedido em Minha conta): cada ingresso
+ * passa pela MESMA regra da caixa do ingresso (meuReembolso) e o valor sai do planRefund do pedido, com a taxa
+ * de serviço retida fora dos 7 dias quando a janela manda. `"all"` = todos os que podem ser cancelados agora.
+ */
+export async function planMyCancel(orderId: string, userId: string, codes: string[] | "all"): Promise<MyCancelPlan> {
+  const o = await db.query.orders.findFirst({
+    where: and(eq(schema.orders.id, orderId), eq(schema.orders.userId, userId)),
+    columns: { id: true, status: true, totalCents: true, paidAt: true, createdAt: true },
+    with: { event: { columns: { startAt: true, cancelPolicy: true } } },
+  });
+  if (!o) return { ok: false, error: "Pedido não encontrado." };
+  if (o.status !== "paid") return { ok: false, error: "Este pedido não tem ingressos para cancelar." };
+  const mine = await db.query.tickets.findMany({
+    where: and(eq(tickets.orderId, o.id), eq(tickets.holderUserId, userId), inArray(tickets.status, ["valid", "used", "transferred"])),
+    columns: { id: true, code: true }, orderBy: (x, { asc }) => [asc(x.code)],
+  });
+  const pick = codes === "all" ? mine : mine.filter((t) => codes.includes(t.code));
+  if (codes !== "all" && (pick.length !== new Set(codes).size || !pick.length)) return { ok: false, error: "Algum ingresso escolhido não pode ser cancelado. Atualize a página." };
+  const boxes = await Promise.all(pick.map((t) => meuReembolso(t.id, userId)));
+  const ok = pick.filter((_, i) => boxes[i]?.cancel);
+  if (!ok.length || (codes !== "all" && ok.length !== pick.length)) {
+    const why = boxes.find((b) => b && !b.cancel && b.blocked)?.blocked;
+    return { ok: false, error: why ?? "Estes ingressos não podem ser cancelados agora." };
+  }
+  const free = o.totalCents === 0;
+  const w = free ? null : cancelWindow(policyOf(o.event), { paidAt: o.paidAt ?? o.createdAt, startAt: o.event.startAt });
+  const keepFee = !!(w && w.allowed && w.keepFee);
+  const p = await previewRefund(o.id, ok.map((t) => t.id), { keepFee });
+  if ("error" in p) return { ok: false, error: p.error ?? "Não foi possível calcular o reembolso." };
+  return { ok: true, ticketIds: p.ticketIds, codes: p.codes, amountCents: p.amountCents, keptFeeCents: p.keptFeeCents, keepFee, free, test: p.test, full: p.full };
+}

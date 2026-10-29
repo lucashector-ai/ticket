@@ -36,6 +36,7 @@
 @import "../styles/a11y.css";
 @import "../styles/pages/sobre.css";
 @import "../styles/pages/reembolsos.css";
+@import "../styles/pages/pedido.css";
 
 @theme inline {
   --color-ink: #111111;

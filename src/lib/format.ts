@@ -44,6 +44,11 @@ export function dateLong(d: Date) {
   const p = parts(d);
   return `${WDL[p.wd]}, ${p.d} de ${ML[p.m - 1]} · ${hourLabel(d)}`;
 }
+/** "29 de out de 2026, 17:44" (com `sep: " às "`: "29 de out de 2026 às 17:44"), no fuso de São Paulo. */
+export function dateTimeShort(d: Date, sep = ", ") {
+  const p = parts(d);
+  return `${p.d} de ${MS[p.m - 1].toLowerCase()} de ${p.y}${sep}${timeLabel(d)}`;
+}
 export function dayNum(d: Date) { return String(parts(d).d).padStart(2, "0"); }
 export function monShort(d: Date) { return MS[parts(d).m - 1].toUpperCase(); }
 export function monTitle(d: Date) { return MS[parts(d).m - 1]; }
