@@ -68,9 +68,11 @@ type Props = {
   /** id do evento quando a fila virtual está ligada */
   queueEventId?: string | null;
   lock?: CompraLock | null;
+  /** chave do verificador de humanos (Turnstile), quando ligado */
+  human?: string | null;
 };
 
-export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock }: Props) {
+export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human }: Props) {
   const router = useRouter();
   const { flash } = useToast();
   const [step, setStep] = useState<CompraStep>(initialStep);
@@ -437,7 +439,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   </span>
                 ) : (
                   <div ref={authRef}>
-                    <InlineAuth onDone={() => router.refresh()} returnUrl={urlFor("dados")} highlight={authNudge || tried} />
+                    <InlineAuth onDone={() => router.refresh()} returnUrl={urlFor("dados")} highlight={authNudge || tried} human={human ?? null} />
                   </div>
                 )}
                 <div className="fg2">

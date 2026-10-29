@@ -99,6 +99,16 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
     }));
   }, []);
 
+  /* digitando na busca: leva até os resultados (a mesma seção do botão Hoje), uma vez por pausa na digitação */
+  useEffect(() => {
+    if (!filters.query.trim()) return;
+    const t = setTimeout(() => {
+      const top = document.getElementById("destaque")?.getBoundingClientRect().top;
+      if (top != null && (top > 140 || top < -40)) scrollTo("destaque");
+    }, 350);
+    return () => clearTimeout(t);
+  }, [filters.query, scrollTo]);
+
   const focusSearch = useCallback(() => {
     const el = qRef.current;
     if (!el) return;
@@ -383,6 +393,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
         <div className="umenu-pop acct-pop" role="menu" style={acctAt} onClick={(ev) => ev.stopPropagation()}>
           <span className="acct-who">{user.name?.split(" ")[0] || "Sua conta"}<small>{user.email}</small></span>
           <Link href="/meus-ingressos" role="menuitem">Meus ingressos</Link>
+          <Link href="/conta" role="menuitem">Minha conta</Link>
           <Link href="/explorar?salvos=1" role="menuitem">Eventos salvos{favs.length > 0 ? ` (${favs.length})` : ""}</Link>
           {producer && <Link href="/painel" role="menuitem">Painel do produtor</Link>}
           {producer && <Link href="/meus-eventos" role="menuitem">Meus eventos</Link>}

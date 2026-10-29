@@ -42,7 +42,7 @@ export type NeonAuthEvent = {
   event_type: "send.otp" | "send.magic_link" | "user.before_create" | "user.created" | string;
   user?: { id?: string; email?: string; name?: string | null; email_verified?: boolean };
   event_data?: {
-    otp_code?: string; otp_type?: "sign-in" | "email-verification" | "forget-password";
+    otp_code?: string; otp_type?: "sign-in" | "email-verification" | "forget-password" | "change-email";
     link_type?: "sign-in" | "email-verification" | "forget-password"; link_url?: string;
     auth_provider?: string; delivery_preference?: string;
   };

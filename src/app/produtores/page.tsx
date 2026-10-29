@@ -18,7 +18,7 @@ const BENEFITS = [
   },
   {
     title: "Taxas transparentes",
-    text: "Taxa fixa por ingresso vendido, sem mensalidade e sem surpresas. Evento gratuito não paga nada.",
+    text: "Taxa de 7,99% por ingresso vendido, sem mensalidade e sem surpresas. Evento gratuito não paga nada.",
     icon: <><circle cx="12" cy="12" r="9" /><path d="M12 7v10M9.5 9.5h3.75a1.75 1.75 0 0 1 0 3.5h-2.5a1.75 1.75 0 0 0 0 3.5h3.75" /></>,
   },
   {

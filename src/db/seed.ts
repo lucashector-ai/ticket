@@ -186,7 +186,7 @@ async function main() {
     for (const [i, t] of tiers.entries()) {
       const qty = hot ? 1200 : 500;
       await db.insert(schema.ticketTypes).values({
-        eventId: ev.id, name: t.name, note: t.note, priceCents: t.price * 100, feeCents: Math.round(t.price * 10),
+        eventId: ev.id, name: t.name, note: t.note, priceCents: t.price * 100, feeCents: Math.round(t.price * 7.99),
         quantity: qty, sold: t.status === "sold_out" ? qty : Math.round(qty * (0.2 + (i * 0.1))), status: t.status, sortOrder: i,
       });
     }

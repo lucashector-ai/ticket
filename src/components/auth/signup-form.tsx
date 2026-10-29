@@ -6,6 +6,7 @@ import { signUpWithEmail } from "@/lib/actions/auth";
 import { useToast } from "@/components/toast";
 import { GoogleButton } from "@/components/auth/google-button";
 import { CheckIcon, FieldError, FormError, PasswordField, fieldCls, isEmail, isPhone, maskPhone } from "@/components/auth/fields";
+import { Turnstile } from "@/components/auth/turnstile";
 
 type Err = { name?: boolean; email?: boolean; phone?: boolean; pw?: boolean; terms?: boolean };
 
@@ -21,7 +22,7 @@ function score(pw: string) {
   return sc;
 }
 
-export function SignupForm({ next }: { next: string }) {
+export function SignupForm({ next, human }: { next: string; human: string | null }) {
   const [state, formAction, isPending] = useActionState(signUpWithEmail, null);
   const { flash } = useToast();
   const [name, setName] = useState("");
@@ -138,6 +139,7 @@ export function SignupForm({ next }: { next: string }) {
         </span>
       </div>
       {err.terms && <FieldError>Você precisa aceitar os termos para continuar.</FieldError>}
+      <Turnstile siteKey={human} action="signup" resetKey={state} />
       <button className="lx-btn" type="submit" disabled={isPending} aria-busy={isPending}>
         {isPending ? "Criando conta…" : "Criar conta"}
       </button>

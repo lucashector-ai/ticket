@@ -20,6 +20,21 @@ export default function proxy(request: NextRequest) {
     url.port = "";
     return NextResponse.redirect(url, 308);
   }
+  // Banco Tickets Win: banco.<domínio> mostra só as páginas de /banco (sem o prefixo na barra de endereço)
+  if (host.startsWith("banco.")) {
+    if (pathname === "/banco" || pathname.startsWith("/banco/")) {
+      const url = request.nextUrl.clone();
+      url.pathname = pathname.slice(6) || "/";
+      return NextResponse.redirect(url, 308);
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = `/banco${pathname === "/" ? "" : pathname}`;
+    return NextResponse.rewrite(url);
+  }
+  // com o subdomínio configurado (BANK_URL), /banco no domínio principal leva para ele; sem ele, o banco fica em /banco
+  if ((pathname === "/banco" || pathname.startsWith("/banco/")) && process.env.BANK_URL?.startsWith("https://")) {
+    return NextResponse.redirect(new URL(pathname.slice(6) || "/", process.env.BANK_URL), 308);
+  }
   const isProtected = PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`)) || pathname.startsWith("/checkout/");
   const returningFromOAuth = searchParams.has(OAUTH_VERIFIER);
   if (!isProtected && !returningFromOAuth) return NextResponse.next();

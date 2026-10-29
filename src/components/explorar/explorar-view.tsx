@@ -131,7 +131,6 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
   /* derivados */
   const chips = useMemo(() => chipDefs(filters), [filters]);
   const cityOpts = useMemo(() => [{ value: "all", label: "Todas as cidades" }, ...cities.map((c) => ({ value: c.slug, label: c.name }))], [cities]);
-  const catOpts = useMemo(() => [{ value: "all", label: "Todas" }, ...categories.map((c) => ({ value: c.slug, label: c.name }))], [categories]);
   const cityName = cities.find((c) => c.slug === filters.city || c.name === filters.city)?.name;
   const count = results.length;
   const countWord = count === 1 ? "evento" : "eventos";
@@ -191,9 +190,9 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
               <Chev />
             </label>
             <label className="fld">
-              <span>Categoria</span>
-              <select value={catOpts.some((o) => o.value === filters.cat) ? filters.cat : "all"} onChange={(e) => refilter({ cat: e.target.value })}>
-                {catOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <span>Preço</span>
+              <select value={filters.max ?? ""} onChange={(e) => refilter({ max: e.target.value ? Number(e.target.value) : null })}>
+                {PRICE_OPTS.map((o) => <option key={o.label} value={o.value ?? ""}>{o.label}</option>)}
               </select>
               <Chev />
             </label>
@@ -207,35 +206,22 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
           </div>
 
           <div className="chipsr">
-            <div className="xchips">
-              <div className="chips" role="group" aria-label="Atalhos de filtro">
-                {chips.map((c) => (
-                  <button key={c.id} className={c.on ? "chip on" : "chip"} type="button" aria-pressed={c.on} onClick={() => refilter(c.patch)}>
-                    {c.id === "salvos" && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill={c.on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M12 20.5s-7.5-4.6-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.7-7.5 10.3-7.5 10.3z" />
-                      </svg>
-                    )}
-                    {c.label}
-                    {c.id === "salvos" && favs.length > 0 && <span className="mute" aria-hidden="true">{favs.length}</span>}
-                  </button>
-                ))}
-              </div>
-              <div className="xprice" role="group" aria-label="Faixa de preço">
-                <span>Preço</span>
-                {PRICE_OPTS.map((o) => {
-                  const on = filters.max === o.value;
-                  return (
-                    <button key={o.label} className={on ? "chip on" : "chip"} type="button" aria-pressed={on} onClick={() => refilter({ max: on && o.value != null ? null : o.value })}>
-                      {o.label}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="chips" role="group" aria-label="Categorias">
+              <button className={filters.salvos ? "chip sv on" : "chip sv"} type="button" aria-pressed={filters.salvos} onClick={() => refilter({ salvos: !filters.salvos, cat: "all" })}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={filters.salvos ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 20.5s-7.5-4.6-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.7-7.5 10.3-7.5 10.3z" />
+                </svg>
+                Salvos
+                {favs.length > 0 && <span className="mute" aria-hidden="true">{favs.length}</span>}
+              </button>
+              <span className="chips-sep" aria-hidden="true" />
+              {chips.map((c) => (
+                <button key={c.id} className={c.on ? "chip on" : "chip"} type="button" aria-pressed={c.on} onClick={() => refilter(c.patch)}>{c.label}</button>
+              ))}
             </div>
             <button className="clr" type="button" onClick={clearAll} hidden={isDefault(filters)}>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" /></svg>
-              Limpar
+              Limpar filtros
             </button>
           </div>
         </div>

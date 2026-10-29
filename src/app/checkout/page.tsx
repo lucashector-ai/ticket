@@ -9,6 +9,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { CompraFlow, type CompraEvent, type CompraSession, type CompraStep } from "@/components/compra/compra-flow";
 import { dateNice, hourLabel, parts } from "@/lib/format";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
+import { turnstileSiteKey } from "@/lib/turnstile";
 import { tierStatus } from "@/lib/tickets/status";
 import { canBuy } from "@/lib/launch";
 import { queueAllows } from "@/lib/queue";
@@ -94,6 +95,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         initialCoupon={one("cupom").toUpperCase() || null}
         initialStep={Object.keys(qty).length ? step : "resumo"}
         queueEventId={!special && e.queueMode !== "off" ? e.id : null}
+        human={turnstileSiteKey()}
         lock={special ? (special.kind === "grupo"
           ? { kind: "grupo", ref: { groupShareId: special.shareId }, query: `grupo=${encodeURIComponent(special.groupCode)}&vaga=${special.shareId}`, title: `Sua parte do grupo · vaga ${special.slot} de ${special.slots}`, note: "O preço é o do lote reservado pelo grupo. Cupom e meia-entrada não valem nas partes do grupo.", back: `/grupo/${special.groupCode}` }
           : { kind: "revenda", ref: { resaleListingId: special.listingId }, query: `revenda=${special.listingId}`, title: "Ingresso da revenda oficial", note: "Comprado de outro fã. Ao pagar, você recebe um QR code novo e o antigo deixa de valer.", back: `/eventos/${e.slug}#revenda` }) : null}

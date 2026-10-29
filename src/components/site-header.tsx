@@ -95,6 +95,7 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
                 <summary className="lnk" aria-label="Sua conta">{firstName(user)}</summary>
                 <div className="umenu-pop">
                   <Link href="/meus-ingressos">Meus ingressos</Link>
+                  <Link href="/conta">Minha conta</Link>
                   <Link href="/explorar?salvos=1">Eventos salvos</Link>
                   {producer && <Link href="/painel">Painel do produtor</Link>}
                   {producer && <Link href="/meus-eventos">Meus eventos</Link>}
@@ -128,6 +129,7 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
               <>
                 {/* no celular não há o dropdown do perfil: os atalhos da conta aparecem só para quem entrou */}
                 <Link href="/meus-ingressos" onClick={() => setMenu(false)} style={{ animationDelay: ".16s" }}>Meus ingressos <span className="mute" aria-hidden="true">→</span></Link>
+                <Link href="/conta" onClick={() => setMenu(false)} style={{ animationDelay: ".165s" }}>Minha conta <span className="mute" aria-hidden="true">→</span></Link>
                 {producer && <Link href="/painel" onClick={() => setMenu(false)} style={{ animationDelay: ".17s" }}>Painel do produtor <span className="mute" aria-hidden="true">→</span></Link>}
                 {producer && <Link href="/meus-eventos" onClick={() => setMenu(false)} style={{ animationDelay: ".18s" }}>Meus eventos <span className="mute" aria-hidden="true">→</span></Link>}
                 <form action={signOut}><button className="mm-b" type="submit" style={{ animationDelay: ".2s" }}>Sair <span className="mute" aria-hidden="true">→</span></button></form>

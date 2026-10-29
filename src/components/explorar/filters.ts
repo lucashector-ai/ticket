@@ -147,13 +147,10 @@ export function applyFilters(events: EventCard[], f: Filters, favs: string[], no
 export type ChipDef = { id: string; label: string; on: boolean; patch: Partial<Filters> };
 
 export function chipDefs(s: Filters): ChipDef[] {
-  const dateChip = (id: DateKey, label: string): ChipDef => ({ id, label, on: s.date === id, patch: { date: s.date === id ? "any" : id } });
-  const catChip = (id: string, label: string): ChipDef => ({ id, label, on: s.cat === id, patch: { cat: s.cat === id ? "all" : id, salvos: false } });
+  // data, preço e ordem ficam nos seletores; aqui só as categorias (uma linha só) e os salvos
+  const catChip = (id: string, label: string): ChipDef => ({ id, label, on: s.cat === id && !s.salvos, patch: { cat: s.cat === id ? "all" : id, salvos: false } });
   return [
-    { id: "todos", label: "Todos", on: s.date === "any" && s.cat === "all" && !s.salvos, patch: { date: "any", cat: "all", salvos: false } },
-    dateChip("hoje", "Hoje"),
-    dateChip("semana", "Esta semana"),
-    dateChip("fds", "Fim de semana"),
+    { id: "todos", label: "Todos", on: s.cat === "all" && !s.salvos, patch: { cat: "all", salvos: false } },
     catChip("festas", "Festas"),
     catChip("shows", "Shows"),
     catChip("festivais", "Festivais"),
@@ -161,7 +158,6 @@ export function chipDefs(s: Filters): ChipDef[] {
     catChip("hiphop", "Hip-hop & Rap"),
     catChip("arte", "Arte & Cultura"),
     catChip("experiencias", "Experiências"),
-    { id: "salvos", label: "Salvos", on: s.salvos, patch: { salvos: !s.salvos } },
   ];
 }
 

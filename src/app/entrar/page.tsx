@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { AuthCard } from "@/components/auth/auth-card";
 import { LoginForm } from "@/components/auth/login-form";
-import { getSessionUser } from "@/lib/auth/server";
+import { getAuthState } from "@/lib/auth/server";
+import { turnstileSiteKey } from "@/lib/turnstile";
 import { safeNextParam } from "@/lib/auth/next-param";
 
 export const dynamic = "force-dynamic";
@@ -14,13 +15,14 @@ type Props = { searchParams: Promise<{ next?: string | string[] }> };
 export default async function EntrarPage({ searchParams }: Props) {
   const { next: rawNext } = await searchParams;
   const next = safeNextParam(rawNext);
-  const user = await getSessionUser();
+  const { user, pending } = await getAuthState();
+  if (pending) redirect(`/verificacao?next=${encodeURIComponent(next)}`);
   if (user) redirect(next);
   return (
     <div className="pg-entrar">
       <SiteHeader user={null} variant="default" activePath="/entrar" />
       <AuthCard>
-        <LoginForm next={next} />
+        <LoginForm next={next} human={turnstileSiteKey()} />
       </AuthCard>
     </div>
   );

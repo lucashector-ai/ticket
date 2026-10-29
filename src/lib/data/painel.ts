@@ -7,7 +7,7 @@ import { SERVICE_FEE_RATE } from "@/lib/pricing";
 const { organizers, organizerMembers, events, orders, orderItems, ticketTypes, tickets, coupons } = schema;
 
 /* Dinheiro do produtor: o que entrou pelos ingressos (sem a taxa do comprador). Se ele
-   absorve a taxa, a plataforma desconta 10% disso; senão o comprador já pagou a taxa à parte. */
+   absorve a taxa, a plataforma desconta 7,99% disso; senão o comprador já pagou a taxa à parte. */
 export const ticketRevenue = (o: { subtotalCents: number; meiaCents: number; discountCents: number }) => o.subtotalCents - o.meiaCents - o.discountCents;
 export const platformFee = (revenue: number, absorb: boolean) => (absorb ? Math.round(revenue * SERVICE_FEE_RATE) : 0);
 

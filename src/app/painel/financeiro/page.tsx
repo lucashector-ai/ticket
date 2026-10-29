@@ -4,13 +4,17 @@ import { listOrders } from "@/lib/data/painel";
 import { painelAccess } from "@/lib/painel/access";
 import { brl } from "@/lib/format";
 import { ended, nowMs } from "@/lib/painel/build";
+import { BancoCard } from "@/components/painel/banco-card";
+import { bankCredential, bankUrl, destLabel, hasDestination, RELEASE_DAYS, walletFor } from "@/lib/bank";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Financeiro" };
 
 /** Financeiro de todos os eventos do produtor. */
 export default async function PainelFinanceiro() {
-  const { org, events } = await painelAccess("admin");
+  const { org, events, role, user } = await painelAccess("admin");
+  const [wallet, cred] = role === "owner" ? await Promise.all([walletFor(user.id), bankCredential(user.id)]) : [null, null];
+  const dm = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "America/Sao_Paulo" }).replace(".", "");
   const orders = await listOrders(events.map((e) => e.id), new Map(events.map((e) => [e.id, e.absorbFee])));
   const now = nowMs();
   const year = new Date(now).getFullYear();
@@ -32,11 +36,20 @@ export default async function PainelFinanceiro() {
   return (
     <div className="pane">
       <div className="pg-h"><div><h1 className="pg-t">Financeiro</h1><p className="pg-s">Todos os eventos de {org?.name ?? "você"}</p></div></div>
+      {wallet && (
+        <BancoCard
+          url={bankUrl()} hasPassword={!!cred} releaseDays={RELEASE_DAYS}
+          available={brl(wallet.available)} pending={brl(wallet.pending)} inFlight={brl(wallet.inFlight)} paidOut={brl(wallet.paidOut)}
+          nextRelease={wallet.nextRelease ? dm(wallet.nextRelease) : null}
+          destination={hasDestination(wallet.destination) ? destLabel(wallet.destination) : null}
+          payouts={wallet.payouts.slice(0, 5).map((x) => ({ id: x.id, at: dm(x.createdAt.toISOString()), amount: brl(x.amountCents), status: x.status }))}
+        />
+      )}
       <div className="kpis">
         {kpis.map((k) => <div className="kpi" key={k.l}><span className="kp-l">{k.l}</span><b className="kp-v">{k.v}</b><div className="kp-f"><span className="kp-n">{k.n}</span></div></div>)}
       </div>
       <section className="cx">
-        <div className="card-h"><div><h2 className="card-t">Por evento</h2><span className="card-s">Repasses automáticos começam quando o pagamento real for ligado. Vendas de teste não geram repasse.</span></div></div>
+        <div className="card-h"><div><h2 className="card-t">Por evento</h2><span className="card-s">O líquido de cada evento entra no Banco Tickets Win e fica disponível {RELEASE_DAYS} dias depois do evento. Vendas de teste não geram repasse.</span></div></div>
         <div className="tbl">
           <div className="tr4 thd"><span>Evento</span><span className="num">Vendido</span><span className="num">Taxa</span><span className="num">Ingressos</span><span className="num">Líquido</span></div>
           {rows.map((r) => (

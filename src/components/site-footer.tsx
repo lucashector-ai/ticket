@@ -32,6 +32,7 @@ export function SiteFooter() {
             <ul>
               <li><Link href="/ajuda">Central de ajuda</Link></li>
               <li><Link href="/meus-ingressos">Meus ingressos</Link></li>
+              <li><Link href="/conta">Minha conta</Link></li>
               <li><Link href="/ajuda#reembolsos">Reembolsos</Link></li>
               <li><Link href="/ajuda#meia-entrada">Meia-entrada</Link></li>
             </ul>

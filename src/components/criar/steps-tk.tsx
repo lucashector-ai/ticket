@@ -159,7 +159,7 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
   const setCp = (id: string, patch: Partial<(typeof d.coupons)[number]>) => upd((o) => ({ ...o, coupons: o.coupons.map((y) => (y.id === id ? { ...y, ...patch } : y)) }));
   const OPT: [keyof typeof d & ("autoMeia" | "fee" | "transfer" | "resale"), string, string][] = [
     ["autoMeia", "Criar meia-entrada automaticamente", "Todo tipo Inteira ganha uma Meia por 50% do valor (Lei 12.933)."],
-    ["fee", "Repassar taxa ao comprador", "O preço aparece com “+ taxas”. Desligado, a taxa de 10% sai do seu repasse."],
+    ["fee", "Repassar taxa ao comprador", "O preço aparece com “+ taxas”. Desligado, a taxa de 7,99% sai do seu repasse."],
     ["transfer", "Permitir transferência", "O fã envia o ingresso para outra pessoa. O QR antigo deixa de valer na hora."],
     ["resale", "Permitir revenda oficial", "Quem não puder ir revende aqui, com preço máximo de 120% e QR novo."],
   ];

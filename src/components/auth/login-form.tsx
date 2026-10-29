@@ -6,10 +6,11 @@ import { signInWithEmail } from "@/lib/actions/auth";
 import { useToast } from "@/components/toast";
 import { GoogleButton } from "@/components/auth/google-button";
 import { CheckIcon, FieldError, FormError, PasswordField, fieldCls, isEmail } from "@/components/auth/fields";
+import { Turnstile } from "@/components/auth/turnstile";
 
 type Err = { email?: boolean; pw?: boolean };
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, human }: { next: string; human: string | null }) {
   const [state, formAction, isPending] = useActionState(signInWithEmail, null);
   const { flash } = useToast();
   const [email, setEmail] = useState("");
@@ -69,6 +70,7 @@ export function LoginForm({ next }: { next: string }) {
         </button>
         <Link className="au-lk" href="/esqueci-senha">Esqueci a senha</Link>
       </div>
+      <Turnstile siteKey={human} action="login" resetKey={state} />
       <button className="lx-btn" type="submit" disabled={isPending} aria-busy={isPending}>
         {isPending ? "Entrando…" : "Entrar"}
       </button>

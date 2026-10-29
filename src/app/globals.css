@@ -25,6 +25,8 @@
 @import "../styles/pages/portaria.css";
 @import "../styles/pages/extras.css";
 @import "../styles/pages/meus-eventos.css";
+@import "../styles/pages/conta.css";
+@import "../styles/pages/banco.css";
 
 @theme inline {
   --color-ink: #111111;

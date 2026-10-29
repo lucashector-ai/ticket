@@ -75,8 +75,57 @@ export const userProfiles = pgTable("user_profiles", {
   cityId: uuid("city_id").references(() => cities.id),
   avatarUrl: text("avatar_url"),
   marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
+  address: jsonb("address").$type<UserAddress>(),
+  /** verificação em duas etapas: por onde chega o código no login (null = desligada) */
+  mfaMethod: varchar("mfa_method", { length: 16 }).$type<"email" | "whatsapp">(),
+  /** celular confirmado para receber o código pelo WhatsApp */
+  mfaPhone: varchar("mfa_phone", { length: 32 }),
   ...timestamps,
 });
+
+export type UserAddress = { cep: string; street: string; number: string; complement?: string; district: string; city: string; uf: string };
+
+/** Pedidos de saque do Banco Tickets Win (carteira do dono dos eventos). O repasse em si é feito pelo financeiro. */
+export const payoutRequests = pgTable(
+  "payout_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    organizerId: uuid("organizer_id").references(() => organizers.id, { onDelete: "set null" }),
+    amountCents: integer("amount_cents").notNull(),
+    /** requested → processing → paid | rejected; cancelled pelo próprio produtor enquanto requested */
+    status: varchar("status", { length: 16 }).notNull().default("requested").$type<"requested" | "processing" | "paid" | "rejected" | "cancelled">(),
+    destination: jsonb("destination").$type<OrganizerPayout>(),
+    note: text("note"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("payout_requests_user_idx").on(t.userId, t.createdAt)],
+);
+
+/** Senha própria do Banco Tickets Win (diferente da senha do site), com bloqueio após erros. */
+export const bankCredentials = pgTable("bank_credentials", {
+  userId: text("user_id").primaryKey(),
+  passwordHash: text("password_hash").notNull(),
+  failed: integer("failed").notNull().default(0),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  ...timestamps,
+});
+
+/** Histórico de segurança da conta (entradas, senha, duas etapas), mostrado em Privacidade e segurança. */
+export const securityEvents = pgTable(
+  "security_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    kind: varchar("kind", { length: 32 }).notNull(),
+    detail: varchar("detail", { length: 200 }),
+    ip: varchar("ip", { length: 64 }),
+    userAgent: varchar("user_agent", { length: 300 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("security_events_user_idx").on(t.userId, t.createdAt)],
+);
 
 export const organizers = pgTable(
   "organizers",

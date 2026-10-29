@@ -51,7 +51,7 @@ function mapsUrl(e: EvRow) {
 
 /* ============================== conta ============================== */
 
-type OtpType = "email-verification" | "forget-password" | "sign-in";
+type OtpType = "email-verification" | "forget-password" | "sign-in" | "change-email";
 
 /** Código de 6 dígitos do Neon Auth (ativar conta, redefinir senha ou entrar sem senha). */
 export async function mailAuthCode(type: OtpType, email: string, code: string, name?: string | null) {
@@ -73,6 +73,14 @@ export async function mailAuthCode(type: OtpType, email: string, code: string, n
       blocks: [{ kind: "code", code, note: "Vale por poucos minutos." }],
       cta: { label: "Ativar minha conta", url: `/ativar-conta?email=${e}` },
       foot: "Se você não criou uma conta, ignore este e-mail.",
+    });
+  }
+  if (type === "change-email") {
+    return sendTx(email, `${code} é o código para confirmar seu novo e-mail`, {
+      preheader: "Confirme o novo e-mail da sua conta na Tickets Win.",
+      title: "Confirme seu novo e-mail", paragraphs: [`${hello(name)} Use o código abaixo para passar a usar este e-mail na sua conta.`],
+      blocks: [{ kind: "code", code, note: "Vale por poucos minutos. Não compartilhe com ninguém." }],
+      foot: "Se você não pediu esta troca, ignore este e-mail.",
     });
   }
   return sendTx(email, `${code} é o seu código de acesso`, {
@@ -109,6 +117,53 @@ export const mailPasswordChanged = safe("password", async (email: string) => {
     blocks: [{ kind: "note", text: "Não reconhece esta mudança? Redefina a senha agora e fale com a gente pela Ajuda." }],
     cta: { label: "Redefinir senha", url: "/esqueci-senha" },
     link: { label: "Falar com a Ajuda", url: "/ajuda" },
+  });
+});
+
+const MFA_COPY: Record<"login" | "setup" | "off" | "email" | "bank", { subject: string; title: string; p: string }> = {
+  bank: { subject: "é o seu código para entrar no Banco Tickets Win", title: "Entrar no Banco Tickets Win", p: "Alguém (provavelmente você) digitou a senha do Banco Tickets Win. Para abrir o extrato e pedir saques, use o código abaixo." },
+  login: { subject: "é o seu código para entrar", title: "Confirme que é você", p: "Alguém (provavelmente você) acabou de entrar na sua conta com a senha. Para concluir o acesso, use o código abaixo." },
+  setup: { subject: "é o código para ativar a verificação em duas etapas", title: "Ative a verificação em duas etapas", p: "Use o código abaixo para ligar a proteção extra da sua conta." },
+  off: { subject: "é o código para desligar a verificação em duas etapas", title: "Desligar a verificação em duas etapas", p: "Use o código abaixo para confirmar que quer desligar a proteção extra da conta." },
+  email: { subject: "é o código para confirmar seu novo e-mail", title: "Confirme seu novo e-mail", p: "Use o código abaixo para trocar o e-mail da sua conta na Tickets Win." },
+};
+
+/** Código da verificação em duas etapas (entrar, ligar/desligar a proteção, trocar e-mail). Devolve se saiu. */
+export async function mailMfaCode(email: string, code: string, purpose: keyof typeof MFA_COPY, name?: string | null): Promise<boolean> {
+  if (!emailEnabled()) {
+    if (process.env.NODE_ENV !== "production") { console.log(`[dev] código ${purpose} para ${email}: ${code}`); return true; }
+    return false;
+  }
+  const t = MFA_COPY[purpose];
+  return sendTx(email, `${code} ${t.subject}`, {
+    preheader: t.p, title: t.title, paragraphs: [`${hello(name)} ${t.p}`],
+    blocks: [{ kind: "code", code, note: "Vale por 10 minutos. Ninguém da Tickets Win vai pedir este código." }],
+    foot: purpose === "login" ? "Não foi você? Troque sua senha agora: alguém pode ter descoberto." : "Se não foi você, ignore este e-mail e troque sua senha.",
+  });
+}
+
+/** Aviso de mudança de segurança na conta (duas etapas, e-mail, senha). */
+export const mailSecurityNotice = safe("security", async (email: string, title: string, text: string) => {
+  await sendTx(email, title, {
+    preheader: text, title, paragraphs: [text],
+    blocks: [{ kind: "note", text: "Não reconhece esta mudança? Redefina a senha agora e fale com a gente pela Ajuda." }],
+    cta: { label: "Ver segurança da conta", url: "/conta/seguranca" },
+    link: { label: "Falar com a Ajuda", url: "/ajuda" },
+  });
+});
+
+/** Pedido de saque: confirmação para o produtor e aviso para o financeiro fazer o repasse. */
+export const mailPayoutRequested = safe("payout", async (to: string, name: string, amount: number, dest: string, id: string) => {
+  await sendTx(to, `Pedido de saque de ${brl(amount)} recebido`, {
+    preheader: `Seu saque de ${brl(amount)} está em análise.`,
+    eyebrow: "Banco Tickets Win", title: "Pedido de saque recebido",
+    paragraphs: [`${hello(name)} Recebemos seu pedido de saque de ${brl(amount)}. O dinheiro cai em até 2 dias úteis em ${dest}.`],
+    blocks: [{ kind: "note", text: "Não pediu este saque? Entre no Banco Tickets Win, cancele o pedido e troque a senha do banco no painel." }],
+  });
+  const fin = process.env.FINANCE_EMAIL || "info@ticketswin.com.br";
+  await sendTx(fin, `Saque pedido: ${brl(amount)} · ${name || to}`, {
+    preheader: `Repassar ${brl(amount)} para ${dest}.`, title: "Novo pedido de saque",
+    paragraphs: [`${name || "Produtor"} (${to}) pediu um saque de ${brl(amount)} para ${dest}.`, `Pedido ${id}. Atualize o status em payout_requests quando o repasse sair.`],
   });
 });
 

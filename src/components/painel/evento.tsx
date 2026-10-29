@@ -299,7 +299,7 @@ function Fin({ p }: { p: EventoPainelProps }) {
       <div className="fin">
         <div className="fl"><span className="fl-k">Vendido em ingressos</span><b className="fl-v">{f.gross}</b></div>
         <span className="fl-op" aria-hidden="true">−</span>
-        <div className="fl"><span className="fl-k">{p.ev.absorbFee ? "Taxa Tickets Win (10%, absorvida por você)" : "Taxa Tickets Win (paga pelo comprador)"}</span><b className="fl-v">{p.ev.absorbFee ? f.platform : brl(0)}</b></div>
+        <div className="fl"><span className="fl-k">{p.ev.absorbFee ? "Taxa Tickets Win (7,99%, absorvida por você)" : "Taxa Tickets Win (paga pelo comprador)"}</span><b className="fl-v">{p.ev.absorbFee ? f.platform : brl(0)}</b></div>
         <span className="fl-op" aria-hidden="true">=</span>
         <div className="fl hl"><span className="fl-k">Seu líquido</span><b className="fl-v">{f.net}</b></div>
       </div>

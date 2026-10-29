@@ -56,7 +56,7 @@ export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, chi
           ))}
           <div className="pd-plan">
             <span className="plan-k">Seu plano</span>
-            <b className="plan-t">Taxa de 10% por ingresso</b>
+            <b className="plan-t">Taxa de 7,99% por ingresso</b>
             <span className="plan-s">Paga pelo comprador ou absorvida por você, como escolher em cada evento.</span>
           </div>
         </nav>

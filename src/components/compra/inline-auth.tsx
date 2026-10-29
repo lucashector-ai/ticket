@@ -1,12 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
 import { signInInline, signUpInline } from "@/lib/actions/auth";
 import { maskPhone } from "@/components/auth/fields";
+import { Turnstile } from "@/components/auth/turnstile";
 
 /** Login/cadastro dentro do checkout, sem sair da página. */
-export function InlineAuth({ onDone, returnUrl, highlight }: { onDone: () => void; returnUrl: string; highlight: boolean }) {
+export function InlineAuth({ onDone, returnUrl, highlight, human }: { onDone: () => void; returnUrl: string; highlight: boolean; human: string | null }) {
   const [mode, setMode] = useState<"entrar" | "criar">("entrar");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -15,14 +17,20 @@ export function InlineAuth({ onDone, returnUrl, highlight }: { onDone: () => voi
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const [token, setToken] = useState("");
+  const [retry, setRetry] = useState(0);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const r = mode === "entrar" ? await signInInline(email, password) : await signUpInline(name, email, password, phone);
+    const r = mode === "entrar" ? await signInInline(email, password, token) : await signUpInline(name, email, password, phone, token);
     setBusy(false);
+    setRetry((n) => n + 1);
     if (!r.ok) { setError(r.error ?? "Não foi possível entrar."); return; }
+    // conta com verificação em duas etapas: confirma o código e volta para esta etapa do checkout
+    if ("mfa" in r && r.mfa) { router.push(`/verificacao?next=${encodeURIComponent(returnUrl)}`); return; }
     onDone();
   }
 
@@ -65,6 +73,7 @@ export function InlineAuth({ onDone, returnUrl, highlight }: { onDone: () => voi
             <button type="button" className="cka-show" onClick={() => setShow((s) => !s)}>{show ? "Ocultar" : "Mostrar"}</button>
           </span>
         </label>
+        <Turnstile siteKey={human} action={mode === "entrar" ? "login" : "signup"} onToken={setToken} resetKey={retry} />
         {error && <p className="err">{error}</p>}
         <div className="cka-a">
           <button className="go2" type="submit" disabled={busy}>{busy ? "Aguarde…" : mode === "entrar" ? "Entrar e continuar" : "Criar conta e continuar"}</button>

@@ -220,6 +220,7 @@
   .cka-tabs button{height:36px;padding:0 16px;border-radius:999px;font-size:13.5px;font-weight:500;color:#55555A;transition:background .25s,color .25s}
   .cka-tabs button.on{background:#111;color:#FFFFFF}
   .cka-f{display:grid;gap:12px;margin-top:16px}
+  .cka-f .cf-human:empty{display:none}
   .cka-f .in2{background:#FFFFFF}
   .cka-pw{position:relative;display:block}
   .cka-pw .in2{width:100%;padding-right:84px}

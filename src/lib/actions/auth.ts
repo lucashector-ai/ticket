@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
@@ -7,6 +8,8 @@ import { auth } from "@/lib/auth/server";
 import { db, schema } from "@/db";
 import { emailEnabled, logEmails } from "@/lib/email";
 import { mailPasswordChanged } from "@/lib/notify";
+import { issueCode, logSecurity, mfaSettings, rememberDevice, sessionCleared } from "@/lib/mfa";
+import { HUMAN_ERROR, verifyHuman } from "@/lib/turnstile";
 
 export type AuthState = { error?: string; ok?: boolean } | null;
 
@@ -23,23 +26,48 @@ function safeNext(v: unknown) {
   return s.startsWith("/") && !s.startsWith("//") ? s : "/";
 }
 
+const userIdOf = (data: unknown) => (data as { user?: { id?: string } } | null)?.user?.id ?? null;
+const tokenOf = (data: unknown) => (data as { token?: string } | null)?.token ?? null;
+
+/**
+ * Depois da senha: se a conta tem verificação em duas etapas (e o aparelho não é confiável),
+ * envia o código e devolve true (a pessoa vai para /verificacao). Senão registra a entrada.
+ */
+async function secondStep(userId: string | null, token: string | null): Promise<boolean> {
+  if (!userId) return false;
+  await rememberDevice(token);
+  const s = await mfaSettings(userId);
+  if (s.method && !(await sessionCleared(userId, ""))) {
+    const to = s.method === "whatsapp" ? s.phone : s.email;
+    if (to) await issueCode(userId, "login", s.method, to, s.name);
+    return true;
+  }
+  await logSecurity(userId, "login", "E-mail e senha");
+  return false;
+}
+
 export async function signInWithEmail(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const parsed = signInSchema.safeParse({ email: formData.get("email"), password: formData.get("password") });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { error } = await auth.signIn.email(parsed.data);
+  if (!(await verifyHuman(formData.get("cf-turnstile-response")))) return { error: HUMAN_ERROR };
+  const { data, error } = await auth.signIn.email(parsed.data);
   if (error) return { error: friendly(error.message, error.code) };
-  redirect(safeNext(formData.get("next")));
+  const next = safeNext(formData.get("next"));
+  if (await secondStep(userIdOf(data), tokenOf(data))) redirect(`/verificacao?next=${encodeURIComponent(next)}`);
+  redirect(next);
 }
 
 export async function signUpWithEmail(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const parsed = signUpSchema.safeParse({ name: formData.get("name"), email: formData.get("email"), phone: String(formData.get("phone") ?? ""), password: formData.get("password") });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!(await verifyHuman(formData.get("cf-turnstile-response")))) return { error: HUMAN_ERROR };
   const { phone, ...cred } = parsed.data;
   const { data, error } = await auth.signUp.email(cred);
   if (error) return { error: friendly(error.message, error.code) };
   const userId = (data as { user?: { id?: string } } | null)?.user?.id;
   if (userId) {
     await db.insert(schema.userProfiles).values({ userId, name: parsed.data.name, email: parsed.data.email, phone }).onConflictDoNothing();
+    await rememberDevice(tokenOf(data));
   }
   sendActivation(parsed.data.email);
   redirect(safeNext(formData.get("next")));
@@ -47,6 +75,7 @@ export async function signUpWithEmail(_prev: AuthState, formData: FormData): Pro
 
 export async function signOut() {
   await auth.signOut();
+  (await cookies()).delete("tw_mfa");
   redirect("/");
 }
 
@@ -59,24 +88,29 @@ function friendly(message?: string, code?: string) {
   return message || "Não foi possível entrar. Tente de novo.";
 }
 
-/** Login sem redirecionar (usado dentro do checkout). */
-export async function signInInline(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+/** Login sem redirecionar (usado dentro do checkout). `mfa`: falta o código da segunda etapa. */
+export async function signInInline(email: string, password: string, human: string): Promise<{ ok: boolean; error?: string; mfa?: boolean }> {
   const parsed = signInSchema.safeParse({ email, password });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
-  const { error } = await auth.signIn.email(parsed.data);
+  if (!(await verifyHuman(human))) return { ok: false, error: HUMAN_ERROR };
+  const { data, error } = await auth.signIn.email(parsed.data);
   if (error) return { ok: false, error: friendly(error.message, error.code) };
-  return { ok: true };
+  return { ok: true, mfa: await secondStep(userIdOf(data), tokenOf(data)) };
 }
 
 /** Cadastro sem redirecionar (usado dentro do checkout). */
-export async function signUpInline(name: string, email: string, password: string, phone: string): Promise<{ ok: boolean; error?: string }> {
+export async function signUpInline(name: string, email: string, password: string, phone: string, human: string): Promise<{ ok: boolean; error?: string }> {
   const parsed = signUpSchema.safeParse({ name, email, phone, password });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  if (!(await verifyHuman(human))) return { ok: false, error: HUMAN_ERROR };
   const { phone: tel, ...cred } = parsed.data;
   const { data, error } = await auth.signUp.email(cred);
   if (error) return { ok: false, error: friendly(error.message, error.code) };
   const userId = (data as { user?: { id?: string } } | null)?.user?.id;
-  if (userId) await db.insert(schema.userProfiles).values({ userId, name: parsed.data.name, email: parsed.data.email, phone: tel }).onConflictDoNothing();
+  if (userId) {
+    await db.insert(schema.userProfiles).values({ userId, name: parsed.data.name, email: parsed.data.email, phone: tel }).onConflictDoNothing();
+    await rememberDevice(tokenOf(data));
+  }
   sendActivation(parsed.data.email);
   return { ok: true };
 }

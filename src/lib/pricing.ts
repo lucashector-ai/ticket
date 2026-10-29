@@ -1,6 +1,6 @@
 /** Cálculo do pedido, idêntico no navegador e no servidor. Valores em centavos. */
 
-export const SERVICE_FEE_RATE = 0.1;
+export const SERVICE_FEE_RATE = 0.0799;
 export const MAX_INSTALLMENTS = 6;
 export const INTEREST_FREE_INSTALLMENTS = 3;
 
