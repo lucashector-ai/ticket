@@ -132,8 +132,8 @@
 @keyframes ptSheet{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 @keyframes ptPop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
 @keyframes ptTurn{to{transform:rotate(1turn)}}
-@keyframes ptBreath{50%{opacity:.7}}
-@keyframes ptEdgeIn{from{opacity:0;transform:scale(1.12)}to{opacity:1;transform:none}}
+@keyframes ptBreath{0%,100%{opacity:.9}50%{opacity:.63}}
+@keyframes ptEdgeIn{from{opacity:0;transform:scale(1.12)}to{opacity:.9;transform:none}}
 @keyframes ptCard{from{opacity:0;transform:translateY(18px) scale(.92)}to{opacity:1;transform:none}}
 @keyframes ptDraw{to{stroke-dashoffset:0}}
 @keyframes ptBlink{0%,100%{opacity:1}45%{opacity:.3}55%{opacity:.3}}
