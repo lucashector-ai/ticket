@@ -16,6 +16,9 @@
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://ticketswin.com.br",
     "BANK_URL": "https://banco.ticketswin.com.br",
+    // quem entra na central secreta (/tw-central); separados por vírgula
+    "ADMIN_EMAILS": "lucas@ticketswin.com.br,lucashectorart@gmail.com",
+    "PRODUCER_APPROVAL_EMAIL": "lucas@ticketswin.com.br",
     "NEXT_INC_CACHE_R2_PREFIX": "incremental-cache"
   },
   "r2_buckets": [

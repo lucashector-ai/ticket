@@ -87,6 +87,35 @@ export const userProfiles = pgTable("user_profiles", {
 
 export type UserAddress = { cep: string; street: string; number: string; complement?: string; district: string; city: string; uf: string };
 
+/** Inscrição para virar produtor: a equipe da Tickets Win aprova antes de liberar a criação de eventos. */
+export const producerApplications = pgTable(
+  "producer_applications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    email: varchar("email", { length: 254 }).notNull(),
+    firstName: varchar("first_name", { length: 80 }).notNull(),
+    lastName: varchar("last_name", { length: 80 }).notNull(),
+    phone: varchar("phone", { length: 32 }).notNull(),
+    company: varchar("company", { length: 120 }),
+    city: varchar("city", { length: 120 }).notNull(),
+    uf: varchar("uf", { length: 2 }).notNull(),
+    audience: text("audience").notNull(),
+    category: varchar("category", { length: 80 }).notNull(),
+    avgTicketCents: integer("avg_ticket_cents").notNull(),
+    expected: integer("expected").notNull(),
+    source: varchar("source", { length: 60 }).notNull(),
+    instagram: varchar("instagram", { length: 120 }),
+    /** pending → approved | rejected */
+    status: varchar("status", { length: 16 }).notNull().default("pending").$type<"pending" | "approved" | "rejected">(),
+    note: text("note"),
+    reviewedBy: varchar("reviewed_by", { length: 254 }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("producer_applications_user_idx").on(t.userId), index("producer_applications_status_idx").on(t.status, t.createdAt)],
+);
+
 /** Pedidos de saque do Banco Tickets Win (carteira do dono dos eventos). O repasse em si é feito pelo financeiro. */
 export const payoutRequests = pgTable(
   "payout_requests",
@@ -842,6 +871,9 @@ export const eventReviewsRelations = relations(eventReviews, ({ one }) => ({
 }));
 export const artistsRelations = relations(artists, ({ many }) => ({ eventArtists: many(eventArtists) }));
 export const categoriesRelations = relations(categories, ({ many }) => ({ eventCategories: many(eventCategories) }));
+export const payoutRequestsRelations = relations(payoutRequests, ({ one }) => ({
+  organizer: one(organizers, { fields: [payoutRequests.organizerId], references: [organizers.id] }),
+}));
 export const eventsRelations = relations(events, ({ one, many }) => ({
   venue: one(venues, { fields: [events.venueId], references: [venues.id] }),
   organizer: one(organizers, { fields: [events.organizerId], references: [organizers.id] }),

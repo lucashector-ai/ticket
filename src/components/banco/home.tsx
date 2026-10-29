@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { bankLogout, cancelPayout, requestPayout } from "@/lib/actions/banco";
 import type { BankEntry } from "@/lib/bank";
 import { CodeBoxes } from "@/components/auth/verify-form";
+import { SignOutButton } from "@/components/sign-out-button";
 import { BancoMark } from "./mark";
 
 type Props = {
@@ -143,7 +144,7 @@ function Top({ name, email, onLogout }: { name: string; email: string; onLogout:
   return (
     <header className="bk-top">
       <BancoMark />
-      <div className="bk-who"><span><b>{name}</b><small>{email}</small></span><button className="bk-b ghost sm" type="button" onClick={onLogout}>Sair</button></div>
+      <div className="bk-who"><span><b>{name}</b><small>{email}</small></span><SignOutButton className="bk-b ghost sm" onConfirm={onLogout} title="Sair do banco?" text="Você vai precisar entrar de novo para ver seu saldo e seus saques." /></div>
     </header>
   );
 }

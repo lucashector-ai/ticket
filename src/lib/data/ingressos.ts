@@ -11,7 +11,7 @@ export async function getTicketByCode(code: string) {
   const t = await db.query.tickets.findFirst({
     where: eq(tickets.code, code.trim().toUpperCase()),
     with: {
-      event: { with: { venue: { with: { city: true } } } },
+      event: { with: { venue: { with: { city: true } }, organizer: { columns: { name: true } } } },
       ticketType: true,
       order: true,
     },

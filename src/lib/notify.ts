@@ -167,6 +167,63 @@ export const mailPayoutRequested = safe("payout", async (to: string, name: strin
   });
 });
 
+/* ============================== inscrição de produtor ============================== */
+
+type Application = typeof schema.producerApplications.$inferSelect;
+const TEAM = () => process.env.PRODUCER_APPROVAL_EMAIL || "lucas@ticketswin.com.br";
+
+/** Inscrição recebida: confirmação para a pessoa e ficha completa para a equipe aprovar. */
+export const mailApplicationReceived = safe("app-received", async (a: Application) => {
+  await sendTx(a.email, "Recebemos sua inscrição de produtor", {
+    preheader: "Respondemos no mesmo dia útil.",
+    eyebrow: "Tickets Win para produtores", title: "Inscrição recebida",
+    paragraphs: [`${hello(a.firstName)} Recebemos sua inscrição para criar eventos na Tickets Win. A gente analisa e responde no mesmo dia útil, por e-mail.`, "Assim que for aprovada, você recebe o link para montar sua página de produtor e criar o primeiro evento."],
+    cta: { label: "Ver minha inscrição", url: "/criar-evento" },
+  });
+  const rows: [string, string][] = [
+    ["Nome", `${a.firstName} ${a.lastName}`], ["E-mail", a.email], ["Telefone", a.phone], ["Produtora", a.company || "—"],
+    ["Cidade", `${a.city} – ${a.uf}`], ["Categoria", a.category], ["Ticket médio", brl(a.avgTicketCents)], ["Público esperado", a.expected.toLocaleString("pt-BR")],
+    ["Público-alvo", a.audience], ["Como chegou", a.source], ["Instagram", a.instagram || "—"],
+  ];
+  await sendTx(TEAM(), `Nova inscrição de produtor: ${a.company || `${a.firstName} ${a.lastName}`}`, {
+    preheader: `${a.city} – ${a.uf} · ${a.category} · ${a.expected} pessoas`,
+    eyebrow: "Central Tickets Win", title: "Nova inscrição de produtor",
+    paragraphs: [`${a.firstName} ${a.lastName} quer criar eventos na Tickets Win.`],
+    blocks: [{ kind: "rows", rows }],
+    cta: { label: "Aprovar ou recusar", url: "/tw-central?aba=inscricoes" },
+  });
+});
+
+export const mailApplicationApproved = safe("app-approved", async (a: Application) => {
+  await sendTx(a.email, "Sua conta de produtor foi aprovada", {
+    preheader: "Monte sua página de produtor e crie o primeiro evento.",
+    eyebrow: "Bem-vindo, produtor", title: "Inscrição aprovada",
+    paragraphs: [`${hello(a.firstName)} Sua inscrição foi aprovada. Agora é só montar sua página de produtor (leva um minuto) e criar o primeiro evento.`],
+    cta: { label: "Montar minha página", url: "/produtores/cadastro" },
+  });
+});
+
+export const mailApplicationRejected = safe("app-rejected", async (a: Application, note: string | null) => {
+  await sendTx(a.email, "Sobre sua inscrição de produtor", {
+    preheader: "Veja o retorno da equipe da Tickets Win.",
+    title: "Sua inscrição não foi aprovada agora",
+    paragraphs: [`${hello(a.firstName)} Analisamos sua inscrição e, por enquanto, não conseguimos liberar a criação de eventos.`, ...(note ? [note] : []), "Se quiser conversar, é só responder este e-mail ou falar com a gente pela Ajuda."],
+    link: { label: "Falar com a Ajuda", url: "/ajuda" },
+  });
+});
+
+/** Saque mudou de status no financeiro (processando, pago, recusado). */
+export const mailPayoutUpdated = safe("payout-updated", async (userId: string, amount: number, status: string, note: string | null) => {
+  const c = await userContact(userId);
+  if (!c) return;
+  const t = status === "paid"
+    ? { s: `Saque de ${brl(amount)} pago`, h: "Saque pago", p: `O saque de ${brl(amount)} foi pago. Ele cai na sua conta conforme o horário do banco.` }
+    : status === "processing"
+      ? { s: `Saque de ${brl(amount)} em processamento`, h: "Saque em processamento", p: `Estamos fazendo o repasse de ${brl(amount)}. Avisamos quando for pago.` }
+      : { s: `Saque de ${brl(amount)} recusado`, h: "Saque recusado", p: `Não conseguimos fazer o repasse de ${brl(amount)}. O valor voltou para o seu saldo no Banco Tickets Win.` };
+  await sendTx(c.email, t.s, { preheader: t.p, eyebrow: "Banco Tickets Win", title: t.h, paragraphs: [`${hello(c.name)} ${t.p}`, ...(note ? [note] : [])] });
+});
+
 /* ============================== compra ============================== */
 
 const METHOD: Record<string, string> = { pix: "Pix", card: "Cartão de crédito", free: "Grátis", test: "Teste" };

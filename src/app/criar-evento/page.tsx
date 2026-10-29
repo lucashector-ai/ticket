@@ -5,9 +5,14 @@ import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { CriarFlow } from "@/components/criar/flow";
 import { brDateTime, emptyDraft, STEP_LABELS, type DbMap, type Draft } from "@/lib/criar/model";
+import { ProducerApply } from "@/components/produtor/inscricao";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { CATEGORIES, producerStatus, SOURCES, UFS } from "@/lib/producer-apply";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Criar evento" };
+
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
@@ -17,6 +22,27 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
   if (!user) redirect("/entrar?next=/criar-evento");
   const sp = await searchParams;
   const editId = typeof sp.editar === "string" ? sp.editar : null;
+
+  // criar evento é só para produtor aprovado: antes disso, a inscrição (ou o status dela)
+  if (!editId) {
+    const { status, app } = await producerStatus(user);
+    if (status === "approved") redirect("/produtores/cadastro");
+    if (status !== "producer") {
+      const profile = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, user.id), columns: { name: true, phone: true } });
+      const parts = (profile?.name || user.name || "").trim().split(/\s+/);
+      return (
+        <div className="pg-insc">
+          <SiteHeader user={user} variant="default" />
+          <ProducerApply
+            email={user.email} firstName={parts[0] ?? ""} lastName={parts.slice(1).join(" ")} phone={profile?.phone ?? ""}
+            app={app && (app.status === "pending" || app.status === "rejected") ? { status: app.status, createdAt: app.createdAt.toISOString(), note: app.note, company: app.company, city: app.city, uf: app.uf, category: app.category } : null}
+            ufs={UFS} categories={CATEGORIES} sources={SOURCES}
+          />
+          <SiteFooter />
+        </div>
+      );
+    }
+  }
 
   let initial: Draft | null = null, dbMap: DbMap | null = null, slug: string | null = null;
   if (editId) {

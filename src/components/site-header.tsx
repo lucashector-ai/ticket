@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useFavorites } from "@/components/favorites";
-import { signOut } from "@/lib/actions/auth";
+import { SignOutButton } from "@/components/sign-out-button";
 import { BrandLogo } from "@/components/brand-logo";
 import { useIsProducer } from "@/components/use-producer";
 
@@ -99,7 +99,7 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
                   <Link href="/explorar?salvos=1">Eventos salvos</Link>
                   {producer && <Link href="/painel">Painel do produtor</Link>}
                   {producer && <Link href="/meus-eventos">Meus eventos</Link>}
-                  <form action={signOut}><button type="submit">Sair</button></form>
+                  <SignOutButton />
                 </div>
               </details>
             ) : (
@@ -132,7 +132,7 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
                 <Link href="/conta" onClick={() => setMenu(false)} style={{ animationDelay: ".165s" }}>Minha conta <span className="mute" aria-hidden="true">→</span></Link>
                 {producer && <Link href="/painel" onClick={() => setMenu(false)} style={{ animationDelay: ".17s" }}>Painel do produtor <span className="mute" aria-hidden="true">→</span></Link>}
                 {producer && <Link href="/meus-eventos" onClick={() => setMenu(false)} style={{ animationDelay: ".18s" }}>Meus eventos <span className="mute" aria-hidden="true">→</span></Link>}
-                <form action={signOut}><button className="mm-b" type="submit" style={{ animationDelay: ".2s" }}>Sair <span className="mute" aria-hidden="true">→</span></button></form>
+                <SignOutButton className="mm-b" style={{ animationDelay: ".2s" }}>Sair <span className="mute" aria-hidden="true">→</span></SignOutButton>
               </>
             ) : (
               <Link href="/entrar" onClick={() => setMenu(false)} style={{ animationDelay: ".2s" }}>Entrar <span className="mute" aria-hidden="true">→</span></Link>

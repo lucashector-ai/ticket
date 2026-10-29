@@ -19,7 +19,7 @@ export default async function MeusEventosPage() {
   const user = await getSessionUser();
   if (!user) redirect("/entrar?next=/meus-eventos");
   // só produtor tem Meus eventos: quem ainda não é vai para o cadastro de produtor
-  if (!(await isProducer(user))) redirect("/produtores/cadastro");
+  if (!(await isProducer(user))) redirect("/criar-evento");
   const rows = await db.query.events.findMany({
     where: eq(schema.events.createdByUserId, user.id),
     with: { venue: { with: { city: true } }, ticketTypes: { columns: { sold: true, quantity: true } } },

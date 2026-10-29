@@ -5,6 +5,7 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
 import { signInInline, signUpInline } from "@/lib/actions/auth";
 import { maskPhone } from "@/components/auth/fields";
+import { viaVerify } from "@/components/auth/google-button";
 import { Turnstile, useHuman } from "@/components/auth/turnstile";
 
 /** Login/cadastro dentro do checkout, sem sair da página. */
@@ -36,7 +37,7 @@ export function InlineAuth({ onDone, returnUrl, highlight, human }: { onDone: ()
 
   async function google() {
     setBusy(true);
-    await authClient.signIn.social({ provider: "google", callbackURL: returnUrl });
+    await authClient.signIn.social({ provider: "google", callbackURL: viaVerify(returnUrl) });
   }
 
   return (

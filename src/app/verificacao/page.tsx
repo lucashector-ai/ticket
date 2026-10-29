@@ -9,12 +9,18 @@ import { safeNextParam } from "@/lib/auth/next-param";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Confirme que é você", robots: { index: false } };
 
-/** Segunda etapa do login: código do app autenticador (ou de recuperação) ou do e-mail. */
+/**
+ * Segunda etapa do login: código do app autenticador (ou de recuperação) ou do e-mail.
+ * O login com senha e a volta do Google passam por aqui.
+ */
 export default async function VerificacaoPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
-  const next = safeNextParam((await searchParams).next);
+  const raw = safeNextParam((await searchParams).next);
+  // nunca volta para a própria /verificacao (evita laço)
+  const next = raw.startsWith("/verificacao") ? "/" : raw;
   const { user, pending } = await getAuthState();
-  if (!user) redirect(`/entrar?next=${encodeURIComponent(next)}`);
-  if (!pending) redirect(next);
+  // sem sessão (Google cancelado ou falhou) ou sem segunda etapa: segue para o destino;
+  // se ele exigir login, o próprio destino manda para /entrar
+  if (!user || !pending) redirect(next);
   return (
     <div className="pg-entrar">
       <SiteHeader user={null} variant="default" />

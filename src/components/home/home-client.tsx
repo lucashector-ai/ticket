@@ -17,7 +17,7 @@ import { Newsletter } from "./newsletter";
 import { SpotifyStrip, type HomeSpotify } from "./spotify-strip";
 import type { CityOpt, HomeCategory, HomeEvent } from "./types";
 import { BrandMark, BrandWord } from "@/components/brand-logo";
-import { signOut } from "@/lib/actions/auth";
+import { SignOutButton } from "@/components/sign-out-button";
 
 type Props = {
   user: HeaderUser;
@@ -397,7 +397,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
           <Link href="/explorar?salvos=1" role="menuitem">Eventos salvos{favs.length > 0 ? ` (${favs.length})` : ""}</Link>
           {producer && <Link href="/painel" role="menuitem">Painel do produtor</Link>}
           {producer && <Link href="/meus-eventos" role="menuitem">Meus eventos</Link>}
-          <form action={signOut}><button type="submit" role="menuitem">Sair</button></form>
+          <SignOutButton role="menuitem" />
         </div>
       )}
       <SiteFooter />

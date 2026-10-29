@@ -49,7 +49,7 @@ export function CodeBoxes({ value, onChange, onDone, disabled, autoFocus = true 
 export function VerifyForm({ next }: { next: string }) {
   const [code, setCode] = useState("");
   const [rec, setRec] = useState<string | null>(null);
-  const [trust, setTrust] = useState(true);
+  const [trust, setTrust] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<{ ch?: "email" | "totp"; to?: string } | null>(null);

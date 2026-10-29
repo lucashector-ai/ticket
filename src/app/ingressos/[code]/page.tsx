@@ -10,6 +10,7 @@ import { getUserFavoriteSlugs } from "@/lib/data/user";
 import { dateNice } from "@/lib/format";
 import { countdownLabel, eventLabels } from "@/lib/tickets/labels";
 import { ticketQrSvg } from "@/lib/tickets/qr";
+import { ticketCard } from "@/lib/tickets/card";
 import { appleWalletEnabled } from "@/lib/wallet/apple";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
@@ -56,6 +57,7 @@ export default async function IngressoPage({ params, searchParams }: { params: P
     transferEnabled: e.transferEnabled,
     pendingTo: pending?.toEmail ?? null,
     siblings: siblings.map((s) => ({ code: s.code, holder: s.holderName })),
+    card: ticketCard(t, e),
     resale: { enabled: e.resaleEnabled && e.status === "published" && t.ticketType.priceCents > 0, ...resaleCap(t.ticketType.priceCents, t.halfPrice, e.resaleMaxPct), listing: listing ? { id: listing.id, priceCents: listing.priceCents, reserved: listing.status === "reserved" && !!listing.reservedUntil && listing.reservedUntil > now } : null },
   };
 

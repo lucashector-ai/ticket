@@ -36,13 +36,16 @@ const B = BRAND;
 const TABLE = `role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"`;
 const row = (inner: string, pad = "32px 48px 0") => `<tr><td class="tw-px" style="padding:${pad}">${inner}</td></tr>`;
 const abs = (site: string, u: string) => (u.startsWith("/") ? site + u : u);
+/** Página que copia o código (e-mail não roda JavaScript). O código vai no #hash: não chega ao servidor nem aos logs. */
+const copyUrl = (site: string, code: string) => `${site}/codigo#${encodeURIComponent(code)}`;
 
 function block(b: TxBlock, site: string): string {
   switch (b.kind) {
     case "code":
       return row(`<table ${TABLE} style="background:${B.panel};border-radius:20px"><tr><td align="center" style="padding:26px 20px">
 <div style="font-family:${B.mono};font-size:38px;font-weight:700;letter-spacing:.32em;color:${B.ink};padding-left:.32em">${escHtml(b.code)}</div>
-${b.note ? `<div style="font-family:${B.font};font-size:13px;color:${B.muted};margin-top:10px">${escHtml(b.note)}</div>` : ""}</td></tr></table>`);
+${b.note ? `<div style="font-family:${B.font};font-size:13px;color:${B.muted};margin-top:10px">${escHtml(b.note)}</div>` : ""}
+<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px"><tr><td style="border-radius:999px;background:${B.lime}"><a href="${escHtml(copyUrl(site, b.code))}" style="display:inline-block;padding:11px 22px;font-family:${B.font};font-size:14px;font-weight:700;color:${B.ink};text-decoration:none;border-radius:999px">Copiar código</a></td></tr></table></td></tr></table>`);
     case "event": {
       const img = b.image ? `<tr><td><img src="${escHtml(abs(site, b.image))}" width="504" alt="" style="display:block;width:100%;height:auto;border:0;border-radius:20px 20px 0 0"></td></tr>` : "";
       const name = b.url ? `<a href="${escHtml(abs(site, b.url))}" style="color:${B.ink};text-decoration:none">${escHtml(b.title)}</a>` : escHtml(b.title);

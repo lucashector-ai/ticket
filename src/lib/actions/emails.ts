@@ -48,7 +48,7 @@ export async function createCampaign(key: TemplateKey, eventId: string): Promise
   const t = fromTemplate(key, ev && { id: ev.id, title: ev.title }, name, today());
   const [row] = await db.insert(emailCampaigns).values({
     organizerId: sc.org?.id ?? null, userId: sc.user.id, name: t.name, subject: t.subject, preheader: t.preheader,
-    fromName: name, replyTo: sc.org?.contactEmail ?? sc.user.email ?? "", audience: t.audience, design: t.design, eventId: ev?.id ?? null,
+    fromName: (ev?.title ?? name).slice(0, 120), replyTo: sc.org?.contactEmail ?? sc.user.email ?? "", audience: t.audience, design: t.design, eventId: ev?.id ?? null,
   }).returning({ id: emailCampaigns.id });
   revalidatePath("/painel/emails");
   return { ok: true, id: row.id };
@@ -61,7 +61,6 @@ export async function createEventCampaign(eventId: string, motive: Motive): Prom
   const ev = sc.events.find((e) => e.id === eventId);
   if (!ev) return { ok: false, error: "Escolha o evento." };
   const m = MOTIVES[motive] ? motive : "novo";
-  const name = sc.org?.name ?? sc.user.name ?? "Produtor";
   const when = ev.dateLabel || dateNice(ev.startAt);
   // lembrete vai para quem comprou; os outros para todo o público, menos quem já comprou este evento
   const audience = m === "lembrete"
@@ -70,7 +69,7 @@ export async function createEventCampaign(eventId: string, motive: Motive): Prom
   const content: EventContent = { eventId: ev.id, motive: m, message: "", coupon: "" };
   const [row] = await db.insert(emailCampaigns).values({
     organizerId: sc.org?.id ?? null, userId: sc.user.id, name: `${MOTIVES[m].label} · ${ev.title}`.slice(0, 160),
-    subject: MOTIVES[m].subject(ev.title, when).slice(0, 200), preheader: "", fromName: name, replyTo: sc.org?.contactEmail ?? sc.user.email ?? "",
+    subject: MOTIVES[m].subject(ev.title, when).slice(0, 200), preheader: "", fromName: ev.title.slice(0, 120), replyTo: sc.org?.contactEmail ?? sc.user.email ?? "",
     audience, format: "evento", content, design: { v: 1, style: { ...DEFAULT_STYLE }, blocks: [] }, eventId: ev.id,
   }).returning({ id: emailCampaigns.id });
   revalidatePath("/painel/emails");

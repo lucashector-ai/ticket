@@ -4,6 +4,9 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
 import { useToast } from "@/components/toast";
 
+/** Volta do Google passando por /verificacao: pede o código da segunda etapa (se houver) e depois vai para `next`. */
+export const viaVerify = (next: string) => `/verificacao?next=${encodeURIComponent(next || "/")}`;
+
 export function GoogleButton({ label, next }: { label: string; next: string }) {
   const { flash } = useToast();
   const [busy, setBusy] = useState(false);
@@ -12,7 +15,7 @@ export function GoogleButton({ label, next }: { label: string; next: string }) {
     if (busy) return;
     setBusy(true);
     try {
-      const res = await authClient.signIn.social({ provider: "google", callbackURL: next });
+      const res = await authClient.signIn.social({ provider: "google", callbackURL: viaVerify(next) });
       if (res?.error) {
         flash(res.error.message || "Não foi possível entrar com o Google.");
         setBusy(false);

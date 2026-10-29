@@ -2,30 +2,30 @@
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { BrandLogo, BrandMark } from "@/components/brand-logo";
+import { BrandLogo } from "@/components/brand-logo";
 import { checkOrganizerName, finishOnboarding } from "@/lib/actions/onboarding";
-import { AUDIENCE, KINDS, PER_YEAR } from "@/lib/onboarding";
 
-type Step = 0 | 1 | 2 | 3 | 4;
-const QUESTIONS: { title: string; options: readonly (readonly [string, string])[]; key: "kind" | "perYear" | "audience" }[] = [
-  { title: "Que tipo de evento você vai lançar?", options: KINDS, key: "kind" },
-  { title: "Quantos eventos você pretende fazer este ano?", options: PER_YEAR, key: "perYear" },
-  { title: "Qual é o público médio dos seus eventos?", options: AUDIENCE, key: "audience" },
-];
+type Init = { name: string; city: string; uf: string; instagram: string; tagline: string };
+type Props = { firstName: string; initial: Init; ufs: readonly string[] };
 
-/** Cadastro do produtor em telas: nome público e três perguntas de um clique. */
-export function ProducerOnboarding({ firstName, fullName, initialName }: { firstName: string; fullName: string; initialName: string }) {
-  const [step, setStep] = useState<Step>(0);
-  const [name, setName] = useState(initialName);
+const initialsOf = (n: string) => n.trim().split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "TW";
+
+/**
+ * Cadastro do produtor aprovado: o nome público e como as pessoas te encontram,
+ * com a página do produtor aparecendo ao vivo do lado.
+ */
+export function ProducerOnboarding({ firstName, initial, ufs }: Props) {
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [f, setF] = useState(initial);
   const [terms, setTerms] = useState(false);
   const [check, setCheck] = useState<{ state: "idle" | "checking" | "ok" | "taken"; slug: string }>({ state: "idle", slug: "" });
-  const [ans, setAns] = useState({ kind: "", perYear: "", audience: "" });
   const [error, setError] = useState("");
   const [busy, start] = useTransition();
+  const set = (patch: Partial<Init>) => { setF((o) => ({ ...o, ...patch })); setError(""); };
 
   // confere o nome enquanto a pessoa digita
   useEffect(() => {
-    const v = name.trim();
+    const v = f.name.trim();
     if (v.length < 2) return;
     const t = setTimeout(async () => {
       setCheck((c) => ({ ...c, state: "checking" }));
@@ -33,96 +33,102 @@ export function ProducerOnboarding({ firstName, fullName, initialName }: { first
       if (r.ok) setCheck({ state: r.available ? "ok" : "taken", slug: r.slug });
     }, 400);
     return () => clearTimeout(t);
-  }, [name]);
+  }, [f.name]);
 
-  const nameOk = name.trim().length >= 2 && check.state === "ok";
-  const pick = (key: "kind" | "perYear" | "audience", v: string) => {
-    const next = { ...ans, [key]: v };
-    setAns(next);
-    setError("");
-    if (step < 3) { setTimeout(() => setStep((s) => (s + 1) as Step), 220); return; }
+  const nameOk = f.name.trim().length >= 2 && check.state === "ok";
+  function finish() {
     start(async () => {
-      const r = await finishOnboarding({ name, ...next });
+      const r = await finishOnboarding(f);
       if (!r.ok) { setError(r.error); if (r.error.includes("nome")) setStep(0); return; }
-      setStep(4);
+      setCheck((c) => ({ ...c, slug: r.slug }));
+      setStep(2);
     });
-  };
+  }
 
   return (
     <main className="pg-onb">
-      <div className="ob-glow" aria-hidden="true" />
       <header className="ob-top">
         <Link href="/" className="ob-logo" aria-label="Tickets Win"><BrandLogo height={22} /></Link>
-        {step > 0 && step < 4 && (
-          <div className="ob-prog" aria-label={`Etapa ${step + 1} de 4`}>{[0, 1, 2, 3].map((i) => <i key={i} className={i <= step ? "on" : ""} />)}</div>
-        )}
-        <span className="ob-sp" />
+        <ol className="ob-steps" aria-label="Etapas">
+          {["Nome público", "Onde te encontrar", "Pronto"].map((s, i) => <li key={s} className={i < step ? "ok" : i === step ? "on" : undefined}><i>{i < step ? "✓" : i + 1}</i>{s}</li>)}
+        </ol>
       </header>
 
-      <div className="ob-wrap">
-        <div className="ob-av" aria-hidden="true"><BrandMark size={44} /></div>
-
-        {step === 0 && (
-          <section className="ob-step" key="s0">
-            <h1 className="ob-h">Prazer em te conhecer{firstName ? `, ${firstName}` : ""}.<br />Vamos montar o seu painel.</h1>
-            <form className="ob-card" onSubmit={(e) => { e.preventDefault(); if (nameOk && terms) setStep(1); }}>
+      <div className="ob-grid">
+        <section className="ob-main" key={step}>
+          {step === 0 && (
+            <form onSubmit={(e) => { e.preventDefault(); if (nameOk && terms) setStep(1); }}>
+              <span className="ob-tag"><i aria-hidden="true" />Conta de produtor aprovada</span>
+              <h1 className="ob-h">Boas-vindas{firstName ? `, ${firstName}` : ""}! Como o público vai te chamar?</h1>
+              <p className="ob-sub">É o nome que aparece nos seus eventos, nos ingressos e na sua página. Pode ser a produtora, a festa ou a casa de eventos.</p>
               <label className="ob-f">
                 <span className="ob-l">Nome do organizador</span>
                 <span className={`ob-in ${check.state === "taken" ? "bad" : nameOk ? "good" : ""}`}>
-                  <input autoFocus value={name} maxLength={80} onChange={(e) => { setName(e.target.value); if (e.target.value.trim().length < 2) setCheck({ state: "idle", slug: "" }); }} placeholder={fullName ? `Ex.: ${fullName.split(" ")[0]} Produções` : "Ex.: Noite Alta Produções"} aria-describedby="ob-hint" />
+                  <input autoFocus value={f.name} maxLength={80} onChange={(e) => { set({ name: e.target.value }); if (e.target.value.trim().length < 2) setCheck({ state: "idle", slug: "" }); }} placeholder="Ex.: Noite Alta Produções" />
+                  {check.state === "checking" && <i className="ob-spin" aria-hidden="true" />}
                   {nameOk && <i className="ob-ok" aria-label="Nome disponível"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 8.5l3 3 6-7" /></svg></i>}
                 </span>
+                <span className={check.state === "taken" ? "ob-hint bad" : "ob-hint"}>{check.state === "taken" ? "Já existe um produtor com esse nome. Tente uma variação, como o nome da sua cidade junto." : nameOk ? <>Seu endereço: <b>ticketswin.com.br/produtor/{check.slug}</b></> : "Use o nome que o público já conhece."}</span>
               </label>
-              <div className="ob-note" id="ob-hint">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z" /></svg>
-                <span>{check.state === "taken" ? "Já existe um produtor com esse nome. Tente uma variação, como o nome da sua cidade junto." : <>É o nome público que aparece na Tickets Win. É assim que o público reconhece a sua marca, produtora ou casa de eventos.{nameOk && check.slug ? <> Sua página: <b>ticketswin.com.br/produtor/{check.slug}</b></> : null}</>}</span>
-              </div>
-              <div className="ob-2">
-                <div className="ob-f"><span className="ob-l">País</span><span className="ob-sel"><svg width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect width="22" height="16" rx="3" fill="#229E45" /><path d="M11 2.2 19.4 8 11 13.8 2.6 8z" fill="#F8E509" /><circle cx="11" cy="8" r="3.4" fill="#2B49A3" /></svg>Brasil</span></div>
-                <div className="ob-f"><span className="ob-l">Moeda</span><span className="ob-sel"><b>R$</b> BRL</span></div>
-              </div>
               <label className="ob-terms">
                 <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
-                <span>Ao continuar, você concorda com os <Link href="/legal/termos" target="_blank">Termos de uso</Link> e a <Link href="/legal/privacidade" target="_blank">Política de privacidade</Link>.</span>
+                <span>Li e concordo com os <Link href="/legal/termos" target="_blank">Termos de uso</Link> e a <Link href="/legal/privacidade" target="_blank">Política de privacidade</Link>.</span>
               </label>
               {error && <p className="ob-err" role="alert">{error}</p>}
               <button className="ob-go" type="submit" disabled={!nameOk || !terms}>Continuar</button>
             </form>
-          </section>
-        )}
+          )}
 
-        {step >= 1 && step <= 3 && (() => {
-          const q = QUESTIONS[step - 1];
-          return (
-            <section className="ob-step" key={`s${step}`}>
-              <p className="ob-eb">Vamos nos conhecer melhor,</p>
-              <h1 className="ob-h">{q.title}</h1>
-              <div className="ob-card ob-opts" role="radiogroup" aria-label={q.title}>
-                {q.options.map(([k, l]) => (
-                  <button key={k} type="button" role="radio" aria-checked={ans[q.key] === k} className={ans[q.key] === k ? "ob-o on" : "ob-o"} onClick={() => pick(q.key, k)} disabled={busy}>
-                    <i className="ob-r" aria-hidden="true" />{l}
-                  </button>
-                ))}
-                {error && <p className="ob-err" role="alert">{error}</p>}
+          {step === 1 && (
+            <form onSubmit={(e) => { e.preventDefault(); finish(); }}>
+              <h1 className="ob-h">Onde o público te encontra?</h1>
+              <p className="ob-sub">Esses dados aparecem na sua página de produtor. Dá para mudar depois no painel.</p>
+              <div className="ob-2">
+                <label className="ob-f"><span className="ob-l">Cidade principal</span><span className="ob-in"><input value={f.city} onChange={(e) => set({ city: e.target.value })} placeholder="São Paulo" maxLength={120} /></span></label>
+                <label className="ob-f"><span className="ob-l">Estado</span><span className="ob-in"><select value={f.uf} onChange={(e) => set({ uf: e.target.value })}><option value="">UF</option>{ufs.map((u) => <option key={u} value={u}>{u}</option>)}</select></span></label>
               </div>
-              <button className="ob-back" type="button" onClick={() => setStep((s) => (s - 1) as Step)} disabled={busy}>
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4" /></svg>Voltar
-              </button>
-            </section>
-          );
-        })()}
+              <label className="ob-f"><span className="ob-l">Instagram</span><span className="ob-in pre"><b>@</b><input value={f.instagram.replace(/^@/, "")} onChange={(e) => set({ instagram: e.target.value })} placeholder="suaprodutora" autoCapitalize="off" maxLength={60} /></span></label>
+              <label className="ob-f"><span className="ob-l">Uma frase sobre vocês <em>opcional</em></span><span className="ob-in"><input value={f.tagline} onChange={(e) => set({ tagline: e.target.value })} placeholder="Ex.: Festas de música eletrônica em galpões desde 2019" maxLength={140} /></span><span className="ob-hint">{f.tagline.length}/140</span></label>
+              {error && <p className="ob-err" role="alert">{error}</p>}
+              <div className="ob-row">
+                <button className="ob-back" type="button" onClick={() => setStep(0)} disabled={busy}>Voltar</button>
+                <button className="ob-go" type="submit" disabled={busy}>{busy ? "Criando sua página…" : "Criar minha página"}</button>
+              </div>
+            </form>
+          )}
 
-        {step === 4 && (
-          <section className="ob-step" key="s4">
-            <p className="ob-eb">Tudo pronto</p>
-            <h1 className="ob-h">Bem-vindo à Tickets Win,<br /><span className="ob-acc">{name.trim()}.</span></h1>
-            <p className="ob-sub">Seu painel já está no ar. Crie o primeiro evento e comece a vender: leva poucos minutos e você pode salvar como rascunho.</p>
-            <div className="ob-done">
-              <Link className="ob-go" href="/criar-evento">Criar meu primeiro evento</Link>
-              <Link className="ob-ghost" href="/painel">Ir para o painel</Link>
+          {step === 2 && (
+            <div>
+              <span className="ob-tag"><i aria-hidden="true" />Tudo pronto</span>
+              <h1 className="ob-h">Sua página está no ar, {f.name.trim()}.</h1>
+              <p className="ob-sub">Agora crie o primeiro evento: leva poucos minutos e dá para salvar como rascunho. No painel você acompanha vendas, público e repasses.</p>
+              <div className="ob-row">
+                <Link className="ob-go" href="/criar-evento">Criar meu primeiro evento</Link>
+                <Link className="ob-back" href="/painel">Ir para o painel</Link>
+              </div>
+              <Link className="ob-link" href={`/produtor/${check.slug}`} target="_blank">Ver minha página pública ↗</Link>
             </div>
-          </section>
-        )}
+          )}
+        </section>
+
+        <aside className="ob-prev" aria-label="Prévia da sua página">
+          <span className="ob-prev-k">Prévia da sua página</span>
+          <div className="ob-page">
+            <div className="ob-cover" aria-hidden="true"><span /><span /><span /></div>
+            <div className="ob-pbody">
+              <span className="ob-avatar" aria-hidden="true">{initialsOf(f.name)}</span>
+              <b className="ob-pname">{f.name.trim() || "Nome do organizador"}</b>
+              <span className="ob-pmeta">{[f.city.trim() && `${f.city.trim()}${f.uf ? ` – ${f.uf}` : ""}`, f.instagram.trim() && `@${f.instagram.trim().replace(/^@/, "")}`].filter(Boolean).join(" · ") || "Cidade · @instagram"}</span>
+              {f.tagline.trim() && <p className="ob-pline">{f.tagline.trim()}</p>}
+              <div className="ob-pacts"><span className="ob-pbtn">Seguir</span><span className="ob-pbtn g">Compartilhar</span></div>
+              <div className="ob-pev">
+                <span className="ob-pev-k">Próximos eventos</span>
+                {[0, 1].map((i) => <span key={i} className="ob-pev-i"><i /><span><b /><small /></span></span>)}
+              </div>
+            </div>
+          </div>
+          <span className="ob-url">ticketswin.com.br/produtor/<b>{check.slug || "seu-nome"}</b></span>
+        </aside>
       </div>
     </main>
   );

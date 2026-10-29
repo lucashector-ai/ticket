@@ -27,6 +27,9 @@
 @import "../styles/pages/meus-eventos.css";
 @import "../styles/pages/conta.css";
 @import "../styles/pages/banco.css";
+@import "../styles/pages/inscricao.css";
+@import "../styles/pages/admin.css";
+@import "../styles/pages/produtores-landing.css";
 
 @theme inline {
   --color-ink: #111111;

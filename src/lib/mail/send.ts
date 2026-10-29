@@ -10,12 +10,22 @@ import type { RenderCtx } from "./render";
 const { emailCampaigns, emailSends, organizers, events } = schema;
 type Campaign = typeof emailCampaigns.$inferSelect;
 
-/** Endereço que envia (domínio verificado no Resend); o nome que aparece é o do produtor. */
+/**
+ * Endereço que envia (domínio verificado no Resend, EMAIL_FROM_MARKETING); o nome que aparece na caixa
+ * de entrada é o do evento (ou o que o produtor escreveu em "Nome de quem envia"). A imagem ao lado
+ * continua a da Tickets Win (BIMI do domínio).
+ */
 function fromHeader(name: string) {
   const raw = process.env.EMAIL_FROM_MARKETING || process.env.EMAIL_FROM || "Tickets Win <onboarding@resend.dev>";
   const addr = raw.match(/<([^>]+)>/)?.[1] ?? raw.trim();
   const clean = name.replace(/["<>\r\n]/g, "").trim().slice(0, 80) || "Tickets Win";
   return `"${clean}" <${addr}>`;
+}
+
+/** Nome do remetente: o que o produtor escreveu; senão o nome do evento da campanha; senão o do produtor. */
+function senderName(c: Campaign, base: Pick<RenderCtx, "events" | "org">) {
+  const ev = base.events[c.content?.eventId ?? c.eventId ?? ""];
+  return c.fromName.trim() || ev?.title || base.org.name;
 }
 
 const token = () => crypto.randomUUID().replace(/-/g, "");
@@ -35,7 +45,7 @@ export async function baseCtx(c: Campaign, fallbackName = "Produtor"): Promise<O
   const site = siteUrl();
   const { s, org } = await senderScope(c);
   const up = await upcomingIds(s);
-  const evs = await loadEvents([...designEventIds(c.design), ...(c.content?.eventId ? [c.content.eventId] : []), ...up]);
+  const evs = await loadEvents([...designEventIds(c.design), ...(c.content?.eventId ? [c.content.eventId] : []), ...(c.eventId ? [c.eventId] : []), ...up]);
   const info = orgInfo(org ?? null, c.fromName || fallbackName);
   return {
     site, org: info, events: evs, upcoming: up.map((id) => evs[id]).filter(Boolean),
@@ -73,7 +83,7 @@ export async function sendTestEmail(c: Campaign, to: string, name: string) {
   const base = await baseCtx(c, name);
   const vars = { ...SAMPLE_VARS, nome: name || SAMPLE_VARS.nome, primeiro_nome: firstName(name) || SAMPLE_VARS.primeiro_nome, email: to };
   const { html, text } = renderCampaign(c, { ...base, vars, unsubscribeUrl: `${base.site}/e/sair/teste` });
-  const r = await resendBatch([{ from: fromHeader(base.org.name), to: [to], subject: `[Teste] ${fillVars(c.subject || "(sem assunto)", vars)}`, html, text, ...(c.replyTo ? { reply_to: c.replyTo } : {}) }]);
+  const r = await resendBatch([{ from: fromHeader(senderName(c, base)), to: [to], subject: `[Teste] ${fillVars(c.subject || "(sem assunto)", vars)}`, html, text, ...(c.replyTo ? { reply_to: c.replyTo } : {}) }]);
   return r.ok ? { ok: true as const } : { ok: false as const, error: "O Resend recusou o envio. Confira o domínio do remetente no Resend." };
 }
 
@@ -110,7 +120,7 @@ export async function processEmailQueue(limit = 300) {
     if (!c) continue;
     const base = await baseCtx(c);
     const linkIdx = new Map((c.links ?? []).map((u, i) => [u, i]));
-    const from = fromHeader(base.org.name);
+    const from = fromHeader(senderName(c, base));
     for (let i = 0; i < list.length; i += 100) {
       const chunk = list.slice(i, i + 100);
       const out: Out[] = chunk.map((q) => {

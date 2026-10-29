@@ -17,6 +17,8 @@ import { cancelTransfer } from "@/lib/actions/tickets";
 import { money } from "@/lib/pricing";
 import { WalletButtons, type WalletFlags } from "./wallet-buttons";
 import type { TicketItem } from "./types";
+import type { TicketCardData } from "@/lib/tickets/card";
+import { TicketPdfButton } from "./ticket-card";
 
 export type TicketViewData = {
   ticket: TicketItem;
@@ -44,7 +46,13 @@ export type TicketViewData = {
   pendingTo?: string | null;
   /** veio do atalho "Revender" da lista: já abre o anúncio */
   openResale?: boolean;
+  /** dados do ingresso "de papel" (PDF) */
+  card: TicketCardData;
 };
+
+function IcoDownload() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14" /></svg>;
+}
 
 export function TicketView({ data }: { data: TicketViewData }) {
   const { flash } = useToast();
@@ -154,6 +162,13 @@ export function TicketView({ data }: { data: TicketViewData }) {
             <IcoChevron />
           </button>
         ))}
+        {valid && (
+          <TicketPdfButton className="tka-i" t={data.card} qrSvg={t.qrSvg}>
+            <span className="tka-ic" aria-hidden="true"><IcoDownload /></span>
+            <span className="tka-t"><b>Baixar PDF</b><small>O ingresso com QR code para imprimir ou guardar</small></span>
+            <IcoChevron />
+          </TicketPdfButton>
+        )}
         <a className="tka-i" href={`/api/ingressos/${t.code}/ics`} download={`ticketswin-${t.code}.ics`}>
           <span className="tka-ic" aria-hidden="true"><IcoCalendar /></span>
           <span className="tka-t"><b>Adicionar à agenda</b><small>Google, Apple ou Outlook</small></span>
