@@ -5,7 +5,9 @@ import { useActionState, useEffect, useState } from "react";
 import { signUpWithEmail } from "@/lib/actions/auth";
 import { useToast } from "@/components/toast";
 import { GoogleButton } from "@/components/auth/google-button";
-import { CheckIcon, FieldError, FormError, PasswordField, fieldCls, isEmail, isPhone, maskPhone } from "@/components/auth/fields";
+import { CheckIcon, FieldError, FormError, PasswordField, fieldCls, isEmail } from "@/components/auth/fields";
+import { PhoneField } from "@/components/phone-field";
+import { phoneValid } from "@/lib/phone";
 import { Turnstile, useHuman } from "@/components/auth/turnstile";
 
 type Err = { name?: boolean; email?: boolean; phone?: boolean; pw?: boolean; terms?: boolean };
@@ -48,7 +50,7 @@ export function SignupForm({ next, human }: { next: string; human: string | null
     const er: Err = {};
     if (name.trim().split(/\s+/).filter(Boolean).length < 2) er.name = true;
     if (!isEmail(email)) er.email = true;
-    if (!isPhone(phone)) er.phone = true;
+    if (!phoneValid(phone)) er.phone = true;
     if (pw.length < 8) er.pw = true;
     if (!terms) er.terms = true;
     setErr(er);
@@ -94,21 +96,17 @@ export function SignupForm({ next, human }: { next: string; human: string | null
         />
       </label>
       {err.email && <FieldError>Digite um e-mail válido.</FieldError>}
-      <label className="lf">
+      <div className="lf">
         <span className="lf-l">Celular</span>
-        <input
+        <PhoneField
           className={fieldCls(!!err.phone)}
           name="phone"
-          type="tel"
-          inputMode="tel"
-          placeholder="(11) 98765-4321"
           value={phone}
-          onChange={(e) => { setPhone(maskPhone(e.target.value)); if (err.phone) setErr((o) => ({ ...o, phone: false })); }}
-          autoComplete="tel-national"
-          aria-invalid={err.phone || undefined}
+          onChange={(v) => { setPhone(v); if (err.phone) setErr((o) => ({ ...o, phone: false })); }}
+          invalid={!!err.phone}
         />
-      </label>
-      {err.phone && <FieldError>Digite o celular com DDD.</FieldError>}
+      </div>
+      {err.phone && <FieldError>Confira o celular (com DDD, no Brasil).</FieldError>}
       <PasswordField
         value={pw}
         onChange={(v) => { setPw(v); if (err.pw) setErr((o) => ({ ...o, pw: false })); }}

@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { FavoritesHydrator } from "@/components/favorites";
 import { TicketView, type TicketViewData } from "@/components/ingressos/ticket-view";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getSessionUser } from "@/lib/auth/server";
 import { getTicketByCode } from "@/lib/data/ingressos";
-import { getUserFavoriteSlugs } from "@/lib/data/user";
 import { dateNice } from "@/lib/format";
 import { countdownLabel, eventLabels } from "@/lib/tickets/labels";
 import { ticketQrSvg } from "@/lib/tickets/qr";
@@ -32,7 +30,7 @@ export default async function IngressoPage({ params, searchParams }: { params: P
   const user = await getSessionUser();
   if (!user) redirect(`/entrar?next=${encodeURIComponent(`/ingressos/${code}`)}`);
   if (!CODE_RE.test(code)) notFound();
-  const [t, favs] = await Promise.all([getTicketByCode(code), getUserFavoriteSlugs(user.id)]);
+  const t = await getTicketByCode(code);
   // Só o titular vê o ingresso; para os demais é como se não existisse.
   if (!t || t.holderUserId !== user.id) notFound();
 
@@ -64,7 +62,6 @@ export default async function IngressoPage({ params, searchParams }: { params: P
   data.openResale = revender === "1" && data.resale.enabled && !data.resale.listing && t.status === "valid";
   return (
     <div className="pg-meus-ingressos">
-      <FavoritesHydrator serverFavs={favs} loggedIn />
       <SiteHeader user={user} variant="default" activePath="/meus-ingressos" />
       <TicketView data={data} />
       <SiteFooter />

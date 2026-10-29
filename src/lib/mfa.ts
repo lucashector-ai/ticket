@@ -11,18 +11,19 @@ import { mailMfaCode } from "@/lib/notify";
  * Depois da senha (ou do Google), quem ligou as duas etapas digita o código do app autenticador
  * (Google Authenticator, 1Password, iCloud Senhas...) ou um código enviado por e-mail.
  * Enquanto o código não é confirmado a sessão existe, mas o site trata a pessoa como deslogada.
- * Confirmado o código, o cookie `tw_mfa` libera aquela sessão; "confiar neste aparelho" pula o código por 30 dias.
+ * Confirmado o código, o cookie `tw_mfa` libera só aquela sessão: todo login novo pede o código de novo.
  */
 
 export type MfaMethod = "email" | "totp";
-export type CodePurpose = "login" | "setup" | "off" | "email" | "bank";
+export type CodePurpose = "login" | "setup" | "off" | "email" | "newemail" | "bank";
 
 const PASS_COOKIE = "tw_mfa";
-const TRUST_COOKIE = "tw_mfa_dev";
-const TRUST_DAYS = 30;
+/** cookie antigo do "confiar neste aparelho" (não vale mais; só é apagado) */
+const OLD_TRUST_COOKIE = "tw_mfa_dev";
 const CODE_TTL = 10 * 60;
 const MAX_TRIES = 5;
-const RESEND_AFTER = 45;
+/** segundos até poder pedir outro código (a tela mostra a mesma contagem) */
+export const RESEND_AFTER = 30;
 const MAX_SENDS_HOUR = 8;
 
 const secret = () => process.env.NEON_AUTH_COOKIE_SECRET ?? "tw";
@@ -43,33 +44,27 @@ export async function mfaSettings(userId: string): Promise<{ method: MfaMethod |
   return { method, email: p?.email ?? null, name: p?.name ?? null, recoveryLeft: p?.mfaRecovery?.length ?? 0 };
 }
 
-/** A sessão atual já passou pela segunda etapa (ou o aparelho é confiável)? */
-export async function sessionCleared(userId: string, sessionId: string) {
-  const c = await cookies();
-  const pass = c.get(PASS_COOKIE)?.value;
-  if (pass && same(pass, mac(`pass:${sessionId}`))) return true;
-  const trust = c.get(TRUST_COOKIE)?.value?.split(".");
-  if (trust?.length === 3 && trust[0] === userId && Number(trust[1]) > Date.now() && same(trust[2], mac(`dev:${trust[0]}:${trust[1]}`))) return true;
-  return false;
+/** A sessão atual já passou pela segunda etapa? */
+export async function sessionCleared(sessionId: string) {
+  const pass = (await cookies()).get(PASS_COOKIE)?.value;
+  return !!sessionId && !!pass && same(pass, mac(`pass:${sessionId}`));
 }
 
-/** Libera a sessão (e, se pedido, o aparelho por 30 dias). Só em ação de servidor ou rota. */
-export async function clearSession(userId: string, sessionId: string, trustDevice: boolean) {
+/** Libera a sessão depois do código certo. Só em ação de servidor ou rota. */
+export async function clearSession(sessionId: string) {
   const c = await cookies();
   c.set(PASS_COOKIE, mac(`pass:${sessionId}`), cookieOpts);
-  if (trustDevice) {
-    const exp = Date.now() + TRUST_DAYS * 864e5;
-    c.set(TRUST_COOKIE, `${userId}.${exp}.${mac(`dev:${userId}:${exp}`)}`, { ...cookieOpts, maxAge: TRUST_DAYS * 86400 });
-  }
+  c.delete(OLD_TRUST_COOKIE);
 }
 
 export async function forgetDevice() {
   const c = await cookies();
-  c.delete(TRUST_COOKIE);
+  c.delete(OLD_TRUST_COOKIE);
   c.delete(PASS_COOKIE);
 }
 
-export const maskEmail = (e: string) => e.replace(/^(.)(.*)(.@.*)$/, (_m, a: string, mid: string, b: string) => a + "•".repeat(Math.min(6, Math.max(2, mid.length))) + b);
+/** e-mail com o começo e o fim do nome à mostra: l••••••••s@gmail.com */
+export const maskEmail = (e: string) => e.replace(/^(.)(.*)(.@.*)$/, (_m, a: string, mid: string, b: string) => a + "•".repeat(Math.min(10, Math.max(2, mid.length))) + b);
 
 type Stored = { h: string; n: number; at: number; to: string };
 
@@ -109,6 +104,17 @@ export async function checkCode(userId: string, purpose: CodePurpose, code: stri
   }
   await store.put(key, JSON.stringify({ ...s, n: s.n + 1 }), { expirationTtl: CODE_TTL });
   return { ok: false, error: `Código incorreto. Você tem mais ${MAX_TRIES - s.n - 1} tentativa${MAX_TRIES - s.n - 1 === 1 ? "" : "s"}.` };
+}
+
+/** Etapa já autorizada por código (ex.: trocar o e-mail), válida por 15 minutos. */
+export async function grantStep(userId: string, what: string) {
+  await (await kv()).put(`step:${what}:${userId}`, "1", { expirationTtl: 900 });
+}
+export async function hasStep(userId: string, what: string) {
+  return !!(await (await kv()).get(`step:${what}:${userId}`));
+}
+export async function dropStep(userId: string, what: string) {
+  await (await kv()).delete(`step:${what}:${userId}`);
 }
 
 /** Quando o último código foi enviado (para mostrar "reenviar em…"). */

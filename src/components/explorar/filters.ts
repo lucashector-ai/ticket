@@ -16,11 +16,9 @@ export type Filters = {
   sort: SortKey;
   /** preço máximo em reais (null = qualquer) */
   max: number | null;
-  /** só eventos salvos */
-  salvos: boolean;
 };
 
-export const DEFAULT_FILTERS: Filters = { q: "", city: "all", cat: "all", date: "any", sort: "data", max: null, salvos: false };
+export const DEFAULT_FILTERS: Filters = { q: "", city: "all", cat: "all", date: "any", sort: "data", max: null };
 
 export const DATE_OPTS: { value: DateKey; label: string }[] = [
   { value: "any", label: "Qualquer data" },
@@ -53,7 +51,7 @@ function get(sp: ParamsLike, key: string): string {
   return (Array.isArray(v) ? v[0] : v) ?? "";
 }
 
-/** Lê `?q=&city=&cat=&date=&sort=&max=&salvos=1`. Valores inválidos caem no padrão. */
+/** Lê `?q=&city=&cat=&date=&sort=&max=`. Valores inválidos caem no padrão. */
 export function parseFilters(sp: ParamsLike): Filters {
   const date = get(sp, "date") as DateKey;
   const sort = get(sp, "sort") as SortKey;
@@ -65,7 +63,6 @@ export function parseFilters(sp: ParamsLike): Filters {
     date: DATE_KEYS.includes(date) ? date : "any",
     sort: SORT_KEYS.includes(sort) ? sort : "data",
     max: MAX_VALUES.includes(max) ? max : null,
-    salvos: get(sp, "salvos") === "1",
   };
 }
 
@@ -78,12 +75,11 @@ export function filtersToParams(f: Filters): URLSearchParams {
   if (f.date !== "any") p.set("date", f.date);
   if (f.sort !== "data") p.set("sort", f.sort);
   if (f.max != null) p.set("max", String(f.max));
-  if (f.salvos) p.set("salvos", "1");
   return p;
 }
 
 export function sameFilters(a: Filters, b: Filters) {
-  return a.q === b.q && a.city === b.city && a.cat === b.cat && a.date === b.date && a.sort === b.sort && a.max === b.max && a.salvos === b.salvos;
+  return a.q === b.q && a.city === b.city && a.cat === b.cat && a.date === b.date && a.sort === b.sort && a.max === b.max;
 }
 
 export function isDefault(f: Filters) {
@@ -124,11 +120,10 @@ export function cityMatches(e: Pick<EventCard, "city" | "uf">, value: string) {
   return value === "all" || !value || e.city === value || cityKey(e) === value;
 }
 
-/** Filtra + ordena em memória. `favs` = slugs salvos (usado quando `salvos`). */
-export function applyFilters(events: EventCard[], f: Filters, favs: string[], now = new Date()): EventCard[] {
+/** Filtra + ordena em memória. */
+export function applyFilters(events: EventCard[], f: Filters, now = new Date()): EventCard[] {
   const R = ranges(now);
   const list = events.filter((e) => {
-    if (f.salvos && !favs.includes(e.slug)) return false;
     if (!cityMatches(e, f.city)) return false;
     if (f.cat !== "all" && !e.kinds.includes(f.cat)) return false;
     if (f.date !== "any" && !overlaps(e, R[f.date])) return false;
@@ -147,10 +142,10 @@ export function applyFilters(events: EventCard[], f: Filters, favs: string[], no
 export type ChipDef = { id: string; label: string; on: boolean; patch: Partial<Filters> };
 
 export function chipDefs(s: Filters): ChipDef[] {
-  // data, preço e ordem ficam nos seletores; aqui só as categorias (uma linha só) e os salvos
-  const catChip = (id: string, label: string): ChipDef => ({ id, label, on: s.cat === id && !s.salvos, patch: { cat: s.cat === id ? "all" : id, salvos: false } });
+  // data, preço e ordem ficam nos seletores; aqui só as categorias (uma linha só)
+  const catChip = (id: string, label: string): ChipDef => ({ id, label, on: s.cat === id, patch: { cat: s.cat === id ? "all" : id } });
   return [
-    { id: "todos", label: "Todos", on: s.cat === "all" && !s.salvos, patch: { cat: "all", salvos: false } },
+    { id: "todos", label: "Todos", on: s.cat === "all", patch: { cat: "all" } },
     catChip("festas", "Festas"),
     catChip("shows", "Shows"),
     catChip("festivais", "Festivais"),

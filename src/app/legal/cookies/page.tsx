@@ -18,7 +18,6 @@ export default function CookiesPage() {
           <tr><td><code>onde.session</code></td><td>Necessário</td><td>30 dias</td><td>Manter você conectado à sua conta</td></tr>
           <tr><td><code>onde.csrf</code></td><td>Necessário</td><td>Sessão</td><td>Proteger formulários contra requisições forjadas</td></tr>
           <tr><td><code>onde.city</code></td><td>Preferência</td><td>1 ano</td><td>Lembrar a cidade escolhida na home</td></tr>
-          <tr><td><code>onde.favs</code></td><td>Preferência</td><td>1 ano</td><td>Guardar eventos salvos quando você não está logado</td></tr>
           <tr><td><code>onde.metrics</code></td><td>Estatística</td><td>6 meses</td><td>Medir uso de forma agregada e anônima (sem perfil individual)</td></tr>
         </tbody>
       </table>

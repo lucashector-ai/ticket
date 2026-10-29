@@ -1,10 +1,4 @@
 export const onlyDigits = (v: string) => v.replace(/\D/g, "");
-export const fmtPhone = (v: string) => {
-  const x = onlyDigits(v).slice(0, 11);
-  if (x.length <= 2) return x ? `(${x}` : "";
-  if (x.length <= 7) return `(${x.slice(0, 2)}) ${x.slice(2)}`;
-  return `(${x.slice(0, 2)}) ${x.slice(2, 7)}-${x.slice(7)}`;
-};
 export const fmtCpf = (v: string) =>
   onlyDigits(v).slice(0, 11).replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 export const fmtCard = (v: string) => onlyDigits(v).slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");

@@ -148,7 +148,6 @@
   .cover-acts{position:absolute;right:14px;bottom:14px;display:flex;gap:8px}
   .gbtn{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#FFFFFF;background:rgba(17,17,17,.38);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);transition:background .3s,transform .4s var(--ease)}
   .gbtn:hover{background:rgba(17,17,17,.6);transform:scale(1.06)}
-  .gbtn.on{background:#D3F55B;color:#111}
   .einfo{animation:rise .9s .15s var(--ease) both}
   .gk{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:999px;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
   .gk .dot{box-shadow:none}

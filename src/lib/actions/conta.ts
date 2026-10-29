@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
@@ -8,10 +8,11 @@ import { db, schema } from "@/db";
 import { auth, getAuthState } from "@/lib/auth/server";
 import QRCode from "qrcode";
 import {
-  checkCode, checkSecondFactor, clearSession, currentDevice, devicesOf, dropTotpSetup, issueCode, logSecurity, maskEmail, mfaSettings,
+  checkCode, checkSecondFactor, clearSession, currentDevice, devicesOf, dropStep, dropTotpSetup, grantStep, hasStep, issueCode, lastSent, logSecurity, maskEmail, mfaSettings,
   newRecoveryCodes, newTotpSecret, rememberDevice, sealSecret, stashTotpSetup, takeTotpSetup, totpUri, verifyTotp,
 } from "@/lib/mfa";
-import { mailPasswordChanged, mailSecurityNotice } from "@/lib/notify";
+import { mailSecurityNotice } from "@/lib/notify";
+import { normalizePhone, phoneValid } from "@/lib/phone";
 
 type R = { ok: boolean; error?: string };
 
@@ -39,7 +40,7 @@ const cpfOk = (v: string) => {
 
 const profileSchema = z.object({
   name: z.string().trim().min(2, "Digite seu nome.").max(160),
-  phone: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => !v || /^[1-9]\d{9,10}$/.test(v), "Confira o celular com DDD."),
+  phone: z.string().transform(normalizePhone).refine((v) => !v || phoneValid(v), "Confira o celular (com DDD, no Brasil)."),
   cpf: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => !v || cpfOk(v), "CPF inválido."),
   birthDate: z.string().trim().refine((v) => !v || (/^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(v) < new Date() && new Date(v) > new Date("1900-01-01")), "Confira a data de nascimento."),
   address: z.object({
@@ -83,35 +84,77 @@ export async function setMarketing(on: boolean): Promise<R> {
   return { ok: true };
 }
 
-/** Depois que o e-mail de login mudou (pelo código enviado ao novo e-mail): perfil, histórico e aviso no antigo. */
-export async function emailChanged(oldEmail: string): Promise<R> {
+/*
+ * Trocar o e-mail de acesso, em 3 passos: (1) código no e-mail atual autoriza a troca (15 min);
+ * (2) código no e-mail novo (o Neon Auth manda); (3) confirmado, o antigo recebe um aviso.
+ */
+export async function startEmailChange(): Promise<R & { to?: string }> {
   const { user } = await me();
-  const { data } = await auth.getSession({ query: { disableCookieCache: "true" } });
-  const now = data?.user?.email ?? user.email;
-  await upsertProfile(user.id, { email: now });
-  await logSecurity(user.id, "email", `E-mail trocado para ${maskEmail(now)}`);
-  if (z.string().email().safeParse(oldEmail).success && oldEmail.toLowerCase() !== now.toLowerCase()) {
-    after(() => mailSecurityNotice(oldEmail, "O e-mail da sua conta mudou", `O e-mail de acesso da sua conta na Tickets Win agora é ${maskEmail(now)}. Este endereço não recebe mais os avisos da conta.`));
+  const s = await mfaSettings(user.id);
+  const r = await issueCode(user.id, "email", user.email, s.name);
+  return r.ok ? { ok: true, to: maskEmail(user.email) } : r;
+}
+
+export async function resendEmailChangeCode(): Promise<R> {
+  const { user } = await me();
+  if (!(await lastSent(user.id, "email"))) return { ok: false, error: "Comece de novo." };
+  return issueCode(user.id, "email", user.email, (await mfaSettings(user.id)).name);
+}
+
+export async function authorizeEmailChange(code: string): Promise<R> {
+  const { user } = await me();
+  const r = await checkCode(user.id, "email", code);
+  if (!r.ok) return r;
+  await grantStep(user.id, "email");
+  return { ok: true };
+}
+
+/** Já existe conta com este e-mail? (no banco sem neon_auth, como o de testes, não dá para saber) */
+async function emailTaken(email: string) {
+  try {
+    const r = await db.execute(sql`select 1 from neon_auth."user" where lower(email) = ${email} limit 1`);
+    return (r.rows?.length ?? 0) > 0;
+  } catch { return false; }
+}
+
+/** Passo 2: manda o código para o e-mail novo (só depois do código do e-mail atual). Também serve de "reenviar". */
+export async function requestNewEmail(newEmail: string): Promise<R> {
+  const { user } = await me();
+  const v = z.string().trim().toLowerCase().email().safeParse(newEmail);
+  if (!v.success) return { ok: false, error: "Digite um e-mail válido." };
+  if (v.data === user.email.toLowerCase()) return { ok: false, error: "Este já é o seu e-mail." };
+  if (!(await hasStep(user.id, "email"))) return { ok: false, error: "A autorização expirou. Cancele e comece de novo." };
+  if (await emailTaken(v.data)) return { ok: false, error: "Já existe uma conta com este e-mail." };
+  return issueCode(user.id, "newemail", v.data, (await mfaSettings(user.id)).name);
+}
+
+/**
+ * Passo 3: confere o código do e-mail novo e troca o e-mail de login (tabela do Neon Auth, que não
+ * oferece essa troca por código). Atualiza o perfil, registra e avisa o e-mail antigo.
+ */
+export async function confirmNewEmail(code: string): Promise<R> {
+  const { user } = await me();
+  if (!(await hasStep(user.id, "email"))) return { ok: false, error: "A autorização expirou. Cancele e comece de novo." };
+  const r = await checkCode(user.id, "newemail", code);
+  if (!r.ok) return r;
+  const next = r.to.toLowerCase(), old = user.email;
+  try {
+    await db.execute(sql`update neon_auth."user" set email = ${next}, "emailVerified" = true, "updatedAt" = now() where id = ${user.id}`);
+  } catch (e) {
+    console.error("email change", e);
+    return { ok: false, error: String(e).includes("unique") || String(e).includes("duplicate") ? "Já existe uma conta com este e-mail." : "Não foi possível trocar o e-mail agora." };
   }
+  await dropStep(user.id, "email");
+  // renova o cookie da sessão para o site já mostrar o e-mail novo
+  await auth.getSession({ query: { disableCookieCache: "true" } }).catch(() => null);
+  await upsertProfile(user.id, { email: next });
+  await logSecurity(user.id, "email", `E-mail trocado para ${maskEmail(next)}`);
+  after(() => mailSecurityNotice(old, "O e-mail da sua conta mudou", `O e-mail de acesso da sua conta na Tickets Win agora é ${maskEmail(next)}. Este endereço não recebe mais os avisos da conta.`));
   revalidatePath("/conta");
   return { ok: true };
 }
 
 /* ============================== senha e aparelhos ============================== */
-
-export async function changePassword(current: string, next: string, revokeOthers: boolean): Promise<R> {
-  const { user } = await me();
-  if (next.length < 8) return { ok: false, error: "A nova senha precisa ter pelo menos 8 caracteres." };
-  if (next === current) return { ok: false, error: "A nova senha precisa ser diferente da atual." };
-  const r = await auth.changePassword({ currentPassword: current, newPassword: next, revokeOtherSessions: revokeOthers });
-  if (r?.error) {
-    const m = (r.error.message ?? "").toLowerCase();
-    return { ok: false, error: m.includes("password") || m.includes("invalid") ? "A senha atual não confere." : "Não foi possível trocar a senha agora." };
-  }
-  await logSecurity(user.id, "password", revokeOthers ? "Senha trocada e outros aparelhos desconectados" : "Senha trocada");
-  after(() => mailPasswordChanged(user.email));
-  return { ok: true };
-}
 
 export type DeviceRow = { token: string; current: boolean; device: string; ip: string | null; createdAt: string; updatedAt: string };
 
@@ -165,25 +208,44 @@ export async function loginMethods(): Promise<{ password: boolean; google: boole
 
 /* ============================== duas etapas ============================== */
 
-/** Código por e-mail: manda um código para confirmar que o e-mail é da pessoa. */
-export async function startEmailMfa(): Promise<R & { to?: string }> {
+/**
+ * Código por e-mail: manda um código para confirmar que o e-mail é da pessoa.
+ * Quem usa o app autenticador troca direto, confirmando antes com o código do app (`current`).
+ */
+export async function startEmailMfa(current?: string): Promise<R & { to?: string; needApp?: boolean }> {
   const { user } = await me();
   const s = await mfaSettings(user.id);
-  if (s.method === "totp") return { ok: false, error: "Desligue o app autenticador antes de trocar para o e-mail." };
+  if (s.method === "totp") {
+    if (!current) return { ok: true, needApp: true };
+    const ok = await checkSecondFactor(user.id, "off", current);
+    if (!ok.ok) return ok;
+  }
   const email = s.email || user.email;
   const r = await issueCode(user.id, "setup", email, s.name);
   return r.ok ? { ok: true, to: maskEmail(email) } : r;
+}
+
+/** "Reenviar código" das telas de ligar/desligar por e-mail (só depois de um primeiro envio). */
+export async function resendMfaCode(purpose: "setup" | "off"): Promise<R> {
+  const { user } = await me();
+  if (!(await lastSent(user.id, purpose))) return { ok: false, error: "Comece de novo." };
+  const s = await mfaSettings(user.id);
+  if (purpose === "off" && s.method !== "email") return { ok: false, error: "Use o código do app autenticador." };
+  return issueCode(user.id, purpose, s.email || user.email, s.name);
 }
 
 export async function confirmEmailMfa(code: string): Promise<R> {
   const { user, sessionId } = await me();
   const r = await checkCode(user.id, "setup", code);
   if (!r.ok) return r;
+  const wasApp = (await mfaSettings(user.id)).method === "totp";
   await upsertProfile(user.id, { mfaMethod: "email", mfaTotp: null, mfaRecovery: null });
   // esta sessão já provou o código: continua liberada
-  await clearSession(user.id, sessionId, false);
-  await logSecurity(user.id, "mfa_on", "Código por e-mail");
-  after(() => mailSecurityNotice(user.email, "Verificação em duas etapas ligada", "A partir de agora, ao entrar na sua conta com a senha, vamos pedir um código enviado por e-mail."));
+  await clearSession(sessionId);
+  await logSecurity(user.id, "mfa_on", wasApp ? "Trocou o app autenticador pelo código por e-mail" : "Código por e-mail");
+  after(() => mailSecurityNotice(user.email, wasApp ? "Duas etapas agora por e-mail" : "Verificação em duas etapas ligada", wasApp
+    ? "A verificação em duas etapas da sua conta deixou de usar o app autenticador. Ao entrar, vamos pedir um código enviado por e-mail. O Banco Tickets Win fica bloqueado até você cadastrar um app autenticador de novo."
+    : "A partir de agora, ao entrar na sua conta, vamos pedir um código enviado por e-mail."));
   revalidatePath("/conta/seguranca");
   return { ok: true };
 }
@@ -215,7 +277,7 @@ export async function confirmTotp(code: string): Promise<R & { codes?: string[] 
   const { codes, hashes } = newRecoveryCodes(user.id);
   await upsertProfile(user.id, { mfaMethod: "totp", mfaTotp: await sealSecret(secretB32), mfaRecovery: hashes });
   await dropTotpSetup(user.id);
-  await clearSession(user.id, sessionId, false);
+  await clearSession(sessionId);
   await logSecurity(user.id, "mfa_on", "App autenticador");
   after(() => mailSecurityNotice(user.email, "App autenticador cadastrado", "A verificação em duas etapas da sua conta agora usa um app autenticador. Ao entrar, vamos pedir o código de 6 números do app."));
   revalidatePath("/conta/seguranca");

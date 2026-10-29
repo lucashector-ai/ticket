@@ -2,20 +2,38 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminApps, AdminPayouts } from "@/components/admin/actions";
-import { ADMIN_PATH, adminApplications, adminEvents, adminOverview, adminPayouts, adminUser, adminUsers } from "@/lib/admin";
+import { ADMIN_PATH, adminApplications, adminEvents, adminOverview, adminPayouts, adminProducers, adminUser, adminUsers } from "@/lib/admin";
 import { destLabel } from "@/lib/bank";
 import { brl } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Central", robots: { index: false, follow: false } };
 
-const TABS = [["geral", "Visão geral"], ["inscricoes", "Inscrições"], ["saques", "Saques"], ["contas", "Contas"], ["eventos", "Eventos"]] as const;
+const TABS = [["geral", "Visão geral"], ["inscricoes", "Inscrições"], ["saques", "Saques"], ["produtores", "Produtores"], ["contas", "Contas"], ["eventos", "Eventos"]] as const;
 const day = (d: Date | string) => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).replace(".", "");
 
 /** Central da Tickets Win (secreta): só para os e-mails de admin, com app autenticador. */
 export default async function Central({ searchParams }: { searchParams: Promise<{ aba?: string; q?: string }> }) {
   const admin = await adminUser();
   if (!admin) notFound();
+  // sem o app autenticador ligado a central não mostra nada, só como ligar
+  if (!admin.secure) {
+    return (
+      <div className="pg-adm">
+        <header className="ad-top">
+          <span className="ad-brand"><b>Tickets Win</b><span>Central</span></span>
+          <span className="ad-me">{admin.email}</span>
+        </header>
+        <main className="ad-main">
+          <section className="ad-card ad-gate">
+            <h1>Ative o app autenticador</h1>
+            <p>Para abrir a central, sua conta precisa da verificação em duas etapas com <b>app autenticador</b>. Ative em Minha conta → Privacidade e segurança e volte aqui.</p>
+            <Link href="/conta/seguranca" className="ad-b ok">Ir para Privacidade e segurança</Link>
+          </section>
+        </main>
+      </div>
+    );
+  }
   const sp = await searchParams;
   const tab = TABS.some(([k]) => k === sp.aba) ? sp.aba! : "geral";
   const q = (sp.q ?? "").slice(0, 80);
@@ -36,8 +54,6 @@ export default async function Central({ searchParams }: { searchParams: Promise<
       </header>
 
       <main className="ad-main">
-        {!admin.secure && <p className="ad-warn">Para aprovar inscrições e saques, ative o app autenticador em <Link href="/conta/seguranca">Minha conta → Privacidade e segurança</Link>.</p>}
-
         {tab === "geral" && (
           <section className="ad-kpis">
             {[
@@ -51,6 +67,35 @@ export default async function Central({ searchParams }: { searchParams: Promise<
         {tab === "inscricoes" && <AdminApps rows={(await adminApplications()).map((a) => ({ ...a, createdAt: day(a.createdAt), reviewedAt: a.reviewedAt ? day(a.reviewedAt) : null, avgTicket: brl(a.avgTicketCents) }))} />}
 
         {tab === "saques" && <AdminPayouts rows={(await adminPayouts()).map((p) => ({ id: p.id, at: day(p.createdAt), amount: brl(p.amountCents), status: p.status, org: p.organizer?.name ?? "—", dest: p.destination ? [destLabel(p.destination), p.destination.pixKey ? `Pix: ${p.destination.pixKey}` : `${p.destination.bank ?? ""} ag ${p.destination.agency ?? ""} cc ${p.destination.account ?? ""} (${p.destination.kind ?? "corrente"})`, p.destination.holder ? `Titular: ${p.destination.holder}${p.destination.doc ? ` · ${p.destination.doc}` : ""}` : ""].filter(Boolean).join("\n") : "—", note: p.note }))} />}
+
+        {tab === "produtores" && (
+          <section className="ad-card">
+            <form className="ad-search" action={ADMIN_PATH}>
+              <input type="hidden" name="aba" value="produtores" />
+              <input name="q" defaultValue={q} placeholder="Buscar por nome, e-mail, cidade ou Instagram" aria-label="Buscar produtores" />
+              <button type="submit">Buscar</button>
+            </form>
+            <div className="ad-tbl">
+              <div className="ad-tr ad-th c6"><span>Produtor</span><span>Cadastro</span><span>Local</span><span>Eventos</span><span>Vendido</span><span>Origem</span></div>
+              {(await adminProducers(q)).map((p) => {
+                const ig = p.instagram?.replace(/^@/, "");
+                return (
+                  <div className="ad-tr c6" key={p.id}>
+                    <span>
+                      {p.slug ? <Link href={`/produtor/${p.slug}`} target="_blank"><b>{p.name}</b></Link> : <b>{p.name}</b>}
+                      <small>{p.ownerEmail ?? p.contactEmail ?? "sem dono"}{p.verified ? " · verificado" : ""}</small>
+                    </span>
+                    <span>{day(p.createdAt)}</span>
+                    <span>{[p.city, p.uf].filter(Boolean).join(" / ") || "—"}{ig ? <small><a href={`https://instagram.com/${ig}`} target="_blank" rel="noopener noreferrer">@{ig}</a></small> : null}</span>
+                    <span>{p.events}<small>{p.published} publicado{p.published === 1 ? "" : "s"}</small></span>
+                    <span>{brl(p.total)}<small>{p.orders} pedido{p.orders === 1 ? "" : "s"}</small></span>
+                    <span>{p.approvedApp ? <i className="ad-st approved">Inscrição aprovada</i> : <i className="ad-st">Sem inscrição</i>}{!p.onboarded && <small>cadastro não concluído</small>}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {tab === "contas" && (
           <section className="ad-card">

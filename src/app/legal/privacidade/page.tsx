@@ -18,7 +18,7 @@ export default function PrivacidadePage() {
           <tr><td>Nome, e-mail e senha</td><td>Ao criar a conta</td><td>Identificar você e emitir ingressos nominais</td></tr>
           <tr><td>CPF</td><td>No checkout, quando o produtor exige</td><td>Limitar compras por pessoa e cumprir a lei da meia-entrada</td></tr>
           <tr><td>Dados de pagamento</td><td>No checkout</td><td>Processados pelo nosso parceiro de pagamentos; não armazenamos o número do cartão</td></tr>
-          <tr><td>Cidade e eventos favoritos</td><td>Durante o uso</td><td>Personalizar a home e as recomendações</td></tr>
+          <tr><td>Cidade escolhida</td><td>Durante o uso</td><td>Personalizar a home e as recomendações</td></tr>
           <tr><td>Dados de navegação</td><td>Durante o uso</td><td>Segurança, métricas e melhoria do produto (veja <Link href="/legal/cookies">Cookies</Link>)</td></tr>
         </tbody>
       </table>

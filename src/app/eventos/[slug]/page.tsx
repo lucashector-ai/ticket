@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { DEFAULT_TEASER } from "@/lib/criar/model";
 import { notFound } from "next/navigation";
-import { FavoritesHydrator } from "@/components/favorites";
 import { SiteFooter } from "@/components/site-footer";
 import { EventoView } from "@/components/evento/evento-view";
 import type { EventoData, LineupItem, OrganizerInfo, SessionItem, TierItem } from "@/components/evento/types";
 import { getEventBySlug, listSimilarEvents, type EventDetail } from "@/lib/data/events";
-import { getUserFavoriteSlugs, isFollowing } from "@/lib/data/user";
+import { isFollowing } from "@/lib/data/user";
 import { getSessionUser } from "@/lib/auth/server";
 import { dateFull, hourLabel, initials, parts, timeLabel } from "@/lib/format";
 import { salesStartNote, tierStatus } from "@/lib/tickets/status";
@@ -128,9 +127,8 @@ export default async function EventoPage({ params }: Params) {
   const [ev, user] = await Promise.all([getEventBySlug(slug), getSessionUser()]);
   // rascunho: só quem criou vê (prévia)
   if (!ev || (ev.status === "draft" && ev.createdByUserId !== user?.id)) notFound();
-  const [similar, serverFavs, following] = await Promise.all([
+  const [similar, following] = await Promise.all([
     listSimilarEvents(ev.id, ev.primaryCategoryLabel),
-    getUserFavoriteSlugs(user?.id),
     ev.organizerId ? isFollowing(user?.id, "organizer", ev.organizerId) : Promise.resolve(false),
   ]);
   const access = salePhase(ev) === "presale" && !!(await presaleAccess(ev.id));
@@ -143,7 +141,6 @@ export default async function EventoPage({ params }: Params) {
 
   return (
     <div className="pg-evento">
-      <FavoritesHydrator serverFavs={serverFavs} loggedIn={!!user} />
       <EventoView e={data} user={headerUser} loggedIn={!!user} initialFollowing={following} similar={similar} viewerEmail={user?.email ?? ""} />
       <SiteFooter />
     </div>

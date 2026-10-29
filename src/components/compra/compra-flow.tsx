@@ -9,7 +9,9 @@ import { checkCoupon, confirmPayment, placeOrder, type ConfirmResult } from "@/l
 import { QueueGate } from "@/components/queue-gate";
 import { installmentOptions, money, priceOrder } from "@/lib/pricing";
 import { InlineAuth } from "./inline-auth";
-import { cardBrand, expOk, fmtCard, fmtCpf, fmtExp, fmtPhone, isEmail, isFullName, mmss, onlyDigits } from "./format";
+import { cardBrand, expOk, fmtCard, fmtCpf, fmtExp, isEmail, isFullName, mmss, onlyDigits } from "./format";
+import { PhoneField } from "@/components/phone-field";
+import { phoneValid } from "@/lib/phone";
 import { BrandMark } from "@/components/brand-logo";
 
 export type CompraStep = "resumo" | "dados" | "pagamento" | "pix" | "proc" | "done";
@@ -83,7 +85,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const [tried, setTried] = useState(false);
   const [name, setName] = useState(profile?.name || user?.name || "");
   const [email, setEmail] = useState(user?.email ?? "");
-  const [phone, setPhone] = useState(profile?.phone ? fmtPhone(profile.phone) : "");
+  const [phone, setPhone] = useState(profile?.phone ?? "");
   const [cpf, setCpf] = useState(profile?.cpf ? fmtCpf(profile.cpf) : "");
   const [hold, setHold] = useState<Record<string, Hold>>({});
   const [pay, setPay] = useState<"pix" | "card">("pix");
@@ -130,7 +132,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     setSeenUser(user.id);
     setName((n) => n || profile?.name || user.name || "");
     setEmail((m) => m || user.email || "");
-    setPhone((p) => p || (profile?.phone ? fmtPhone(profile.phone) : ""));
+    setPhone((p) => p || (profile?.phone ?? ""));
     setCpf((c) => c || (profile?.cpf ? fmtCpf(profile.cpf) : ""));
     setAuthNudge(false);
   }
@@ -203,7 +205,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const dadosErr: string[] = [];
   if (!isFullName(name)) dadosErr.push("nome e sobrenome");
   if (!isEmail(email)) dadosErr.push("e-mail");
-  if (onlyDigits(phone).length < 10) dadosErr.push("celular com DDD");
+  if (!phoneValid(phone)) dadosErr.push("celular com DDD");
   if (onlyDigits(cpf).length !== 11) dadosErr.push("CPF com 11 dígitos");
   if (!holders.every((h) => isFullName(holdName(h)))) dadosErr.push("nome completo de cada titular");
   const ccOk = { num: onlyDigits(cc.num).length >= 15, name: cc.name.trim().length >= 3, exp: expOk(cc.exp), cvv: onlyDigits(cc.cvv).length >= 3 };
@@ -451,10 +453,10 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                     <span className="lf2-l">E-mail</span>
                     <input className={bad(isEmail(email))} type="email" placeholder="nome@email.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
                   </label>
-                  <label className="lf2">
+                  <div className="lf2">
                     <span className="lf2-l">Celular</span>
-                    <input className={bad(onlyDigits(phone).length >= 10)} type="tel" placeholder="(11) 90000-0000" value={phone} onChange={(e) => setPhone(fmtPhone(e.target.value))} autoComplete="tel" />
-                  </label>
+                    <PhoneField className={bad(phoneValid(phone))} value={phone} onChange={setPhone} />
+                  </div>
                   <label className="lf2">
                     <span className="lf2-l">CPF</span>
                     <input className={bad(onlyDigits(cpf).length === 11)} type="text" inputMode="numeric" placeholder="000.000.000-00" value={cpf} onChange={(e) => setCpf(fmtCpf(e.target.value))} />

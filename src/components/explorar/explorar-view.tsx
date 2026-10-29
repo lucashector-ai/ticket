@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { EventCard } from "@/components/event-card";
 import { FlyerArt } from "@/components/art/flyer";
-import { useFavorites } from "@/components/favorites";
 import type { EventCard as EventCardData } from "@/lib/data/events";
 import { BrandMark } from "@/components/brand-logo";
 import {
@@ -54,7 +53,6 @@ function CatIcon({ slug }: { slug: string }) {
 export function ExplorarView({ events, cities, categories, initial, initialResults }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { favs } = useFavorites();
 
   const [filters, setFilters] = useState<Filters>(initial);
   const [swap, setSwap] = useState(false);
@@ -67,7 +65,7 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
   const unlockT = useRef<ReturnType<typeof setTimeout> | null>(null);
   const urlT = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // false no SSR/hidratação, true depois de montar: só então favoritos (localStorage) e o fuso do navegador existem
+  // false no SSR/hidratação, true depois de montar: só então o fuso do navegador existe
   const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
 
   /* URL → estado (voltar/avançar, links compartilhados): ajuste de estado durante o render quando a URL muda por fora */
@@ -114,10 +112,8 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
 
   useEffect(() => () => { if (unlockT.current) clearTimeout(unlockT.current); if (urlT.current) clearTimeout(urlT.current); }, []);
 
-  /* lista: no SSR/hidratação é a do server; depois de montar, refiltro em memória (inclui "Salvos") */
-  const results = useMemo(() => (mounted ? applyFilters(events, filters, favs) : initialResults), [mounted, events, filters, favs, initialResults]);
-  // "Salvos" depende do localStorage: no SSR mostra skeleton até montar.
-  const ready = mounted || !initial.salvos;
+  /* lista: no SSR/hidratação é a do server; depois de montar, refiltro em memória */
+  const results = useMemo(() => (mounted ? applyFilters(events, filters) : initialResults), [mounted, events, filters, initialResults]);
 
   const clearAll = useCallback(() => refilter({ ...DEFAULT_FILTERS }), [refilter]);
 
@@ -137,8 +133,8 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
   const sortLabel = SORT_OPTS.find((s) => s.value === filters.sort)?.label ?? "Data";
   const visible = results.slice(0, shown);
   const hasMore = results.length > shown;
-  const showSkeleton = !ready || swap;
-  const isEmpty = ready && !swap && results.length === 0;
+  const showSkeleton = swap;
+  const isEmpty = !swap && results.length === 0;
   const mainCats = useMemo(() => MAIN_CATS.map((s) => categories.find((c) => c.slug === s)).filter((c): c is CatOpt => !!c), [categories]);
   const catCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -154,7 +150,7 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
           <span className="xkick"><span className="dot" aria-hidden="true" />Agenda completa</span>
           <h1 className="h1 xt" id="xp-t">Explorar eventos</h1>
           <p className="sub xs" aria-live="polite">
-            {showSkeleton ? "Carregando eventos…" : <><b>{count}</b> {countWord} em {cityName ?? "todo o Brasil"}{filters.salvos ? " · só os salvos" : ""}</>}
+            {showSkeleton ? "Carregando eventos…" : <><b>{count}</b> {countWord} em {cityName ?? "todo o Brasil"}</>}
           </p>
 
           <form className="xq" role="search" onSubmit={(e) => { e.preventDefault(); syncUrl(filters); scrollToResults(); }}>
@@ -207,14 +203,6 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
 
           <div className="chipsr">
             <div className="chips" role="group" aria-label="Categorias">
-              <button className={filters.salvos ? "chip sv on" : "chip sv"} type="button" aria-pressed={filters.salvos} onClick={() => refilter({ salvos: !filters.salvos, cat: "all" })}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill={filters.salvos ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M12 20.5s-7.5-4.6-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.7-7.5 10.3-7.5 10.3z" />
-                </svg>
-                Salvos
-                {favs.length > 0 && <span className="mute" aria-hidden="true">{favs.length}</span>}
-              </button>
-              <span className="chips-sep" aria-hidden="true" />
               {chips.map((c) => (
                 <button key={c.id} className={c.on ? "chip on" : "chip"} type="button" aria-pressed={c.on} onClick={() => refilter(c.patch)}>{c.label}</button>
               ))}
@@ -255,8 +243,8 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
             {isEmpty && (
               <div className="empty">
                 <BrandMark size={56} />
-                <h3>{filters.salvos && favs.length === 0 ? "Você ainda não salvou nada" : "Nenhum evento encontrado"}</h3>
-                <p>{filters.salvos && favs.length === 0 ? "Toque no coração de um evento para guardar aqui os que valem sair de casa." : "Tente outra data, outra cidade ou uma busca mais ampla. Sempre tem algo acontecendo."}</p>
+                <h3>Nenhum evento encontrado</h3>
+                <p>Tente outra data, outra cidade ou uma busca mais ampla. Sempre tem algo acontecendo.</p>
                 <button className="btn-p" type="button" onClick={clearAll}>Limpar filtros</button>
               </div>
             )}
@@ -293,7 +281,7 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
                   type="button"
                   aria-pressed={on}
                   aria-label={`Ver eventos de ${c.name}`}
-                  onClick={() => { refilter({ cat: on ? "all" : c.slug, salvos: false }); scrollToResults(); }}
+                  onClick={() => { refilter({ cat: on ? "all" : c.slug }); scrollToResults(); }}
                 >
                   <span className="cat-ic" aria-hidden="true"><CatIcon slug={c.slug} /></span>
                   <span className="cat-n">

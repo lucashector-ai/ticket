@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useFavorites } from "@/components/favorites";
 import { SignOutButton } from "@/components/sign-out-button";
 import { BrandLogo } from "@/components/brand-logo";
 import { useIsProducer } from "@/components/use-producer";
@@ -34,7 +33,6 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
   const [scrolled, setScrolled] = useState(false);
   const [menu, setMenu] = useState(false);
   const producer = useIsProducer(user?.id);
-  const { favs } = useFavorites();
 
   useEffect(() => {
     const onScroll = () => setScrolled((window.scrollY || 0) > 12);
@@ -84,19 +82,12 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
                 <svg className="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3" /></svg>
               </label>
             )}
-            <Link className="ib hide-m" href="/explorar?salvos=1" aria-label="Eventos salvos">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 20.5s-7.5-4.6-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.7-7.5 10.3-7.5 10.3z" />
-              </svg>
-              {favs.length > 0 && <span className="badge">{favs.length}</span>}
-            </Link>
             {user ? (
               <details className="umenu hide-m">
                 <summary className="lnk" aria-label="Sua conta">{firstName(user)}</summary>
                 <div className="umenu-pop">
                   <Link href="/meus-ingressos">Meus ingressos</Link>
                   <Link href="/conta">Minha conta</Link>
-                  <Link href="/explorar?salvos=1">Eventos salvos</Link>
                   {producer && <Link href="/painel">Painel do produtor</Link>}
                   {producer && <Link href="/meus-eventos">Meus eventos</Link>}
                   <SignOutButton />

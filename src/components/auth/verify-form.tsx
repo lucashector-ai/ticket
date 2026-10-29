@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ensureLoginCode, resendLoginCode, verifyLoginCode } from "@/lib/actions/verificacao";
 import { signOut } from "@/lib/actions/auth";
-import { CheckIcon, FormError } from "@/components/auth/fields";
+import { FormError } from "@/components/auth/fields";
+import { ResendButton } from "@/components/auth/resend";
 
 /** Seis caixinhas de código, com colar e apagar naturais. Também usada em Minha conta. */
 export function CodeBoxes({ value, onChange, onDone, disabled, autoFocus = true }: { value: string; onChange: (v: string) => void; onDone?: (v: string) => void; disabled?: boolean; autoFocus?: boolean }) {
@@ -49,40 +50,33 @@ export function CodeBoxes({ value, onChange, onDone, disabled, autoFocus = true 
 export function VerifyForm({ next }: { next: string }) {
   const [code, setCode] = useState("");
   const [rec, setRec] = useState<string | null>(null);
-  const [trust, setTrust] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [info, setInfo] = useState<{ ch?: "email" | "totp"; to?: string } | null>(null);
-  const [wait, setWait] = useState(45);
+  const [info, setInfo] = useState<{ ch?: "email" | "totp"; to?: string; wait?: number } | null>(null);
 
   useEffect(() => {
     let alive = true;
     ensureLoginCode().then((r) => {
       if (!alive) return;
-      setInfo({ ch: r.ch, to: r.to });
+      setInfo({ ch: r.ch, to: r.to, wait: r.wait ?? 0 });
       if (r.error) setErr(r.error);
     });
     return () => { alive = false; };
   }, []);
-  useEffect(() => {
-    if (wait <= 0 || info?.ch !== "email") return;
-    const t = setTimeout(() => setWait((w) => w - 1), 1000);
-    return () => clearTimeout(t);
-  }, [wait, info]);
 
   async function submit(v = rec ?? code) {
     if (busy || (rec === null ? v.length !== 6 : v.replace(/[^a-z0-9]/gi, "").length !== 8)) return;
     setBusy(true); setErr(null);
-    const r = await verifyLoginCode(v, trust);
+    const r = await verifyLoginCode(v);
     if (r.ok) { window.location.href = next; return; }
     setBusy(false); setErr(r.error ?? "Código incorreto."); setCode("");
   }
   async function resend() {
-    setBusy(true); setErr(null);
+    setErr(null);
     const r = await resendLoginCode();
-    setBusy(false);
-    if (r.ch) setInfo({ ch: r.ch, to: r.to });
-    if (r.error) setErr(r.error); else setWait(45);
+    if (r.ch) setInfo((o) => ({ ...o, ch: r.ch, to: r.to }));
+    if (r.error) setErr(r.error);
+    return r.ok;
   }
 
   const totp = info?.ch === "totp";
@@ -102,15 +96,11 @@ export function VerifyForm({ next }: { next: string }) {
       {rec !== null
         ? <input className="in vf-rec" value={rec} onChange={(e) => { setRec(e.target.value.toUpperCase().slice(0, 9)); setErr(null); }} placeholder="XXXX-XXXX" autoComplete="off" autoFocus aria-label="Código de recuperação" />
         : <CodeBoxes value={code} onChange={(v) => { setCode(v); if (err) setErr(null); }} onDone={(v) => void submit(v)} disabled={busy} />}
-      <button className={trust ? "ck on" : "ck"} type="button" role="checkbox" aria-checked={trust} onClick={() => setTrust((t) => !t)}>
-        <span className="ck-b" aria-hidden="true"><CheckIcon /></span>
-        <span className="ck-t">Confiar neste aparelho por 30 dias</span>
-      </button>
       <button className="lx-btn" type="submit" disabled={busy || (rec === null ? code.length !== 6 : rec.replace(/[^A-Z0-9]/g, "").length !== 8)} aria-busy={busy}>{busy ? "Confirmando…" : "Confirmar e entrar"}</button>
       <div className="vf-alt">
         {totp
           ? <button type="button" className="au-lk" onClick={() => { setRec(rec === null ? "" : null); setErr(null); }}>{rec === null ? "Perdi o celular: usar código de recuperação" : "Usar o app autenticador"}</button>
-          : info?.ch === "email" && <button type="button" className="au-lk" onClick={() => void resend()} disabled={busy || wait > 0}>{wait > 0 ? `Reenviar em ${wait}s` : "Reenviar código"}</button>}
+          : info?.ch === "email" && <ResendButton onResend={resend} wait={info.wait} disabled={busy} />}
       </div>
       <p className="lx-sw">Não é você? <button type="button" className="au-lk" onClick={() => void signOut()}>Entrar com outra conta</button></p>
     </form>

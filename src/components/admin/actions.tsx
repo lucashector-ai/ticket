@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { reviewApplication, updatePayout } from "@/lib/actions/admin";
+import { formatPhone, waLink } from "@/lib/phone";
 
 type App = {
   id: string; status: "pending" | "approved" | "rejected"; createdAt: string; reviewedAt: string | null; reviewedBy: string | null; note: string | null;
@@ -10,7 +11,6 @@ type App = {
   audience: string; avgTicket: string; expected: number; source: string; instagram: string | null;
 };
 const ST: Record<string, string> = { pending: "Pendente", approved: "Aprovada", rejected: "Recusada", requested: "Pedido", processing: "Processando", paid: "Pago", cancelled: "Cancelado" };
-const fone = (d: string) => (d.length >= 10 ? `(${d.slice(0, 2)}) ${d.slice(2, -4)}-${d.slice(-4)}` : d);
 
 /** Inscrições de produtor: ficha completa e aprovar/recusar com observação. */
 export function AdminApps({ rows }: { rows: App[] }) {
@@ -44,9 +44,9 @@ export function AdminApps({ rows }: { rows: App[] }) {
           {open === a.id && (
             <div className="ad-ib">
               <dl className="ad-dl">
-                {[["Nome", `${a.firstName} ${a.lastName}`], ["E-mail", a.email], ["Telefone", fone(a.phone)], ["Produtora", a.company || "—"], ["Cidade", `${a.city} – ${a.uf}`],
+                {[["Nome", `${a.firstName} ${a.lastName}`], ["E-mail", a.email], ["Telefone", formatPhone(a.phone)], ["Produtora", a.company || "—"], ["Cidade", `${a.city} – ${a.uf}`],
                   ["Categoria", a.category], ["Ticket médio", a.avgTicket], ["Público esperado", a.expected.toLocaleString("pt-BR")], ["Como chegou", a.source], ["Instagram", a.instagram || "—"]].map(([k, v]) => (
-                  <div key={k}><dt>{k}</dt><dd>{k === "Instagram" && v !== "—" ? <a href={`https://instagram.com/${v.replace(/^@/, "")}`} target="_blank" rel="noopener noreferrer">{v}</a> : k === "Telefone" ? <a href={`https://wa.me/55${a.phone}`} target="_blank" rel="noopener noreferrer">{v}</a> : v}</dd></div>
+                  <div key={k}><dt>{k}</dt><dd>{k === "Instagram" && v !== "—" ? <a href={`https://instagram.com/${v.replace(/^@/, "")}`} target="_blank" rel="noopener noreferrer">{v}</a> : k === "Telefone" ? <a href={waLink(a.phone)} target="_blank" rel="noopener noreferrer">{v}</a> : v}</dd></div>
                 ))}
                 <div className="w"><dt>Público-alvo</dt><dd>{a.audience}</dd></div>
                 {a.reviewedAt && <div className="w"><dt>Revisão</dt><dd>{ST[a.status]} por {a.reviewedBy} em {a.reviewedAt}{a.note ? ` · ${a.note}` : ""}</dd></div>}

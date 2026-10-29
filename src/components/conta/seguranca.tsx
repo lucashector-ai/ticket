@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
-  changePassword, confirmEmailMfa, confirmMfaOff, confirmTotp, renewRecovery, revokeDevice, revokeOtherDevices, setMarketing, startEmailMfa, startMfaOff,
+  confirmEmailMfa, confirmMfaOff, confirmTotp, renewRecovery, resendMfaCode, revokeDevice, revokeOtherDevices, setMarketing, startEmailMfa, startMfaOff,
   startTotp, type DeviceRow,
 } from "@/lib/actions/conta";
+import { sendMyPasswordLink } from "@/lib/actions/senha";
+import { ResendButton } from "@/components/auth/resend";
 import { useToast } from "@/components/toast";
 import { CodeBoxes } from "@/components/auth/verify-form";
 
@@ -30,7 +32,7 @@ export function ContaSeguranca(p: Props) {
         <p className="ct-s">Proteja sua conta e seus ingressos. Recomendamos ligar a verificação em duas etapas.</p>
       </header>
       <MfaCard {...p} />
-      <PasswordCard login={p.login} />
+      <PasswordCard login={p.login} email={p.email} />
       <DevicesCard devices={p.devices} />
       <ActivityCard activity={p.activity} />
       <PrivacyCard marketing={p.marketing} />
@@ -41,7 +43,7 @@ export function ContaSeguranca(p: Props) {
 function MfaCard({ mfa, email }: Props) {
   const router = useRouter();
   const { flash } = useToast();
-  type Mode = "idle" | "pick" | "totp-cur" | "totp" | "email" | "off" | "renew" | "codes";
+  type Mode = "idle" | "pick" | "totp-cur" | "email-app" | "totp" | "email" | "off" | "renew" | "codes";
   const [mode, setMode] = useState<Mode>("idle");
   const [setup, setSetup] = useState<{ qr: string; key: string; uri: string } | null>(null);
   const [to, setTo] = useState("");
@@ -61,12 +63,13 @@ function MfaCard({ mfa, email }: Props) {
     if (!r.ok) { fail(r.error); return; }
     setSetup({ qr: r.qr!, key: r.key!, uri: r.uri! }); setCode(""); setMode("totp");
   }
-  async function beginEmail() {
+  async function beginEmail(current?: string) {
     setBusy(true); setErr(null);
-    const r = await startEmailMfa();
+    const r = await startEmailMfa(current);
     setBusy(false);
     if (!r.ok) { fail(r.error); return; }
-    setTo(r.to ?? ""); setCode(""); setMode("email");
+    if (r.needApp) { setCode(""); setRec(false); setMode("email-app"); return; }
+    setTo(r.to ?? ""); setCode(""); setRec(false); setMode("email");
   }
   async function beginOff() {
     setBusy(true); setErr(null);
@@ -79,6 +82,7 @@ function MfaCard({ mfa, email }: Props) {
     if (busy || (!rec && v.length !== 6)) return;
     setBusy(true); setErr(null);
     if (mode === "totp-cur") { setBusy(false); await beginTotp(v); return; }
+    if (mode === "email-app") { setBusy(false); await beginEmail(v); return; }
     const r = mode === "totp" ? await confirmTotp(v) : mode === "email" ? await confirmEmailMfa(v) : mode === "renew" ? await renewRecovery(v) : await confirmMfaOff(v);
     setBusy(false);
     if (!r.ok) { fail(r.error); return; }
@@ -96,7 +100,10 @@ function MfaCard({ mfa, email }: Props) {
       {rec
         ? <input className="ct-in ct-rec" value={code} onChange={(e) => { setCode(e.target.value.toUpperCase().slice(0, 9)); setErr(null); }} placeholder="XXXX-XXXX" autoFocus aria-label="Código de recuperação" />
         : <CodeBoxes value={code} onChange={(v) => { setCode(v); setErr(null); }} onDone={(v) => void confirm(v)} disabled={busy} />}
-      {mfa.method === "totp" && (mode === "off" || mode === "totp-cur") && <button className="ct-link" type="button" onClick={() => { setRec((x) => !x); setCode(""); setErr(null); }}>{rec ? "Usar o código do app" : "Perdi o celular: usar código de recuperação"}</button>}
+      {(mode === "email" || (mode === "off" && mfa.method === "email")) && (
+        <ResendButton className="ct-link" key={mode} onResend={async () => { const r = await resendMfaCode(mode === "email" ? "setup" : "off"); if (!r.ok) setErr(r.error ?? null); return r.ok; }} />
+      )}
+      {mfa.method === "totp" && (mode === "off" || mode === "totp-cur" || mode === "email-app") && <button className="ct-link" type="button" onClick={() => { setRec((x) => !x); setCode(""); setErr(null); }}>{rec ? "Usar o código do app" : "Perdi o celular: usar código de recuperação"}</button>}
       {err && <p className="ct-err" role="alert">{err}</p>}
       <div className="ct-act">
         <button className="ct-b ghost" type="button" onClick={reset}>Cancelar</button>
@@ -120,6 +127,7 @@ function MfaCard({ mfa, email }: Props) {
           ? <span className="ct-acts">
               {mfa.method === "email" && <button className="ct-b dark" type="button" onClick={() => void beginTotp()} disabled={busy}>Usar app autenticador</button>}
               {mfa.method === "totp" && <button className="ct-b" type="button" onClick={() => { setMode("totp-cur"); setErr(null); }}>Trocar de celular</button>}
+              {mfa.method === "totp" && <button className="ct-b" type="button" onClick={() => void beginEmail()} disabled={busy}>Usar código por e-mail</button>}
               <button className="ct-b ghost" type="button" onClick={() => void beginOff()} disabled={busy}>Desligar</button>
             </span>
           : <button className="ct-b dark" type="button" onClick={() => setMode("pick")}>Ligar agora</button>)}
@@ -145,6 +153,7 @@ function MfaCard({ mfa, email }: Props) {
       )}
 
       {mode === "totp-cur" && codeBox(<>Para cadastrar outro celular, digite primeiro o código do app que você usa hoje.</>, "Continuar")}
+      {mode === "email-app" && codeBox(<>Para trocar o app pelo código por e-mail, digite primeiro o código do app autenticador. Depois mandamos um código para o seu e-mail.</>, "Continuar")}
 
       {mode === "totp" && setup && (
         <div className="ct-sub">
@@ -165,7 +174,7 @@ function MfaCard({ mfa, email }: Props) {
         </div>
       )}
 
-      {mode === "email" && codeBox(<>Digite o código que enviamos para <b>{to}</b>.</>, "Ativar")}
+      {mode === "email" && codeBox(<>Enviamos um código para <b>{to}</b>. Digite aqui para {mfa.method === "totp" ? "passar a usar o e-mail" : "ativar"}.</>, "Ativar")}
       {mode === "renew" && codeBox(<>Digite o código do app autenticador para gerar novos códigos. Os antigos deixam de valer.</>, "Gerar códigos")}
       {mode === "off" && codeBox(mfa.method === "totp"
         ? <>Para desligar, digite o código do app autenticador. Sem ele, o Banco Tickets Win fica bloqueado.</>
@@ -186,26 +195,18 @@ function MfaCard({ mfa, email }: Props) {
   );
 }
 
-function PasswordCard({ login }: { login: Props["login"] }) {
-  const { flash } = useToast();
-  const [open, setOpen] = useState(false);
-  const [cur, setCur] = useState("");
-  const [nw, setNw] = useState("");
-  const [conf, setConf] = useState("");
-  const [others, setOthers] = useState(true);
+function PasswordCard({ login, email }: { login: Props["login"]; email: string }) {
+  const [sent, setSent] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    if (nw.length < 8) { setErr("A nova senha precisa ter pelo menos 8 caracteres."); return; }
-    if (nw !== conf) { setErr("A confirmação não bate com a nova senha."); return; }
+  async function send() {
     setBusy(true); setErr(null);
-    const r = await changePassword(cur, nw, others);
+    const r = await sendMyPasswordLink().catch(() => ({ ok: false, error: "Não foi possível enviar agora.", to: undefined }));
     setBusy(false);
-    if (!r.ok) { setErr(r.error ?? "Não foi possível trocar a senha."); return; }
-    flash("Senha alterada");
-    setOpen(false); setCur(""); setNw(""); setConf("");
+    if (!r.ok) { setErr(r.error ?? "Não foi possível enviar agora."); return false; }
+    setSent(r.to ?? email);
+    return true;
   }
 
   // conta criada pelo Google: a senha é a da conta Google
@@ -230,29 +231,24 @@ function PasswordCard({ login }: { login: Props["login"] }) {
       <div className="ct-row">
         <div>
           <h2 className="ct-h" id="pw-t">Senha</h2>
-          <p className="ct-v">{login.google ? "Você entra com o Google ou com esta senha. " : ""}Use uma senha longa, que você não usa em outros sites.</p>
+          <p className="ct-v">{login.google ? "Você entra com o Google ou com a sua senha. " : ""}Para trocar, mandamos um link para o seu e-mail. Só quem abre o e-mail consegue criar a senha nova.</p>
         </div>
-        {!open && <button className="ct-b" type="button" onClick={() => setOpen(true)}>Trocar senha</button>}
+        {!sent && <button className="ct-b" type="button" onClick={() => void send()} disabled={busy}>{busy ? "Enviando…" : "Trocar senha"}</button>}
       </div>
-      {open && (
-        <form className="ct-sub" onSubmit={save} noValidate>
-          <div className="ct-grid">
-            <label className="ct-f span2"><span className="ct-l">Senha atual</span><input className="ct-in" type="password" value={cur} onChange={(e) => { setCur(e.target.value); setErr(null); }} autoComplete="current-password" autoFocus /></label>
-            <label className="ct-f"><span className="ct-l">Nova senha</span><input className="ct-in" type="password" value={nw} onChange={(e) => { setNw(e.target.value); setErr(null); }} autoComplete="new-password" placeholder="Mínimo de 8 caracteres" /></label>
-            <label className="ct-f"><span className="ct-l">Confirme a nova senha</span><input className="ct-in" type="password" value={conf} onChange={(e) => { setConf(e.target.value); setErr(null); }} autoComplete="new-password" /></label>
-          </div>
-          <label className="ct-check"><input type="checkbox" checked={others} onChange={(e) => setOthers(e.target.checked)} /> Desconectar os outros aparelhos</label>
-          <p className="ct-note">Esqueceu a senha atual? <Link href="/esqueci-senha">Redefina pelo e-mail</Link>.</p>
-          {err && <p className="ct-err" role="alert">{err}</p>}
-          <div className="ct-act">
-            <button className="ct-b ghost" type="button" onClick={() => { setOpen(false); setErr(null); }}>Cancelar</button>
-            <button className="ct-b dark" type="submit" disabled={busy}>{busy ? "Salvando…" : "Salvar nova senha"}</button>
-          </div>
-        </form>
+      {!sent && <p className="ct-note">O link vai para <b>{maskMail(email)}</b>. Esse não é seu e-mail? <Link href="/conta">Trocar o e-mail</Link>.</p>}
+      {sent && (
+        <div className="ct-sub">
+          <p className="ct-note">Enviamos um link para <b>{sent}</b>. Abra o e-mail e toque em <b>Criar nova senha</b>. O link vale por 15 minutos.</p>
+          <ResendButton className="ct-link" label="Reenviar link" onResend={send} />
+        </div>
       )}
+      {err && <p className="ct-err" role="alert">{err}</p>}
     </section>
   );
 }
+
+/** mesma máscara do servidor: l••••••s@gmail.com */
+const maskMail = (e: string) => e.replace(/^(.)(.*)(.@.*)$/, (_m, a: string, mid: string, b: string) => a + "•".repeat(Math.min(10, Math.max(2, mid.length))) + b);
 
 function DevicesCard({ devices }: { devices: DeviceRow[] }) {
   const router = useRouter();

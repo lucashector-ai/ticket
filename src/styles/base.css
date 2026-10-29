@@ -33,7 +33,6 @@ input,select{font:inherit;color:inherit}
 .chev{position:absolute;right:12px;top:50%;margin-top:-5px;pointer-events:none}
 .ib{position:relative;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;transition:background .3s}
 .ib:hover{background:#F7F7F2}
-.badge{position:absolute;top:4px;right:3px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#111;color:#D3F55B;font-size:10px;font-weight:600;line-height:16px;text-align:center}
 .lnk{font-size:14px;font-weight:500;padding:8px 12px;border-radius:999px;transition:background .3s}
 .lnk:hover{background:#F7F7F2}
 .btn-o{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 16px;border:1px solid #EAEAEA;border-radius:999px;font-size:13.5px;font-weight:500;background:#fff;transition:border-color .3s,background .3s}
@@ -542,10 +541,6 @@ input,select{font:inherit;color:inherit}
 .cimg .in{transition:transform 1s var(--ease)}
 .card:hover .cimg .in{transform:scale(1.04)}
 .ctag{position:absolute;left:10px;top:10px;z-index:2;height:28px;padding:0 11px;border-radius:999px;background:rgba(255,255,255,.94);font-size:12px;font-weight:600;display:inline-flex;align-items:center}
-.fav{position:absolute;right:10px;top:10px;z-index:3;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.94);display:grid;place-items:center;transition:transform .4s var(--ease),background .3s,color .3s}
-.fav:hover{transform:scale(1.08)}
-.fav.on{background:#111;color:#D3F55B}
-.fav.on svg{animation:pop .5s var(--ease)}
 .cbody{padding:16px 8px 6px;display:flex;flex-direction:column;flex:1}
 .ct{margin:0;font-family:'Inter Tight',sans-serif;font-size:18px;font-weight:600;letter-spacing:-.02em;line-height:1.2}
 .cdate{margin:8px 0 0;font-size:14px;font-weight:500;color:#111}

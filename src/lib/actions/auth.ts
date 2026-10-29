@@ -7,9 +7,10 @@ import { z } from "zod";
 import { auth } from "@/lib/auth/server";
 import { db, schema } from "@/db";
 import { emailEnabled, logEmails } from "@/lib/email";
-import { mailPasswordChanged } from "@/lib/notify";
-import { issueCode, logSecurity, mfaSettings, rememberDevice, sessionCleared } from "@/lib/mfa";
+import { issueCode, logSecurity, mfaSettings, rememberDevice } from "@/lib/mfa";
 import { HUMAN_ERROR, verifyHuman } from "@/lib/turnstile";
+import { linkThrottled } from "@/lib/password-link";
+import { normalizePhone, phoneValid } from "@/lib/phone";
 
 export type AuthState = { error?: string; ok?: boolean } | null;
 
@@ -17,7 +18,7 @@ const signInSchema = z.object({ email: z.string().email("Confira o e-mail."), pa
 const signUpSchema = z.object({
   name: z.string().trim().min(2, "Digite seu nome."),
   email: z.string().email("Confira o e-mail."),
-  phone: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => /^[1-9]\d{9,10}$/.test(v), "Digite o celular com DDD."),
+  phone: z.string().transform(normalizePhone).refine(phoneValid, "Confira o celular (com DDD, no Brasil)."),
   password: z.string().min(8, "A senha precisa ter pelo menos 8 caracteres."),
 });
 
@@ -30,14 +31,13 @@ const userIdOf = (data: unknown) => (data as { user?: { id?: string } } | null)?
 const tokenOf = (data: unknown) => (data as { token?: string } | null)?.token ?? null;
 
 /**
- * Depois da senha: se a conta tem verificação em duas etapas (e o aparelho não é confiável),
- * devolve true (a pessoa vai para /verificacao); no método por e-mail o código já sai agora. Senão registra a entrada.
+ * Depois da senha: se a conta tem verificação em duas etapas, devolve true (a pessoa vai para /verificacao); no método por e-mail o código já sai agora. Senão registra a entrada.
  */
 async function secondStep(userId: string | null, token: string | null): Promise<boolean> {
   if (!userId) return false;
   await rememberDevice(token);
   const s = await mfaSettings(userId);
-  if (s.method && !(await sessionCleared(userId, ""))) {
+  if (s.method) {
     if (s.method === "email" && s.email) await issueCode(userId, "login", s.email, s.name);
     return true;
   }
@@ -69,7 +69,9 @@ export async function signUpWithEmail(_prev: AuthState, formData: FormData): Pro
     await rememberDevice(tokenOf(data));
   }
   sendActivation(parsed.data.email);
-  redirect(safeNext(formData.get("next")));
+  // segunda etapa do cadastro: digitar o código que chegou no e-mail
+  const next = safeNext(formData.get("next"));
+  redirect(next === "/" ? "/ativar-conta" : `/ativar-conta?next=${encodeURIComponent(next)}`);
 }
 
 export async function signOut() {
@@ -131,19 +133,11 @@ async function requestActivationCode(email: string) {
   }
 }
 
-/** "Enviar outro código" da página /ativar-conta. */
-export async function resendActivation(email: string): Promise<{ ok: true }> {
+/** "Enviar outro código" da página /ativar-conta (um a cada 30s por e-mail). */
+export async function resendActivation(email: string): Promise<{ ok: boolean; error?: string }> {
   const p = z.string().email().safeParse(email.trim().toLowerCase());
-  if (p.success) await requestActivationCode(p.data);
-  return { ok: true };
-}
-
-/** Nova senha com o código do e-mail; avisa por e-mail que a senha mudou. */
-export async function resetPasswordWithCode(email: string, otp: string, password: string): Promise<{ ok: boolean }> {
-  const p = z.object({ email: z.string().email(), otp: z.string().trim().min(4).max(12), password: z.string().min(8).max(200) }).safeParse({ email, otp, password });
-  if (!p.success) return { ok: false };
-  const res = await auth.emailOtp.resetPassword({ email: p.data.email, otp: p.data.otp, password: p.data.password });
-  if (res?.error) return { ok: false };
-  after(() => mailPasswordChanged(p.data.email));
+  if (!p.success) return { ok: false, error: "Digite um e-mail válido." };
+  if (await linkThrottled(`ativ:${p.data}`)) return { ok: false, error: "Aguarde alguns segundos para pedir outro código." };
+  await requestActivationCode(p.data);
   return { ok: true };
 }

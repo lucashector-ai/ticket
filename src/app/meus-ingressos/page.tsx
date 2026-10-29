@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { FavoritesHydrator } from "@/components/favorites";
 import { MeusIngressos } from "@/components/ingressos/meus-ingressos";
 import { appleWalletEnabled } from "@/lib/wallet/apple";
 import { googleWalletEnabled } from "@/lib/wallet/google";
@@ -9,7 +8,7 @@ import type { TicketGroup, TicketItem } from "@/components/ingressos/types";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getSessionUser } from "@/lib/auth/server";
-import { getUserFavoriteSlugs, listUserTickets, type TicketWithEvent } from "@/lib/data/user";
+import { listUserTickets, type TicketWithEvent } from "@/lib/data/user";
 import { countdownLabel, datePast, eventLabels } from "@/lib/tickets/labels";
 import { ticketQrSvg } from "@/lib/tickets/qr";
 
@@ -56,14 +55,13 @@ async function groupTickets(rows: TicketWithEvent[], now: Date): Promise<TicketG
 export default async function MeusIngressosPage({ searchParams }: { searchParams: Promise<{ pedido?: string }> }) {
   const user = await getSessionUser();
   if (!user) redirect("/entrar?next=/meus-ingressos");
-  const [{ pedido }, rows, favs] = await Promise.all([searchParams, listUserTickets(user.id), getUserFavoriteSlugs(user.id)]);
+  const [{ pedido }, rows] = await Promise.all([searchParams, listUserTickets(user.id)]);
   const groups = await groupTickets(rows, new Date());
   const n = Number(pedido);
   const confirmedOrder = Number.isInteger(n) && groups.some((g) => g.orderNumbers.includes(n)) ? n : null;
 
   return (
     <div className="pg-meus-ingressos">
-      <FavoritesHydrator serverFavs={favs} loggedIn />
       <SiteHeader user={user} variant="default" activePath="/meus-ingressos" />
       {!user.emailVerified && (
         <div className="wrap mi-verify" role="status">

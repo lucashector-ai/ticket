@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import QRCode from "qrcode";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
+import { normalizePhone, phoneValid } from "@/lib/phone";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { priceOrder, SERVICE_FEE_RATE } from "@/lib/pricing";
@@ -29,7 +30,7 @@ const placeSchema = z.object({
   buyer: z.object({
     name: fullName,
     email: z.string().trim().email("e-mail"),
-    phone: z.string().refine((v) => digits(v).length >= 10, "celular com DDD"),
+    phone: z.string().transform(normalizePhone).refine(phoneValid, "celular com DDD"),
     cpf: z.string().refine((v) => digits(v).length === 11, "CPF com 11 dígitos"),
   }),
   holders: z.array(z.object({ ticketTypeId: z.string().uuid(), name: fullName, meia: z.boolean() })),
@@ -171,7 +172,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     subtotalCents: p.subtotal, meiaCents: p.meia, discountCents: p.discount, feeCents: p.fee,
     interestCents: p.interest, installments: p.installments, totalCents: p.total,
     couponId: couponRow?.id ?? null, paymentMethod: free ? "free" : method,
-    buyerName: buyer.name.trim(), buyerEmail: buyer.email.trim().toLowerCase(), buyerPhone: digits(buyer.phone), buyerCpf: digits(buyer.cpf),
+    buyerName: buyer.name.trim(), buyerEmail: buyer.email.trim().toLowerCase(), buyerPhone: buyer.phone, buyerCpf: digits(buyer.cpf),
     holders: cleanHolders.map((h) => ({ ticketTypeId: h.ticketTypeId, name: h.name.trim(), meia: h.meia })),
     expiresAt: new Date(Date.now() + 15 * 60_000),
     presaleSignupId,
@@ -186,8 +187,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   })));
 
   // guarda celular e CPF no perfil para preencher da próxima vez
-  await db.insert(userProfiles).values({ userId: user.id, name: buyer.name.trim(), email: user.email ?? buyer.email, phone: digits(buyer.phone), cpf: digits(buyer.cpf) })
-    .onConflictDoUpdate({ target: userProfiles.userId, set: { name: buyer.name.trim(), phone: digits(buyer.phone), cpf: digits(buyer.cpf) } });
+  await db.insert(userProfiles).values({ userId: user.id, name: buyer.name.trim(), email: user.email ?? buyer.email, phone: buyer.phone, cpf: digits(buyer.cpf) })
+    .onConflictDoUpdate({ target: userProfiles.userId, set: { name: buyer.name.trim(), phone: buyer.phone, cpf: digits(buyer.cpf) } });
 
   const number = order.number ?? 0;
   const pixCode = pixCopyPaste(number, p.total);

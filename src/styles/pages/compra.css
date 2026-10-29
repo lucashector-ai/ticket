@@ -9,7 +9,6 @@
   .card:hover{transform:translateY(-5px)}
   .card:hover .cgo{width:140px}
   .card:hover .cgo em{opacity:1;transition:opacity .2s .12s}
-  .gbtn.on{background:#D3F55B;color:#111}
   .side .tier.so{grid-template-rows:auto}
   .side .tier.so .pr{grid-row:1}
   .prod-b.on{background:#D3F55B;color:#111}

@@ -51,8 +51,6 @@
   body .grid .cfx,body .grid .cfx-a,body .grid .go{width:36px;height:36px}
   body .grid .cfx-l{display:none}
   body .grid .pill-w,body .grid .ctag{left:8px;top:8px;height:24px;padding:0 9px;font-size:11px}
-  body .grid .fav{right:8px;top:8px;width:30px;height:30px}
-  body .grid .fav svg{width:15px;height:15px}
 }
 /* no celular, ações do header ficam só no menu (algumas páginas reescrevem .blk) */
 @media (max-width:900px){ body .hdr .hide-m{display:none} }
@@ -64,3 +62,8 @@ body:has(.mm) .mbar{display:none}
 .acct-pop{position:fixed;z-index:90;min-width:230px}
 .acct-who{display:flex;flex-direction:column;gap:2px;padding:10px 12px 12px;margin-bottom:4px;border-bottom:1px solid #F0F0EB;font-size:14.5px;font-weight:600;color:#111}
 .acct-who small{font-size:12.5px;font-weight:400;color:#8A8A90;overflow:hidden;text-overflow:ellipsis}
+
+/* celular com código do país (components/phone-field) */
+.tel{display:flex;gap:8px;width:100%;min-width:0}
+.tel > input{flex:1 1 auto;min-width:0;width:auto !important}
+.tel > .tel-cc{flex:0 0 auto;width:auto !important;min-width:0;padding-left:12px !important;padding-right:8px !important;cursor:pointer;font-variant-numeric:tabular-nums}

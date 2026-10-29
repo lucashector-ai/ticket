@@ -36,7 +36,7 @@ export const getAuthState = cache(async () => {
   if (!user || !sessionId) return { user: null, sessionId: null, token: null, pending: false } as const;
   // import tardio: o proxy (middleware) também importa este arquivo e não precisa do banco
   const { mfaSettings, sessionCleared } = await import("@/lib/mfa");
-  if (await sessionCleared(user.id, sessionId)) return { user, sessionId, token, pending: false } as const;
+  if (await sessionCleared(sessionId)) return { user, sessionId, token, pending: false } as const;
   const { method } = await mfaSettings(user.id);
   return { user, sessionId, token, pending: !!method } as const;
 });

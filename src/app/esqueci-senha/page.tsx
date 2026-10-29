@@ -8,7 +8,7 @@ import { getSessionUser } from "@/lib/auth/server";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Esqueci a senha" };
 
-export default async function EsqueciSenhaPage({ searchParams }: { searchParams: Promise<{ email?: string; codigo?: string }> }) {
+export default async function EsqueciSenhaPage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
   const user = await getSessionUser();
   if (user) redirect("/");
   const sp = await searchParams;
@@ -17,7 +17,7 @@ export default async function EsqueciSenhaPage({ searchParams }: { searchParams:
     <div className="pg-entrar">
       <SiteHeader user={null} variant="default" activePath="/entrar" />
       <AuthCard>
-        <ForgotForm initialEmail={email} withCode={sp.codigo === "1"} />
+        <ForgotForm initialEmail={email} />
       </AuthCard>
     </div>
   );

@@ -3,13 +3,7 @@ import { and, count, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 
-const { favorites, follows, tickets, orders } = schema;
-
-export async function getUserFavoriteSlugs(userId: string | null | undefined): Promise<string[]> {
-  if (!userId) return [];
-  const rows = await db.query.favorites.findMany({ where: eq(favorites.userId, userId), with: { event: { columns: { slug: true } } } });
-  return rows.map((r) => r.event.slug);
-}
+const { follows, tickets, orders } = schema;
 
 export async function isFollowing(userId: string | null | undefined, targetType: "artist" | "organizer", targetId: string) {
   if (!userId) return false;

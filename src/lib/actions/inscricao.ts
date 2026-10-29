@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import { z } from "zod";
+import { normalizePhone, phoneValid } from "@/lib/phone";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { mailApplicationReceived } from "@/lib/notify";
@@ -10,7 +11,7 @@ import { CATEGORIES, producerStatus, SOURCES, UFS } from "@/lib/producer-apply";
 const appSchema = z.object({
   firstName: z.string().trim().min(2, "Digite seu nome.").max(80),
   lastName: z.string().trim().min(2, "Digite seu sobrenome.").max(80),
-  phone: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => /^[1-9]\d{9,10}$/.test(v), "Digite o telefone com DDD."),
+  phone: z.string().transform(normalizePhone).refine(phoneValid, "Confira o telefone (com DDD, no Brasil)."),
   company: z.string().trim().max(120),
   city: z.string().trim().min(2, "Digite a cidade do evento.").max(120),
   uf: z.enum(UFS, { message: "Escolha o estado." }),

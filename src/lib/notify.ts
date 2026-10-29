@@ -6,6 +6,8 @@ import { brl, dateNice, parts } from "@/lib/format";
 import { renderTx, type TxBlock } from "@/lib/mail/tx";
 import { sellerNet } from "@/lib/resale";
 import { eventLabels } from "@/lib/tickets/labels";
+import { createResetLink } from "@/lib/password-link";
+import { formatPhone } from "@/lib/phone";
 
 /*
  * Todos os e-mails transacionais da Tickets Win: conta (código, boas-vindas, senha), compra,
@@ -57,11 +59,12 @@ type OtpType = "email-verification" | "forget-password" | "sign-in" | "change-em
 export async function mailAuthCode(type: OtpType, email: string, code: string, name?: string | null) {
   const e = encodeURIComponent(email);
   if (type === "forget-password") {
-    return sendTx(email, `${code} é o seu código para redefinir a senha`, {
-      preheader: "Use este código para criar uma senha nova. Ele vale por poucos minutos.",
-      title: "Redefinir sua senha", paragraphs: [`${hello(name)} Recebemos um pedido para trocar a senha da sua conta na Tickets Win. Use o código abaixo.`],
-      blocks: [{ kind: "code", code, note: "Vale por poucos minutos. Não compartilhe com ninguém." }],
-      cta: { label: "Criar nova senha", url: `/esqueci-senha?email=${e}&codigo=1` },
+    const url = await createResetLink(email, code);
+    return sendTx(email, "Crie sua nova senha na Tickets Win", {
+      preheader: "Toque no botão para criar uma senha nova. O link vale por 15 minutos.",
+      title: "Criar nova senha", paragraphs: [`${hello(name)} Recebemos um pedido para trocar a senha da sua conta na Tickets Win. Toque no botão para escolher a nova senha.`],
+      cta: { label: "Criar nova senha", url },
+      blocks: [{ kind: "note", text: "O link vale por 15 minutos e funciona uma vez só. Não encaminhe este e-mail." }],
       foot: "Se não foi você, ignore este e-mail: sua senha continua a mesma.",
     });
   }
@@ -115,17 +118,18 @@ export const mailPasswordChanged = safe("password", async (email: string) => {
     preheader: "A senha da sua conta na Tickets Win acabou de mudar.",
     title: "Sua senha foi alterada", paragraphs: ["A senha da sua conta na Tickets Win acabou de ser trocada. Se foi você, está tudo certo."],
     blocks: [{ kind: "note", text: "Não reconhece esta mudança? Redefina a senha agora e fale com a gente pela Ajuda." }],
-    cta: { label: "Redefinir senha", url: "/esqueci-senha" },
+    cta: { label: "Criar outra senha", url: "/esqueci-senha" },
     link: { label: "Falar com a Ajuda", url: "/ajuda" },
   });
 });
 
-const MFA_COPY: Record<"login" | "setup" | "off" | "email" | "bank", { subject: string; title: string; p: string }> = {
+const MFA_COPY: Record<"login" | "setup" | "off" | "email" | "newemail" | "bank", { subject: string; title: string; p: string }> = {
   bank: { subject: "é o seu código para entrar no Banco Tickets Win", title: "Entrar no Banco Tickets Win", p: "Alguém (provavelmente você) digitou a senha do Banco Tickets Win. Para abrir o extrato e pedir saques, use o código abaixo." },
   login: { subject: "é o seu código para entrar", title: "Confirme que é você", p: "Alguém (provavelmente você) acabou de entrar na sua conta com a senha. Para concluir o acesso, use o código abaixo." },
   setup: { subject: "é o código para ativar a verificação em duas etapas", title: "Ative a verificação em duas etapas", p: "Use o código abaixo para ligar a proteção extra da sua conta." },
   off: { subject: "é o código para desligar a verificação em duas etapas", title: "Desligar a verificação em duas etapas", p: "Use o código abaixo para confirmar que quer desligar a proteção extra da conta." },
-  email: { subject: "é o código para confirmar seu novo e-mail", title: "Confirme seu novo e-mail", p: "Use o código abaixo para trocar o e-mail da sua conta na Tickets Win." },
+  newemail: { subject: "é o código para confirmar seu novo e-mail", title: "Confirme seu novo e-mail", p: "Este e-mail vai passar a ser o de acesso da sua conta na Tickets Win. Para confirmar, use o código abaixo." },
+  email: { subject: "é o código para trocar o e-mail da conta", title: "Trocar o e-mail da conta", p: "Alguém (provavelmente você) pediu para trocar o e-mail de acesso da sua conta na Tickets Win. Para autorizar, use o código abaixo." },
 };
 
 /** Código da verificação em duas etapas (entrar, ligar/desligar a proteção, trocar e-mail). Devolve se saiu. */
@@ -181,7 +185,7 @@ export const mailApplicationReceived = safe("app-received", async (a: Applicatio
     cta: { label: "Ver minha inscrição", url: "/criar-evento" },
   });
   const rows: [string, string][] = [
-    ["Nome", `${a.firstName} ${a.lastName}`], ["E-mail", a.email], ["Telefone", a.phone], ["Produtora", a.company || "—"],
+    ["Nome", `${a.firstName} ${a.lastName}`], ["E-mail", a.email], ["Telefone", formatPhone(a.phone)], ["Produtora", a.company || "—"],
     ["Cidade", `${a.city} – ${a.uf}`], ["Categoria", a.category], ["Ticket médio", brl(a.avgTicketCents)], ["Público esperado", a.expected.toLocaleString("pt-BR")],
     ["Público-alvo", a.audience], ["Como chegou", a.source], ["Instagram", a.instagram || "—"],
   ];

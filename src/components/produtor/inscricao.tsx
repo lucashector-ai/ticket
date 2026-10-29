@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { submitApplication, type AppInput } from "@/lib/actions/inscricao";
-import { maskPhone } from "@/components/auth/fields";
+import { PhoneField } from "@/components/phone-field";
 
 type App = { status: "pending" | "rejected"; createdAt: string; note: string | null; company: string | null; city: string; uf: string; category: string } | null;
 type Props = { email: string; firstName: string; lastName: string; phone: string; app: App; ufs: readonly string[]; categories: readonly string[]; sources: readonly string[] };
@@ -33,7 +33,7 @@ export function ProducerApply(p: Props) {
   const [form, setForm] = useState(p.app?.status !== "pending" && !p.app);
   const [done, setDone] = useState(false);
   const [f, setF] = useState({
-    firstName: p.firstName, lastName: p.lastName, phone: maskPhone(p.phone), company: "", city: "", uf: "", audience: "", category: "",
+    firstName: p.firstName, lastName: p.lastName, phone: p.phone, company: "", city: "", uf: "", audience: "", category: "",
     avgTicket: "", expected: "", source: "", instagram: "",
   });
   const [busy, setBusy] = useState(false);
@@ -99,7 +99,7 @@ export function ProducerApply(p: Props) {
                 <label className="ins-f"><span>Nome *</span><input value={f.firstName} onChange={(e) => set({ firstName: e.target.value })} autoComplete="given-name" /></label>
                 <label className="ins-f"><span>Sobrenome *</span><input value={f.lastName} onChange={(e) => set({ lastName: e.target.value })} autoComplete="family-name" /></label>
               </div>
-              <label className="ins-f"><span>Telefone (WhatsApp) *</span><input type="tel" inputMode="tel" value={f.phone} onChange={(e) => set({ phone: maskPhone(e.target.value) })} placeholder="(11) 91234-5678" autoComplete="tel-national" /></label>
+              <div className="ins-f"><span>Telefone (WhatsApp) *</span><PhoneField value={f.phone} onChange={(v) => set({ phone: v })} /></div>
             </fieldset>
 
             <fieldset>

@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { authClient } from "@/lib/auth/client";
-import { emailChanged, saveProfile, setAvatar } from "@/lib/actions/conta";
+import { authorizeEmailChange, confirmNewEmail, requestNewEmail, resendEmailChangeCode, saveProfile, setAvatar, startEmailChange } from "@/lib/actions/conta";
+import { ResendButton } from "@/components/auth/resend";
 import { useToast } from "@/components/toast";
-import { maskPhone } from "@/components/auth/fields";
+import { PhoneField } from "@/components/phone-field";
 import { CodeBoxes } from "@/components/auth/verify-form";
 import type { UserAddress } from "@/db/schema";
 
@@ -18,7 +18,7 @@ const EMPTY: UserAddress = { cep: "", street: "", number: "", complement: "", di
 export function ContaDados({ initial }: { initial: Initial }) {
   const router = useRouter();
   const { flash } = useToast();
-  const [f, setF] = useState({ name: initial.name, phone: maskPhone(initial.phone), cpf: maskCpf(initial.cpf), birthDate: initial.birthDate });
+  const [f, setF] = useState({ name: initial.name, phone: initial.phone, cpf: maskCpf(initial.cpf), birthDate: initial.birthDate });
   const [addr, setAddr] = useState<UserAddress>(initial.address ? { ...EMPTY, ...initial.address, cep: maskCep(initial.address.cep) } : EMPTY);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -99,7 +99,7 @@ export function ContaDados({ initial }: { initial: Initial }) {
         <h2 className="ct-h" id="dp-t">Dados pessoais</h2>
         <div className="ct-grid">
           <label className="ct-f span2"><span className="ct-l">Nome completo</span><input className="ct-in" value={f.name} onChange={(e) => set({ name: e.target.value })} autoComplete="name" maxLength={160} /></label>
-          <label className="ct-f"><span className="ct-l">Celular</span><input className="ct-in" type="tel" inputMode="tel" value={f.phone} onChange={(e) => set({ phone: maskPhone(e.target.value) })} autoComplete="tel-national" placeholder="(11) 98765-4321" /></label>
+          <div className="ct-f"><span className="ct-l">Celular</span><PhoneField className="ct-in" value={f.phone} onChange={(v) => set({ phone: v })} /></div>
           <label className="ct-f"><span className="ct-l">CPF</span><input className="ct-in" inputMode="numeric" value={f.cpf} onChange={(e) => set({ cpf: maskCpf(e.target.value) })} placeholder="000.000.000-00" /></label>
           <label className="ct-f"><span className="ct-l">Data de nascimento</span><input className="ct-in" type="date" value={f.birthDate} onChange={(e) => set({ birthDate: e.target.value })} autoComplete="bday" max={new Date().toISOString().slice(0, 10)} /></label>
         </div>
@@ -122,39 +122,55 @@ export function ContaDados({ initial }: { initial: Initial }) {
   );
 }
 
-/** E-mail de acesso: troca com código enviado ao novo endereço. */
+/** E-mail de acesso: código no e-mail atual autoriza; depois código no e-mail novo confirma. */
 function EmailCard({ email, verified }: { email: string; verified: boolean }) {
   const router = useRouter();
   const { flash } = useToast();
-  const [open, setOpen] = useState(false);
+  type Step = "idle" | "auth" | "new" | "verify";
+  const [step, setStep] = useState<Step>("idle");
+  const [to, setTo] = useState("");
   const [next, setNext] = useState("");
-  const [sent, setSent] = useState(false);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  async function send() {
-    const v = next.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { setErr("Digite um e-mail válido."); return; }
-    if (v === email.toLowerCase()) { setErr("Este já é o seu e-mail."); return; }
+  const close = () => { setStep("idle"); setCode(""); setNext(""); setErr(null); };
+  const fail = (e?: string) => { setErr(e ?? "Não deu certo. Tente de novo."); setCode(""); };
+
+  async function begin() {
     setBusy(true); setErr(null);
-    try {
-      const r = await authClient.emailOtp.requestEmailChange({ newEmail: v });
-      if (r?.error) setErr(r.error.message?.toLowerCase().includes("exist") ? "Já existe uma conta com este e-mail." : "Não foi possível enviar o código agora.");
-      else setSent(true);
-    } catch { setErr("Não foi possível enviar o código agora."); }
+    const r = await startEmailChange();
     setBusy(false);
+    if (!r.ok) { fail(r.error); return; }
+    setTo(r.to ?? ""); setCode(""); setStep("auth");
+  }
+  async function authorize(v = code) {
+    if (busy || v.length !== 6) return;
+    setBusy(true); setErr(null);
+    const r = await authorizeEmailChange(v);
+    setBusy(false);
+    if (!r.ok) { fail(r.error); return; }
+    setCode(""); setStep("new");
+  }
+  async function sendNew() {
+    const v = next.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { setErr("Digite um e-mail válido."); return false; }
+    if (v === email.toLowerCase()) { setErr("Este já é o seu e-mail."); return false; }
+    setBusy(true); setErr(null);
+    const r = await requestNewEmail(v).catch(() => ({ ok: false, error: "Não foi possível enviar o código agora." }));
+    setBusy(false);
+    if (!r.ok) { fail(r.error); return false; }
+    setCode(""); setStep("verify");
+    return true;
   }
   async function confirm(v = code) {
-    if (v.length !== 6) return;
+    if (busy || v.length !== 6) return;
     setBusy(true); setErr(null);
-    try {
-      const r = await authClient.emailOtp.changeEmail({ newEmail: next.trim().toLowerCase(), otp: v });
-      if (r?.error) { setErr("Código incorreto ou expirado."); setCode(""); setBusy(false); return; }
-    } catch { setErr("Código incorreto ou expirado."); setCode(""); setBusy(false); return; }
-    await emailChanged(email);
+    const r = await confirmNewEmail(v).catch(() => ({ ok: false, error: "Não foi possível trocar agora." }));
+    setBusy(false);
+    if (!r.ok) { fail(r.error); return; }
     flash("E-mail alterado");
-    setOpen(false); setSent(false); setNext(""); setCode(""); setBusy(false);
+    close();
     router.refresh();
   }
 
@@ -165,26 +181,45 @@ function EmailCard({ email, verified }: { email: string; verified: boolean }) {
           <h2 className="ct-h" id="em-t">E-mail de acesso</h2>
           <p className="ct-v">{email} {verified ? <span className="ct-pill ok">Confirmado</span> : <a className="ct-pill warn" href="/ativar-conta">Confirmar</a>}</p>
         </div>
-        {!open && <button className="ct-b" type="button" onClick={() => setOpen(true)}>Alterar e-mail</button>}
+        {step === "idle" && <button className="ct-b" type="button" onClick={() => void begin()} disabled={busy}>{busy ? "Enviando…" : "Alterar e-mail"}</button>}
       </div>
-      {open && (
+      {step === "idle" && err && <p className="ct-err" role="alert">{err}</p>}
+      {step !== "idle" && (
         <div className="ct-sub">
-          {!sent ? (
+          <ol className="ct-prog" aria-label="Etapas">
+            <li className={step === "auth" ? "on" : "ok"}>Confirmar que é você</li>
+            <li className={step === "new" ? "on" : step === "verify" ? "ok" : undefined}>E-mail novo</li>
+            <li className={step === "verify" ? "on" : undefined}>Confirmar e-mail novo</li>
+          </ol>
+          {step === "auth" && (
             <>
-              <label className="ct-f"><span className="ct-l">Novo e-mail</span><input className="ct-in" type="email" value={next} onChange={(e) => { setNext(e.target.value); setErr(null); }} autoComplete="email" autoFocus placeholder="nome@email.com" /></label>
-              <p className="ct-note">Vamos mandar um código para o novo e-mail. O antigo recebe um aviso da troca.</p>
+              <p className="ct-note">Por segurança, mandamos um código para o seu e-mail atual, <b>{to}</b>. Digite para autorizar a troca.</p>
+              <CodeBoxes value={code} onChange={(v) => { setCode(v); setErr(null); }} onDone={(v) => void authorize(v)} disabled={busy} />
+              <ResendButton className="ct-link" onResend={async () => { const r = await resendEmailChangeCode(); if (!r.ok) setErr(r.error ?? null); return r.ok; }} />
             </>
-          ) : (
+          )}
+          {step === "new" && (
+            <>
+              <label className="ct-f"><span className="ct-l">Novo e-mail</span><input className="ct-in" type="email" value={next} onChange={(e) => { setNext(e.target.value); setErr(null); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void sendNew(); } }} autoComplete="email" autoFocus placeholder="nome@email.com" /></label>
+              <p className="ct-note">Vamos mandar um código para o e-mail novo. O atual recebe um aviso da troca.</p>
+            </>
+          )}
+          {step === "verify" && (
             <>
               <p className="ct-note">Digite o código que enviamos para <b>{next.trim().toLowerCase()}</b>.</p>
               <CodeBoxes value={code} onChange={(v) => { setCode(v); setErr(null); }} onDone={(v) => void confirm(v)} disabled={busy} />
+              <span className="ct-acts">
+                <ResendButton className="ct-link" onResend={sendNew} />
+                <button className="ct-link" type="button" onClick={() => { setStep("new"); setCode(""); setErr(null); }}>Corrigir o e-mail</button>
+              </span>
             </>
           )}
           {err && <p className="ct-err" role="alert">{err}</p>}
           <div className="ct-act">
-            <button className="ct-b ghost" type="button" onClick={() => { setOpen(false); setSent(false); setErr(null); setCode(""); }}>Cancelar</button>
-            {!sent ? <button className="ct-b dark" type="button" onClick={() => void send()} disabled={busy}>{busy ? "Enviando…" : "Enviar código"}</button>
-              : <button className="ct-b dark" type="button" onClick={() => void confirm()} disabled={busy || code.length !== 6}>{busy ? "Confirmando…" : "Confirmar troca"}</button>}
+            <button className="ct-b ghost" type="button" onClick={close}>Cancelar</button>
+            {step === "auth" && <button className="ct-b dark" type="button" onClick={() => void authorize()} disabled={busy || code.length !== 6}>{busy ? "Confirmando…" : "Continuar"}</button>}
+            {step === "new" && <button className="ct-b dark" type="button" onClick={() => void sendNew()} disabled={busy}>{busy ? "Enviando…" : "Enviar código"}</button>}
+            {step === "verify" && <button className="ct-b dark" type="button" onClick={() => void confirm()} disabled={busy || code.length !== 6}>{busy ? "Confirmando…" : "Confirmar troca"}</button>}
           </div>
         </div>
       )}

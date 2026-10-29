@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
 import { signInInline, signUpInline } from "@/lib/actions/auth";
-import { maskPhone } from "@/components/auth/fields";
+import { PhoneField } from "@/components/phone-field";
 import { viaVerify } from "@/components/auth/google-button";
 import { Turnstile, useHuman } from "@/components/auth/turnstile";
 
@@ -62,10 +62,10 @@ export function InlineAuth({ onDone, returnUrl, highlight, human }: { onDone: ()
           <input className="in2" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="nome@email.com" />
         </label>
         {mode === "criar" && (
-          <label className="lf2">
+          <div className="lf2">
             <span className="lf2-l">Celular</span>
-            <input className="in2" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(maskPhone(e.target.value))} autoComplete="tel-national" placeholder="(11) 98765-4321" />
-          </label>
+            <PhoneField className="in2" value={phone} onChange={setPhone} />
+          </div>
         )}
         <label className="lf2">
           <span className="lf2-l">Senha</span>

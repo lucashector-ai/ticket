@@ -23,14 +23,13 @@ export function matchesQuery(e: HomeEvent, q: string) {
   return normalize(q).split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
 }
 
-export type Filters = { query: string; city: string; date: DateFilter; cat: string; sort: "data" | "pop" | "preco"; onlyFavs: boolean };
+export type Filters = { query: string; city: string; date: DateFilter; cat: string; sort: "data" | "pop" | "preco" };
 
-export const DEFAULT_FILTERS: Filters = { query: "", city: "all", date: "any", cat: "all", sort: "data", onlyFavs: false };
+export const DEFAULT_FILTERS: Filters = { query: "", city: "all", date: "any", cat: "all", sort: "data" };
 
-export function applyFilters(live: HomeEvent[], f: Filters, favs: string[]) {
+export function applyFilters(live: HomeEvent[], f: Filters) {
   const R = ranges();
   const list = live.filter((e) => {
-    if (f.onlyFavs && !favs.includes(e.slug)) return false;
     if (f.city !== "all" && e.city !== f.city) return false;
     if (f.cat !== "all" && !e.kinds.includes(f.cat)) return false;
     if (f.date !== "any" && !overlaps(e, R[f.date])) return false;
@@ -51,7 +50,6 @@ export function exploreHref(f: Filters) {
   if (f.cat !== "all") p.set("cat", f.cat);
   if (f.date !== "any") p.set("date", f.date);
   if (f.sort !== "data") p.set("sort", f.sort);
-  if (f.onlyFavs) p.set("salvos", "1");
   const s = p.toString();
   return s ? `/explorar?${s}` : "/explorar";
 }

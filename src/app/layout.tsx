@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ToastProvider } from "@/components/toast";
-import { FavoritesProvider } from "@/components/favorites";
 import { FONTS } from "@/lib/fonts";
 
 export const metadata: Metadata = {
@@ -24,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ToastProvider>
-          <FavoritesProvider>{children}</FavoritesProvider>
+          {children}
         </ToastProvider>
       </body>
     </html>

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BannerArt } from "@/components/art/banner";
 import { FlyerArt } from "@/components/art/flyer";
-import { useFavorites } from "@/components/favorites";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader, type HeaderUser } from "@/components/site-header";
 import { brl } from "@/lib/format";
@@ -37,7 +36,6 @@ function reduced() {
 
 export function HomeClient({ user, events, heroEvents, categories, cityOpts, spotify }: Props) {
   const router = useRouter();
-  const { favs } = useFavorites();
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [loading, setLoading] = useState(true);
@@ -121,7 +119,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
     else focusSearch();
   }, [filters, router, focusSearch]);
 
-  const view = useMemo(() => applyFilters(events, filters, favs), [events, filters, favs]);
+  const view = useMemo(() => applyFilters(events, filters), [events, filters]);
   const top = useMemo(() => [...events].sort((a, b) => b.popularity - a.popularity).slice(0, 5), [events]);
   const feat = useMemo(() => events.find((e) => e.slug === "marea") ?? null, [events]);
 
@@ -243,11 +241,11 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
                   />
                 </label>
                 <span className="qb-sep" aria-hidden="true" />
-                <button className={filters.date === "hoje" ? "qb-c on" : "qb-c"} type="button" onClick={() => { refilter({ date: filters.date === "hoje" ? "any" : "hoje", onlyFavs: false }); scrollTo("destaque"); }} aria-pressed={filters.date === "hoje"}>
+                <button className={filters.date === "hoje" ? "qb-c on" : "qb-c"} type="button" onClick={() => { refilter({ date: filters.date === "hoje" ? "any" : "hoje" }); scrollTo("destaque"); }} aria-pressed={filters.date === "hoje"}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5" /><path d="M12 9.5v4l2.5 1.5M9.5 2.5h5" /></svg>
                   <span>Hoje</span>
                 </button>
-                <button className={filters.date === "fds" ? "qb-c on" : "qb-c"} type="button" onClick={() => { refilter({ date: filters.date === "fds" ? "any" : "fds", onlyFavs: false }); scrollTo("destaque"); }} aria-pressed={filters.date === "fds"}>
+                <button className={filters.date === "fds" ? "qb-c on" : "qb-c"} type="button" onClick={() => { refilter({ date: filters.date === "fds" ? "any" : "fds" }); scrollTo("destaque"); }} aria-pressed={filters.date === "fds"}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
                   <span>Fim de semana</span>
                 </button>
@@ -261,7 +259,6 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
                       setAcct((v) => !v);
                     }}>
                       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="4" /><path d="M4.5 20.5c1.3-3.8 4.2-5.8 7.5-5.8s6.2 2 7.5 5.8" /></svg>
-                      {favs.length > 0 && <span className="badge">{favs.length}</span>}
                     </button>
                   ) : (
                     <Link className="qb-ib" href="/entrar" aria-label="Entrar">
@@ -352,7 +349,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
             <div className="sh rv" style={{ alignItems: "flex-end" }}>
               <div>
                 <h2 className="h2" id="tp-t" style={{ fontSize: 30, lineHeight: 1.15, letterSpacing: "-0.02em" }}>Os 5 mais procurados da semana</h2>
-                <p style={{ fontSize: 15, marginTop: 6 }}>O que todo mundo está salvando agora.</p>
+                <p style={{ fontSize: 15, marginTop: 6 }}>O que todo mundo está procurando agora.</p>
               </div>
               <div className="tnav">
                 <button type="button" onClick={() => topScroll(-1)} aria-label="Anteriores">
@@ -383,7 +380,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
                 <p style={{ fontSize: 15, marginTop: 6 }}>Do show de arena à instalação de arte. Escolha o clima da sua próxima saída.</p>
               </div>
             </div>
-            <CategoryGrid categories={categories} onPick={(slug) => { refilter({ cat: slug, onlyFavs: false }); scrollTo("destaque"); }} />
+            <CategoryGrid categories={categories} onPick={(slug) => { refilter({ cat: slug }); scrollTo("destaque"); }} />
             <Newsletter />
           </div>
         </section>
@@ -394,7 +391,6 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
           <span className="acct-who">{user.name?.split(" ")[0] || "Sua conta"}<small>{user.email}</small></span>
           <Link href="/meus-ingressos" role="menuitem">Meus ingressos</Link>
           <Link href="/conta" role="menuitem">Minha conta</Link>
-          <Link href="/explorar?salvos=1" role="menuitem">Eventos salvos{favs.length > 0 ? ` (${favs.length})` : ""}</Link>
           {producer && <Link href="/painel" role="menuitem">Painel do produtor</Link>}
           {producer && <Link href="/meus-eventos" role="menuitem">Meus eventos</Link>}
           <SignOutButton role="menuitem" />

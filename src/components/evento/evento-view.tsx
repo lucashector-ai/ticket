@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { BannerArt } from "@/components/art/banner";
 import { FlyerArt } from "@/components/art/flyer";
 import { EventCard } from "@/components/event-card";
-import { useFavorites } from "@/components/favorites";
 import { SiteHeader, type HeaderUser } from "@/components/site-header";
 import { useToast } from "@/components/toast";
 import type { EventCard as EventCardData } from "@/lib/data/events";
@@ -36,7 +35,6 @@ type Props = {
 export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewerEmail }: Props) {
   const router = useRouter();
   const { flash } = useToast();
-  const { isFav, toggle } = useFavorites();
   const tickets = useTickets(e);
   const player = usePlayer();
   const [ld, setLd] = useState<"on" | "out" | "">("on");
@@ -49,11 +47,6 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  const fav = isFav(e.slug);
-  const onFav = async () => {
-    const saved = await toggle(e.slug);
-    flash(saved ? `${e.title} foi salvo` : "Removido dos salvos");
-  };
   const onShare = async () => {
     const url = window.location.href;
     try {
@@ -110,9 +103,6 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
             <div className="m16">
               <div className="m16-art2"><BannerArt id={e.bannerId} fit="card" /></div>
               <div className="cover-acts">
-                <button className={fav ? "gbtn on" : "gbtn"} type="button" onClick={onFav} aria-pressed={fav} aria-label={fav ? "Remover dos salvos" : "Salvar evento"}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill={fav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 20.5s-8-4.9-8-11A4.6 4.6 0 0 1 12 6.4a4.6 4.6 0 0 1 8 3.1c0 6.1-8 11-8 11z" /></svg>
-                </button>
                 <button className="gbtn" type="button" onClick={onShare} aria-label="Compartilhar">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
                 </button>

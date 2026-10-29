@@ -6,8 +6,11 @@ type Ctx = Parameters<Handlers["POST"]>[1];
 let handlers: Handlers | undefined;
 const get = () => (handlers ??= auth.handler());
 
-/* Login e cadastro por senha só pelas nossas ações (com verificador de humanos e segunda etapa). */
-const BLOCKED = ["sign-in/email", "sign-up/email", "sign-in/email-otp"];
+/*
+ * Login e cadastro por senha só pelas nossas ações (com verificador de humanos e segunda etapa).
+ * Trocar o e-mail também: é feito em Minha conta, com código no e-mail atual e no novo.
+ */
+const BLOCKED = ["sign-in/email", "sign-up/email", "sign-in/email-otp", "change-email", "email-otp/request-email-change", "email-otp/change-email"];
 /* Mexer na conta exige a segunda etapa concluída. */
 const NEEDS_MFA = ["change-email", "email-otp/request-email-change", "email-otp/change-email", "change-password", "update-user", "delete-user", "revoke-session", "revoke-sessions", "revoke-all-sessions", "revoke-other-sessions", "list-sessions", "list-accounts", "link-social", "unlink-account"];
 

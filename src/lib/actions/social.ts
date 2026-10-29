@@ -6,29 +6,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 
-const { favorites, follows, events, newsletterSubscribers } = schema;
-
-/** Alterna favorito. Retorna o novo estado. Anônimos usam localStorage no cliente. */
-export async function toggleFavorite(eventSlug: string): Promise<{ saved: boolean; auth: boolean }> {
-  const user = await getSessionUser();
-  if (!user) return { saved: false, auth: false };
-  const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), columns: { id: true } });
-  if (!ev) return { saved: false, auth: true };
-  const existing = await db.query.favorites.findFirst({ where: and(eq(favorites.userId, user.id), eq(favorites.eventId, ev.id)) });
-  if (existing) {
-    await db.delete(favorites).where(and(eq(favorites.userId, user.id), eq(favorites.eventId, ev.id)));
-    return { saved: false, auth: true };
-  }
-  await db.insert(favorites).values({ userId: user.id, eventId: ev.id }).onConflictDoNothing();
-  return { saved: true, auth: true };
-}
-
-export async function syncFavorites(slugs: string[]) {
-  const user = await getSessionUser();
-  if (!user || !slugs.length) return;
-  const rows = await db.query.events.findMany({ where: (e, { inArray }) => inArray(e.slug, slugs), columns: { id: true } });
-  if (rows.length) await db.insert(favorites).values(rows.map((r) => ({ userId: user.id, eventId: r.id }))).onConflictDoNothing();
-}
+const { follows, newsletterSubscribers } = schema;
 
 export async function toggleFollow(targetType: "artist" | "organizer", targetId: string): Promise<{ following: boolean; auth: boolean }> {
   const user = await getSessionUser();
