@@ -360,6 +360,8 @@
   .cv-tmb input{min-width:0;width:100%;border:0;outline:0;background:transparent;font:600 28px 'Inter Tight',sans-serif;letter-spacing:-.03em;color:var(--cv-ink);font-variant-numeric:tabular-nums}
   .cv-tmb.cap{margin-top:12px;max-width:340px}
   .cv-stp{flex:none;display:flex;gap:6px}
+  /* o reset de botão herda o alinhamento (à esquerda): estes botões de tamanho fixo centralizam o conteúdo */
+  .cv-cal .cd,.cv-cal .n button,.cv-stp button,.cv-pz > button,.cv-lim button{display:inline-grid;place-items:center;padding:0;text-align:center;line-height:1}
   .cv-stp button{width:38px;height:38px;border:0;border-radius:50%;background:#fff;font-size:18px;font-weight:600;color:var(--cv-ink);transition:transform .25s var(--cv-spring),background .2s}
   .cv-stp button:hover{background:var(--cv-lime)}
   .cv-stp button:active{transform:scale(.86)}
