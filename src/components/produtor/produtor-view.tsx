@@ -52,7 +52,7 @@ const REVIEW_TAGS = ["Som", "Organização", "Lugar", "Bar", "Atendimento", "Lin
 const POLICY_DEFAULT = {
   cancel: "Até 7 dias após a compra, com 48h de antecedência do evento.",
   meia: "Conforme a Lei 12.933. Documento na entrada.",
-  transfer: "Liberada pelo app até o início do evento.",
+  transfer: "Liberada em Meus ingressos até o início do evento.",
   access: "",
 };
 
@@ -139,7 +139,7 @@ export function ProdutorView(p: ProdutorProps) {
                 <li><b className="st-v">{kLabel(followers)}</b><span className="st-k">seguidores</span></li>
                 <li><b className="st-v">{p.past.length}</b><span className="st-k">eventos realizados</span></li>
                 <li>{p.rating.n ? <b className="st-v">{p.rating.avg}<Star /></b> : <b className="st-v">Novo</b>}<span className="st-k">{p.rating.n ? `${p.rating.n} ${p.rating.n === 1 ? "avaliação" : "avaliações"}` : "sem avaliações"}</span></li>
-                <li><b className="st-v">{o.since}</b><span className="st-k">no Tickets Win desde</span></li>
+                <li><b className="st-v">{o.since}</b><span className="st-k">na Tickets Win desde</span></li>
               </ul>
             </div>
             <div className="pf-act">
@@ -335,7 +335,7 @@ function Posts({ p }: { p: ProdutorProps }) {
 }
 
 function Past({ p }: { p: ProdutorProps }) {
-  if (!p.past.length) return <div className="pane"><div className="empty">Nenhum evento realizado no Tickets Win ainda.</div></div>;
+  if (!p.past.length) return <div className="pane"><div className="empty">Nenhum evento realizado na Tickets Win ainda.</div></div>;
   return (
     <div className="pane">
       <div className="sec-h"><h2 className="sec-t">Eventos que já aconteceram</h2><span className="sec-s">{p.past.length} {p.past.length === 1 ? "evento" : "eventos"} desde {p.org.since}</span></div>
@@ -367,7 +367,7 @@ function Reviews({ p }: { p: ProdutorProps }) {
       {p.rating.n > 0 && <aside className="rv-sum">
         <b className="rv-big">{p.rating.avg}</b>
         <div className="rv-stars" aria-label={`Nota ${p.rating.avg} de 5`}>{[1, 2, 3, 4, 5].map((k) => <Star key={k} size={20} cls={k <= Math.round(avgN) ? "sf" : "se"} />)}</div>
-        <span className="rv-n">{p.rating.n} {p.rating.n === 1 ? "avaliação" : "avaliações"} de quem comprou pelo Tickets Win</span>
+        <span className="rv-n">{p.rating.n} {p.rating.n === 1 ? "avaliação" : "avaliações"} de quem comprou pela Tickets Win</span>
         <div className="rv-bars">
           {p.rating.dist.map((pct, i) => (
             <div className="rb" key={i}><span className="rb-k">{5 - i}</span><span className="rb-b"><i style={{ width: `${pct}%` }} /></span><span className="rb-v">{pct}%</span></div>
@@ -381,7 +381,7 @@ function Reviews({ p }: { p: ProdutorProps }) {
             {([["all", "Todas"], ["5", "5 estrelas"], ["rep", "Com resposta"]] as const).map(([k, l]) => <button key={k} className={filter === k ? "cty on" : "cty"} type="button" onClick={() => setFilter(k)}>{l}</button>)}
           </div>
         )}
-        {list.length === 0 && <div className="empty">{p.reviews.length ? "Nenhuma avaliação com esse filtro." : "Ainda não há avaliações. Quem vai a um evento com ingresso do Tickets Win pode avaliar depois."}</div>}
+        {list.length === 0 && <div className="empty">{p.reviews.length ? "Nenhuma avaliação com esse filtro." : "Ainda não há avaliações. Quem vai a um evento com ingresso da Tickets Win pode avaliar depois."}</div>}
         {list.map((r) => (
           <article className="rvw" key={r.id}>
             <div className="rvw-h">
@@ -470,7 +470,7 @@ function About({ p, onEdit }: { p: ProdutorProps; onEdit: () => void }) {
         {bio.length ? bio.map((t, i) => <p className="ab-p" key={i}>{t}</p>) : (
           p.isOwner
             ? <p className="ab-p empty-own">Conte a história de {o.name}: há quanto tempo produz, o estilo dos eventos, o que o público pode esperar. <button className="rp-b" type="button" onClick={onEdit}>Escrever agora</button></p>
-            : <p className="ab-p">{o.name} produz eventos no Tickets Win desde {o.since}.</p>
+            : <p className="ab-p">{o.name} produz eventos na Tickets Win desde {o.since}.</p>
         )}
         {p.venues.length > 0 && (
           <>
@@ -492,7 +492,7 @@ function About({ p, onEdit }: { p: ProdutorProps; onEdit: () => void }) {
         <div className="ctc">
           <b className="ct-t">Fale com {o.name}</b>
           <span className="ct-s">{o.contactEmail || wa ? "Dúvidas sobre ingressos, acessibilidade ou parcerias." : "Contato ainda não informado."}</span>
-          {o.contactEmail && <a className="go3 block" href={`mailto:${o.contactEmail}?subject=${encodeURIComponent("Contato pelo Tickets Win")}`}>Enviar mensagem</a>}
+          {o.contactEmail && <a className="go3 block" href={`mailto:${o.contactEmail}?subject=${encodeURIComponent("Contato pela Tickets Win")}`}>Enviar mensagem</a>}
           <div className="ct-l">
             {insta && <a className="ct-a" href={insta} target="_blank" rel="noreferrer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" /></svg>@{o.instagram}</a>}
             {o.website && <a className="ct-a" href={o.website} target="_blank" rel="noreferrer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18" /></svg>{o.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</a>}

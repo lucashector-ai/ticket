@@ -117,7 +117,7 @@ function passJson(d: PassData, s: Signer) {
         { key: "when", label: "Data e horário", value: [d.when, d.doors || show].filter(Boolean).join(" · ") },
         { key: "code", label: "Código do ingresso", value: d.code },
         ...(d.address ? [{ key: "address", label: "Endereço", value: d.address }] : []),
-        { key: "link", label: "Seu ingresso no site", value: d.url, attributedValue: `<a href="${d.url}">Abrir no Tickets Win</a>` },
+        { key: "link", label: "Seu ingresso no site", value: d.url, attributedValue: `<a href="${d.url}">Abrir na Tickets Win</a>` },
         { key: "rules", label: "Importante", value: "Apresente o QR code na entrada com um documento com foto. Meia-entrada exige comprovante. Se o ingresso for transferido, este passe deixa de valer." },
       ],
     },

@@ -13,5 +13,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   const base = await baseCtx(c);
   const name = r.name ?? "";
   const { html } = renderCampaign(c, { ...base, vars: { nome: name, primeiro_nome: firstName(name), email: r.email }, unsubscribeUrl: `${base.site}/e/sair/${token}` });
-  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex" } });
+  // o HTML é do produtor: abre numa origem isolada e sem scripts, para nada nele agir com a sessão de quem lê
+  return new Response(html, {
+    headers: {
+      "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
+      "content-security-policy": "sandbox allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation; script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    },
+  });
 }

@@ -10,7 +10,7 @@ import { slugify } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { absolute: "Tickets Win — Descubra eventos" },
+  title: { absolute: "Tickets Win · Descubra eventos" },
   description: "Descubra os eventos que valem sair de casa. Festas, shows, festivais e experiências nas principais cidades do Brasil.",
 };
 
@@ -18,8 +18,8 @@ export default async function Home() {
   const [live, hero, cats, cities, user] = await Promise.all([listLiveEvents(), listHeroEvents(), listCategories(), listCities(), getSessionUser()]);
   const [extras, spotifyConn] = await Promise.all([listHomeExtras([...live, ...hero].map((e) => e.id)), getSpotifyConnection(user?.id)]);
 
-  const toHome = (e: EventCard): HomeEvent => ({
-    slug: e.slug, title: e.title, flyerId: e.flyerId, bannerId: e.bannerId ?? e.flyerId,
+  const toHome = (e: EventCard & { heroArt?: string | null; heroHtml?: string | null }): HomeEvent => ({
+    slug: e.slug, title: e.title, flyerId: e.flyerId, bannerId: e.heroArt ?? e.bannerId ?? e.flyerId, bannerHtml: e.heroHtml ?? null, pin: e.featuredOrder,
     startMs: e.startAt.getTime(), endMs: (e.endAt ?? e.startAt).getTime(), dateNice: e.dateNice,
     venue: e.venue, city: e.city, uf: e.uf, minPriceCents: e.minPriceCents, popularity: e.popularity,
     kinds: e.kinds, categoryLabel: e.categoryLabel ?? "Evento", lineup: e.lineup,

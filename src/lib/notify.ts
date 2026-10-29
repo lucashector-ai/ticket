@@ -6,6 +6,7 @@ import { brl, dateNice, parts } from "@/lib/format";
 import { renderTx, type TxBlock } from "@/lib/mail/tx";
 import { sellerNet } from "@/lib/resale";
 import { eventLabels } from "@/lib/tickets/labels";
+import { companionsLabel, guestQrPngPath } from "@/lib/guest-list";
 import { createResetLink } from "@/lib/password-link";
 import { formatPhone } from "@/lib/phone";
 
@@ -162,7 +163,7 @@ export const mailPayoutRequested = safe("payout", async (to: string, name: strin
     preheader: `Seu saque de ${brl(amount)} está em análise.`,
     eyebrow: "Banco Tickets Win", title: "Pedido de saque recebido",
     paragraphs: [`${hello(name)} Recebemos seu pedido de saque de ${brl(amount)}. O dinheiro cai em até 2 dias úteis em ${dest}.`],
-    blocks: [{ kind: "note", text: "Não pediu este saque? Entre no Banco Tickets Win, cancele o pedido e troque a senha do banco no painel." }],
+    blocks: [{ kind: "note", text: "Não pediu este saque? Entre no Banco Tickets Win, cancele o pedido e troque a senha do banco em “Criar ou recuperar acesso”." }],
   });
   const fin = process.env.FINANCE_EMAIL || "info@ticketswin.com.br";
   await sendTx(fin, `Saque pedido: ${brl(amount)} · ${name || to}`, {
@@ -207,7 +208,20 @@ export const mailApplicationApproved = safe("app-approved", async (a: Applicatio
   });
 });
 
-export const mailApplicationRejected = safe("app-rejected", async (a: Application, note: string | null) => {
+/** A equipe liberou a conta como produtor pela central (sem a pessoa ter se inscrito, ou aprovando a inscrição dela). */
+export const mailProducerAuthorized = safe("producer-authorized", async (a: Application) => {
+  await sendTx(a.email, "Você foi autorizado como produtor na Tickets Win", {
+    preheader: "Crie sua conta de produtor e comece a vender ingressos.",
+    eyebrow: "Bem-vindo, produtor", title: "Você foi autorizado como produtor",
+    paragraphs: [
+      `${hello(a.firstName)} A equipe da Tickets Win autorizou sua conta como produtor. Agora você já pode criar sua conta de produtor (leva um minuto) e publicar o primeiro evento.`,
+      "Entre com este mesmo e-mail para continuar.",
+    ],
+    cta: { label: "Criar minha conta de produtor", url: "/produtores/cadastro" },
+  });
+});
+
+export const mailApplicationRejected =safe("app-rejected", async (a: Application, note: string | null) => {
   await sendTx(a.email, "Sobre sua inscrição de produtor", {
     preheader: "Veja o retorno da equipe da Tickets Win.",
     title: "Sua inscrição não foi aprovada agora",
@@ -263,6 +277,27 @@ export const mailOrderConfirmed = safe("order", async (orderId: string) => {
     blocks: [eventBlock(e), { kind: "items", title: n === 1 ? "Seu ingresso" : "Seus ingressos", items }, { kind: "rows", rows }, { kind: "note", text: "Não tire print do QR code para mandar a outras pessoas: ele muda quando o ingresso é transferido. Para passar o ingresso, use Transferir em Meus ingressos." }],
     cta: { label: "Ver meus ingressos", url: "/meus-ingressos" },
     ...(maps ? { link: { label: "Como chegar", url: maps } } : {}),
+    reason: "Você recebeu este e-mail porque fez um pedido na Tickets Win.",
+  });
+});
+
+/** Pagamento estornado: o pedido não pôde ser concluído (ou foi reembolsado) e o valor volta para quem pagou. */
+export const mailOrderRefunded = safe("refund", async (orderId: string, reason: string, amountCents?: number) => {
+  const o = await db.query.orders.findFirst({ where: eq(orders.id, orderId), with: { event: { columns: { title: true, slug: true } } } });
+  if (!o) return;
+  const to = o.buyerEmail || (await userContact(o.userId ?? ""))?.email;
+  if (!to) return;
+  const amount = amountCents ?? o.totalCents;
+  const how = o.paymentMethod === "card"
+    ? "No cartão, o estorno aparece em até 2 faturas, dependendo do banco."
+    : "No Pix, o valor volta para a conta de onde saiu, normalmente em minutos (pode levar alguns dias).";
+  await sendTx(to, `Pagamento estornado: ${o.event.title}`, {
+    preheader: `Estornamos ${brl(amount)} do pedido nº ${o.number ?? ""}.`,
+    eyebrow: `Pedido nº ${o.number ?? ""}`.trim(),
+    title: "Pagamento estornado",
+    paragraphs: [`${hello(o.buyerName)} ${reason}`, `Estornamos ${brl(amount)} para o mesmo meio de pagamento. ${how}`],
+    blocks: [{ kind: "rows", rows: [["Evento", o.event.title], ["Pedido", `nº ${o.number ?? "—"}`], ["Valor estornado", brl(amount)]] }],
+    cta: { label: "Ver o evento", url: `/eventos/${o.event.slug}` },
     reason: "Você recebeu este e-mail porque fez um pedido na Tickets Win.",
   });
 });
@@ -381,6 +416,33 @@ export const mailTeamInvite = safe("team", async (email: string, role: string, o
     cta: { label: "Abrir o painel", url: "/painel" },
     reason: `Você recebeu este e-mail porque ${orgName} convidou ${email} para a equipe na Tickets Win.`,
   });
+});
+
+/** Ingresso de lista (lista free): o próprio ingresso no e-mail (QR em PNG), com o evento e o botão para abrir. Um lote por chamada. */
+export const mailGuestInvites = safe("guest-list", async (ids: string[]) => {
+  if (!ids.length) return;
+  const rows = await db.query.guestListEntries.findMany({ where: inArray(schema.guestListEntries.id, ids), with: { event: { with: eventWith } } });
+  const mails: Mail[] = rows.filter((r) => r.email).map((r) => {
+    const e = r.event as EvRow;
+    const plus = companionsLabel(r.guests);
+    return {
+      to: r.email!,
+      subject: `Seu ingresso de lista: ${e.title}`,
+      ...renderTx({
+        preheader: `Entrada gratuita${plus ? ` ${plus}` : ""}. Mostre o QR code na portaria.`,
+        eyebrow: "Lista free · Cortesia", title: "Seu ingresso de lista",
+        paragraphs: [`${hello(r.name)} Seu nome está na lista free de ${e.title}: a entrada é gratuita${plus ? `, para você ${plus}` : ""}. Na portaria, mostre o QR code abaixo ou diga o seu nome.`],
+        blocks: [
+          { kind: "ticket", label: "Ingresso de lista · Entrada gratuita", name: r.name, sub: plus || undefined, qr: guestQrPngPath(r.token), code: "LISTA FREE" },
+          eventBlock(e),
+          { kind: "note", text: "Vale uma entrada e é só para este nome: não pode ser vendido nem transferido. A conferência de documento fica a critério do local." },
+        ],
+        cta: { label: "Abrir meu ingresso de lista", url: `/lista/${r.token}` },
+        reason: `Você recebeu este e-mail porque o produtor de ${e.title} colocou ${r.email} na lista free do evento na Tickets Win.`,
+      }, siteBase()),
+    };
+  });
+  await sendEmails(mails);
 });
 
 /** Primeira publicação de um evento: o link para divulgar e o painel. */

@@ -43,7 +43,7 @@ export function fromTemplate(key: TemplateKey, ev: { id: string; title: string }
     case "lembrete":
       return {
         name: `Lembrete · ${title}`, subject: `Falta pouco para ${title}`, preheader: "Endereço, horário e tudo o que você precisa saber.", audience: buyersOf,
-        design: design([makeBlock("contagem", id), t("Falta pouco!"), p("Oi {{primeiro_nome|pessoal}}, tá chegando. Separamos o que você precisa saber:<br><br><b>Ingresso:</b> está em Meus ingressos no site e no app. Dá para colocar na Apple Wallet ou no Google Wallet.<br><b>Documento:</b> leve um documento com foto. Quem comprou meia-entrada precisa do comprovante."), makeBlock("local", id), { ...(makeBlock("botao") as Extract<Block, { t: "botao" }>), label: "Ver meus ingressos", href: "/meus-ingressos" }]),
+        design: design([makeBlock("contagem", id), t("Falta pouco!"), p("Oi {{primeiro_nome|pessoal}}, tá chegando. Separamos o que você precisa saber:<br><br><b>Ingresso:</b> está em Meus ingressos, na Tickets Win. Dá para colocar na Apple Wallet ou no Google Wallet.<br><b>Documento:</b> leve um documento com foto. Quem comprou meia-entrada precisa do comprovante."), makeBlock("local", id), { ...(makeBlock("botao") as Extract<Block, { t: "botao" }>), label: "Ver meus ingressos", href: "/meus-ingressos" }]),
       };
     case "pos":
       return {

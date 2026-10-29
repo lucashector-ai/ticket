@@ -47,7 +47,7 @@ export async function googleSaveUrl(d: PassData, site: string) {
     ...(d.art ? { heroImage: { sourceUri: { uri: d.art }, contentDescription: txt(d.title) } } : {}),
     ...(d.venue || d.address ? { venue: { name: txt(d.venue || d.city), address: txt(d.address || d.city) } } : {}),
     dateTime: { start: d.start.toISOString(), end: d.end.toISOString() },
-    homepageUri: { uri: d.url, description: "Ver ingresso no Tickets Win" },
+    homepageUri: { uri: d.url, description: "Ver ingresso na Tickets Win" },
   };
   const object = {
     id: `${issuer}.${gid(`ingresso-${d.code}`)}`,

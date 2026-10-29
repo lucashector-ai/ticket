@@ -182,11 +182,11 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
           >
             {heroEvents.map((b, i) => (
               <div key={b.slug} className={i === heroIdx ? "bnx-i on" : "bnx-i"} aria-hidden={i !== heroIdx}>
-                <span className="cfh-w"><BannerArt id={b.bannerId} fit="fill" /></span>
+                <span className="cfh-w"><HeroArt b={b} fit="fill" active={i === heroIdx} /></span>
                 <span className="cfh-t"><FlyerArt id={b.flyerId} /></span>
                 {/* celular: banner 16:9 em destaque sobre o próprio banner desfocado */}
                 <span className="cfh-m">
-                  <span className="cfh-mb"><BannerArt id={b.bannerId} fit="card" /></span>
+                  <span className="cfh-mb"><HeroArt b={b} fit="card" active={i === heroIdx} /></span>
                   <span className="cfh-mi">
                     <span className="cfh-mk">{b.categoryLabel}</span>
                     <b>{b.title}</b>
@@ -223,7 +223,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
           <div className={stuck ? "qwrap stuck" : "qwrap"}>
             <div className="wrap">
               <div className="qbar" role="search">
-                <Link className="qb-logo" href="/" aria-label="Tickets Win — voltar ao início">
+                <Link className="qb-logo" href="/" aria-label="Tickets Win: voltar ao início">
                   <BrandMark size={24} />
                   <span><BrandWord height={17} /></span>
                 </Link>
@@ -399,5 +399,25 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
       <SiteFooter />
 
     </div>
+  );
+}
+
+/**
+ * Arte do banner principal: imagem (PNG, JPG, WebP ou GIF) ou o HTML escolhido na central.
+ * O HTML roda num iframe isolado (sem acesso ao site, aos cookies nem à navegação); o clique vai para o evento.
+ */
+function HeroArt({ b, fit, active }: { b: HomeEvent; fit: "fill" | "card"; active: boolean }) {
+  if (!b.bannerHtml) return <BannerArt id={b.bannerId} fit={fit} />;
+  return (
+    <iframe
+      className="bn-html"
+      title={`Banner de ${b.title}`}
+      srcDoc={active ? b.bannerHtml : undefined}
+      sandbox="allow-scripts"
+      referrerPolicy="no-referrer"
+      tabIndex={-1}
+      aria-hidden="true"
+      style={{ position: fit === "fill" ? "absolute" : "relative", inset: 0, display: "block", width: "100%", height: fit === "fill" ? "100%" : undefined, aspectRatio: fit === "card" ? "16 / 9" : undefined, border: 0, pointerEvents: "none", background: "#111111" }}
+    />
   );
 }

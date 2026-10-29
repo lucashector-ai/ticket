@@ -13,7 +13,7 @@ import { db, schema } from "@/db";
  * Sem a chave, nada é enviado (o painel continua mostrando os cadastros e os links).
  */
 
-export type Mail = { to: string; subject: string; html: string; text: string };
+export type Mail = { to: string; subject: string; html: string; text: string; /** responder para (ex.: quem escreveu no formulário de contato) */ replyTo?: string };
 
 export const emailEnabled = () => !!process.env.RESEND_API_KEY;
 
@@ -34,7 +34,7 @@ export async function sendEmails(list: Mail[]): Promise<number> {
   let sent = 0;
   for (let i = 0; i < list.length; i += 100) {
     const part = list.slice(i, i + 100);
-    const batch = part.map((m) => ({ from, to: [m.to], subject: m.subject, html: m.html, text: m.text }));
+    const batch = part.map((m) => ({ from, to: [m.to], subject: m.subject, html: m.html, text: m.text, ...(m.replyTo ? { reply_to: m.replyTo } : {}) }));
     let error: string | null = null;
     try {
       const r = await fetch("https://api.resend.com/emails/batch", {
@@ -73,7 +73,7 @@ export function mailLayout(o: { preheader: string; title: string; paragraphs: st
 export const siteBase = () => (process.env.NEXT_PUBLIC_SITE_URL ?? "https://ticketswin.com.br").replace(/\/$/, "");
 
 /** Um e-mail transacional no formato da marca. Devolve se o Resend aceitou. */
-export async function sendTx(to: string, subject: string, m: TxMail): Promise<boolean> {
+export async function sendTx(to: string, subject: string, m: TxMail, opts?: { replyTo?: string }): Promise<boolean> {
   if (!to) return false;
-  return (await sendEmails([{ to, subject, ...renderTx(m, siteBase()) }])) > 0;
+  return (await sendEmails([{ to, subject, ...renderTx(m, siteBase()), ...(opts?.replyTo ? { replyTo: opts.replyTo } : {}) }])) > 0;
 }

@@ -49,7 +49,7 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
           </section>
 
           <section className="cx">
-            <div className="card-h"><div><h2 className="card-t">Conta de repasse</h2><span className="card-s">Para onde vai o dinheiro das vendas quando o pagamento real for ligado. Só o dono vê.</span></div></div>
+            <div className="card-h"><div><h2 className="card-t">Conta de repasse</h2><span className="card-s">Para onde vão os saques do Banco Tickets Win. Só o dono vê.</span></div></div>
             <div className="frm">
               <div className="frm-2">
                 <label className="fld"><span>Razão social</span><input value={f.legalName} maxLength={200} onChange={(e) => set({ legalName: e.target.value })} /></label>

@@ -121,7 +121,7 @@ export async function submitReview(input: z.input<typeof reviewSchema>): Promise
   const [had] = await db.select({ id: tickets.id, org: events.organizerId }).from(tickets).innerJoin(events, eq(events.id, tickets.eventId))
     .where(and(eq(tickets.eventId, eventId), eq(tickets.holderUserId, user.id), inArray(tickets.status, ["valid", "used"]), lt(sql`coalesce(${events.endAt}, ${events.startAt})`, sql`now()`)))
     .limit(1);
-  if (!had) return { ok: false, error: "Só quem foi ao evento com ingresso do Tickets Win pode avaliar." };
+  if (!had) return { ok: false, error: "Só quem foi ao evento com ingresso da Tickets Win pode avaliar." };
   await db.insert(eventReviews).values({ eventId, organizerId: had.org, userId: user.id, userName: user.name || null, rating, body: body || null, tags })
     .onConflictDoUpdate({ target: [eventReviews.eventId, eventReviews.userId], set: { rating, body: body || null, tags } });
   const org = had.org ? await db.query.organizers.findFirst({ where: eq(organizers.id, had.org), columns: { slug: true } }) : null;

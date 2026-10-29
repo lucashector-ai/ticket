@@ -107,6 +107,11 @@ export function href(url: string, c: RenderCtx) {
   return c.link ? c.link(u) : u;
 }
 
+/** Alinhamento entra no style sem escape: só "left" ou "center" (design antigo ou forjado não passa outra coisa). */
+const al = (a: string | undefined) => (a === "center" ? "center" : "left");
+/** Variáveis da pessoa (nome, e-mail) dentro do HTML do bloco de texto: escapadas (o nome é escrito por quem comprou). */
+const escVars = (v: Vars): Vars => ({ nome: esc(v.nome), primeiro_nome: esc(v.primeiro_nome), email: esc(v.email) });
+
 const ed = (c: RenderCtx, attr: string) => (c.editor ? ` data-edit="${attr}"` : "");
 /** No editor o texto fica com as variáveis cruas ({{primeiro_nome}}), para a edição não gravar o exemplo. */
 const fv = (s: string, c: RenderCtx, extra?: Record<string, string>) => (c.editor ? s.replace(/\{\{\s*evento\s*\}\}/g, extra?.evento ?? "{{evento}}") : fillVars(s, c.vars, extra));
@@ -121,7 +126,7 @@ const label = (text: string, color: string, extra = "") => `<div style="font-siz
 function button(text: string, url: string, s: MailStyle, c: RenderCtx, opts: { full?: boolean; align?: "left" | "center"; edit?: boolean } = {}) {
   const r = Math.min(s.radius, 12);
   const a = `<a href="${esc(href(url, c))}"${opts.edit ? ed(c, "label") : ""} style="display:${opts.full ? "block" : "inline-block"};background:${s.accent};color:${s.accentText};text-decoration:none;font-weight:700;font-size:15px;line-height:20px;letter-spacing:.1px;padding:16px 28px;border-radius:${r}px;text-align:center;mso-padding-alt:0">${esc(text)}</a>`;
-  return `<div style="text-align:${opts.align ?? "left"}">${a}</div>`;
+  return `<div style="text-align:${al(opts.align)}">${a}</div>`;
 }
 
 /** Cartaz tipográfico quando o evento não tem imagem enviada. */
@@ -161,10 +166,10 @@ export function renderBlock(b: Block, s: MailStyle, c: RenderCtx): string {
   switch (b.t) {
     case "titulo": {
       const fs = b.size === "g" ? 34 : b.size === "m" ? 26 : 20;
-      return row(`<h1 class="${b.size === "g" ? "tw-h1" : ""}"${ed(c, "text")} style="margin:0;font-size:${fs}px;line-height:1.12;font-weight:800;letter-spacing:${b.size === "p" ? "-.2" : "-.8"}px;color:${s.text};text-align:${b.align}">${esc(fv(b.text, c))}</h1>`, "16px 40px 6px");
+      return row(`<h1 class="${b.size === "g" ? "tw-h1" : ""}"${ed(c, "text")} style="margin:0;font-size:${fs}px;line-height:1.12;font-weight:800;letter-spacing:${b.size === "p" ? "-.2" : "-.8"}px;color:${s.text};text-align:${al(b.align)}">${esc(fv(b.text, c))}</h1>`, "16px 40px 6px");
     }
     case "texto":
-      return row(`<div${ed(c, "html")} style="font-size:16px;line-height:1.65;color:${t.body};text-align:${b.align}">${fv(cleanHtml(b.html), c).replace(/<a href="([^"]*)">/g, (_, u: string) => `<a href="${esc(href(u.replace(/&quot;/g, '"'), c))}" style="color:${s.text};text-decoration:underline;text-underline-offset:2px">`)}</div>`, "8px 40px");
+      return row(`<div${ed(c, "html")} style="font-size:16px;line-height:1.65;color:${t.body};text-align:${al(b.align)}">${fv(cleanHtml(b.html), { ...c, vars: escVars(c.vars) }).replace(/<a href="([^"]*)">/g, (_, u: string) => `<a href="${esc(href(u.replace(/&quot;/g, '"'), c))}" style="color:${s.text};text-decoration:underline;text-underline-offset:2px">`)}</div>`, "8px 40px");
     case "imagem": {
       if (!b.src) return missing(c, "Envie uma imagem no painel ao lado");
       const w = Math.max(20, Math.min(100, b.width));

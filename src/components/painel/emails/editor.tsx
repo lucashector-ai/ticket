@@ -383,7 +383,7 @@ function PreviewModal({ html, onClose }: { html: string; onClose: () => void }) 
           <div className="seg2 sm"><button className={w === "desk" ? "sg on" : "sg"} type="button" onClick={() => setW("desk")}>Computador</button><button className={w === "mob" ? "sg on" : "sg"} type="button" onClick={() => setW("mob")}>Celular</button></div>
           <button className="ln-x" type="button" onClick={onClose} aria-label="Fechar">×</button>
         </div>
-        <div className="ed-pvb"><iframe title="Prévia do e-mail" srcDoc={html} style={{ width: w === "desk" ? 680 : 380 }} /></div>
+        <div className="ed-pvb"><iframe title="Prévia do e-mail" srcDoc={html} sandbox="allow-popups allow-popups-to-escape-sandbox" style={{ width: w === "desk" ? 680 : 380 }} /></div>
       </div>
     </div>
   );

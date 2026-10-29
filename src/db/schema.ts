@@ -324,6 +324,12 @@ export const events = pgTable(
     maxPerOrder: integer("max_per_order").notNull().default(8),
     featured: boolean("featured").notNull().default(false),
     heroOrder: integer("hero_order"),
+    /** arte própria do banner principal da home (/midia/... PNG, JPG, WebP ou GIF); sem ela vale o banner do evento */
+    heroArt: varchar("hero_art", { length: 300 }),
+    /** banner principal em HTML (editado na central; roda isolado num iframe sem acesso ao site) */
+    heroHtml: text("hero_html"),
+    /** posição em "Eventos em destaque" da home (null = fora) */
+    featuredOrder: integer("featured_order"),
     publishedAt: timestamp("published_at", { withTimezone: true }).defaultNow(),
     /* ---- criado pelo produtor em /criar-evento ---- */
     createdByUserId: text("created_by_user_id"),
@@ -498,9 +504,14 @@ export const orders = pgTable(
     groupShareId: uuid("group_share_id"),
     resaleListingId: uuid("resale_listing_id"),
     presaleSignupId: uuid("presale_signup_id"),
+    /** PaymentIntent da Stripe (pi_...) que cobra este pedido; um por pedido, reaproveitado nas novas tentativas */
+    stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 64 }),
     ...timestamps,
   },
-  (t) => [index("orders_user_idx").on(t.userId), index("orders_event_idx").on(t.eventId), uniqueIndex("orders_number_idx").on(t.number)],
+  (t) => [
+    index("orders_user_idx").on(t.userId), index("orders_event_idx").on(t.eventId), uniqueIndex("orders_number_idx").on(t.number),
+    uniqueIndex("orders_stripe_pi_idx").on(t.stripePaymentIntentId),
+  ],
 );
 
 export const orderItems = pgTable(
@@ -853,6 +864,34 @@ export const checkinLinks = pgTable(
   (t) => [uniqueIndex("checkin_links_token_idx").on(t.token), uniqueIndex("checkin_links_code_idx").on(t.code), index("checkin_links_event_idx").on(t.eventId)],
 );
 
+/**
+ * Lista free (convidados não pagantes) de um evento: quem está aqui entra de graça, conferido pelo
+ * nome na portaria ou pelo QR do ingresso de lista (/lista/<token>, também no e-mail e em Meus
+ * ingressos de quem tem conta com o mesmo e-mail). Não gera pedido nem linha em tickets, então
+ * não conta como venda, não mexe em preço e não pode ser revendida nem transferida.
+ */
+export const guestListEntries = pgTable(
+  "guest_list_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    email: varchar("email", { length: 254 }),
+    /** acompanhantes que entram junto ("+2") */
+    guests: integer("guests").notNull().default(0),
+    note: varchar("note", { length: 200 }),
+    /** segredo do link/QR do convite */
+    token: varchar("token", { length: 32 }).notNull(),
+    addedByUserId: text("added_by_user_id"),
+    invitedAt: timestamp("invited_at", { withTimezone: true }),
+    checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+    /** quem liberou: nome/e-mail da equipe ou "Portaria · <acesso>" */
+    checkedInBy: varchar("checked_in_by", { length: 120 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("guest_list_event_idx").on(t.eventId), uniqueIndex("guest_list_token_idx").on(t.token)],
+);
+
 export const citiesRelations = relations(cities, ({ many }) => ({ venues: many(venues) }));
 export const venuesRelations = relations(venues, ({ one, many }) => ({
   city: one(cities, { fields: [venues.cityId], references: [cities.id] }),
@@ -941,6 +980,9 @@ export const emailSendsRelations = relations(emailSends, ({ one }) => ({
 }));
 export const checkinLinksRelations = relations(checkinLinks, ({ one }) => ({
   event: one(events, { fields: [checkinLinks.eventId], references: [events.id] }),
+}));
+export const guestListEntriesRelations = relations(guestListEntries, ({ one }) => ({
+  event: one(events, { fields: [guestListEntries.eventId], references: [events.id] }),
 }));
 export const favoritesRelations = relations(favorites, ({ one }) => ({
   event: one(events, { fields: [favorites.eventId], references: [events.id] }),

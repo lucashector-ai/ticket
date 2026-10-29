@@ -9,7 +9,7 @@ import { SectionDock } from "./dock";
 import { Map3D } from "./map3d";
 import { Tips } from "./tips";
 
-export const CONTACT = "mailto:produtores@ticketswin.com.br?subject=Quero%20vender%20ingressos%20no%20Tickets%20Win";
+export const CONTACT = "mailto:produtores@ticketswin.com.br?subject=Quero%20vender%20ingressos%20na%20Tickets%20Win";
 
 const d = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
@@ -48,16 +48,16 @@ const CAL_ON = new Set([6, 7, 20, 21]);
 const CAL_X = new Set([13, 14, 15]);
 
 const STEPS = [
-  { n: 1, t: "~10 min", b: "Crie o evento", p: "Formato, datas, setores e ingressos num passo a passo guiado. Salva sozinho enquanto você preenche." },
-  { n: 2, t: "1 clique", b: "Publique e divulgue", p: "Página pronta para celular, link curto, cupons, promoters e pixels de anúncio já integrados." },
-  { n: 3, t: "D+2", b: "Receba rápido", p: "O dinheiro de cada venda cai na sua conta em 2 dias úteis, com borderô completo e nota emitida." },
+  { n: 1, t: "~5 min", b: "Crie o evento", p: "Formato, datas, setores e ingressos num passo a passo guiado. Salva sozinho enquanto você preenche." },
+  { n: 2, t: "1 clique", b: "Publique e divulgue", p: "Página pronta para celular, link curto, cupons, promoters e e-mails para o seu público." },
+  { n: 3, t: "2 dias", b: "Receba rápido", p: "O líquido das vendas é liberado 2 dias depois do evento. Você saca pelo Banco Tickets Win quando quiser." },
 ];
 
 const PRICE_LIST = [
   "Sem mensalidade e sem taxa de adesão",
   "Eventos gratuitos não pagam nada",
-  "Repasse em D+2, toda terça e sexta",
-  "Antecipação de recebíveis quando precisar",
+  "Saldo liberado 2 dias depois do evento",
+  "Saque quando quiser pelo Banco Tickets Win",
   "Todos os recursos inclusos, inclusive o mapa 3D",
 ];
 
@@ -81,14 +81,14 @@ export function ProdutoresLanding() {
             <span className="ln"><span>Do primeiro lote ao</span></span>
             <span className="ln"><span><em>ingresso esgotado.</em></span></span>
           </h1>
-          <p className="pdl-lead">Crie o evento em minutos, venda com mapa, lotes e meia-entrada, acompanhe tudo ao vivo e receba em 2 dias. Sem mensalidade.</p>
+          <p className="pdl-lead">Crie o evento em minutos, venda com mapa, lotes e meia-entrada, acompanhe tudo ao vivo e receba 2 dias depois do evento. Sem mensalidade.</p>
           <div className="pdl-cta">
             <Link className="pdl-btn" href="/criar-evento">Criar meu evento <Arrow /></Link>
             <a className="pdl-btn g" href={CONTACT}>Falar com vendas</a>
           </div>
           <div className="pdl-ticks">
             <span><Check />Taxa única de 7,99%</span>
-            <span><Check />Repasse em D+2</span>
+            <span><Check />Repasse 2 dias após o evento</span>
             <span><Check />Evento gratuito não paga</span>
           </div>
         </div>
@@ -209,8 +209,8 @@ export function ProdutoresLanding() {
           </div>
           <div className="pdl-bx pdl-lm pdl-rv" data-spot style={d(2)}>
             <span className="ic scan"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M4 12h16" /></svg></span>
-            <b>Check-in offline</b>
-            <p>App de portaria lê o QR sem internet e sincroniza depois.</p>
+            <b>Check-in no celular</b>
+            <p>App da portaria no navegador, sem instalar nada. Cada QR entra uma vez só.</p>
           </div>
           <div className="pdl-bx pdl-rv" data-spot style={d(3)}>
             <span className="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z" /></svg></span>
@@ -224,8 +224,8 @@ export function ProdutoresLanding() {
           </div>
           <div className="pdl-bx pdl-rv" data-spot style={d(5)}>
             <span className="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" /></svg></span>
-            <b>Itens adicionais</b>
-            <p>Estacionamento, open bar e camiseta junto com o ingresso.</p>
+            <b>Compra em grupo</b>
+            <p>Um amigo reserva e cada um paga a sua parte pelo link.</p>
           </div>
           <div className="pdl-bx pdl-wide pdl-rv" data-spot style={d(6)}>
             <span className="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="3" /><path d="M3 10h18M16 14.5h2" /></svg></span>
@@ -235,10 +235,10 @@ export function ProdutoresLanding() {
           <div className="pdl-bx pdl-full pdl-rv" data-spot style={d(7)}>
             <span className="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" /><path d="M9 12l2 2 4-4" /></svg></span>
             <div className="tx">
-              <b>Seguro e antifraude</b>
-              <p>Cada compra no cartão passa por análise. Seguro de cancelamento opcional para o seu evento, do início ao fim.</p>
+              <b>Pagamento seguro e antifraude</b>
+              <p>Cada compra no cartão passa por análise antifraude antes de ser aprovada, dentro do checkout da Tickets Win.</p>
             </div>
-            <div className="pdl-mini"><span>Pix</span><span>Cartão em até 12x</span><span>Carteiras digitais</span></div>
+            <div className="pdl-mini"><span>Pix</span><span>Cartão em até 6x</span><span>Até 3x sem juros</span></div>
           </div>
         </Spotlight>
       </section>
@@ -311,7 +311,7 @@ export function ProdutoresLanding() {
             <figcaption className="pdl-qa"><span className="av" aria-hidden="true">MA</span><span><b>Maré Alta Eventos</b><span>Festival · Florianópolis</span></span></figcaption>
           </figure>
           <figure className="pdl-q pdl-rv" style={d(2)}>
-            <blockquote><p>“Repasse em dois dias e borderô pronto. Paro de correr atrás de planilha e foco no line-up.”</p></blockquote>
+            <blockquote><p>“Repasse dois dias depois do evento e financeiro pronto no painel. Paro de correr atrás de planilha e foco no line-up.”</p></blockquote>
             <figcaption className="pdl-qa"><span className="av" aria-hidden="true">ÁR</span><span><b>Ácida Records</b><span>Selo e festa · Porto Alegre</span></span></figcaption>
           </figure>
         </SnapRail>

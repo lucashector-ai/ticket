@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQrCamera } from "@/components/checkin/use-qr-camera";
-import { leavePortaria, portariaCounts, portariaGuests, portariaRelease, portariaScan, type Guest, type PortariaScan } from "@/lib/actions/portaria";
+import { leavePortaria, portariaCounts, portariaFreeList, portariaGuests, portariaRelease, portariaReleaseFree, portariaScan, type Guest, type PortariaScan } from "@/lib/actions/portaria";
+import type { DoorGuest } from "@/lib/guest-list";
 import { InstallHint } from "./install";
 
 type Counts = { inside: number; total: number };
@@ -98,7 +99,13 @@ export function PortariaApp({ gate, event, counts: c0 }: { gate: string; event: 
       <div className="pt-inst-wrap"><InstallHint compact /></div>
 
       {res && <ResultView r={res} onClose={dismiss} />}
-      {panel === "list" && <GuestList onClose={() => setPanel("none")} onRelease={async (id) => { const r = await portariaRelease(id).catch(() => ({ ok: false, error: "Sem conexão." })); show(r); return r; }} />}
+      {panel === "list" && (
+        <GuestList
+          onClose={() => setPanel("none")}
+          onRelease={async (id) => { const r = await portariaRelease(id).catch(() => ({ ok: false, error: "Sem conexão." })); show(r); return r; }}
+          onReleaseFree={async (id) => { const r = await portariaReleaseFree(id).catch(() => ({ ok: false, error: "Sem conexão." })); show(r); return r; }}
+        />
+      )}
       {panel === "type" && <TypeCode onClose={() => setPanel("none")} onSend={async (code) => { setPanel("none"); show(await portariaScan(code).catch(() => ({ ok: false, error: "Sem conexão." }))); }} />}
       {panel === "menu" && (
         <div className="pt-sheet sm" role="dialog" aria-label="Opções" onClick={() => setPanel("none")}>
@@ -141,7 +148,28 @@ function ResultView({ r, onClose }: { r: Result; onClose: () => void }) {
   );
 }
 
-function GuestList({ onClose, onRelease }: { onClose: () => void; onRelease: (id: string) => Promise<PortariaScan> }) {
+type Release = (id: string) => Promise<PortariaScan>;
+
+/** Lista da portaria: quem tem ingresso e, à parte, a lista free (convidados não pagantes). */
+function GuestList({ onClose, onRelease, onReleaseFree }: { onClose: () => void; onRelease: Release; onReleaseFree: Release }) {
+  const [kind, setKind] = useState<"tix" | "free">("tix");
+  return (
+    <div className="pt-sheet" role="dialog" aria-label={kind === "free" ? "Lista free" : "Lista de participantes"}>
+      <div className="pt-sh-in full">
+        <div className="pt-lh">
+          <div className="pt-kind" role="tablist" aria-label="Qual lista">
+            <button type="button" role="tab" aria-selected={kind === "tix"} className={kind === "tix" ? "on" : ""} onClick={() => setKind("tix")}>Ingressos</button>
+            <button type="button" role="tab" aria-selected={kind === "free"} className={kind === "free" ? "on" : ""} onClick={() => setKind("free")}>Lista free</button>
+          </div>
+          <button className="pt-ib light" type="button" onClick={onClose} aria-label="Fechar lista">×</button>
+        </div>
+        {kind === "tix" ? <TicketList onRelease={onRelease} /> : <FreeList onRelease={onReleaseFree} />}
+      </div>
+    </div>
+  );
+}
+
+function TicketList({ onRelease }: { onRelease: Release }) {
   const [list, setList] = useState<Guest[] | null>(null);
   const [q, setQ] = useState("");
   const [f, setF] = useState<"all" | "out" | "in">("all");
@@ -163,12 +191,7 @@ function GuestList({ onClose, onRelease }: { onClose: () => void; onRelease: (id
     if (r.ok || r.checkedInAt) setList((l) => l?.map((x) => (x.id === g.id ? { ...x, inAt: r.checkedInAt ?? new Date().toISOString() } : x)) ?? l);
   };
   return (
-    <div className="pt-sheet" role="dialog" aria-label="Lista de participantes">
-      <div className="pt-sh-in full">
-        <div className="pt-lh">
-          <b>Participantes</b>
-          <button className="pt-ib light" type="button" onClick={onClose} aria-label="Fechar lista">×</button>
-        </div>
+    <>
         <input className="pt-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome ou código" aria-label="Buscar participante" autoComplete="off" />
         <div className="pt-seg">
           {([["all", `Todos ${list?.length ?? ""}`], ["out", `Faltam ${list ? list.length - inside : ""}`], ["in", `Entraram ${list ? inside : ""}`]] as const).map(([k, l]) => (
@@ -188,8 +211,63 @@ function GuestList({ onClose, onRelease }: { onClose: () => void; onRelease: (id
           ))}
           {shown.length > 400 && <li className="pt-empty">Mostrando 400 de {shown.length}. Busque pelo nome.</li>}
         </ul>
+    </>
+  );
+}
+
+/** Lista free: busca pelo nome e "Liberar entrada (lista free)", uma vez por nome. */
+function FreeList({ onRelease }: { onRelease: Release }) {
+  const [list, setList] = useState<DoorGuest[] | null>(null);
+  const [q, setQ] = useState("");
+  const [f, setF] = useState<"all" | "out" | "in">("all");
+  const [arm, setArm] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void portariaFreeList().then((r) => { if (alive) setList(r.ok ? r.guests : []); }).catch(() => { if (alive) setList([]); });
+    return () => { alive = false; };
+  }, []);
+  const shown = useMemo(() => {
+    const byF = (list ?? []).filter((g) => f === "all" || (f === "in" ? !!g.inAt : !g.inAt));
+    const s = norm(q.trim());
+    return s ? byF.filter((g) => norm(`${g.name} ${g.note}`).includes(s)) : byF;
+  }, [list, q, f]);
+  const people = (list ?? []).reduce((s, g) => s + 1 + g.guests, 0);
+  const peopleIn = (list ?? []).reduce((s, g) => s + (g.inAt ? 1 + g.guests : 0), 0);
+  const inside = (list ?? []).filter((g) => g.inAt).length;
+  const release = async (g: DoorGuest) => {
+    if (arm !== g.id) { setArm(g.id); window.setTimeout(() => setArm((a) => (a === g.id ? null : a)), 3500); return; }
+    setArm(null);
+    const r = await onRelease(g.id);
+    if (r.ok || r.checkedInAt) setList((l) => l?.map((x) => (x.id === g.id ? { ...x, inAt: r.checkedInAt ?? new Date().toISOString() } : x)) ?? l);
+  };
+  return (
+    <>
+      <div className="pt-free-n" aria-live="polite">
+        <span><b>{list ? people.toLocaleString("pt-BR") : "…"}</b> na lista</span>
+        <span><b>{list ? peopleIn.toLocaleString("pt-BR") : "…"}</b> já entraram</span>
+        <small>Entrada gratuita, com os acompanhantes. A conferência de documento fica a critério do local.</small>
       </div>
-    </div>
+      <input className="pt-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar pelo nome" aria-label="Buscar na lista free" autoComplete="off" />
+      <div className="pt-seg">
+        {([["all", `Todos ${list?.length ?? ""}`], ["out", `Faltam ${list ? list.length - inside : ""}`], ["in", `Entraram ${list ? inside : ""}`]] as const).map(([k, l]) => (
+          <button key={k} type="button" className={f === k ? "on" : ""} onClick={() => setF(k)}>{l}</button>
+        ))}
+      </div>
+      <ul className="pt-list">
+        {list === null && <li className="pt-empty">Carregando…</li>}
+        {list !== null && !list.length && <li className="pt-empty">A lista free deste evento está vazia.</li>}
+        {list !== null && list.length > 0 && !shown.length && <li className="pt-empty">{q ? "Ninguém com esse nome na lista." : "Ninguém aqui."}</li>}
+        {shown.slice(0, 400).map((g) => (
+          <li key={g.id} className={g.inAt ? "in" : ""}>
+            <span className="pt-av free" aria-hidden="true">{g.name.split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase()}</span>
+            <span className="pt-gi"><b>{g.name}{g.guests > 0 && <em className="pt-plus">+{g.guests}</em>}</b><small>{g.note || "Lista free"}</small></span>
+            {g.inAt ? <span className="pt-in">Entrou {hhmm(g.inAt)}</span>
+              : <button className={arm === g.id ? "pt-rel arm" : "pt-rel"} type="button" onClick={() => void release(g)} aria-label={`Liberar entrada (lista free) de ${g.name}`}>{arm === g.id ? "Confirmar" : "Liberar"}</button>}
+          </li>
+        ))}
+        {shown.length > 400 && <li className="pt-empty">Mostrando 400 de {shown.length}. Busque pelo nome.</li>}
+      </ul>
+    </>
   );
 }
 

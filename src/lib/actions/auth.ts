@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth/server";
+import { safeNextParam } from "@/lib/auth/next-param";
 import { db, schema } from "@/db";
 import { emailEnabled, logEmails } from "@/lib/email";
 import { issueCode, logSecurity, mfaSettings, rememberDevice } from "@/lib/mfa";
@@ -22,10 +23,7 @@ const signUpSchema = z.object({
   password: z.string().min(8, "A senha precisa ter pelo menos 8 caracteres."),
 });
 
-function safeNext(v: unknown) {
-  const s = typeof v === "string" ? v : "";
-  return s.startsWith("/") && !s.startsWith("//") ? s : "/";
-}
+const safeNext = (v: unknown) => safeNextParam(typeof v === "string" ? v : "");
 
 const userIdOf = (data: unknown) => (data as { user?: { id?: string } } | null)?.user?.id ?? null;
 const tokenOf = (data: unknown) => (data as { token?: string } | null)?.token ?? null;

@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { checkinCounts, checkinTicket } from "@/lib/checkin";
+import { checkinGuest, doorGuests, guestKind, guestCounts, type DoorGuest } from "@/lib/guest-list";
 import { activeAccess, clearPortariaCookie, normalizeCode, portariaSession, setPortariaCookie } from "@/lib/portaria";
 
 export type PortariaScan = {
@@ -43,7 +44,7 @@ export async function leavePortaria() {
 export async function portariaScan(input: string): Promise<PortariaScan> {
   const link = await portariaSession();
   if (!link) return { ok: false, off: true, error: "Este acesso foi desligado pelo produtor." };
-  const r = await checkinTicket(String(input).slice(0, 200), new Set([link.eventId]));
+  const r = await checkinTicket(String(input).slice(0, 200), new Set([link.eventId]), `Portaria · ${link.label}`);
   return finish(link, r);
 }
 
@@ -87,4 +88,28 @@ export async function portariaCounts(): Promise<{ ok: true; inside: number; tota
   const link = await portariaSession();
   if (!link) return { ok: false };
   return { ok: true, ...(await checkinCounts(link.eventId)) };
+}
+
+/* ---------- lista free (convidados não pagantes) ---------- */
+
+export type FreeList = { ok: true; guests: DoorGuest[]; names: number; people: number; namesIn: number; peopleIn: number } | { ok: false };
+
+/** Lista free do evento (nome, acompanhantes, observação e se já entrou; sem e-mail). */
+export async function portariaFreeList(): Promise<FreeList> {
+  const link = await portariaSession();
+  if (!link) return { ok: false };
+  const [guests, c] = await Promise.all([doorGuests(link.eventId), guestCounts(link.eventId)]);
+  return { ok: true, guests, ...c };
+}
+
+/** Libera a entrada de um nome da lista free (uma vez só; os acompanhantes entram junto). */
+export async function portariaReleaseFree(id: string): Promise<PortariaScan> {
+  const link = await portariaSession();
+  if (!link) return { ok: false, off: true, error: "Este acesso foi desligado pelo produtor." };
+  if (!/^[0-9a-f-]{36}$/.test(id)) return { ok: false, error: "Nome não encontrado na lista." };
+  const r = await checkinGuest({ id }, new Set([link.eventId]), `Portaria · ${link.label}`);
+  return finish(link, {
+    ok: r.ok, status: r.ok ? 200 : 409, error: r.error, checkedInAt: r.checkedInAt,
+    ticket: r.guest ? { code: "LISTA FREE", holderName: r.guest.name, event: r.guest.event, ticketType: guestKind(r.guest.guests), sector: null } : undefined,
+  });
 }

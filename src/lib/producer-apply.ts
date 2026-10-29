@@ -13,7 +13,10 @@ export const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", 
 export const SOURCES = ["Instagram", "TikTok", "Indicação de outro produtor", "Indicação de amigo", "Comprei ingresso na Tickets Win", "Google", "Evento ou feira", "Outro"] as const;
 export const CATEGORIES = ["Festa / balada", "Eletrônica", "Universitária", "Sertanejo", "Funk", "Pagode / samba", "Rock / indie", "Hip-hop / rap", "Show", "Festival", "Teatro / stand-up", "Outro"] as const;
 
-export type ProducerStatus = "producer" | "approved" | "pending" | "rejected" | "none";
+/** `source` da inscrição criada quando a equipe libera a conta direto pela central (sem a pessoa se inscrever). */
+export const CENTRAL_SOURCE = "Central Tickets Win";
+
+export type ProducerStatus ="producer" | "approved" | "pending" | "rejected" | "none";
 
 export async function latestApplication(userId: string) {
   return (await db.query.producerApplications.findFirst({ where: eq(schema.producerApplications.userId, userId), orderBy: [desc(schema.producerApplications.createdAt)] })) ?? null;

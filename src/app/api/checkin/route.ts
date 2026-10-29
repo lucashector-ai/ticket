@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Corpo inválido." }, { status: 400 });
   }
   const { events } = await getPainelScope(user);
-  const r = await checkinTicket(payload, new Set(events.map((e) => e.id)));
+  const r = await checkinTicket(payload, new Set(events.map((e) => e.id)), user.name || user.email || "Equipe");
   const { status, ...body } = r;
   return NextResponse.json(body, { status });
 }

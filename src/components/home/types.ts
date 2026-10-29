@@ -6,6 +6,10 @@ export type HomeEvent = {
   startMs: number; endMs: number; dateNice: string;
   venue: string; city: string; uf: string; minPriceCents: number; popularity: number;
   kinds: string[]; categoryLabel: string; lineup: string[]; description: string; tiers: HomeTier[];
+  /** posição em "Eventos em destaque" (central); null = ordem normal */
+  pin: number | null;
+  /** banner principal em HTML (central) */
+  bannerHtml?: string | null;
 };
 
 export type HomeCategory = { slug: string; name: string; coverFlyer: string; count: number };

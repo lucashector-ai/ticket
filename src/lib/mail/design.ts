@@ -125,10 +125,15 @@ export const SAMPLE_VARS: Vars = { nome: "Marina Souza", primeiro_nome: "Marina"
 
 const ALLOWED = new Set(["b", "strong", "i", "em", "u", "br", "p", "div", "a", "span"]);
 
-/** Mantém só negrito, itálico, sublinhado, quebras e links http(s)/mailto. Funciona no servidor e no navegador. */
+/**
+ * Mantém só negrito, itálico, sublinhado, quebras e links http(s)/mailto. Funciona no servidor e no navegador.
+ * Um "<" ou ">" que sobra fora de uma tag completa vira texto (&lt; &gt;): uma tag sem ">" no fim
+ * ("<img src=x onerror=..." ) seria completada pelo HTML em volta e viraria uma tag de verdade.
+ */
 export function cleanHtml(input: string) {
   let s = input.replace(/<!--[\s\S]*?-->/g, "").replace(/<(script|style|head|title)[^>]*>[\s\S]*?<\/\1>/gi, "");
-  s = s.replace(/<\/?([a-zA-Z0-9]+)([^>]*)>/g, (tag, name: string, attrs: string) => {
+  s = s.replace(/<\/?([a-zA-Z0-9]+)([^>]*)>|[<>]/g, (tag: string, name: string | undefined, attrs: string | undefined) => {
+    if (!name) return tag === "<" ? "&lt;" : "&gt;";
     const n = name.toLowerCase();
     const close = tag.startsWith("</");
     if (!ALLOWED.has(n)) return "";
@@ -137,7 +142,7 @@ export function cleanHtml(input: string) {
     if (n === "br") return "<br>";
     if (close) return `</${n === "strong" ? "b" : n === "em" ? "i" : n}>`;
     if (n === "a") {
-      const m = attrs.match(/href\s*=\s*("([^"]*)"|'([^']*)')/i);
+      const m = (attrs ?? "").match(/href\s*=\s*("([^"]*)"|'([^']*)')/i);
       const href = (m?.[2] ?? m?.[3] ?? "").trim();
       return /^(https?:\/\/|mailto:)/i.test(href) ? `<a href="${href.replace(/"/g, "&quot;")}">` : "<a>";
     }
@@ -151,6 +156,7 @@ export const stripTags = (s: string) => s.replace(/<br\s*\/?>/gi, "\n").replace(
 /* ---------- validação (o design vem do navegador) ---------- */
 
 const COLOR = /^#[0-9a-fA-F]{6}$/;
+const ENUMS: Record<string, readonly string[]> = { align: ["left", "center"], size: ["g", "m", "p"], layout: ["destaque", "lado"], mode: ["proximos", "escolhidos"] };
 
 /** Mantém só blocos e campos conhecidos, com os tipos certos. */
 export function normalizeDesign(input: unknown): Design {
@@ -174,6 +180,8 @@ export function normalizeDesign(input: unknown): Design {
       const v = r[k];
       if (k === "t") continue;
       if (Array.isArray(b[k])) { if (Array.isArray(v)) b[k] = v.filter((x) => typeof x === "string").slice(0, 12); continue; }
+      // campos de lista fechada entram no HTML sem escape (ex.: text-align:${align}): fora da lista, fica o padrão
+      if (ENUMS[k] && !ENUMS[k].includes(v as string)) continue;
       if (typeof v === typeof b[k]) b[k] = typeof v === "string" ? v.slice(0, k === "html" ? 8000 : 600) : v;
     }
     blocks.push(b as Block);

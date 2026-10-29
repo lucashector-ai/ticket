@@ -27,8 +27,8 @@ export function OrganizerCard({ o, eventSlug, loggedIn, initialFollowing }: { o:
   };
 
   const onContact = () => {
-    if (o.email) { window.location.href = `mailto:${o.email}?subject=${encodeURIComponent("Dúvida sobre evento no Tickets Win")}`; return; }
-    flash("Contato direto com o produtor chega na próxima fase.");
+    if (o.email) { window.location.href = `mailto:${o.email}?subject=${encodeURIComponent("Dúvida sobre evento na Tickets Win")}`; return; }
+    flash("Este produtor ainda não informou um contato. Escreva para ajuda@ticketswin.com.br que a gente faz a ponte.");
   };
 
   return (

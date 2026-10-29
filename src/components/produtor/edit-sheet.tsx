@@ -69,7 +69,7 @@ export function EditSheet({ orgId, initial, onClose, onSaved }: { orgId: string;
           <span className="pe-sec">Políticas padrão</span>
           <Field label="Cancelamento"><input value={f.policies.cancel} maxLength={400} onChange={(e) => setPol("cancel", e.target.value)} placeholder="Até 7 dias após a compra, com 48h de antecedência." /></Field>
           <Field label="Meia-entrada"><input value={f.policies.meia} maxLength={400} onChange={(e) => setPol("meia", e.target.value)} placeholder="Conforme a Lei 12.933. Documento na entrada." /></Field>
-          <Field label="Transferência"><input value={f.policies.transfer} maxLength={400} onChange={(e) => setPol("transfer", e.target.value)} placeholder="Liberada pelo app até 2h antes." /></Field>
+          <Field label="Transferência"><input value={f.policies.transfer} maxLength={400} onChange={(e) => setPol("transfer", e.target.value)} placeholder="Liberada em Meus ingressos até 2h antes." /></Field>
           <Field label="Acessibilidade"><input value={f.policies.access} maxLength={400} onChange={(e) => setPol("access", e.target.value)} placeholder="Rampas, banheiro adaptado e área reservada." /></Field>
 
           <span className="pe-sec">Empresa</span>

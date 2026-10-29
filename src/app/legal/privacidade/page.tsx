@@ -9,14 +9,14 @@ export default function PrivacidadePage() {
       <h1>Política de privacidade</h1>
       <span className="in-upd">Última atualização: 1º de outubro de 2026</span>
 
-      <p>Esta política explica quais dados pessoais a <strong>Tickets Win Tecnologia Ltda.</strong> coleta, por que coleta e como você pode exercer seus direitos, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018).</p>
+      <p>Esta política explica quais dados pessoais a <strong>Tickets Win Serviços de Reservas LTDA</strong> coleta, por que coleta e como você pode exercer seus direitos, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018).</p>
 
       <h2 id="dados">1. Quais dados coletamos</h2>
       <table>
         <thead><tr><th>Dado</th><th>Quando</th><th>Para quê</th></tr></thead>
         <tbody>
           <tr><td>Nome, e-mail e senha</td><td>Ao criar a conta</td><td>Identificar você e emitir ingressos nominais</td></tr>
-          <tr><td>CPF</td><td>No checkout, quando o produtor exige</td><td>Limitar compras por pessoa e cumprir a lei da meia-entrada</td></tr>
+          <tr><td>CPF</td><td>No checkout</td><td>Processar o pagamento, aplicar o limite de ingressos por pessoa e cumprir a lei da meia-entrada</td></tr>
           <tr><td>Dados de pagamento</td><td>No checkout</td><td>Processados pelo nosso parceiro de pagamentos; não armazenamos o número do cartão</td></tr>
           <tr><td>Cidade escolhida</td><td>Durante o uso</td><td>Personalizar a home e as recomendações</td></tr>
           <tr><td>Dados de navegação</td><td>Durante o uso</td><td>Segurança, métricas e melhoria do produto (veja <Link href="/legal/cookies">Cookies</Link>)</td></tr>

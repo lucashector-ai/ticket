@@ -46,7 +46,7 @@ export function PainelEquipe(p: EquipeProps) {
 
           {p.role !== "portaria" && (
             <section className="cx">
-              <div className="card-h"><div><h2 className="card-t">Equipe</h2><span className="card-s">A pessoa entra no Tickets Win com o e-mail convidado e o painel aparece para ela.</span></div></div>
+              <div className="card-h"><div><h2 className="card-t">Equipe</h2><span className="card-s">A pessoa entra na Tickets Win com o e-mail convidado e o painel aparece para ela.</span></div></div>
               <div className="mbr">
                 <span className="pp-av" style={{ background: "#D3F55B" }}>★</span>
                 <span className="pp-i"><b className="pp-n">{p.owner.name}</b><span className="pp-e">{p.owner.email || "Dono da conta"}</span></span>

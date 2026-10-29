@@ -6,10 +6,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { checkCoupon, confirmPayment, placeOrder, type ConfirmResult } from "@/lib/actions/compra";
+import { abandonPayment, checkPayment, payCard } from "@/lib/actions/pagamento";
+import { StripeCard, type StripeCardApi } from "./stripe-card";
 import { QueueGate } from "@/components/queue-gate";
 import { installmentOptions, money, priceOrder } from "@/lib/pricing";
 import { InlineAuth } from "./inline-auth";
 import { cardBrand, expOk, fmtCard, fmtCpf, fmtExp, isEmail, isFullName, mmss, onlyDigits } from "./format";
+import { cpfValid } from "@/lib/cpf";
 import { PhoneField } from "@/components/phone-field";
 import { phoneValid } from "@/lib/phone";
 import { BrandMark } from "@/components/brand-logo";
@@ -39,7 +42,12 @@ export type CompraEvent = {
 type Coupon = { code: string; percentOff: number; amountOffCents: number; amountPerTicket: boolean; sector: string | null };
 const couponOf = (r: Coupon) => ({ code: r.code, percentOff: r.percentOff, amountOffCents: r.amountOffCents, amountPerTicket: r.amountPerTicket, sector: r.sector });
 type Hold = { name: string; me: boolean; meia: boolean };
-type PixOrder = { orderId: string; number: number; totalCents: number; pixCode: string; pixQrSvg: string };
+/** `live`: Pix de verdade (Stripe), confirmado sozinho; senão, o Pix de teste. */
+type PixOrder = { orderId: string; number: number; totalCents: number; pixCode: string; pixQrSvg: string; expiresAt: string | null; live: boolean };
+type Done = Extract<ConfirmResult, { ok: true }>;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** segundos até um horário ISO (prazo do Pix gerado pela Stripe) */
+const secondsUntil = (iso: string) => Math.max(0, Math.round((Date.parse(iso) - Date.now()) / 1000));
 
 /** chave da data do ingresso no resumo ("" quando o evento tem uma data só) */
 const dayOf = (e: CompraEvent, t: CompraTier) => (e.sessions.length ? t.sessionId ?? "" : "");
@@ -72,9 +80,12 @@ type Props = {
   lock?: CompraLock | null;
   /** chave do verificador de humanos (Turnstile), quando ligado */
   human?: string | null;
+  /** chave publicável da Stripe: com ela o pagamento é de verdade; sem ela, modo de teste */
+  stripeKey?: string | null;
 };
 
-export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human }: Props) {
+export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, stripeKey }: Props) {
+  const live = !!stripeKey;
   const router = useRouter();
   const { flash } = useToast();
   const [step, setStep] = useState<CompraStep>(initialStep);
@@ -95,7 +106,13 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const [pixLeft, setPixLeft] = useState(PIX_SEG);
   const [copied, setCopied] = useState(false);
   const [order, setOrder] = useState<PixOrder | null>(null);
-  const [done, setDone] = useState<Extract<ConfirmResult, { ok: true }> | null>(null);
+  const [done, setDone] = useState<Done | null>(null);
+  /* Stripe: cartão no Payment Element, erro do pagamento, parcelas aceitas pelo cartão, pedido em cobrança */
+  const cardApi = useRef<StripeCardApi>(null);
+  const [payErr, setPayErr] = useState<string | null>(null);
+  const [cardInst, setCardInst] = useState<number[] | null>(null);
+  const cardOrder = useRef<{ orderId: string; key: string } | null>(null);
+  const [slow, setSlow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [authNudge, setAuthNudge] = useState(false);
   const authRef = useRef<HTMLDivElement>(null);
@@ -206,14 +223,39 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   if (!isFullName(name)) dadosErr.push("nome e sobrenome");
   if (!isEmail(email)) dadosErr.push("e-mail");
   if (!phoneValid(phone)) dadosErr.push("celular com DDD");
-  if (onlyDigits(cpf).length !== 11) dadosErr.push("CPF com 11 dígitos");
+  if (!cpfValid(cpf)) dadosErr.push(onlyDigits(cpf).length === 11 ? "CPF válido (confira os números)" : "CPF (obrigatório)");
   if (!holders.every((h) => isFullName(holdName(h)))) dadosErr.push("nome completo de cada titular");
   const ccOk = { num: onlyDigits(cc.num).length >= 15, name: cc.name.trim().length >= 3, exp: expOk(cc.exp), cvv: onlyDigits(cc.cvv).length >= 3 };
   const cardValid = ccOk.num && ccOk.name && ccOk.exp && ccOk.cvv;
   const bad = (ok: boolean) => (tried && !ok ? "in2 bad" : "in2");
-  const expired = left <= 0 && step !== "done";
+  /* no Pix (que tem o próprio prazo) e durante a confirmação a reserva não corta a tela */
+  const expired = left <= 0 && step !== "done" && step !== "pix" && step !== "proc";
 
-  const go = (s: CompraStep) => { setStep(s); setTried(false); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const go = (s: CompraStep) => { setStep(s); setTried(false); setSlow(false); window.scrollTo({ top: 0, behavior: "smooth" }); };
+
+  /** Pagamento aprovado: tela de confirmação no lugar. */
+  const finishWith = useCallback((r: Done) => {
+    cardOrder.current = null;
+    setDone(r);
+    setStep("done");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    // parte de grupo / revenda: recarregar a página levaria de volta ao grupo (a vaga já está paga)
+    if (!lock) router.refresh();
+  }, [lock, router]);
+
+  /* Pix de verdade: confere o pagamento a cada 3 s enquanto o QR está na tela */
+  const pixOrderId = step === "pix" && order?.live ? order.orderId : null;
+  useEffect(() => {
+    if (!pixOrderId) return;
+    let alive = true;
+    const iv = setInterval(async () => {
+      const r = await checkPayment(pixOrderId);
+      if (!alive) return;
+      if (r.status === "paid") { alive = false; clearInterval(iv); finishWith(r.result); }
+      else if (r.status === "closed" || r.status === "failed") { alive = false; clearInterval(iv); flash(r.error); setOrder(null); setStep("pagamento"); }
+    }, 3000);
+    return () => { alive = false; clearInterval(iv); };
+  }, [pixOrderId, finishWith, flash]);
 
   const setTierQty = (id: string, delta: number) => {
     if (lock) return;
@@ -262,14 +304,39 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     return r;
   }
 
+  /** Pedido grátis ou modo de teste (sem Stripe): confirma sem gateway. */
   async function finish(orderId: string) {
     go("proc");
     const r = await confirmPayment(orderId);
     if (!r.ok) { flash(r.error); go(free ? "dados" : "pagamento"); return; }
-    setDone(r);
-    go("done");
-    // parte de grupo / revenda: recarregar a página levaria de volta ao grupo (a vaga já está paga)
-    if (!lock) router.refresh();
+    finishWith(r);
+  }
+
+  /** Cartão pela Stripe: cobra, passa pelo 3D Secure se o banco pedir e espera a confirmação. */
+  async function payLive(orderId: string, paymentMethodId: string) {
+    go("proc");
+    const fail = (msg: string, drop = false) => { if (drop) cardOrder.current = null; setPayErr(msg); go("pagamento"); };
+    const r = await payCard(orderId, paymentMethodId);
+    if (!r.ok) {
+      if (r.installments) setCardInst(r.installments);
+      fail(r.error);
+      return;
+    }
+    if (r.status === "paid") { finishWith(r.result); return; }
+    if (r.status === "requires_action") {
+      const a = await cardApi.current?.handleNextAction(r.clientSecret);
+      if (!a || "error" in a) { fail(a?.error ?? "O banco não confirmou o pagamento. Tente de novo."); return; }
+    }
+    // aprovado no banco: o pedido é confirmado pelo webhook ou por esta conferência (o que chegar primeiro)
+    for (let i = 0; i < 90; i++) {
+      const c = await checkPayment(orderId);
+      if (c.status === "paid") { finishWith(c.result); return; }
+      if (c.status === "failed") { fail(c.error); return; }
+      if (c.status === "closed") { fail(c.error, true); return; }
+      if (i === 8) setSlow(true);
+      await sleep(i < 8 ? 1500 : 4000);
+    }
+    setSlow(true);
   }
 
   async function next() {
@@ -290,7 +357,28 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     } else if (step === "pagamento") {
       if (pay === "pix") {
         const r = await submitOrder("pix");
-        if (r) { setOrder(r); setPixLeft(PIX_SEG); setCopied(false); go("pix"); }
+        if (r) {
+          setOrder({ orderId: r.orderId, number: r.number, totalCents: r.totalCents, pixCode: r.pixCode, pixQrSvg: r.pixQrSvg, expiresAt: r.expiresAt, live: r.live });
+          setPixLeft(r.live && r.expiresAt ? secondsUntil(r.expiresAt) : PIX_SEG);
+          setCopied(false);
+          go("pix");
+        }
+      } else if (live) {
+        setPayErr(null);
+        setBusy(true);
+        const pm = await cardApi.current?.createPaymentMethod({ name, email, phone });
+        if (!pm || "error" in pm) { setBusy(false); setPayErr(pm?.error ?? "O formulário do cartão ainda está carregando."); return; }
+        // nova tentativa com o mesmo valor e parcelas: reaproveita o pedido (e o PaymentIntent) pendente
+        const key = `${inst}:${price.total}`;
+        let orderId = cardOrder.current?.key === key ? cardOrder.current.orderId : null;
+        if (!orderId) {
+          const r = await submitOrder("card");
+          if (!r) return;
+          orderId = r.orderId;
+          cardOrder.current = { orderId, key };
+        }
+        setBusy(false);
+        await payLive(orderId, pm.id);
       } else {
         if (!cardValid) { setTried(true); return; }
         const r = await submitOrder("card");
@@ -299,14 +387,28 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     }
   }
 
-  const prev = () => go(step === "dados" ? "resumo" : step === "pagamento" ? "dados" : "pagamento");
+  const prev = () => {
+    // saindo do Pix de verdade: cancela o código gerado (e o pedido) para não pagar duas vezes
+    if (step === "pix" && order?.live) { void abandonPayment(order.orderId); setOrder(null); }
+    go(step === "dados" ? "resumo" : step === "pagamento" ? "dados" : "pagamento");
+  };
+  /** Já paguei: confere na hora (o checkout também confere sozinho a cada 3 s). */
+  async function checkPixNow() {
+    if (!order) return;
+    setBusy(true);
+    const r = await checkPayment(order.orderId);
+    setBusy(false);
+    if (r.status === "paid") finishWith(r.result);
+    else if (r.status === "pending") flash("Ainda não recebemos o Pix. Assim que cair, a confirmação aparece aqui.");
+    else { flash(r.error); setOrder(null); go("pagamento"); }
+  }
   const idx = STEP_INDEX[step];
   const steps = ["Resumo", "Dados", free ? "Sem pagamento" : "Pagamento", "Confirmação"].map((label, i) => ({
     label, n: String(i + 1), cls: i < idx ? "ok" : i === idx ? "cur" : "",
     go: () => { if (i < idx && idx < 3 && step !== "proc") go((["resumo", "dados", "pagamento"] as const)[i]); },
   }));
   const ctaLabel = step === "resumo" ? "Continuar" : step === "dados" ? (user ? (free ? "Garantir ingresso" : "Ir para pagamento") : "Entrar para continuar") : step === "pagamento" ? (pay === "card" ? `Pagar ${money(price.total)}` : "Gerar código Pix") : "";
-  const payLabel = done ? (done.method === "free" ? "Gratuito" : done.method === "card" ? `Cartão · ${done.installments}x` : "Pix") : free ? "Gratuito" : pay === "card" ? `Cartão ${cardBrand(cc.num)} · ${inst}x` : "Pix";
+  const payLabel = done ? (done.method === "free" ? "Gratuito" : done.method === "card" ? `Cartão · ${done.installments}x` : "Pix") : free ? "Gratuito" : pay === "card" ? `Cartão${live ? "" : ` ${cardBrand(cc.num)}`} · ${inst}x` : "Pix";
   const totalCents = done ? done.totalCents : order && step === "pix" ? order.totalCents : price.total;
   const totalLabel = nq || done ? priceOf(totalCents) : money(0);
 
@@ -328,7 +430,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
             </li>
           ))}
         </ol>
-        {step !== "done" && !expired && (
+        {step !== "done" && step !== "pix" && !expired && (
           <span className={left < 120 ? "tmr low" : "tmr"}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
             Reservados por <b className="tm-v">{mmss(left)}</b>
@@ -458,8 +560,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                     <PhoneField className={bad(phoneValid(phone))} value={phone} onChange={setPhone} />
                   </div>
                   <label className="lf2">
-                    <span className="lf2-l">CPF</span>
-                    <input className={bad(onlyDigits(cpf).length === 11)} type="text" inputMode="numeric" placeholder="000.000.000-00" value={cpf} onChange={(e) => setCpf(fmtCpf(e.target.value))} />
+                    <span className="lf2-l">CPF <em className="lf2-req">obrigatório</em></span>
+                    <input className={bad(cpfValid(cpf))} type="text" inputMode="numeric" placeholder="000.000.000-00" value={cpf} onChange={(e) => setCpf(fmtCpf(e.target.value))} required aria-required="true" autoComplete="off" />
                   </label>
                 </div>
                 {tried && user && dadosErr.length > 0 && <p className="err">Falta preencher: {dadosErr.join(", ")}.</p>}
@@ -494,12 +596,13 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               </div>
             )}
 
-            {step === "pagamento" && (
-              <div className="pane">
+            {/* com a Stripe, o cartão continua montado (escondido) durante a confirmação: o 3D Secure usa o mesmo Stripe.js */}
+            {(step === "pagamento" || (live && step === "proc" && pay === "card")) && (
+              <div className="pane" hidden={step !== "pagamento"}>
                 <h1 className="ck-h">Pagamento</h1>
                 <p className="ck-p">Escolha como prefere pagar. Os ingressos chegam no seu e-mail assim que o pagamento é aprovado.</p>
                 <div className="pm" role="radiogroup" aria-label="Forma de pagamento">
-                  <button className={pay === "pix" ? "pmo on" : "pmo"} type="button" role="radio" aria-checked={pay === "pix"} onClick={() => { setPay("pix"); setTried(false); }}>
+                  <button className={pay === "pix" ? "pmo on" : "pmo"} type="button" role="radio" aria-checked={pay === "pix"} onClick={() => { setPay("pix"); setTried(false); setPayErr(null); }}>
                     <span className="pm-r" aria-hidden="true" />
                     <span className="pm-ic" aria-hidden="true">
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M12 2.8l4.2 4.2-4.2 4.2L7.8 7z" /><path d="M12 12.8l4.2 4.2-4.2 4.2-4.2-4.2z" /><path d="M2.8 12l4.2-4.2 4.2 4.2-4.2 4.2z" /><path d="M12.8 12l4.2-4.2 4.2 4.2-4.2 4.2z" /></svg>
@@ -507,7 +610,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                     <span className="pm-i"><b className="pm-t">Pix</b><span className="pm-s">Aprovação na hora</span></span>
                     <span className="pm-tag">Recomendado</span>
                   </button>
-                  <button className={pay === "card" ? "pmo on" : "pmo"} type="button" role="radio" aria-checked={pay === "card"} onClick={() => { setPay("card"); setTried(false); }}>
+                  <button className={pay === "card" ? "pmo on" : "pmo"} type="button" role="radio" aria-checked={pay === "card"} onClick={() => { setPay("card"); setTried(false); setPayErr(null); }}>
                     <span className="pm-r" aria-hidden="true" />
                     <span className="pm-ic" aria-hidden="true">
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3" /><path d="M2.5 10h19M6.5 15h4" /></svg>
@@ -521,6 +624,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   </div>
                 ) : (
                   <div className="cardf">
+                    {live && stripeKey ? <StripeCard publishableKey={stripeKey} amountCents={price.total} ref={cardApi} /> : <>
                     <div className="cc" aria-hidden="true">
                       <span className="cc-logo">
                         <BrandMark size={22} />
@@ -551,19 +655,27 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                       </label>
                     </div>
                     {tried && !cardValid && <p className="err">Confira os dados do cartão destacados.</p>}
+                    </>}
                     <h2 className="ck-h3">Parcelas</h2>
-                    <div className="inst">
-                      {installments.map((o) => (
-                        <button key={o.n} className={o.n === inst ? "ino on" : "ino"} type="button" onClick={() => setInst(o.n)}>
-                          <b className="in-n">{o.n}x</b>
-                          <span className="in-v">{money(o.eachCents)}</span>
-                          <span className="in-s">{o.interestFree ? "sem juros" : `total ${money(o.totalCents)}`}</span>
-                        </button>
-                      ))}
+                    <div className="inst" role="radiogroup" aria-label="Parcelas">
+                      {installments.map((o) => {
+                        // a Stripe disse quais parcelas este cartão aceita: as outras ficam marcadas (ainda dá para trocar de cartão)
+                        const no = !!cardInst && o.n > 1 && !cardInst.includes(o.n);
+                        return (
+                          <button key={o.n} className={`ino${o.n === inst ? " on" : ""}${no ? " off" : ""}`} type="button" role="radio" aria-checked={o.n === inst} onClick={() => { setInst(o.n); setPayErr(null); }}>
+                            <b className="in-n">{o.n}x</b>
+                            <span className="in-v">{money(o.eachCents)}</span>
+                            <span className="in-s">{no ? "indisponível neste cartão" : o.interestFree ? "sem juros" : `total ${money(o.totalCents)}`}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
-                <p className="ck-test">Ambiente de teste: nenhuma cobrança real é feita e os dados do cartão não saem do seu navegador.</p>
+                {payErr && <p className="err pay-err" role="alert">{payErr}</p>}
+                {live
+                  ? <p className="ck-test">Pagamento processado pela Stripe.{pay === "card" ? " Os dados do cartão vão direto para a Stripe e não passam pelos nossos servidores." : ""}</p>
+                  : <p className="ck-test">Ambiente de teste: nenhuma cobrança real é feita e os dados do cartão não saem do seu navegador.</p>}
               </div>
             )}
 
@@ -578,9 +690,9 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   <div className="pix-i">
                     <span className="pix-k">Valor</span>
                     <b className="pix-v">{money(order.totalCents)}</b>
-                    <span className="pix-exp">
+                    <span className={pixLeft < 120 ? "pix-exp low" : "pix-exp"}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                      Código expira em <b className="tm-v">{mmss(pixLeft)}</b>
+                      {pixLeft > 0 ? <>Código expira em <b className="tm-v">{mmss(pixLeft)}</b></> : <b>Código expirado</b>}
                     </span>
                     <div className="cc2">
                       <span className="cc2-v">{order.pixCode}</span>
@@ -589,11 +701,21 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                     <ol className="howto">
                       <li>Abra o app do seu banco</li>
                       <li>Escolha Pix › Ler QR code ou Copia e cola</li>
-                      <li>Confira o valor e o recebedor Tickets Win e confirme</li>
+                      <li>{order.live ? `Confira o valor (${money(order.totalCents)}) e confirme` : "Confira o valor e o recebedor Tickets Win e confirme"}</li>
                     </ol>
-                    <span className="pix-wait"><span className="pw-dot" aria-hidden="true" />Aguardando pagamento</span>
-                    <button className="go2" type="button" onClick={() => void finish(order.orderId)} disabled={busy || expired}>Já fiz o pagamento</button>
-                    <span className="ck-test">Ambiente de teste: o pagamento é confirmado ao clicar.</span>
+                    {order.live ? (
+                      pixLeft > 0 ? <>
+                        <span className="pix-wait" aria-live="polite"><span className="pw-dot" aria-hidden="true" />Aguardando pagamento · a confirmação aparece aqui sozinha</span>
+                        <button className="sec2 pix-chk" type="button" onClick={() => void checkPixNow()} disabled={busy}>{busy ? "Conferindo…" : "Já paguei"}</button>
+                      </> : <>
+                        <span className="pix-wait">O código expirou e nada foi cobrado.</span>
+                        <button className="go2" type="button" onClick={prev}>Gerar novo pagamento</button>
+                      </>
+                    ) : <>
+                      <span className="pix-wait"><span className="pw-dot" aria-hidden="true" />Aguardando pagamento</span>
+                      <button className="go2" type="button" onClick={() => void finish(order.orderId)} disabled={busy || expired}>Já fiz o pagamento</button>
+                      <span className="ck-test">Ambiente de teste: o pagamento é confirmado ao clicar.</span>
+                    </>}
                   </div>
                 </div>
               </div>
@@ -610,8 +732,10 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   </div>
                   <div className="ld-stub"><span className="ld-code" /></div>
                 </div>
-                <h1 className="ck-h">{free ? "Emitindo seus ingressos" : "Processando pagamento"}</h1>
-                <p className="ck-p">Isso leva só alguns segundos. Não feche esta página.</p>
+                <h1 className="ck-h">{free ? "Emitindo seus ingressos" : slow ? "Aguardando a confirmação do banco" : "Processando pagamento"}</h1>
+                <p className="ck-p">{slow
+                  ? <>O banco ainda está confirmando o pagamento. Pode deixar esta página aberta: assim que aprovar, os ingressos aparecem aqui, chegam no seu e-mail e ficam em <Link href="/meus-ingressos">Meus ingressos</Link>.</>
+                  : "Isso leva só alguns segundos. Não feche esta página."}</p>
               </div>
             )}
           </section>

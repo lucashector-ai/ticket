@@ -148,7 +148,7 @@ export async function requestPayout(amountCents: number, code: string): Promise<
   if (!Number.isFinite(amount) || amount < MIN_PAYOUT) return { ok: false, error: `O saque mínimo é ${brl(MIN_PAYOUT)}.` };
   const w = await walletFor(userId);
   if (!w) return { ok: false, error: "Só o dono dos eventos pode sacar." };
-  if (!hasDestination(w.destination)) return { ok: false, error: "Cadastre a conta para receber em Painel → Configurações → Recebimento." };
+  if (!hasDestination(w.destination)) return { ok: false, error: "Cadastre a conta para receber em Painel → Configurações → Conta de repasse." };
   if (amount > w.available) return { ok: false, error: `Você pode sacar até ${brl(w.available)}.` };
   if (/[a-z]/i.test(code)) return { ok: false, error: "Use o código do app autenticador." };
   const ok = await checkSecondFactor(userId, "bank", code);

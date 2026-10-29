@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const d = await getProducerPage(slug, null);
   if (!d) return { title: "Produtor não encontrado" };
-  return { title: d.org.name, description: d.org.tagline ?? d.org.bio?.slice(0, 160) ?? `Eventos de ${d.org.name} no Tickets Win.` };
+  return { title: d.org.name, description: d.org.tagline ?? d.org.bio?.slice(0, 160) ?? `Eventos de ${d.org.name} na Tickets Win.` };
 }
 
 const when = (d: Date) => {

@@ -40,6 +40,7 @@ O build não precisa de segredos. Em tempo de execução, o Worker precisa deste
 
 - `DATABASE_URL` — connection string da branch `main` do Neon (produção).
 - `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, `NEON_AUTH_JWKS_URL`.
+- Pagamentos (Stripe, cartão com parcelamento e Pix dentro do checkout): `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` e `STRIPE_WEBHOOK_SECRET`. Todas lidas em runtime no servidor (sem `NEXT_PUBLIC_`; a chave publicável vai para o navegador como prop). Sem `STRIPE_SECRET_KEY` o checkout fica no **modo de teste** (nada é cobrado, `payment_ref` `TEST-…`, venda fora do saldo sacável). Com ela, pedido com valor só vira pago quando a Stripe confirma. Webhook: Stripe Dashboard → Developers → Webhooks → endpoint `https://ticketswin.com.br/api/webhooks/stripe` com os eventos `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled` e `charge.refunded`; o *Signing secret* (`whsec_…`) vai em `STRIPE_WEBHOOK_SECRET`. A conta Stripe precisa ser do Brasil com **Pix** e **parcelamento** (installments) ativados.
 
 Depois do primeiro deploy, adicione a URL pública do Worker como domínio confiável no Neon Auth, senão o login falha em produção.
 

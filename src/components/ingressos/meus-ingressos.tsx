@@ -13,8 +13,15 @@ import { TicketStack } from "./ticket-stack";
 import { TransferModal } from "./transfer-modal";
 import type { TicketGroup, TicketItem } from "./types";
 
+/** Ingresso de lista (lista free) do e-mail da conta: não é pedido nem ingresso comprado; abre em /lista/<token>. */
+export type ListTicket = {
+  token: string; title: string; flyerId: string; dateNice: string; venue: string; city: string; startAt: string;
+  name: string; plus: string; inAt: string | null; qrSvg: string;
+};
+
 type Props = {
   groups: TicketGroup[];
+  lists?: ListTicket[];
   /** número do pedido confirmado (?pedido=N), se pertencer ao usuário */
   confirmedOrder: number | null;
   wallet: WalletFlags;
@@ -30,7 +37,7 @@ function holderLabel(t: TicketItem, moved: Record<string, string>) {
   return `Titular: ${t.holderName ?? "—"}`;
 }
 
-export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
+export function MeusIngressos({ groups, lists = [], confirmedOrder, wallet }: Props) {
   const { flash } = useToast();
   const [tab, setTab] = useState<"up" | "past">("up");
   const [cur, setCur] = useState<Record<string, number>>({});
@@ -68,11 +75,11 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
       <div className="mi-h">
         <div>
           <h1 className="mi-t">Meus ingressos</h1>
-          <p className="mi-s">Apresente o QR code na entrada. Seus ingressos também ficam salvos no app, mesmo sem internet.</p>
+          <p className="mi-s">Apresente o QR code na entrada. Seus ingressos também ficam salvos no celular, mesmo sem internet.</p>
         </div>
         <div className="seg" role="tablist" aria-label="Filtrar ingressos">
           <button className={tab === "up" ? "seg-b on" : "seg-b"} type="button" role="tab" aria-selected={tab === "up"} onClick={() => setTab("up")}>
-            Próximos <span className="seg-n">{up.length}</span>
+            Próximos <span className="seg-n">{up.length + lists.length}</span>
           </button>
           <button className={tab === "past" ? "seg-b on" : "seg-b"} type="button" role="tab" aria-selected={tab === "past"} onClick={() => setTab("past")}>
             Anteriores <span className="seg-n">{past.length}</span>
@@ -88,11 +95,11 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
         </div>
       )}
 
-      {groups.length === 0 && (
+      {groups.length === 0 && !lists.length && (
         <div className="empty mi-empty">
           <span className="mi-empty-i" aria-hidden="true"><IcoTicket /></span>
           <h3>Você ainda não tem ingressos</h3>
-          <p>Quando comprar, seus QR codes aparecem aqui — e ficam salvos no celular, mesmo sem internet.</p>
+          <p>Quando comprar, seus QR codes aparecem aqui e ficam salvos no celular, mesmo sem internet.</p>
           <Link className="btn-p" href="/explorar">Explorar eventos <IcoArrow /></Link>
         </div>
       )}
@@ -187,7 +194,7 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
               </div>
             );
           })()}
-          {!f && (
+          {!f && !lists.length && (
             <div className="empty mi-empty">
               <h3>Nenhum evento por vir</h3>
               <p>Seus próximos ingressos aparecem aqui assim que você comprar.</p>
@@ -223,6 +230,32 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
               </div>
             </>
           )}
+        </>
+      )}
+
+      {tab === "up" && lists.length > 0 && (
+        <>
+          <div className="mi-sec"><h2>Lista free</h2></div>
+          <div className="tg">
+            {lists.map((l) => (
+              <article className="tm" key={l.token}>
+                <div className="tm-art"><div className="in"><FlyerArt id={l.flyerId} /></div></div>
+                <div className="tm-i">
+                  <span className="tm-k">Lista free · Cortesia</span>
+                  <b className="tm-t">{l.title}</b>
+                  <span className="tm-d">{l.dateNice}</span>
+                  <span className="tm-d">{l.venue}{l.city && <> · {l.city}</>}</span>
+                  <span className="tm-q">{l.inAt ? "Você já entrou" : `Entrada gratuita · ${l.name}${l.plus ? ` ${l.plus}` : ""}`}</span>
+                </div>
+                <div className="tm-s">
+                  <Link className="tm-qr" href={`/lista/${l.token}`} aria-label={`Ver ingresso de lista de ${l.title}`}>
+                    <div className="qr" dangerouslySetInnerHTML={{ __html: l.qrSvg }} />
+                  </Link>
+                  <Link className="tm-go" href={`/lista/${l.token}`}>Ver ingresso</Link>
+                </div>
+              </article>
+            ))}
+          </div>
         </>
       )}
 

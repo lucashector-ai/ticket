@@ -118,7 +118,7 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
   return (
     <div className="cv" onKeyDown={onKey}>
       <header className="cv-top">
-        <Link href="/" aria-label="Tickets Win — início" className="cv-logo"><BrandLogo height={24} /></Link>
+        <Link href="/" aria-label="Tickets Win: início" className="cv-logo"><BrandLogo height={24} /></Link>
         <span className="cv-save"><i aria-hidden="true" />{status}</span>
         <nav className="cv-steps" aria-label="Etapas">
           {STEP_LABELS.map((l, i) => {

@@ -57,7 +57,7 @@ export function LaunchScreen({ x, slug, email: initialEmail = "", preview = fals
 
   const p = x.page;
   const headline = p.headline.trim() || (x.phase === "presale" ? "A venda geral abre em" : presaleSignup ? "A pré-venda começa em" : "As vendas abrem em");
-  const kick = x.phase === "presale" ? "Pré-venda acontecendo" : presaleSignup ? "Pré-venda para cadastrados" : "Em breve";
+  const kick = x.phase === "presale" ? "Pré-venda em andamento" : presaleSignup ? "Pré-venda para cadastrados" : "Em breve";
   const showPoster = p.theme === "arte" || p.theme === "escuro";
   return (
     <section className={`ls ls-${p.theme}${preview ? " ls-prev" : ""}${phone ? " ls-pv" : ""}`} aria-label={`${headline} · ${x.title}`}>

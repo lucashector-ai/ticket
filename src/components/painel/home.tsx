@@ -106,7 +106,7 @@ export function PainelHome(p: HomeProps) {
           <section className="cx pay">
             <span className="py-k">Vendas líquidas de eventos futuros</span>
             <b className="py-v">{p.futureNet}</b>
-            <span className="py-s">O repasse para a sua conta entra quando o pagamento real for ligado.</span>
+            <span className="py-s">O líquido entra no Banco Tickets Win e fica disponível 2 dias depois de cada evento.</span>
             <Link className="b2" href="/painel/financeiro">Ver financeiro</Link>
           </section>
         </aside>

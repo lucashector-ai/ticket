@@ -10,7 +10,9 @@ import { getSessionUser } from "@/lib/auth/server";
 import { checkinTicket, type CheckinResult } from "@/lib/checkin";
 import { organizerFor } from "@/lib/criar/save";
 import { getPainelScope, type PainelRole } from "@/lib/data/painel";
-import { mailTeamInvite } from "@/lib/notify";
+import { mailSecurityNotice, mailTeamInvite } from "@/lib/notify";
+import { destLabel } from "@/lib/bank";
+import { logSecurity } from "@/lib/mfa";
 import { newAccessCode } from "@/lib/portaria";
 import { AGES, parseBrDateTime } from "@/lib/criar/model";
 
@@ -30,7 +32,7 @@ async function scope(need: PainelRole) {
 export async function scanTicket(eventId: string, input: string): Promise<Omit<CheckinResult, "status"> & { auth: boolean }> {
   const s = await scope("portaria");
   if (!s || !s.events.some((e) => e.id === eventId)) return { ok: false, auth: false, error: "Sem permissão para este evento." };
-  const r = await checkinTicket(input, new Set([eventId]));
+  const r = await checkinTicket(input, new Set([eventId]), s.user.name || s.user.email || "Equipe");
   return { ok: r.ok, error: r.error, checkedInAt: r.checkedInAt, ticket: r.ticket, auth: true };
 }
 
@@ -164,10 +166,18 @@ export async function saveSettings(input: SettingsInput): Promise<R> {
   const org = s.org ?? (await organizerFor(s.user));
   const clash = await db.query.organizers.findFirst({ where: and(eq(organizers.slug, d.slug), ne(organizers.id, org.id)), columns: { id: true } });
   if (clash) return { ok: false, error: "Esse endereço já está em uso. Escolha outro." };
+  const prevPayout = (org.payout ?? {}) as Record<string, unknown>;
+  const payoutChanged = (Object.keys(d.payout) as (keyof typeof d.payout)[]).some((k) => String(prevPayout[k] ?? "") !== String(d.payout[k] ?? ""));
   await db.update(organizers).set({
     name: d.name, slug: d.slug, contactEmail: d.contactEmail || null, legalName: d.legalName || null, cnpj: d.cnpj || null,
     payout: d.payout, defaults: d.defaults,
   }).where(eq(organizers.id, org.id));
+  // a conta de recebimento é para onde vão os saques: toda troca fica registrada e o dono é avisado por e-mail
+  if (payoutChanged && (d.payout.pixKey || d.payout.account || org.payout)) {
+    await logSecurity(s.user.id, "payout", "Conta de recebimento alterada");
+    const to = s.user.email;
+    if (to) after(() => mailSecurityNotice(to, "A conta de recebimento mudou", `A conta para receber os saques de ${d.name} na Tickets Win foi alterada para ${destLabel(d.payout)}. Os próximos saques vão para essa conta.`));
+  }
   revalidatePath("/painel", "layout");
   return { ok: true };
 }

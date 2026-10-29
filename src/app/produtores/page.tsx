@@ -7,14 +7,14 @@ import { ProdutoresLanding } from "@/components/produtores-landing/landing";
 export const dynamic = "force-dynamic";
 
 const DESCRIPTION =
-  "Crie seu evento em minutos e venda ingressos com lotes, meia-entrada e mapa 3D. Taxa única de 7,99% por ingresso, sem mensalidade, painel ao vivo e repasse em D+2.";
+  "Crie seu evento em minutos e venda ingressos com lotes, meia-entrada e mapa 3D. Taxa única de 7,99% por ingresso, sem mensalidade, painel ao vivo e repasse 2 dias após o evento.";
 
 export const metadata: Metadata = {
   title: "Para produtores",
   description: DESCRIPTION,
   alternates: { canonical: "/produtores" },
   openGraph: {
-    title: "Tickets Win para produtores — do primeiro lote ao ingresso esgotado",
+    title: "Tickets Win para produtores: do primeiro lote ao ingresso esgotado",
     description: DESCRIPTION,
     url: "/produtores",
     type: "website",

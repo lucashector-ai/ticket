@@ -31,7 +31,8 @@ export async function walletFor(userId: string) {
   const evs = scope.events.filter((e) => e.status !== "draft");
   const byId = new Map(evs.map((e) => [e.id, e]));
   const orders = (await listOrders(evs.map((e) => e.id), new Map(evs.map((e) => [e.id, e.absorbFee])))).filter((o) => o.status === "paid");
-  const real = orders.filter((o) => o.method !== "test" && o.net > 0);
+  // venda de teste (sem gateway: payment_ref TEST-… ou método "test") nunca vira saldo sacável
+  const real = orders.filter((o) => !o.test && o.net > 0);
   const now = Date.now();
 
   const releaseOf = (eventId: string) => {

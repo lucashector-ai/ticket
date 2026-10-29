@@ -10,6 +10,8 @@ export type EventCard = {
   venue: string; city: string; uf: string; minPriceCents: number; popularity: number;
   kinds: string[]; categoryLabel: string | null; accentColor: string | null; tagline: string | null;
   lineup: string[];
+  /** posição em "Eventos em destaque" (escolhida na central) */
+  featuredOrder: number | null;
 };
 
 function toCard(e: typeof events.$inferSelect & { venue: { name: string; city: { name: string; uf: string } } | null; eventArtists: { artist: { name: string } }[] }): EventCard {
@@ -18,7 +20,7 @@ function toCard(e: typeof events.$inferSelect & { venue: { name: string; city: {
     startAt: e.startAt, endAt: e.endAt, dateLabel: e.dateLabel, dateNice: e.dateLabel ?? "",
     venue: e.venueNameOverride ?? e.venue?.name ?? "", city: e.venue?.city.name ?? "", uf: e.venue?.city.uf ?? "",
     minPriceCents: e.minPriceCents, popularity: e.popularity, kinds: e.kinds, categoryLabel: e.primaryCategoryLabel,
-    accentColor: e.accentColor, tagline: e.tagline, lineup: e.eventArtists.map((x) => x.artist.name),
+    accentColor: e.accentColor, tagline: e.tagline, lineup: e.eventArtists.map((x) => x.artist.name), featuredOrder: e.featuredOrder,
   };
 }
 
@@ -37,13 +39,14 @@ export async function listLiveEvents(): Promise<EventCard[]> {
   return rows.map(toCard);
 }
 
-export async function listHeroEvents(): Promise<EventCard[]> {
+/** Banner principal da home: eventos escolhidos na central, na ordem de lá, com a arte própria (imagem ou HTML). */
+export async function listHeroEvents(): Promise<(EventCard & { heroArt: string | null; heroHtml: string | null })[]> {
   const rows = await db.query.events.findMany({
-    where: and(eq(events.status, "published"), eq(events.unlisted, false), sql`${events.heroOrder} is not null`),
+    where: and(eq(events.status, "published"), eq(events.unlisted, false), sql`${events.heroOrder} is not null`, gte(sql`coalesce(${events.endAt}, ${events.startAt})`, sql`now()`)),
     with: cardWith,
     orderBy: [asc(events.heroOrder)],
   });
-  return rows.map(toCard);
+  return rows.map((r) => ({ ...toCard(r), heroArt: r.heroArt, heroHtml: r.heroHtml }));
 }
 
 export async function listCategories() {

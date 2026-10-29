@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ToastProvider } from "@/components/toast";
 import { FONTS } from "@/lib/fonts";
+import { A11yWidget } from "@/components/a11y/a11y-widget";
 
 export const metadata: Metadata = {
-  title: { default: "Tickets Win — Descubra eventos", template: "%s · Tickets Win" },
+  title: { default: "Tickets Win · Descubra eventos", template: "%s · Tickets Win" },
   description: "A forma mais simples de descobrir e viver os melhores eventos da sua cidade.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
 };
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ToastProvider>
           {children}
         </ToastProvider>
+        <A11yWidget />
       </body>
     </html>
   );

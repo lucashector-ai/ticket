@@ -4,7 +4,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 export async function GET(_req: Request, { params }: { params: Promise<{ key: string[] }> }) {
   const { key } = await params;
   const path = key.join("/");
-  if (!path.startsWith("eventos/") || path.includes("..")) return new Response("Não encontrado", { status: 404 });
+  if (!(path.startsWith("eventos/") || path.startsWith("destaques/")) || path.includes("..")) return new Response("Não encontrado", { status: 404 });
   const { env } = await getCloudflareContext({ async: true });
   const obj = await env.MEDIA.get(path);
   if (!obj) return new Response("Não encontrado", { status: 404 });

@@ -37,6 +37,8 @@ export function applyFilters(live: HomeEvent[], f: Filters) {
   });
   return list.sort((a, b) => {
     if (f.sort === "pop") return b.popularity - a.popularity;
+    // na ordem padrão, os destaques escolhidos na central vêm primeiro
+    if (f.sort === "data" && (a.pin != null || b.pin != null)) return (a.pin ?? Infinity) - (b.pin ?? Infinity) || a.startMs - b.startMs;
     if (f.sort === "preco") return a.minPriceCents - b.minPriceCents;
     return a.startMs - b.startMs;
   });

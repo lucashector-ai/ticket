@@ -52,7 +52,7 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
     <>
       <header className={cls}>
         <div className="wrap hdr-in">
-          <Link className="logo" href="/" aria-label="Tickets Win — início">
+          <Link className="logo" href="/" aria-label="Tickets Win: início">
             <BrandLogo height={24} />
           </Link>
           {/* na home a busca fica só na barra grande da vitrine */}

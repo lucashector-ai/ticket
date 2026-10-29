@@ -15,7 +15,9 @@ export type TxBlock =
   /** lista de ingressos ou itens */
   | { kind: "items"; title?: string; items: { name: string; sub?: string; right?: string }[] }
   /** aviso pequeno em caixa clara */
-  | { kind: "note"; text: string };
+  | { kind: "note"; text: string }
+  /** ingresso com QR code (imagem PNG: e-mail não mostra SVG), etiqueta, nome e detalhe */
+  | { kind: "ticket"; label: string; name: string; sub?: string; qr: string; code?: string };
 
 export type TxMail = {
   preheader: string;
@@ -59,6 +61,13 @@ ${b.note ? `<div style="font-family:${B.font};font-size:13px;color:${B.muted};ma
 ${it.right ? `<td align="right" style="padding:14px 18px;font-family:${B.mono};font-size:13px;font-weight:700;color:${B.ink};white-space:nowrap">${escHtml(it.right)}</td>` : ""}</tr></table></td></tr>`).join("")}</table>`);
     case "note":
       return row(`<div style="font-family:${B.font};font-size:13px;line-height:1.6;color:${B.limeInk};background:${B.limeSoft};border-radius:14px;padding:14px 16px">${escHtml(b.text)}</div>`);
+    case "ticket":
+      return row(`<table ${TABLE} style="background:${B.ink};border-radius:24px"><tr><td align="center" style="padding:26px 22px 24px">
+<div style="font-family:${B.font};font-size:12px;font-weight:700;color:${B.ink};background:${B.lime};display:inline-block;padding:5px 12px;border-radius:999px">${escHtml(b.label)}</div>
+<div style="font-family:${B.disp};font-size:26px;line-height:1.15;font-weight:600;letter-spacing:-.02em;color:#FFFFFF;margin-top:14px">${escHtml(b.name)}</div>
+${b.sub ? `<div style="font-family:${B.font};font-size:14px;color:#C9CBC2;margin-top:6px">${escHtml(b.sub)}</div>` : ""}
+<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px"><tr><td style="background:#FFFFFF;border-radius:18px;padding:14px"><img src="${escHtml(abs(site, b.qr))}" width="200" height="200" alt="QR code do ingresso" style="display:block;width:200px;height:200px;border:0"></td></tr></table>
+${b.code ? `<div style="font-family:${B.mono};font-size:13px;font-weight:700;letter-spacing:.1em;color:#C9CBC2;margin-top:14px">${escHtml(b.code)}</div>` : ""}</td></tr></table>`);
   }
 }
 
@@ -69,6 +78,7 @@ const blockText = (b: TxBlock): string[] => {
     case "rows": return b.rows.map(([k, v]) => `${k}: ${v}`);
     case "items": return [...(b.title ? [b.title] : []), ...b.items.map((it) => `- ${it.name}${it.sub ? ` (${it.sub})` : ""}${it.right ? ` · ${it.right}` : ""}`)];
     case "note": return [b.text];
+    case "ticket": return [b.label, b.name, ...(b.sub ? [b.sub] : [])];
   }
 };
 

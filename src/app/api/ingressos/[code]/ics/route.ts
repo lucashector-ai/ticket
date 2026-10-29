@@ -40,7 +40,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
   return new NextResponse(lines.join("\r\n") + "\r\n", {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="onde-${t.code}.ics"`,
+      "Content-Disposition": `attachment; filename="ticketswin-${t.code}.ics"`,
       "Cache-Control": "private, no-store",
     },
   });

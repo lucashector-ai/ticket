@@ -213,7 +213,7 @@ export function EventSetup({ p }: { p: CampaignProps }) {
               <div className="seg2 sm"><button className={device === "desk" ? "sg on" : "sg"} type="button" onClick={() => setDevice("desk")}>Computador</button><button className={device === "mob" ? "sg on" : "sg"} type="button" onClick={() => setDevice("mob")}>Celular</button></div>
             </div>
             <div className={`es-frame ${device}`}>
-              <iframe title="Prévia do e-mail" srcDoc={html} tabIndex={-1} />
+              <iframe title="Prévia do e-mail" srcDoc={html} sandbox="allow-popups allow-popups-to-escape-sandbox" tabIndex={-1} />
             </div>
           </section>
 

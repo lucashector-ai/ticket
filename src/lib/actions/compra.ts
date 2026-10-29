@@ -1,24 +1,24 @@
 "use server";
 
-import { after } from "next/server";
-import { randomBytes } from "node:crypto";
 import QRCode from "qrcode";
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
+import { cpfValid } from "@/lib/cpf";
 import { normalizePhone, phoneValid } from "@/lib/phone";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { priceOrder, SERVICE_FEE_RATE } from "@/lib/pricing";
 import { tierStatus } from "@/lib/tickets/status";
-import { qrPayload } from "@/lib/actions/tickets";
 import { canBuy } from "@/lib/launch";
 import { promoterForOrder } from "@/lib/promoters";
 import { queueAllows } from "@/lib/queue";
-import { heldByType, heldSql } from "@/lib/holds";
-import { claimSpecial, lookupSpecial, settleShare, shareStillHeld } from "@/lib/special";
-import { mailGroupSharePaid, mailOrderConfirmed, mailResaleSold } from "@/lib/notify";
+import { heldByType } from "@/lib/holds";
+import { claimSpecial, lookupSpecial } from "@/lib/special";
+import { boughtByType, fulfillOrder, overLimit, type FulfillResult } from "@/lib/payments/fulfill";
+import { startPix, STRIPE_MIN_BRL_CENTS } from "@/lib/payments/intents";
+import { stripeEnabled } from "@/lib/payments/stripe";
 
-const { orders, orderItems, tickets, ticketTypes, coupons, events, userProfiles, eventSignups, groupShares, resaleListings, ticketTransfers } = schema;
+const { orders, orderItems, coupons, events, userProfiles } = schema;
 
 const digits = (v: string) => v.replace(/\D/g, "");
 const fullName = z.string().trim().refine((v) => v.split(/\s+/).filter(Boolean).length >= 2, "nome e sobrenome");
@@ -31,7 +31,7 @@ const placeSchema = z.object({
     name: fullName,
     email: z.string().trim().email("e-mail"),
     phone: z.string().transform(normalizePhone).refine(phoneValid, "celular com DDD"),
-    cpf: z.string().refine((v) => digits(v).length === 11, "CPF com 11 dígitos"),
+    cpf: z.string().refine(cpfValid, "CPF válido (obrigatório)"),
   }),
   holders: z.array(z.object({ ticketTypeId: z.string().uuid(), name: fullName, meia: z.boolean() })),
   /** "free": pedido de valor zero (ingresso grátis ou cupom de 100%), confirmado sem pagamento */
@@ -43,8 +43,9 @@ const placeSchema = z.object({
 });
 export type PlaceOrderInput = z.infer<typeof placeSchema>;
 
+/** `live`: cobrança de verdade pela Stripe; senão, modo de teste. No Pix vêm o copia e cola e o QR. */
 export type PlaceOrderResult =
-  | { ok: true; orderId: string; number: number; totalCents: number; pixCode: string; pixQrSvg: string }
+  | { ok: true; orderId: string; number: number; totalCents: number; live: boolean; pixCode: string; pixQrSvg: string; expiresAt: string | null; hostedUrl: string | null }
   | { ok: false; error: string; needsLogin?: boolean };
 
 async function findCoupon(code: string, eventId: string) {
@@ -69,37 +70,9 @@ function couponView(c: typeof coupons.$inferSelect) {
   return { ok: true as const, code: c.code, percentOff: c.percentOff ?? 0, amountOffCents: c.amountOffCents ?? 0, amountPerTicket: c.amountPerTicket, sector: c.sector };
 }
 
-/** Ingressos que a conta já comprou de cada tipo (pedidos pagos), para o limite por pessoa. */
-async function boughtByType(userId: string, typeIds: string[], exceptOrderId?: string) {
-  if (!typeIds.length) return new Map<string, number>();
-  const rows = await db.select({ id: orderItems.ticketTypeId, n: sql<number>`coalesce(sum(${orderItems.quantity}), 0)` })
-    .from(orderItems).innerJoin(orders, eq(orders.id, orderItems.orderId))
-    .where(and(
-      eq(orders.userId, userId), eq(orders.status, "paid"), inArray(orderItems.ticketTypeId, typeIds),
-      sql`${orders.groupShareId} is null and ${orders.resaleListingId} is null`,
-      exceptOrderId ? ne(orders.id, exceptOrderId) : undefined,
-    ))
-    .groupBy(orderItems.ticketTypeId);
-  return new Map(rows.map((r) => [r.id, Number(r.n)]));
-}
-
-/** Confere o limite por pessoa de cada tipo; devolve a mensagem de erro ou null. */
-function overLimit(items: { ticketTypeId: string; quantity: number }[], types: { id: string; name: string; maxPerOrder: number }[], bought: Map<string, number>) {
-  for (const it of items) {
-    const tt = types.find((t) => t.id === it.ticketTypeId);
-    if (!tt) continue;
-    const had = bought.get(tt.id) ?? 0;
-    if (had + it.quantity > tt.maxPerOrder) {
-      const lim = `${tt.maxPerOrder} ${tt.maxPerOrder === 1 ? "ingresso" : "ingressos"} de ${tt.name} por pessoa`;
-      return had ? `O limite é ${lim} e você já tem ${had}.` : `O limite é ${lim}.`;
-    }
-  }
-  return null;
-}
-
 function pixCopyPaste(orderNumber: number, totalCents: number) {
   const amount = (totalCents / 100).toFixed(2);
-  return `00020126580014BR.GOV.BCB.PIX0136onde-pagamentos-${orderNumber}5204000053039865406${amount}5802BR5904ONDE6009SAO PAULO62070503***6304A1F3`;
+  return `00020126580014BR.GOV.BCB.PIX0136ticketswin-pix-${orderNumber}5204000053039865406${amount}5802BR5911TICKETS WIN6009SAO PAULO62070503***6304A1F3`;
 }
 
 /** Cria o pedido com os dados do checkout. Exige login (pedido na etapa Dados). */
@@ -137,7 +110,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     const totalQty = items.reduce((s, i) => s + i.quantity, 0);
     if (totalQty > ev.maxPerOrder) return { ok: false, error: `Máximo de ${ev.maxPerOrder} ingressos por pessoa.` };
     if (holders.length !== totalQty) return { ok: false, error: "Informe o titular de cada ingresso." };
-    const limitErr = overLimit(items, ev.ticketTypes, await boughtByType(user.id, items.map((i) => i.ticketTypeId)));
+    const limitErr = overLimit(items, ev.ticketTypes, await boughtByType(user.id, digits(buyer.cpf), items.map((i) => i.ticketTypeId)));
     if (limitErr) return { ok: false, error: limitErr };
     const held = await heldByType(ev.id);
     for (const it of items) {
@@ -164,6 +137,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const p = priceOrder({ lines, holders: cleanHolders, coupon: couponRow ? couponView(couponRow) : null, method: method === "card" ? "card" : "pix", installments, feeRate });
   if (method === "free" && p.total > 0) return { ok: false, error: "Este pedido tem valor a pagar. Escolha Pix ou cartão." };
   const free = p.total === 0;
+  const live = stripeEnabled();
+  if (live && !free && p.total < STRIPE_MIN_BRL_CENTS) return { ok: false, error: "O valor mínimo para pagamento online é R$ 0,50." };
   // comissão do parceiro: % do valor dos ingressos (sem taxa e sem juros)
   const promoter = special?.kind === "revenda" ? null : await promoterForOrder(ev);
 
@@ -191,116 +166,38 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     .onConflictDoUpdate({ target: userProfiles.userId, set: { name: buyer.name.trim(), phone: buyer.phone, cpf: digits(buyer.cpf) } });
 
   const number = order.number ?? 0;
-  const pixCode = pixCopyPaste(number, p.total);
-  const pixQrSvg = method === "pix" && !free ? await QRCode.toString(pixCode, { type: "svg", margin: 0, errorCorrectionLevel: "M" }) : "";
-  return { ok: true, orderId: order.id, number, totalCents: p.total, pixCode, pixQrSvg };
+  if (method === "pix" && !free) {
+    if (live) {
+      // Pix de verdade: a Stripe gera o copia e cola; mostramos o QR dentro do checkout
+      const px = await startPix(order);
+      if (!px.ok) {
+        await db.update(orders).set({ status: "cancelled" }).where(and(eq(orders.id, order.id), eq(orders.status, "pending")));
+        return { ok: false, error: px.error };
+      }
+      return { ok: true, orderId: order.id, number, totalCents: p.total, live: true, ...px.pix };
+    }
+    const pixCode = pixCopyPaste(number, p.total);
+    const pixQrSvg = await QRCode.toString(pixCode, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
+    return { ok: true, orderId: order.id, number, totalCents: p.total, live: false, pixCode, pixQrSvg, expiresAt: order.expiresAt?.toISOString() ?? null, hostedUrl: null };
+  }
+  return { ok: true, orderId: order.id, number, totalCents: p.total, live, pixCode: "", pixQrSvg: "", expiresAt: order.expiresAt?.toISOString() ?? null, hostedUrl: null };
 }
 
-function ticketCode() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const b = randomBytes(8);
-  let s = "";
-  for (let i = 0; i < 8; i++) s += alphabet[b[i] % alphabet.length];
-  return `TW-${s.slice(0, 4)}-${s.slice(4)}`;
-}
+export type ConfirmResult = FulfillResult;
 
-export type ConfirmResult =
-  | { ok: true; number: number; totalCents: number; method: "pix" | "card" | "free"; installments: number; ticketCount: number; firstCode: string; ticketQrSvg: string; email: string }
-  | { ok: false; error: string };
-
-/** Confirma o pagamento (ambiente de teste: sem gateway) e emite os ingressos nominais. */
+/**
+ * Confirma um pedido SEM gateway: pedido grátis (sempre) ou o modo de teste (só quando a Stripe NÃO está
+ * configurada; a referência fica TEST-…, que não entra no saldo do produtor). Com a Stripe ligada, pedido
+ * com valor só é confirmado pelo pagamento de verdade (webhook ou checkPayment).
+ */
 export async function confirmPayment(orderId: string): Promise<ConfirmResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Sua sessão expirou. Entre de novo." };
-  const order = await db.query.orders.findFirst({ where: and(eq(orders.id, orderId), eq(orders.userId, user.id)), with: { items: true, tickets: true } });
+  if (!z.string().uuid().safeParse(orderId).success) return { ok: false, error: "Pedido não encontrado." };
+  const order = await db.query.orders.findFirst({ where: and(eq(orders.id, orderId), eq(orders.userId, user.id)), columns: { id: true, number: true, totalCents: true, status: true } });
   if (!order) return { ok: false, error: "Pedido não encontrado." };
-  const method = (order.paymentMethod === "card" || order.paymentMethod === "free" ? order.paymentMethod : "pix") as "pix" | "card" | "free";
-  if (order.status === "paid") {
-    const first = order.tickets[0];
-    return { ok: true, number: order.number ?? 0, totalCents: order.totalCents, method, installments: order.installments, ticketCount: order.tickets.length, firstCode: first?.code ?? "", ticketQrSvg: first ? await QRCode.toString(await qrPayload(first.code, first.secret), { type: "svg", margin: 0 }) : "", email: order.buyerEmail ?? "" };
-  }
-  if (order.status !== "pending") return { ok: false, error: "Este pedido não pode mais ser pago." };
-  if (order.expiresAt && order.expiresAt < new Date()) {
-    await db.update(orders).set({ status: "expired" }).where(eq(orders.id, order.id));
-    return { ok: false, error: "O tempo da reserva acabou. Escolha os ingressos de novo." };
-  }
-  if (!order.groupShareId && !order.resaleListingId) {
-    // limite por pessoa de novo na confirmação: outro pedido pode ter sido pago no meio do caminho
-    const types = await db.query.ticketTypes.findMany({ where: inArray(ticketTypes.id, order.items.map((i) => i.ticketTypeId)), columns: { id: true, name: true, maxPerOrder: true } });
-    const limitErr = overLimit(order.items, types, await boughtByType(user.id, types.map((t) => t.id), order.id));
-    if (limitErr) {
-      await db.update(orders).set({ status: "cancelled" }).where(eq(orders.id, order.id));
-      return { ok: false, error: `${limitErr} Nada foi cobrado.` };
-    }
-  }
-  // link da pré-venda vale para uma compra só
-  if (order.presaleSignupId) {
-    const used = await db.update(eventSignups).set({ usedAt: new Date() })
-      .where(and(eq(eventSignups.id, order.presaleSignupId), sql`${eventSignups.usedAt} is null`)).returning({ id: eventSignups.id });
-    if (!used.length) return { ok: false, error: "Este link de pré-venda já foi usado em outra compra." };
-  }
-  if (order.resaleListingId) return confirmResale(order, user.id, method === "free" ? "pix" : method);
-  if (order.groupShareId) {
-    const sh = await db.query.groupShares.findFirst({ where: eq(groupShares.id, order.groupShareId), columns: { paidAt: true, userId: true } });
-    if (!sh || sh.paidAt || sh.userId !== user.id) return { ok: false, error: "Esta parte do grupo já foi paga ou passou para outra pessoa. Nada foi cobrado." };
-  }
-  // parte de grupo com a vaga ainda segurada: entra direto; senão disputa o estoque (descontando as vagas seguradas)
-  const held = order.groupShareId ? await shareStillHeld(order.groupShareId) : false;
-  for (const it of order.items) {
-    const res = await db.update(ticketTypes)
-      .set({ sold: sql`${ticketTypes.sold} + ${it.quantity}` })
-      .where(and(eq(ticketTypes.id, it.ticketTypeId), held ? sql`true` : sql`${ticketTypes.sold} + ${it.quantity} + ${heldSql(ticketTypes.id, order.groupShareId)} <= ${ticketTypes.quantity}`))
-      .returning({ id: ticketTypes.id });
-    if (!res.length) return { ok: false, error: "Os ingressos esgotaram enquanto você pagava. Tente outro lote." };
-  }
-  const holderQueue = [...(order.holders ?? [])];
-  const rows = order.items.flatMap((it) => Array.from({ length: it.quantity }, () => {
-    const idx = holderQueue.findIndex((h) => h.ticketTypeId === it.ticketTypeId);
-    const h = idx >= 0 ? holderQueue.splice(idx, 1)[0] : null;
-    return {
-      code: ticketCode(), orderId: order.id, orderItemId: it.id, eventId: order.eventId, ticketTypeId: it.ticketTypeId,
-      holderUserId: user.id, holderName: h?.name ?? order.buyerName ?? user.name ?? null, halfPrice: !!h?.meia,
-      secret: randomBytes(16).toString("hex"),
-    };
-  }));
-  const inserted = await db.insert(tickets).values(rows).returning({ code: tickets.code, secret: tickets.secret });
-  if (order.couponId) await db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId));
-  await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: `${method === "free" ? "FREE" : "TEST"}-${order.number}` }).where(eq(orders.id, order.id));
-  if (order.groupShareId) await settleShare(order.groupShareId, order.id);
-  const shareId = order.groupShareId;
-  after(async () => { await mailOrderConfirmed(order.id); if (shareId) await mailGroupSharePaid(shareId); });
-  const first = inserted[0];
-  return {
-    ok: true, number: order.number ?? 0, totalCents: order.totalCents, method, installments: order.installments,
-    ticketCount: inserted.length, firstCode: first.code,
-    ticketQrSvg: await QRCode.toString(await qrPayload(first.code, first.secret), { type: "svg", margin: 0 }),
-    email: order.buyerEmail ?? user.email ?? "",
-  };
+  const free = order.totalCents === 0;
+  if (!free && stripeEnabled() && order.status !== "paid") return { ok: false, error: "Finalize o pagamento para confirmar o pedido." };
+  return fulfillOrder(order.id, { ref: `${free ? "FREE" : "TEST"}-${order.number}`, charged: false });
 }
 
-/** Revenda: o ingresso do vendedor passa para o comprador com um QR novo (o antigo deixa de valer). */
-async function confirmResale(order: typeof orders.$inferSelect & { items: (typeof orderItems.$inferSelect)[] }, userId: string, method: "pix" | "card"): Promise<ConfirmResult> {
-  const l = await db.query.resaleListings.findFirst({ where: eq(resaleListings.id, order.resaleListingId!), with: { ticket: true, event: { columns: { title: true, slug: true } } } });
-  const gone = { ok: false as const, error: "Este ingresso não está mais à venda. Nada foi cobrado." };
-  if (!l || l.status === "sold" || l.status === "cancelled" || l.ticket.status !== "valid" || l.ticket.holderUserId !== l.sellerUserId) return gone;
-  if (l.status === "reserved" && l.reservedBy !== userId && l.reservedUntil && l.reservedUntil > new Date()) return gone;
-  const sold = await db.update(resaleListings).set({ status: "sold", buyerUserId: userId, orderId: order.id, soldAt: new Date() })
-    .where(and(eq(resaleListings.id, l.id), sql`${resaleListings.status} in ('active', 'reserved')`)).returning({ id: resaleListings.id });
-  if (!sold.length) return gone;
-  const holder = order.holders?.[0]?.name ?? order.buyerName ?? null;
-  const [t] = await db.update(tickets)
-    .set({ holderUserId: userId, holderName: holder, secret: randomBytes(16).toString("hex"), orderId: order.id, orderItemId: order.items[0]?.id ?? null })
-    .where(and(eq(tickets.id, l.ticketId), eq(tickets.holderUserId, l.sellerUserId), eq(tickets.status, "valid")))
-    .returning({ code: tickets.code, secret: tickets.secret });
-  if (!t) {
-    await db.update(resaleListings).set({ status: "cancelled" }).where(eq(resaleListings.id, l.id));
-    return gone;
-  }
-  await db.update(ticketTransfers).set({ status: "cancelled" }).where(and(eq(ticketTransfers.ticketId, l.ticketId), eq(ticketTransfers.status, "pending")));
-  await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: `TEST-${order.number}` }).where(eq(orders.id, order.id));
-  after(async () => { await mailOrderConfirmed(order.id); await mailResaleSold(l.sellerUserId, l.event.title, l.priceCents); });
-  return {
-    ok: true, number: order.number ?? 0, totalCents: order.totalCents, method, installments: order.installments, ticketCount: 1, firstCode: t.code,
-    ticketQrSvg: await QRCode.toString(await qrPayload(t.code, t.secret), { type: "svg", margin: 0 }), email: order.buyerEmail ?? "",
-  };
-}

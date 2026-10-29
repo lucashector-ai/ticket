@@ -53,7 +53,7 @@ export function useRenderCtx(data: EditorData, preheader: string, audience: Audi
 export function MailThumb({ html, scale = 0.7, height = 420 }: { html: string; scale?: number; height?: number }) {
   return (
     <div className="mc-th" style={{ height }}>
-      <iframe title="Prévia do e-mail" srcDoc={html} tabIndex={-1} style={{ width: `${100 / scale}%`, height: `${height / scale}px`, transform: `scale(${scale})` }} />
+      <iframe title="Prévia do e-mail" srcDoc={html} sandbox="allow-popups allow-popups-to-escape-sandbox" tabIndex={-1} style={{ width: `${100 / scale}%`, height: `${height / scale}px`, transform: `scale(${scale})` }} />
     </div>
   );
 }

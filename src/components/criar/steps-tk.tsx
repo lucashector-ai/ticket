@@ -161,7 +161,7 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
     ["autoMeia", "Criar meia-entrada automaticamente", "Todo tipo Inteira ganha uma Meia por 50% do valor (Lei 12.933)."],
     ["fee", "Repassar taxa ao comprador", "O preço aparece com “+ taxas”. Desligado, a taxa de 7,99% sai do seu repasse."],
     ["transfer", "Permitir transferência", "O fã envia o ingresso para outra pessoa. O QR antigo deixa de valer na hora."],
-    ["resale", "Permitir revenda oficial", "Quem não puder ir revende aqui, com preço máximo de 120% e QR novo."],
+    ["resale", "Permitir revenda oficial", "Quem não puder ir revende aqui, com preço máximo de 120% do valor pago e QR novo."],
   ];
   return (
     <section className="cv-st cv-wide cv-noenter">

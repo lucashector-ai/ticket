@@ -1,0 +1,92 @@
+/* Lista free (convidados não pagantes): aba do evento no painel, leitor do painel, app da portaria e convite (/lista/<token>). */
+
+/* ---------- painel: aba "Lista free" ---------- */
+.pg-painel {
+  .lf-row{display:grid;grid-template-columns:minmax(0,1.6fr) 140px minmax(0,1fr) auto;align-items:center;gap:16px;padding:12px 0;border-top:1px solid #F0F0EB;font-size:14px}
+  .lf-row.thd{border-top:0;padding:0 0 10px;font-size:12px;font-weight:500;color:#8A8A82}
+  .lf-n{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .lf-n b{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lf-n small{font-size:12.5px;color:#8A8A82;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lf-plus{flex:none;padding:2px 7px;border-radius:6px;background:#111;color:#D3F55B;font-size:11px;font-weight:700}
+  .lf-doc{font-size:13px;white-space:nowrap}
+  .lf-doc a{color:#111;font-weight:600;text-underline-offset:3px}
+  .lf-hint{font-size:12px;line-height:1.45;color:#8A8A82}
+  .lf-st{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+  .lf-st small{font-size:12px;color:#8A8A82;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lf-a{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+  .b2.lf-arm{background:#111;color:#D3F55B}
+  .x-b.lf-arm{color:#A3290F;font-weight:600}
+  .lf-seg{margin-bottom:14px}
+  .lf-ck{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:#F6F6F2;font-size:13.5px;color:#33332F;cursor:pointer}
+  .lf-ck input{width:18px;height:18px;accent-color:#111;flex:none}
+  .fld textarea.lf-ta{min-height:170px;font:13px/1.6 'Space Mono',ui-monospace,monospace}
+  .lf-skip{display:flex;flex-direction:column;gap:2px;margin-top:14px;padding:12px 14px;border-radius:14px;background:#FFF4E5;max-height:240px;overflow:auto}
+  .lf-skip-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+  .lf-skip-h b{font-size:13.5px;color:#8A4B08}
+  .lf-skip-r{display:flex;flex-direction:column;gap:1px;padding:6px 0;border-top:1px solid rgba(138,75,8,.12)}
+  .lf-skip-r span{font-size:12.5px;color:#33332F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lf-skip-r small{font-size:12px;color:#8A4B08}
+  .lf-how{margin:0;padding:0 0 0 18px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5;color:#55554E}
+  .lf-how b{color:#111}
+  .lf-inv-all{margin-top:16px;height:42px;font-size:13.5px}
+  /* leitor do painel: cartão da lista free */
+  .lf-door{display:flex;flex-direction:column;gap:10px}
+  .lf-q{width:100%;height:42px;padding:0 14px;border:1px solid #E4E4DE;border-radius:12px;background:#fff;font:inherit;font-size:14px;outline:none}
+  .lf-q:focus{border-color:#111}
+  .lf-dl{margin:0;padding:0;list-style:none;max-height:360px;overflow:auto}
+  .lf-dl li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #F0F0EB}
+  .lf-dl li:first-child{border-top:0}
+  .lf-dl li.in{opacity:.65}
+  .lf-dn{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .lf-dn b{display:flex;align-items:center;gap:6px;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lf-dn small{font-size:12px;color:#8A8A82;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lf-in{flex:none;font-size:12px;font-weight:700;color:#3D5200}
+  .lf-e{justify-content:center;padding:18px 0 !important;font-size:13px;color:#8A8A82}
+  @media (max-width:760px){
+    .lf-row{grid-template-columns:minmax(0,1fr) auto;row-gap:8px}
+    .lf-row.thd{display:none}
+    .lf-doc{grid-column:1;grid-row:2}
+    .lf-st{grid-column:2;grid-row:1;align-items:flex-end}
+    .lf-a{grid-column:2;grid-row:2}
+  }
+}
+
+/* ---------- app da portaria: aba "Lista free" ---------- */
+.pg-portaria {
+  .pt-kind{display:inline-flex;gap:4px;padding:4px;border-radius:14px;background:#000}
+  .pt-kind button{height:38px;padding:0 14px;border-radius:10px;background:none;color:#A1A1A6;font-size:15px;font-weight:700}
+  .pt-kind button.on{background:#2C2C2E;color:#fff}
+  .pt-free-n{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;padding:12px 14px;border-radius:16px;background:rgba(211,245,91,.1);box-shadow:inset 0 0 0 1px rgba(211,245,91,.22)}
+  .pt-free-n span{font-size:13.5px;color:#C7C7CC}
+  .pt-free-n b{font:600 22px 'Inter Tight',sans-serif;letter-spacing:-.02em;color:#D3F55B;font-variant-numeric:tabular-nums}
+  .pt-free-n small{flex-basis:100%;font-size:12px;color:#8E8E93}
+  .pt-av.free{background:#D3F55B;color:#111}
+  .pt-plus{margin-left:6px;padding:1px 6px;border-radius:6px;background:#D3F55B;color:#111;font-size:11.5px;font-style:normal;font-weight:800;vertical-align:2px}
+}
+
+/* ---------- convite da lista free (/lista/<token>) ---------- */
+.pg-grupo {
+  .lf-pass{display:flex;align-items:center;gap:20px;margin-top:20px;padding:20px;border-radius:22px;background:#F7F7F2}
+  .lf-qr{flex:none;width:168px;height:168px;padding:12px;border-radius:16px;background:#fff;box-shadow:0 8px 24px -12px rgba(17,17,17,.25)}
+  .lf-qr svg{display:block;width:100%;height:100%}
+  .lf-qr.used{opacity:.3}
+  .lf-who{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+  .lf-who b{font:600 24px/1.15 'Inter Tight',sans-serif;letter-spacing:-.02em;overflow-wrap:anywhere}
+  .lf-who > span:not(.lf-tag){font-size:14px;color:#55554E}
+  .lf-tag{height:24px;padding:0 10px;display:inline-flex;align-items:center;border-radius:999px;background:#111;color:#D3F55B;font-size:12px;font-weight:700}
+  .lf-inv .gp-st.off{background:#FFE7E0}
+  .lf-fine{margin:14px 0 0;font-size:12.5px;line-height:1.5;color:#8A8A82}
+  @media (max-width:560px){
+    .lf-pass{flex-direction:column;align-items:center;text-align:center}
+    .lf-who{align-items:center}
+    .lf-qr{width:min(240px,70vw);height:min(240px,70vw)}
+  }
+}
+
+/* abas do evento no celular: rolam de lado em vez de estourar a tela (a aba Lista free deixou a fila maior) */
+.pg-painel {
+  @media (max-width:900px){
+    .etabs{overflow-x:auto;scrollbar-width:none}
+    .etabs .et{flex:none;white-space:nowrap}
+  }
+}

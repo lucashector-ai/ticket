@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AdminApps, AdminPayouts } from "@/components/admin/actions";
-import { ADMIN_PATH, adminApplications, adminEvents, adminOverview, adminPayouts, adminProducers, adminUser, adminUsers } from "@/lib/admin";
+import { AdminAccountProducer, AdminApps, AdminPayouts } from "@/components/admin/actions";
+import { AdminHighlights } from "@/components/admin/highlights";
+import { ADMIN_PATH, adminApplications, adminEvents, adminHighlights, adminOverview, adminPayouts, adminProducers, adminUser, adminUsers } from "@/lib/admin";
 import { destLabel } from "@/lib/bank";
 import { brl } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Central", robots: { index: false, follow: false } };
 
-const TABS = [["geral", "Visão geral"], ["inscricoes", "Inscrições"], ["saques", "Saques"], ["produtores", "Produtores"], ["contas", "Contas"], ["eventos", "Eventos"]] as const;
+const TABS = [["geral", "Visão geral"], ["inscricoes", "Inscrições"], ["saques", "Saques"], ["destaques", "Destaques"], ["produtores", "Produtores"], ["contas", "Contas"], ["eventos", "Eventos"]] as const;
 const day = (d: Date | string) => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).replace(".", "");
 
 /** Central da Tickets Win (secreta): só para os e-mails de admin, com app autenticador. */
@@ -68,6 +69,8 @@ export default async function Central({ searchParams }: { searchParams: Promise<
 
         {tab === "saques" && <AdminPayouts rows={(await adminPayouts()).map((p) => ({ id: p.id, at: day(p.createdAt), amount: brl(p.amountCents), status: p.status, org: p.organizer?.name ?? "—", dest: p.destination ? [destLabel(p.destination), p.destination.pixKey ? `Pix: ${p.destination.pixKey}` : `${p.destination.bank ?? ""} ag ${p.destination.agency ?? ""} cc ${p.destination.account ?? ""} (${p.destination.kind ?? "corrente"})`, p.destination.holder ? `Titular: ${p.destination.holder}${p.destination.doc ? ` · ${p.destination.doc}` : ""}` : ""].filter(Boolean).join("\n") : "—", note: p.note }))} />}
 
+        {tab === "destaques" && <AdminHighlights events={await adminHighlights()} />}
+
         {tab === "produtores" && (
           <section className="ad-card">
             <form className="ad-search" action={ADMIN_PATH}>
@@ -111,7 +114,7 @@ export default async function Central({ searchParams }: { searchParams: Promise<
                   <span><b>{u.name || "—"}</b><small>{u.email}{u.verified ? " · confirmado" : ""}</small></span>
                   <span>{day(u.createdAt)}</span>
                   <span>{u.google ? "Google" : "Senha"}{u.mfa ? ` · 2 etapas (${u.mfa === "totp" ? "app" : "e-mail"})` : ""}</span>
-                  <span>{u.producer ? "Sim" : "—"}</span>
+                  <span className="ad-pst"><AdminAccountProducer userId={u.id} email={u.email} status={u.producer} /></span>
                   <span>{u.paidOrders}</span>
                 </div>
               ))}

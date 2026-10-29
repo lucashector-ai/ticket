@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const first = (artist.bio ?? "").split(/\n\s*\n/)[0]?.trim();
   return {
     title: artist.name,
-    description: first || `${artist.name} no Tickets Win: shows, faixas e próximas datas.`,
+    description: first || `${artist.name} na Tickets Win: shows, faixas e próximas datas.`,
   };
 }
 

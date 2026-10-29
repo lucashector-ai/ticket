@@ -1,8 +1,10 @@
 import "server-only";
-import { and, count, desc, eq, inArray, isNotNull, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, or, sql, sum } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { mfaSettings } from "@/lib/mfa";
+import { userContact } from "@/lib/notify";
+import { CENTRAL_SOURCE, producerStatus, type ProducerStatus } from "@/lib/producer-apply";
 
 /*
  * Central da Tickets Win: página fora de qualquer menu, só para os e-mails de ADMIN_EMAILS
@@ -32,7 +34,7 @@ export async function adminUser() {
   return { ...user, secure: mfa.method === "totp" };
 }
 
-const { orders, events, payoutRequests, producerApplications, organizers, userProfiles } = schema;
+const { orders, events, payoutRequests, producerApplications, organizers, organizerMembers, userProfiles } = schema;
 
 export async function adminOverview() {
   const [paid] = await db.select({ n: count(), total: sum(orders.totalCents), fees: sum(orders.feeCents) }).from(orders).where(eq(orders.status, "paid"));
@@ -60,7 +62,8 @@ export async function adminPayouts() {
   return rows;
 }
 
-export type AdminUserRow = { id: string; name: string; email: string; verified: boolean; createdAt: string; producer: boolean; mfa: string | null; paidOrders: number; google: boolean };
+/** `producer`: mesmo status de producerStatus() (lib/producer-apply), calculado em lote para a lista. */
+export type AdminUserRow = { id: string; name: string; email: string; verified: boolean; createdAt: string; producer: ProducerStatus; mfa: string | null; paidOrders: number; google: boolean };
 
 /** Contas criadas (as mais novas primeiro), com busca por nome ou e-mail. */
 export async function adminUsers(q: string): Promise<AdminUserRow[]> {
@@ -80,18 +83,77 @@ export async function adminUsers(q: string): Promise<AdminUserRow[]> {
   }
   const ids = base.map((b) => b.id);
   if (!ids.length) return [];
-  const [profiles, owners, buys] = await Promise.all([
+  // mesma regra de isProducer (lib/data/producer): cadastro concluído, equipe de um produtor ou já criou evento
+  const verifiedEmails = base.filter((b) => b.verified && b.email).map((b) => b.email.toLowerCase());
+  const [profiles, owners, members, creators, apps, buys] = await Promise.all([
     db.query.userProfiles.findMany({ where: inArray(userProfiles.userId, ids), columns: { userId: true, mfaMethod: true } }),
-    db.query.organizers.findMany({ where: inArray(organizers.ownerUserId, ids), columns: { ownerUserId: true } }),
+    db.select({ userId: organizers.ownerUserId }).from(organizers).where(and(inArray(organizers.ownerUserId, ids), isNotNull(organizers.onboarding))),
+    db.select({ userId: organizerMembers.userId, email: organizerMembers.email }).from(organizerMembers)
+      .where(verifiedEmails.length ? or(inArray(organizerMembers.userId, ids), inArray(sql`lower(${organizerMembers.email})`, verifiedEmails)) : inArray(organizerMembers.userId, ids)),
+    db.selectDistinct({ userId: events.createdByUserId }).from(events).where(inArray(events.createdByUserId, ids)),
+    // última inscrição de cada conta
+    db.selectDistinctOn([producerApplications.userId], { userId: producerApplications.userId, status: producerApplications.status })
+      .from(producerApplications).where(inArray(producerApplications.userId, ids)).orderBy(producerApplications.userId, desc(producerApplications.createdAt)),
     db.select({ userId: orders.userId, n: count() }).from(orders).where(and(inArray(orders.userId, ids), eq(orders.status, "paid"))).groupBy(orders.userId),
   ]);
   const mfa = new Map(profiles.map((p) => [p.userId, p.mfaMethod]));
-  const own = new Set(owners.map((o) => o.ownerUserId));
+  const prod = new Set<string>([...owners, ...creators].map((o) => o.userId ?? ""));
+  for (const m of members) if (m.userId) prod.add(m.userId);
+  const memberEmails = new Set(members.map((m) => m.email.toLowerCase()));
+  const app = new Map(apps.map((a) => [a.userId, a.status]));
   const nb = new Map(buys.map((b) => [b.userId, b.n]));
   return base.map((b) => ({
     id: b.id, name: b.name ?? "", email: b.email, verified: !!b.verified, createdAt: new Date(b.created).toISOString(),
-    producer: own.has(b.id), mfa: mfa.get(b.id) ?? null, paidOrders: nb.get(b.id) ?? 0, google: !!b.google,
+    producer: prod.has(b.id) || (!!b.verified && memberEmails.has(b.email.toLowerCase())) ? "producer" : app.get(b.id) ?? "none",
+    mfa: mfa.get(b.id) ?? null, paidOrders: nb.get(b.id) ?? 0, google: !!b.google,
   }));
+}
+
+type Grant = { ok: true; app: typeof producerApplications.$inferSelect } | { ok: false; error: string };
+const validUserId = (id: string) => (typeof id === "string" && id.trim().length > 0 && id.length <= 100 ? id.trim() : null);
+
+/**
+ * Libera a conta como produtor, como se a inscrição tivesse sido aprovada (a central chama com o e-mail do admin).
+ * Com inscrição pendente ou recusada, aprova a mais recente; sem inscrição, cria uma já aprovada
+ * (source = CENTRAL_SOURCE) com nome, e-mail, telefone e cidade do perfil. Depois a pessoa faz /produtores/cadastro.
+ */
+export async function grantProducer(userId: string, by: string): Promise<Grant> {
+  const id = validUserId(userId);
+  const contact = id ? await userContact(id) : null;
+  if (!id || !contact) return { ok: false, error: "Conta não encontrada." };
+  const { status, app } = await producerStatus({ id, email: contact.email });
+  if (status === "producer") return { ok: false, error: "Essa conta já é produtor." };
+  if (status === "approved") return { ok: false, error: "Essa conta já está liberada; falta só o cadastro do produtor." };
+  const review = { status: "approved" as const, reviewedBy: by, reviewedAt: new Date() };
+  if (app && (app.status === "pending" || app.status === "rejected")) {
+    const [row] = await db.update(producerApplications).set({ ...review, note: "Liberado pela central." }).where(eq(producerApplications.id, app.id)).returning();
+    return { ok: true, app: row };
+  }
+  const profile = await db.query.userProfiles.findFirst({ where: eq(userProfiles.userId, id), columns: { name: true, phone: true, cityId: true } });
+  const city = profile?.cityId ? await db.query.cities.findFirst({ where: eq(schema.cities.id, profile.cityId), columns: { name: true, uf: true } }) : null;
+  const [first = "", ...rest] = (contact.name || profile?.name || contact.email.split("@")[0]).trim().split(/\s+/);
+  const [row] = await db.insert(producerApplications).values({
+    ...review, userId: id, email: contact.email.slice(0, 254),
+    firstName: first.slice(0, 80), lastName: rest.join(" ").slice(0, 80), phone: (profile?.phone ?? "").slice(0, 32),
+    city: city?.name ?? "", uf: city?.uf ?? "", audience: "Conta liberada pela equipe na central, sem inscrição.",
+    category: "Outro", avgTicketCents: 0, expected: 0, source: CENTRAL_SOURCE, note: "Liberado pela central, sem inscrição.",
+  }).returning();
+  return { ok: true, app: row };
+}
+
+/**
+ * Tira a permissão de quem foi liberado mas ainda não concluiu o cadastro do produtor.
+ * Inscrição criada pela central é apagada (volta a "sem inscrição"); inscrição de verdade fica recusada.
+ */
+export async function ungrantProducer(userId: string, by: string): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+  const id = validUserId(userId);
+  if (!id) return { ok: false, error: "Conta não encontrada." };
+  const contact = await userContact(id);
+  const { status, app } = await producerStatus({ id, email: contact?.email });
+  if (status !== "approved" || !app) return { ok: false, error: status === "producer" ? "Essa conta já concluiu o cadastro de produtor." : "Essa conta não está liberada." };
+  if (app.source === CENTRAL_SOURCE) await db.delete(producerApplications).where(and(eq(producerApplications.id, app.id), eq(producerApplications.status, "approved")));
+  else await db.update(producerApplications).set({ status: "rejected", note: "A permissão para criar eventos foi removida pela equipe da Tickets Win.", reviewedBy: by, reviewedAt: new Date() }).where(eq(producerApplications.id, app.id));
+  return { ok: true, email: contact?.email ?? app.email };
 }
 
 /** Eventos de todos os produtores, com ingressos vendidos e receita. */
@@ -164,5 +226,26 @@ export async function adminProducers(q: string): Promise<AdminProducerRow[]> {
     city: o.cityName, uf: o.uf, instagram: o.instagram, createdAt: o.createdAt.toISOString(),
     events: ev.get(o.id)?.n ?? 0, published: ev.get(o.id)?.pub ?? 0, orders: sold.get(o.id)?.n ?? 0, total: Number(sold.get(o.id)?.total ?? 0),
     approvedApp: !!o.ownerUserId && approved.has(o.ownerUserId), onboarded: !!o.onboarding, verified: o.verified,
+  }));
+}
+
+export type AdminHighlightEvent = {
+  id: string; title: string; slug: string; when: string; city: string; producer: string;
+  flyerId: string; bannerId: string | null; heroOrder: number | null; featuredOrder: number | null; heroArt: string | null; heroHtml: string | null;
+};
+
+/** Eventos publicados que ainda não terminaram, para escolher banner e destaques da home. */
+export async function adminHighlights(): Promise<AdminHighlightEvent[]> {
+  const rows = await db.query.events.findMany({
+    where: and(eq(events.status, "published"), sql`coalesce(${events.endAt}, ${events.startAt}) >= now()`),
+    columns: { id: true, title: true, slug: true, startAt: true, dateLabel: true, flyerId: true, bannerId: true, heroOrder: true, featuredOrder: true, heroArt: true, heroHtml: true },
+    with: { venue: { columns: {}, with: { city: { columns: { name: true, uf: true } } } }, organizer: { columns: { name: true } } },
+    orderBy: [events.startAt],
+    limit: 300,
+  });
+  return rows.map((e) => ({
+    id: e.id, title: e.title, slug: e.slug, when: e.dateLabel ?? e.startAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+    city: e.venue?.city ? `${e.venue.city.name} – ${e.venue.city.uf}` : "", producer: e.organizer?.name ?? "",
+    flyerId: e.flyerId, bannerId: e.bannerId, heroOrder: e.heroOrder, featuredOrder: e.featuredOrder, heroArt: e.heroArt, heroHtml: e.heroHtml,
   }));
 }

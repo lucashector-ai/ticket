@@ -121,7 +121,7 @@ function MfaCard({ mfa, email }: Props) {
             ? <>Ao entrar, pedimos o código de 6 números do seu <b>app autenticador</b>. {mfa.recoveryLeft} {mfa.recoveryLeft === 1 ? "código" : "códigos"} de recuperação sobrando.</>
             : mfa.method === "email"
               ? <>Ao entrar com a senha, pedimos um código enviado por e-mail para <b>{mfa.to}</b>. Para mais segurança, use um app autenticador.</>
-              : "Além da senha, pedimos um código do seu app autenticador (ou do e-mail). Mesmo que alguém descubra sua senha, não entra na conta."}</p>
+              : "Além da senha, pedimos um código do seu app autenticador (ou do e-mail). Mesmo que alguém descubra sua senha, não consegue entrar na conta."}</p>
         </div>
         {mode === "idle" && (on
           ? <span className="ct-acts">

@@ -3,11 +3,11 @@
 import { useId, useState } from "react";
 
 const FAQ: [string, string][] = [
-  ["Quanto custa usar o Tickets Win?", "Criar e publicar é grátis. Cobramos 7,99% por ingresso pago vendido, e você escolhe se essa taxa fica com você ou é repassada ao comprador. Eventos gratuitos não pagam nada."],
-  ["Quando eu recebo o dinheiro das vendas?", "Em D+2: cada venda aprovada entra no repasse seguinte, toda terça e sexta, direto na conta cadastrada. Se precisar antes, você pode antecipar recebíveis pelo painel."],
+  ["Quanto custa usar a Tickets Win?", "Criar e publicar é grátis. Cobramos 7,99% por ingresso pago vendido, e você escolhe se essa taxa fica com você ou é repassada ao comprador. Eventos gratuitos não pagam nada."],
+  ["Quando eu recebo o dinheiro das vendas?", "O líquido de cada evento é liberado no Banco Tickets Win 2 dias depois que o evento acaba. Aí é só pedir o saque: o dinheiro cai na conta cadastrada em até 2 dias úteis."],
   ["Posso vender meia-entrada e meia social?", "Sim. Cada setor pode ter inteira, meia e meia social. Para a meia social, sugerimos um valor entre a meia e a inteira, mas o preço final é sempre seu."],
   ["Como funciona o mapa 3D com IA?", "Você envia uma foto ou rascunho do espaço. A IA identifica palco, pista, camarotes e bar e gera um mapa 3D. Você ajusta o que quiser antes de publicar, e o público escolhe o setor vendo o palco."],
-  ["Como é o check-in no dia?", "A equipe usa o app de portaria com o código do evento. O QR é lido mesmo sem internet e sincroniza quando a conexão volta. O painel mostra a entrada em tempo real."],
+  ["Como é o check-in no dia?", "A equipe abre o app da portaria no celular e entra com o código de acesso que você cria no painel. Cada QR vale uma entrada só, e o painel mostra quem entrou em tempo real."],
   ["Consigo migrar meu evento de outra plataforma?", "Sim. Importamos a lista de participantes e configuramos os lotes com você. Fale com o nosso time e a migração fica pronta em até 1 dia útil."],
 ];
 

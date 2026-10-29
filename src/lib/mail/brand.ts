@@ -19,8 +19,8 @@ export const BRAND_SOCIAL: { icon: "ig" | "tt" | "yt" | "sp"; label: string; url
   { icon: "yt", label: "YouTube", url: "" },
   { icon: "sp", label: "Spotify", url: "" },
 ];
-/** Razão social, CNPJ e endereço (obrigatórios em e-mail de marketing); vazio até a empresa estar aberta. */
-export const BRAND_LEGAL = "";
+/** Razão social, CNPJ e endereço (obrigatórios em e-mail de marketing). O CNPJ entra quando sair o registro. */
+export const BRAND_LEGAL = "Tickets Win Serviços de Reservas LTDA · São Paulo – SP";
 
 export const escHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const TABLE = `role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"`;

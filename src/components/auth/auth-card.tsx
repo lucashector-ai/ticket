@@ -12,7 +12,7 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
       <div className="lx-card">
         <main className="lx-f">
           <div className="lx-in">
-            <Link className="lg2" href="/" aria-label="Tickets Win — voltar ao início">
+            <Link className="lg2" href="/" aria-label="Tickets Win: voltar ao início">
               <BrandMark size={40} />
               <span className="lg2-t"><BrandWord height={16} /></span>
             </Link>

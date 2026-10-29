@@ -15,6 +15,7 @@ import { canBuy } from "@/lib/launch";
 import { queueAllows } from "@/lib/queue";
 import { heldByType } from "@/lib/holds";
 import { lookupSpecial } from "@/lib/special";
+import { stripeEnabled, stripePublishableKey } from "@/lib/payments/stripe";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Finalizar compra" };
@@ -82,6 +83,9 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
     feeRate: e.absorbFee ? 0 : SERVICE_FEE_RATE,
   };
   const step = (["resumo", "dados"].includes(one("etapa")) ? one("etapa") : "resumo") as CompraStep;
+  // pagamento de verdade: a chave publicável vai como prop (lida em runtime, sem NEXT_PUBLIC_)
+  const stripeKey = stripePublishableKey();
+  if (stripeEnabled() && !stripeKey) console.error("checkout: STRIPE_SECRET_KEY sem STRIPE_PUBLISHABLE_KEY: o cartão não vai funcionar");
   const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
 
   return (
@@ -96,6 +100,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         initialStep={Object.keys(qty).length ? step : "resumo"}
         queueEventId={!special && e.queueMode !== "off" ? e.id : null}
         human={turnstileSiteKey()}
+        stripeKey={stripeKey}
         lock={special ? (special.kind === "grupo"
           ? { kind: "grupo", ref: { groupShareId: special.shareId }, query: `grupo=${encodeURIComponent(special.groupCode)}&vaga=${special.shareId}`, title: `Sua parte do grupo · vaga ${special.slot} de ${special.slots}`, note: "O preço é o do lote reservado pelo grupo. Cupom e meia-entrada não valem nas partes do grupo.", back: `/grupo/${special.groupCode}` }
           : { kind: "revenda", ref: { resaleListingId: special.listingId }, query: `revenda=${special.listingId}`, title: "Ingresso da revenda oficial", note: "Comprado de outro fã. Ao pagar, você recebe um QR code novo e o antigo deixa de valer.", back: `/eventos/${e.slug}#revenda` }) : null}

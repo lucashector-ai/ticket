@@ -23,6 +23,7 @@
 @import "../styles/pages/emails.css";
 @import "../styles/pages/onboarding.css";
 @import "../styles/pages/portaria.css";
+@import "../styles/pages/lista.css";
 @import "../styles/pages/extras.css";
 @import "../styles/pages/meus-eventos.css";
 @import "../styles/pages/conta.css";
@@ -30,6 +31,10 @@
 @import "../styles/pages/inscricao.css";
 @import "../styles/pages/admin.css";
 @import "../styles/pages/produtores-landing.css";
+@import "../styles/pages/ajuda.css";
+@import "../styles/footer.css";
+@import "../styles/a11y.css";
+@import "../styles/pages/sobre.css";
 
 @theme inline {
   --color-ink: #111111;

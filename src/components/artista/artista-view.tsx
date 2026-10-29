@@ -235,7 +235,7 @@ export function ArtistaView(p: ArtistaProps) {
                   <div className="ab-gen">{p.spotify.genres.map((g) => <span key={g}>{g}</span>)}</div>
                 )}
                 <div className="ab-st">
-                  <div><b className="st-v">{p.stats.fans}</b><span className="st-l">Seguidores no Tickets Win</span></div>
+                  <div><b className="st-v">{p.stats.fans}</b><span className="st-l">Seguidores na Tickets Win</span></div>
                   <div><b className="st-v">{p.stats.shows}</b><span className="st-l">Próximos shows</span></div>
                   <div><b className="st-v">{p.stats.cities}</b><span className="st-l">Cidades na agenda</span></div>
                 </div>

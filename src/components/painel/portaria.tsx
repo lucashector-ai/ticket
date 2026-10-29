@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useQrCamera } from "@/components/checkin/use-qr-camera";
 import { scanTicket } from "@/lib/actions/painel";
+import { ListaPortaria } from "./lista-portaria";
 
 type Shot = { id: number; ok: boolean; title: string; sub: string; at: string };
 const hm = () => new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -80,6 +81,7 @@ export function Portaria({ eventId, title, sub, total, inside: inside0 }: { even
               <button className="b2 dark block" type="submit" disabled={!code.trim()}>Validar</button>
             </form>
           </section>
+          <ListaPortaria eventId={eventId} />
           <section className="cx">
             <div className="card-h"><h2 className="card-t">Leituras deste aparelho</h2><span className="card-s">{log.filter((x) => x.ok).length} {log.filter((x) => x.ok).length === 1 ? "entrada" : "entradas"}</span></div>
             {log.length ? log.map((s) => (

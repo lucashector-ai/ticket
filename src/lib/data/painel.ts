@@ -15,13 +15,19 @@ export type PaidOrder = {
   id: string; number: number | null; eventId: string; at: Date; qty: number; revenue: number; net: number; buyerFee: number;
   buyer: string; method: string | null; status: string; couponId: string | null; discount: number;
   userId: string; email: string | null; meia: boolean;
+  /** paga no modo de teste (sem gateway, payment_ref TEST-…): não é dinheiro de verdade */
+  test: boolean;
 };
 
 export type PainelRole = "owner" | "admin" | "portaria";
 
-/** Produtor do usuário (dono ou membro da equipe), o papel dele e os eventos. Aceita convites pendentes do e-mail da conta. */
-export const getPainelScope = cache(async (user: { id: string; email?: string | null }) => {
-  if (user.email) {
+/**
+ * Produtor do usuário (dono ou membro da equipe), o papel dele e os eventos. Aceita convites pendentes do e-mail da conta,
+ * só com o e-mail confirmado: a conta com senha funciona antes da confirmação, e qualquer um poderia criar uma conta com o
+ * e-mail de um convite ainda não aceito e entrar na equipe.
+ */
+export const getPainelScope = cache(async (user: { id: string; email?: string | null; emailVerified?: boolean | null }) => {
+  if (user.email && user.emailVerified) {
     await db.update(organizerMembers).set({ userId: user.id, acceptedAt: new Date() })
       .where(and(sql`lower(${organizerMembers.email}) = lower(${user.email})`, isNull(organizerMembers.userId)));
   }
@@ -46,7 +52,7 @@ export async function listOrders(eventIds: string[], absorbById: Map<string, boo
   const rows = await db.query.orders.findMany({
     // compras na revenda não entram: o dinheiro é do fã que revendeu, não do produtor
     where: and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "refunded"]), isNull(orders.resaleListingId)),
-    columns: { id: true, number: true, eventId: true, userId: true, buyerEmail: true, status: true, subtotalCents: true, meiaCents: true, discountCents: true, feeCents: true, paidAt: true, createdAt: true, buyerName: true, paymentMethod: true, couponId: true },
+    columns: { id: true, number: true, eventId: true, userId: true, buyerEmail: true, status: true, subtotalCents: true, meiaCents: true, discountCents: true, feeCents: true, paidAt: true, createdAt: true, buyerName: true, paymentMethod: true, paymentRef: true, couponId: true },
     with: { items: { columns: { quantity: true } } },
     orderBy: [desc(orders.createdAt)],
   });
@@ -57,6 +63,7 @@ export async function listOrders(eventIds: string[], absorbById: Map<string, boo
       revenue, net: revenue - platformFee(revenue, absorbById.get(o.eventId) ?? false), buyerFee: o.feeCents,
       buyer: o.buyerName ?? "Comprador", method: o.paymentMethod, status: o.status, couponId: o.couponId, discount: o.discountCents,
       userId: o.userId, email: o.buyerEmail, meia: o.meiaCents > 0,
+      test: o.paymentMethod === "test" || !!o.paymentRef?.startsWith("TEST-"),
     };
   });
 }

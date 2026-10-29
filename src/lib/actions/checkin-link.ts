@@ -15,7 +15,7 @@ export type LinkScan = {
 export async function scanWithLink(token: string, input: string): Promise<LinkScan> {
   const link = await activeCheckinLink(token);
   if (!link) return { ok: false, off: true, error: "Este link de check-in foi desligado pelo produtor." };
-  const r = await checkinTicket(String(input).slice(0, 200), new Set([link.eventId]));
+  const r = await checkinTicket(String(input).slice(0, 200), new Set([link.eventId]), `Link · ${link.label}`);
   await db.update(schema.checkinLinks)
     .set({ lastUsedAt: new Date(), ...(r.ok ? { scans: sql`${schema.checkinLinks.scans} + 1` } : {}) })
     .where(eq(schema.checkinLinks.id, link.id));

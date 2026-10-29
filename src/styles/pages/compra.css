@@ -93,6 +93,7 @@
   .span2{grid-column:1/-1}
   .lf2{display:flex;flex-direction:column;gap:7px}
   .lf2-l{font-size:13.5px;font-weight:600}
+  .lf2-req{margin-left:6px;font-style:normal;font-size:11.5px;font-weight:600;color:#8A8A90}
   .in2{height:52px;padding:0 16px;border:0;border-radius:14px;background:#F4F4F1;font:inherit;font-size:15px;outline:none;width:100%;box-sizing:border-box}
   .in2::placeholder{color:#6E6E73}
   .in2:focus{box-shadow:0 0 0 2px #111 inset}
@@ -280,3 +281,22 @@
   .lk-p{font:600 20px 'Inter Tight',sans-serif;letter-spacing:-.02em}
   .lk-n{margin:14px 0 0;font-size:13.5px;line-height:1.5;color:#55554E}
 }
+
+/* pagamento pela Stripe: Payment Element do cartão, parcelas que o cartão não aceita, Pix com prazo real */
+.pg-compra {
+  .spe{position:relative}
+  .spe.ld .spe-el{position:absolute;inset:0}
+  .spe-ld{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 14px}
+  .spe-sk{grid-column:1/-1;height:52px;border-radius:14px;background:linear-gradient(90deg,#F4F4F1 0%,#ECECE6 50%,#F4F4F1 100%);background-size:200% 100%;animation:speSk 1.3s ease-in-out infinite}
+  .spe-sk.half{grid-column:auto}
+  .spe-l{grid-column:1/-1;font-size:13px;color:#6E6E73}
+  .spe-el{opacity:0;transition:opacity .3s}
+  .spe-el.on{opacity:1}
+  .ino.off{opacity:.55}
+  .ino.off .in-s{color:#B3261E}
+  .pay-err{padding:12px 16px;border-radius:14px;background:#FFF5F5;color:#B3261E}
+  .pix-exp.low{color:#B3261E}
+  .pix-chk{align-self:flex-start;height:48px;margin-top:4px}
+  .ck-p a{text-decoration:underline;text-underline-offset:3px}
+}
+@keyframes speSk{0%{background-position:100% 0}100%{background-position:-100% 0}}

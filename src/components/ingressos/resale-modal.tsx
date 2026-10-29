@@ -36,7 +36,7 @@ export function ResaleModal({ title, ticketId, faceCents, maxCents, onClose, onD
         </label>
         <div className="rs-sum">
           <span>Você pagou <b>{money(faceCents)}</b> · máximo permitido <b>{money(maxCents)}</b></span>
-          <span>Você recebe <b className="rs-get">{money(Math.round(cents * 0.95))}</b> <small>(5% da revenda)</small></span>
+          <span>Você recebe <b className="rs-get">{money(Math.round(cents * 0.95))}</b> <small>(menos a taxa de 5% da revenda)</small></span>
         </div>
         {error && <p className="fld-err" role="alert">{error}</p>}
         <button className="go-b" type="submit" disabled={pending || cents < 500 || cents > maxCents}>{pending ? "Anunciando…" : "Anunciar na revenda"}</button>

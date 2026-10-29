@@ -11,10 +11,11 @@ import { brl } from "@/lib/format";
 import { Feed, type FeedRow } from "./home";
 import { PainelLancamento, type LaunchProps } from "./lancamento";
 import { PainelRevenda, type RevendaProps } from "./revenda";
+import { PainelLista, type ListaProps } from "./lista";
 import { CheckinLinks, type CheckinLink } from "./checkin-links";
 import { useOrigin } from "./use-origin";
 
-type Tab = "geral" | "participantes" | "checkin" | "financeiro" | "lancamento" | "revenda";
+type Tab = "geral" | "participantes" | "lista" | "checkin" | "financeiro" | "lancamento" | "revenda";
 type Person = { id: string; name: string; ini: string; bg: string; email: string; ticket: string; meia: boolean; order: string; date: string; status: string; inAt: string | null };
 
 export type EventoPainelProps = {
@@ -31,6 +32,7 @@ export type EventoPainelProps = {
   fin: { gross: string; buyerFees: string; platform: string; net: string; refunds: { id: string; name: string; value: string; when: string }[]; refundPct: string };
   launch?: LaunchProps;
   revenda?: RevendaProps;
+  lista?: ListaProps;
 };
 
 const n = (v: number) => v.toLocaleString("pt-BR");
@@ -48,7 +50,7 @@ export function PainelEvento(p: EventoPainelProps) {
     window.history.replaceState(null, "", u.toString());
   };
   const copy = async () => { try { await navigator.clipboard.writeText(url); flash("Link copiado."); } catch { flash("Não foi possível copiar."); } };
-  const TABS: [Tab, string, number][] = [["geral", "Visão geral", 0], ["participantes", "Participantes", p.people.length], ["checkin", "Check-in", 0], ["financeiro", "Financeiro", p.fin.refunds.length], ["lancamento", "Lançamento", p.launch?.signups.length ?? 0], ["revenda", "Revenda e transferência", p.revenda?.kpis.active ?? 0]];
+  const TABS: [Tab, string, number][] = [["geral", "Visão geral", 0], ["participantes", "Participantes", p.people.length], ["lista", "Lista free", p.lista?.guests.length ?? 0], ["checkin", "Check-in", 0], ["financeiro", "Financeiro", p.fin.refunds.length], ["lancamento", "Lançamento", p.launch?.signups.length ?? 0], ["revenda", "Revenda e transferência", p.revenda?.kpis.active ?? 0]];
 
   return (
     <div className="pane">
@@ -82,6 +84,7 @@ export function PainelEvento(p: EventoPainelProps) {
 
       {tab === "geral" && <Geral p={p} />}
       {tab === "participantes" && <People p={p} />}
+      {tab === "lista" && p.lista && <PainelLista p={p.lista} />}
       {tab === "checkin" && <Checkin p={p} />}
       {tab === "financeiro" && <Fin p={p} />}
       {tab === "lancamento" && p.launch && <PainelLancamento p={p.launch} />}
@@ -278,6 +281,7 @@ function Checkin({ p }: { p: EventoPainelProps }) {
         </section>
         <div className="ci-r">
           <CheckinLinks eventId={p.ev.id} links={c.links} />
+          {p.lista && p.lista.guests.length > 0 && <ListaResumo l={p.lista} />}
           <section className="cx">
             <div className="card-h"><h2 className="card-t">Por setor</h2></div>
             {c.sectors.length ? c.sectors.map((s) => <div className="src2" key={s.name}><span className="sr-n">{s.name}</span><span className="bar"><i style={{ width: `${s.pct}%` }} /></span><b className="sr-v">{n(s.n)}/{n(s.total)}</b></div>) : <span className="card-s">Sem ingressos emitidos ainda.</span>}
@@ -289,6 +293,18 @@ function Checkin({ p }: { p: EventoPainelProps }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Entrada da lista free (à parte dos ingressos vendidos). */
+function ListaResumo({ l }: { l: ListaProps }) {
+  const total = l.guests.reduce((s, g) => s + 1 + g.guests, 0);
+  const inn = l.guests.reduce((s, g) => s + (g.inAt ? 1 + g.guests : 0), 0);
+  return (
+    <section className="cx">
+      <div className="card-h"><h2 className="card-t">Lista free</h2><span className="card-s">{n(l.guests.length)} {l.guests.length === 1 ? "nome" : "nomes"}</span></div>
+      <div className="src2"><span className="sr-n">Entraram</span><span className="bar"><i style={{ width: `${total ? Math.round((inn / total) * 100) : 0}%` }} /></span><b className="sr-v">{n(inn)}/{n(total)}</b></div>
+    </section>
   );
 }
 
@@ -308,7 +324,7 @@ function Fin({ p }: { p: EventoPainelProps }) {
           <section className="cx">
             <div className="card-h"><div><h2 className="card-t">Repasses</h2><span className="card-s">{p.ev.absorbFee ? "" : `Os compradores pagaram ${f.buyerFees} de taxa de serviço, à parte. `}Vendas de teste não geram repasse.</span></div></div>
             <div className="bal"><div><span className="bl-k">Líquido das vendas</span><b className="bl-v">{f.net}</b></div><div><span className="bl-k">Reembolsado</span><b className="bl-v">{f.refundPct}%</b></div></div>
-            <p className="card-s" style={{ marginTop: 16 }}>Os repasses automáticos para a sua conta (D+2 após cada venda aprovada) começam quando o pagamento real com Pix e cartão for ligado. Até lá, este painel mostra o que cada venda vai render.</p>
+            <p className="card-s" style={{ marginTop: 16 }}>O líquido deste evento entra no Banco Tickets Win e fica disponível para saque 2 dias depois que o evento acaba.</p>
           </section>
         </div>
         <aside className="side2">

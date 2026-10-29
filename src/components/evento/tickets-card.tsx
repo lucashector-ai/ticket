@@ -98,7 +98,7 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
       </div>
       {t.couponMessage && <p className={t.couponMessage.cls} role="status">{t.couponMessage.text}</p>}
       <ResaleCard e={e} inline />
-      <p className="note">Meia-entrada conforme a lei. A taxa de serviço aparece antes do pagamento. Ingresso digital no app, com QR code.</p>
+      <p className="note">Meia-entrada conforme a lei. A taxa de serviço aparece antes do pagamento. Ingresso digital com QR code, em Meus ingressos.</p>
       </div>
       <div className="buy-ft">
       <div className="tot">

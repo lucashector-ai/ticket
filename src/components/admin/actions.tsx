@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { reviewApplication, updatePayout } from "@/lib/actions/admin";
+import { authorizeProducer, reviewApplication, revokeProducer, updatePayout } from "@/lib/actions/admin";
 import { formatPhone, waLink } from "@/lib/phone";
 
 type App = {
@@ -107,5 +107,38 @@ export function AdminPayouts({ rows }: { rows: Payout[] }) {
         ))}
       </div>
     </section>
+  );
+}
+
+const PS: Record<string, [string, string]> = {
+  producer: ["Produtor", "approved"], approved: ["Aprovado (falta cadastro)", "pending"], pending: ["Inscrição pendente", "pending"], rejected: ["Recusado", "rejected"],
+};
+
+/** Coluna "Produtor" da aba Contas: status e liberar/remover a permissão de criar eventos. */
+export function AdminAccountProducer({ userId, email, status }: { userId: string; email: string; status: "producer" | "approved" | "pending" | "rejected" | "none" }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function run(grant: boolean) {
+    const q = grant
+      ? `Tornar ${email} produtor?\n\nA conta fica liberada como se a inscrição tivesse sido aprovada, e a pessoa recebe um e-mail com o link para criar a conta de produtor.`
+      : `Remover a permissão de produtor de ${email}?\n\nA pessoa volta a precisar de uma inscrição aprovada para criar eventos.`;
+    if (!confirm(q)) return;
+    setBusy(true); setErr(null);
+    const r = await (grant ? authorizeProducer(userId) : revokeProducer(userId));
+    setBusy(false);
+    if (r.ok) router.refresh();
+    else setErr(r.error ?? "Não deu certo.");
+  }
+
+  const st = PS[status];
+  return (
+    <>
+      {st ? <i className={`ad-st ${st[1]}`}>{st[0]}</i> : "—"}
+      {status !== "producer" && status !== "approved" && <button className="ad-b ad-bs" type="button" disabled={busy} onClick={() => void run(true)}>{busy ? "Liberando…" : "Tornar produtor"}</button>}
+      {status === "approved" && <button className="ad-b no ad-bs" type="button" disabled={busy} onClick={() => void run(false)}>{busy ? "Removendo…" : "Remover permissão"}</button>}
+      {err && <small className="ad-err">{err}</small>}
+    </>
   );
 }

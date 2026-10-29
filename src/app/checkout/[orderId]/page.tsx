@@ -10,6 +10,7 @@ import { cancelOrderForm } from "@/lib/actions/checkout-ui";
 import { getSessionUser } from "@/lib/auth/server";
 import { getOrderForUser } from "@/lib/data/user";
 import { brl, dateNice } from "@/lib/format";
+import { stripeEnabled } from "@/lib/payments/stripe";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Pagamento" };
@@ -33,6 +34,8 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   const city = ev.venue ? `${ev.venue.city.name}, ${ev.venue.city.uf}` : "";
   const qty = order.items.reduce((s, i) => s + i.quantity, 0);
   const headerUser = { id: user.id, name: user.name, email: user.email, image: user.image };
+  /** pagamento de verdade ligado: esta página antiga não confirma pedido com valor (o checkout do evento cobra pela Stripe) */
+  const live = stripeEnabled() && order.totalCents > 0;
 
   return (
     <div className="pg-checkout">
@@ -52,7 +55,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
             <h1 className="ck-h" id="ck-t">{pending ? "Pagamento" : order.status === "paid" ? "Pedido confirmado" : "Pedido encerrado"}</h1>
             <p className="ck-sub">
               {pending && <>Confira o pedido e escolha como pagar. <ExpiryCountdown expiresAt={order.expiresAt?.toISOString() ?? new Date().toISOString()} /></>}
-              {order.status === "paid" && <>Seus ingressos já estão disponíveis. Pedido #{order.number}, pago em modo de teste.</>}
+              {order.status === "paid" && <>Seus ingressos já estão disponíveis. Pedido #{order.number}{order.paymentRef?.startsWith("TEST-") ? ", pago em modo de teste" : ""}.</>}
               {expired && order.status !== "paid" && <>O tempo da reserva acabou. Volte ao evento para escolher os ingressos de novo.</>}
               {(order.status === "cancelled" || order.status === "refunded") && <>Este pedido foi {order.status === "cancelled" ? "cancelado" : "reembolsado"}.</>}
             </p>
@@ -99,7 +102,13 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                   <p className="ck-hint">Os ingressos são nominais e ficam vinculados a esta conta. Você pode transferir depois, em Meus ingressos.</p>
                 </div>
 
-                <form action={payOrderForm} className="ck-card">
+                {live ? (
+                  <div className="ck-card ck-end">
+                    <b>Finalize pelo checkout do evento</b>
+                    <span>O pagamento com Pix ou cartão é feito no checkout do evento. Escolha os ingressos de novo para pagar.</span>
+                    <Link className="btn-p" href={`/eventos/${ev.slug}`}>Voltar ao evento</Link>
+                  </div>
+                ) : <form action={payOrderForm} className="ck-card">
                   <input type="hidden" name="orderId" value={order.id} />
                   <h2>Como você quer pagar?</h2>
                   <div className="ck-methods">
@@ -116,7 +125,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                       <span className="ck-m-i" aria-hidden="true">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="5.5" width="18" height="13" rx="3" /><path d="M3 10h18M7 14.5h4" /></svg>
                       </span>
-                      <span className="ck-m-t"><b>Cartão de crédito</b><small>Em até 3x sem juros</small></span>
+                      <span className="ck-m-t"><b>Cartão de crédito</b><small>Em até 6x · até 3x sem juros</small></span>
                     </label>
                   </div>
                   <p className="ck-test">
@@ -127,8 +136,8 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                     Pagar {brl(order.totalCents)} (ambiente de teste)
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
                   </button>
-                  <p className="ck-legal">Ao pagar você concorda com os <Link href="/legal/termos">termos de uso</Link> e com a política de cancelamento do produtor.</p>
-                </form>
+                  <p className="ck-legal">Ao pagar, você concorda com os <Link href="/legal/termos">termos de uso</Link> e com a política de cancelamento do produtor.</p>
+                </form>}
 
                 <form action={cancelOrderForm} className="ck-cancel">
                   <input type="hidden" name="orderId" value={order.id} />
@@ -166,7 +175,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                 )}
                 <div className="total"><dt>Total</dt><dd>{brl(order.totalCents)}</dd></div>
               </dl>
-              <p className="ck-note">Meia-entrada conforme a lei. Ingresso digital com QR code, nominal e intransferível sem autorização.</p>
+              <p className="ck-note">Meia-entrada conforme a lei. Ingresso digital e nominal, com QR code. Dá para transferir em Meus ingressos se o produtor permitir.</p>
             </div>
           </aside>
         </div>

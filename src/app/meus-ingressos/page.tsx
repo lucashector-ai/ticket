@@ -5,6 +5,9 @@ import { MeusIngressos } from "@/components/ingressos/meus-ingressos";
 import { appleWalletEnabled } from "@/lib/wallet/apple";
 import { googleWalletEnabled } from "@/lib/wallet/google";
 import type { TicketGroup, TicketItem } from "@/components/ingressos/types";
+import type { ListTicket } from "@/components/ingressos/meus-ingressos";
+import QRCode from "qrcode";
+import { companionsLabel, guestQrPayload, listTicketsForEmail } from "@/lib/guest-list";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getSessionUser } from "@/lib/auth/server";
@@ -55,8 +58,17 @@ async function groupTickets(rows: TicketWithEvent[], now: Date): Promise<TicketG
 export default async function MeusIngressosPage({ searchParams }: { searchParams: Promise<{ pedido?: string }> }) {
   const user = await getSessionUser();
   if (!user) redirect("/entrar?next=/meus-ingressos");
-  const [{ pedido }, rows] = await Promise.all([searchParams, listUserTickets(user.id)]);
+  const [{ pedido }, rows, guestRows] = await Promise.all([searchParams, listUserTickets(user.id), listTicketsForEmail(user.email, !!user.emailVerified)]);
   const groups = await groupTickets(rows, new Date());
+  // ingressos de lista free do e-mail da conta (sem pedido: só o QR da lista)
+  const lists: ListTicket[] = await Promise.all(guestRows.map(async (g) => {
+    const L = eventLabels(g.event);
+    return {
+      token: g.token, title: g.event.title, flyerId: g.event.flyerId, dateNice: L.dateNice, venue: L.venue, city: L.city, startAt: g.event.startAt.toISOString(),
+      name: g.name, plus: companionsLabel(g.guests), inAt: g.checkedInAt?.toISOString() ?? null,
+      qrSvg: await QRCode.toString(guestQrPayload(g.token), { type: "svg", margin: 0, errorCorrectionLevel: "M", color: { dark: "#111111ff", light: "#ffffff00" } }),
+    };
+  })).then((l) => l.sort((a, b) => a.startAt.localeCompare(b.startAt)));
   const n = Number(pedido);
   const confirmedOrder = Number.isInteger(n) && groups.some((g) => g.orderNumbers.includes(n)) ? n : null;
 
@@ -69,7 +81,7 @@ export default async function MeusIngressosPage({ searchParams }: { searchParams
           <Link href="/ativar-conta">Ativar conta</Link>
         </div>
       )}
-      <MeusIngressos groups={groups} confirmedOrder={confirmedOrder} wallet={{ apple: appleWalletEnabled(), google: googleWalletEnabled() }} />
+      <MeusIngressos groups={groups} lists={lists} confirmedOrder={confirmedOrder} wallet={{ apple: appleWalletEnabled(), google: googleWalletEnabled() }} />
       <SiteFooter />
     </div>
   );

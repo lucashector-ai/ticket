@@ -8,6 +8,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
+import { confirmPayment } from "@/lib/actions/compra";
+import { stripeEnabled } from "@/lib/payments/stripe";
 
 const { orders, orderItems, tickets, ticketTypes, coupons, events } = schema;
 
@@ -77,7 +79,7 @@ function ticketCode() {
   return `TW-${s.slice(0, 4)}-${s.slice(4)}`;
 }
 
-/** Confirma o pagamento (modo teste: sem gateway) e emite os ingressos. */
+/** Confirma o pagamento (modo teste: sem gateway, só sem Stripe configurada; ref TEST-…) e emite os ingressos. */
 export async function payOrder(orderId: string, method: "pix" | "card" | "test" = "test"): Promise<CheckoutResult> {
   const user = await getSessionUser();
   if (!user) return { redirect: "/entrar" };
@@ -85,6 +87,14 @@ export async function payOrder(orderId: string, method: "pix" | "card" | "test" 
   if (!order) return { error: "Pedido não encontrado." };
   if (order.status === "paid") return { redirect: `/meus-ingressos?pedido=${order.number}` };
   if (order.status !== "pending") return { error: "Este pedido não pode mais ser pago." };
+  // com a Stripe ligada, pedido com valor só é pago de verdade (checkout do evento); aqui não há confirmação falsa
+  if (stripeEnabled() && order.totalCents > 0) return { error: "Finalize a compra pelo checkout do evento, com Pix ou cartão." };
+  // pedido do checkout novo (titulares, grupo, revenda, pré-venda): só confirma pelo fluxo dele, que confere limite
+  // por pessoa, link de pré-venda usado, vaga do grupo e o ingresso da revenda (aqui tudo isso seria pulado)
+  if (order.holders || order.groupShareId || order.resaleListingId || order.presaleSignupId) {
+    const r = await confirmPayment(order.id);
+    return r.ok ? { redirect: `/meus-ingressos?pedido=${r.number}` } : { error: r.error };
+  }
   if (order.expiresAt && order.expiresAt < new Date()) {
     await db.update(orders).set({ status: "expired" }).where(eq(orders.id, order.id));
     return { error: "O pedido expirou. Faça a seleção de novo." };

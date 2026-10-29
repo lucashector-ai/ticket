@@ -9,6 +9,7 @@ import { resaleCap } from "@/lib/resale";
 import { listEventCoupons, listOrders, listParticipants, revenueByType } from "@/lib/data/painel";
 import { painelAccess } from "@/lib/painel/access";
 import { brl, dateNice, initials } from "@/lib/format";
+import { GUEST_MAX_PER_EVENT, GUEST_MAX_PER_PASTE } from "@/lib/guest-list";
 import { DAY, avBg, ago, capacity, daily, ended, feedItem, nowMs, soldCount, statusOf, whenLabel, whereLabel } from "@/lib/painel/build";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
 
   const { eventSignups, queueEntries, resaleListings, ticketTransfers, checkinLinks } = schema;
   const fresh = new Date(nowMs() - 60_000);
-  const [orders, people, byType, cps, sessions, signups, [qActive], [qWaiting], resale, [transfers], links] = await Promise.all([
+  const [orders, people, byType, cps, sessions, signups, [qActive], [qWaiting], resale, [transfers], links, guests] = await Promise.all([
     listOrders([e.id], new Map([[e.id, e.absorbFee]])),
     listParticipants(e.id),
     revenueByType(e.id),
@@ -51,6 +52,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
     }),
     db.select({ n: count() }).from(ticketTransfers).innerJoin(schema.tickets, eq(schema.tickets.id, ticketTransfers.ticketId)).where(and(eq(schema.tickets.eventId, e.id), eq(ticketTransfers.status, "accepted"))),
     db.query.checkinLinks.findMany({ where: and(eq(checkinLinks.eventId, e.id), isNull(checkinLinks.revokedAt)), orderBy: (x, { asc }) => [asc(x.createdAt)] }),
+    db.query.guestListEntries.findMany({ where: eq(schema.guestListEntries.eventId, e.id), orderBy: (x, { asc }) => [asc(x.name)], limit: GUEST_MAX_PER_EVENT }),
   ]);
   const paid = orders.filter((o) => o.status === "paid");
   const refunded = orders.filter((o) => o.status === "refunded");
@@ -88,7 +90,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
   const st = statusOf(e, now);
   const days = Math.ceil((e.startAt.getTime() - now) / DAY);
   const props: EventoPainelProps = {
-    tab: aba === "participantes" || aba === "checkin" || aba === "financeiro" || aba === "lancamento" || aba === "revenda" ? aba : "geral",
+    tab: aba === "participantes" || aba === "checkin" || aba === "financeiro" || aba === "lancamento" || aba === "revenda" || aba === "lista" ? aba : "geral",
     ev: {
       id: e.id, slug: e.slug, title: e.title, flyerId: e.flyerId, when: whenLabel(e), where: whereLabel(e), status: st.label, stCls: st.cls,
       countdown: ended(e, now) ? "" : days <= 0 ? "É hoje" : days === 1 ? "Amanhã" : `Faltam ${days} dias`, draft: e.status === "draft", absorbFee: e.absorbFee,
@@ -148,6 +150,13 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
         when: `${dm(r.soldAt ?? r.createdAt)}, ${hm(r.soldAt ?? r.createdAt)}`,
       };
     }),
+  };
+  props.lista = {
+    eventId: e.id, title: e.title, emailOn: emailEnabled(), max: GUEST_MAX_PER_EVENT, pasteMax: GUEST_MAX_PER_PASTE,
+    guests: guests.map((x) => ({
+      id: x.id, name: x.name, email: x.email ?? "", token: x.token, guests: x.guests, note: x.note ?? "",
+      inAt: x.checkedInAt ? `${dm(x.checkedInAt)}, ${hm(x.checkedInAt)}` : null, by: x.checkedInBy, invited: !!x.invitedAt, added: dm(x.createdAt),
+    })),
   };
   return <PainelEvento {...props} />;
 }

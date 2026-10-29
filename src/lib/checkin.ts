@@ -4,6 +4,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { qrPayload } from "@/lib/actions/tickets";
 import { getTicketByCode } from "@/lib/data/ingressos";
+import { checkinGuest, guestKind, guestTokenFrom } from "@/lib/guest-list";
 
 const PAYLOAD_RE = /^ONDE\|((?:TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4})\|([A-Za-z0-9_-]{16})$/;
 const CODE_RE = /^(?:TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
@@ -21,9 +22,19 @@ export type CheckinResult = {
 /**
  * Check-in de um ingresso: pelo QR assinado ("ONDE|<código>|<assinatura>") ou, digitado pela
  * equipe, só pelo código. `eventIds` = eventos que esta pessoa pode validar (null = qualquer um).
+ * O QR do convite da lista free ("LISTA|<token>") também passa por aqui; `by` = quem liberou.
  */
-export async function checkinTicket(input: string, eventIds: Set<string> | null): Promise<CheckinResult> {
+export async function checkinTicket(input: string, eventIds: Set<string> | null, by = "Portaria"): Promise<CheckinResult> {
   const raw = input.trim();
+  const guestToken = guestTokenFrom(raw);
+  if (guestToken) {
+    const r = await checkinGuest({ token: guestToken }, eventIds, by);
+    const status = r.ok ? 200 : !r.guest ? 404 : r.checkedInAt ? 409 : 403;
+    return {
+      ok: r.ok, status, error: r.error, checkedInAt: r.checkedInAt,
+      ticket: r.guest ? { code: "LISTA FREE", holderName: r.guest.name, event: r.guest.event, ticketType: guestKind(r.guest.guests), sector: null } : undefined,
+    };
+  }
   const m = PAYLOAD_RE.exec(raw);
   const code = m ? m[1] : raw.toUpperCase();
   if (!m && !CODE_RE.test(code)) return { ok: false, status: 404, error: "QR code inválido." };
