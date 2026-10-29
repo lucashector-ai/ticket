@@ -245,6 +245,8 @@ input,select{font:inherit;color:inherit}
   .bnx .bn-dot.on i::after{animation-name:none!important;transform:scaleX(1)}
 }
 .hdr,.hdr.on-img{border-bottom-color:transparent}
+/* o degradê do topo sobre a capa não pode se repetir na faixa da borda (desenhava uma linha escura) */
+.hdr.on-img{background-origin:border-box !important;background-repeat:no-repeat !important}
 .qbar{position:relative;z-index:7;display:flex;align-items:center;gap:6px;max-width:760px;height:64px;margin:-32px auto 0;padding:0 8px 0 22px;background:#FFFFFF;border-radius:999px;box-shadow:0 1px 2px rgba(17,17,17,.06),0 24px 48px -24px rgba(17,17,17,.35);animation:rise .9s .4s var(--ease) both;transition:box-shadow .4s}
 .qbar:focus-within{box-shadow:0 0 0 4px rgba(211,245,91,.6),0 24px 48px -24px rgba(17,17,17,.35)}
 .qb-s{flex:1;min-width:0;display:flex;align-items:center;gap:12px;color:#6E6E73}
