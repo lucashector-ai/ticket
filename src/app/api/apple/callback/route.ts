@@ -25,14 +25,16 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const jar = await cookies();
   const saved = readAppleCookie(jar.get(APPLE_COOKIE)?.value, String(form.get("state") ?? ""));
+  const hadCookie = jar.has(APPLE_COOKIE);
   jar.delete({ name: APPLE_COOKIE, path: "/api/apple" });
   const next = safeNextParam(saved?.next);
-  const fail = (why: string) => {
-    if (why !== "cancelado") void logEmails("apple-login", [{ to: "", subject: why.slice(0, 120) }], false, why.slice(0, 300));
+  // o registro precisa terminar antes da resposta: no Worker, o que fica pendente depois dela pode ser cortado
+  const fail = async (why: string) => {
+    if (why !== "cancelado") await logEmails("apple-login", [{ to: "", subject: why.slice(0, 120) }], false, why.slice(0, 300));
     return NextResponse.redirect(new URL(`/entrar?next=${encodeURIComponent(next)}&apple=${why === "cancelado" ? "cancelado" : "erro"}`, req.url), 303);
   };
   if (form.get("error")) return fail(String(form.get("error")) === "user_cancelled_authorize" ? "cancelado" : `apple: ${form.get("error")}`);
-  if (!saved) return fail("state diferente ou cookie ausente");
+  if (!saved) return fail(`state diferente ou cookie ausente (cookie: ${hadCookie ? "sim" : "não"}, state: ${form.get("state") ? "sim" : "não"}, campos: ${[...form.keys()].join(",")})`);
 
   let who;
   try {
