@@ -24,6 +24,7 @@
 @import "../styles/pages/onboarding.css";
 @import "../styles/pages/checkin.css";
 @import "../styles/pages/extras.css";
+@import "../styles/pages/meus-eventos.css";
 
 @theme inline {
   --color-ink: #111111;
