@@ -38,6 +38,11 @@ export default async function IngressoPage({ params, searchParams }: { params: P
   const now = new Date();
   const e = t.event;
   const listing = await db.query.resaleListings.findFirst({ where: and(eq(schema.resaleListings.ticketId, t.id), inArray(schema.resaleListings.status, ["active", "reserved"])) });
+  // os outros ingressos deste evento na mesma conta entram na pilha (o atual no meio deles, por código)
+  const siblings = await db.query.tickets.findMany({
+    where: and(eq(schema.tickets.eventId, t.eventId), eq(schema.tickets.holderUserId, user.id), inArray(schema.tickets.status, ["valid", "used", "transferred"])),
+    columns: { code: true, holderName: true }, orderBy: (x, { asc }) => [asc(x.code)],
+  });
   const pending = t.status === "transferred" ? await db.query.ticketTransfers.findFirst({ where: and(eq(schema.ticketTransfers.ticketId, t.id), eq(schema.ticketTransfers.status, "pending")), columns: { toEmail: true } }) : null;
   const L = eventLabels(e);
   const data: TicketViewData = {
@@ -50,6 +55,7 @@ export default async function IngressoPage({ params, searchParams }: { params: P
     checkedInLabel: t.checkedInAt ? dateNice(t.checkedInAt) : null,
     transferEnabled: e.transferEnabled,
     pendingTo: pending?.toEmail ?? null,
+    siblings: siblings.map((s) => ({ code: s.code, holder: s.holderName })),
     resale: { enabled: e.resaleEnabled && e.status === "published" && t.ticketType.priceCents > 0, ...resaleCap(t.ticketType.priceCents, t.halfPrice, e.resaleMaxPct), listing: listing ? { id: listing.id, priceCents: listing.priceCents, reserved: listing.status === "reserved" && !!listing.reservedUntil && listing.reservedUntil > now } : null },
   };
 

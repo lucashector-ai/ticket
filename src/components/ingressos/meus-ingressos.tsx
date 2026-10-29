@@ -9,6 +9,7 @@ import { HelpStrip } from "./help-strip";
 import { WalletButtons, type WalletFlags } from "./wallet-buttons";
 import { IcoArrow, IcoCalendar, IcoCheck, IcoChevron, IcoClose, IcoNext, IcoPin, IcoPrev, IcoStar, IcoSun, IcoTag, IcoTicket, IcoUser } from "./icons";
 import { Modal } from "./modal";
+import { TicketStack } from "./ticket-stack";
 import { TransferModal } from "./transfer-modal";
 import type { TicketGroup, TicketItem } from "./types";
 
@@ -99,6 +100,7 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
       {tab === "up" && groups.length > 0 && (
         <>
           {f ? (
+            <TicketStack total={f.tickets.length} cur={idx(f)} labels={f.tickets.map((t) => t.holderName)} onPick={(i) => setCur((c) => ({ ...c, [f.key]: i }))}>
             <article className="tkb" aria-label={`Próximo evento: ${f.title}`}>
               <Link className="tkb-art" href={`/eventos/${f.eventSlug}`} aria-label={`Ver evento ${f.title}`}>
                 <div className="in"><FlyerArt id={f.flyerId} /></div>
@@ -156,6 +158,7 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
                 );
               })()}
             </article>
+            </TicketStack>
           ) : null}
           {f && (() => {
             const t = f.tickets[idx(f)];

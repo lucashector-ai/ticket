@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
@@ -8,6 +9,7 @@ import { TICKET_STATUS_LABEL } from "@/lib/tickets/labels";
 import { HelpStrip } from "./help-strip";
 import { IcoArrow, IcoBack, IcoCalendar, IcoChevron, IcoClose, IcoPin, IcoSun, IcoTag, IcoTicket, IcoUser } from "./icons";
 import { Modal } from "./modal";
+import { TicketStack } from "./ticket-stack";
 import { TransferModal } from "./transfer-modal";
 import { ResaleModal } from "./resale-modal";
 import { cancelListing } from "@/lib/actions/revenda";
@@ -36,6 +38,8 @@ export type TicketViewData = {
   resale: { enabled: boolean; faceCents: number; maxCents: number; listing: { id: string; priceCents: number; reserved: boolean } | null };
   /** o produtor permite transferir */
   transferEnabled: boolean;
+  /** todos os ingressos deste evento na conta (este incluído), para a pilha */
+  siblings: { code: string; holder: string | null }[];
   /** transferência enviada e ainda não aceita (e-mail de quem vai receber) */
   pendingTo?: string | null;
   /** veio do atalho "Revender" da lista: já abre o anúncio */
@@ -44,6 +48,7 @@ export type TicketViewData = {
 
 export function TicketView({ data }: { data: TicketViewData }) {
   const { flash } = useToast();
+  const router = useRouter();
   const [transfer, setTransfer] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [movedTo, setMovedTo] = useState<string | null>(data.pendingTo ?? null);
@@ -78,6 +83,8 @@ export function TicketView({ data }: { data: TicketViewData }) {
         </div>
       </div>
 
+      <TicketStack total={data.siblings.length} cur={Math.max(0, data.siblings.findIndex((s) => s.code === t.code))} labels={data.siblings.map((s) => s.holder)}
+        onPick={(i) => router.push(`/ingressos/${data.siblings[i].code}`, { scroll: false })}>
       <article className="tkb" aria-label={`Ingresso para ${data.title}`}>
         <Link className="tkb-art" href={`/eventos/${data.eventSlug}`} aria-label={`Ver evento ${data.title}`}>
           <div className="in"><FlyerArt id={data.flyerId} /></div>
@@ -116,6 +123,7 @@ export function TicketView({ data }: { data: TicketViewData }) {
           {!valid && <span className="tkb-hold">{holder}</span>}
         </div>
       </article>
+      </TicketStack>
 
       {/* atalhos: transferir, revender e agenda */}
       <div className="tka">

@@ -195,8 +195,8 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
         )}
       </div>
       <div className="cv-sum">
-        <div className="sm"><small>Ingressos à venda{x.sessions.length > 1 ? ` (${x.sessions.length} datas)` : ""}</small><b>{x.totalQty.toLocaleString("pt-BR")}</b></div>
-        <div className="sm dk"><small>Se esgotar, você recebe</small><b>{shortMoney(x.net)}</b></div>
+        <div className="cv-sm"><small>Ingressos à venda{x.sessions.length > 1 ? ` (${x.sessions.length} datas)` : ""}</small><b>{x.totalQty.toLocaleString("pt-BR")}</b></div>
+        <div className="cv-sm dk"><small>Se esgotar, você recebe</small><b>{shortMoney(x.net)}</b></div>
       </div>
 
       <div className="cv-cps">
