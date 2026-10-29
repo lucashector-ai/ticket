@@ -140,6 +140,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         queueEventId={!special && e.queueMode !== "off" ? e.id : null}
         human={turnstileSiteKey()}
         stripeKey={stripeKey}
+        hasSavedCards={!!stripeKey && !!profile?.stripeCustomerId}
         lock={special ? (special.kind === "grupo"
           ? { kind: "grupo", ref: { groupShareId: special.shareId }, query: `grupo=${encodeURIComponent(special.groupCode)}&vaga=${special.shareId}`, title: `Sua parte do grupo · vaga ${special.slot} de ${special.slots}`, note: "O preço é o do lote reservado pelo grupo. Cupom e meia-entrada não valem nas partes do grupo.", back: `/grupo/${special.groupCode}` }
           : { kind: "revenda", ref: { resaleListingId: special.listingId }, query: `revenda=${special.listingId}`, title: "Ingresso da revenda oficial", note: "Comprado de outro fã. Ao pagar, você recebe um QR code novo e o antigo deixa de valer.", back: `/eventos/${e.slug}#revenda` }) : null}

@@ -164,3 +164,19 @@
     .ct-o-r{grid-column:1 / -1;flex-direction:row;align-items:center;justify-content:space-between}
   }
 }
+
+/* Pagamentos: cartões salvos */
+.pg-conta {
+  .ct-v a{color:#111;font-weight:600;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(17,17,17,.3)}
+  .ct-cards li{flex-wrap:wrap}
+  .ct-cards li.ask{background:#FFF8F7;margin:0 -12px;padding:12px;border-radius:14px}
+  .ct-cd{font-weight:500;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:#3A3A3C}
+  .ct-ask{align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .ct-ask-q{font-size:13.5px;font-weight:600;color:#B3261E;margin-right:4px}
+  .ct-b.danger{background:#B3261E;color:#FFFFFF}
+  .ct-b.danger:hover{background:#9A1F18}
+  @media (max-width:640px){
+    .ct-cards .ct-li-t{flex:1 1 calc(100% - 64px)}
+    .ct-cards .ct-acts{width:100%;justify-content:flex-end}
+  }
+}

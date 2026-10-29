@@ -82,6 +82,8 @@ export const userProfiles = pgTable("user_profiles", {
   mfaTotp: text("mfa_totp"),
   /** hashes dos códigos de recuperação ainda não usados */
   mfaRecovery: jsonb("mfa_recovery").$type<string[]>(),
+  /** cliente no processador de pagamentos (cus_…), criado só quando a pessoa salva um cartão; os cartões ficam lá, não aqui */
+  stripeCustomerId: varchar("stripe_customer_id", { length: 64 }),
   ...timestamps,
 });
 

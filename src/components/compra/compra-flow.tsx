@@ -6,16 +6,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { checkCoupon, confirmPayment, placeOrder, type ConfirmResult } from "@/lib/actions/compra";
-import { abandonPayment, checkPayment, payCard } from "@/lib/actions/pagamento";
-import { StripeCard, type StripeCardApi } from "./stripe-card";
+import { abandonPayment, checkPayment, payCard, type PayCardInput } from "@/lib/actions/pagamento";
+import { myCards } from "@/lib/actions/cartoes";
+import type { SavedCard } from "@/lib/payments/cards";
+import { StripeCard, type BillingAddress, type StripeCardApi } from "./stripe-card";
+import { CardBrand, expLabel } from "./card-brand";
 import { QueueGate } from "@/components/queue-gate";
 import { installmentOptions, money, priceOrder } from "@/lib/pricing";
 import { InlineAuth } from "./inline-auth";
-import { cardBrand, expOk, fmtCard, fmtCpf, fmtExp, isEmail, isFullName, mmss, onlyDigits } from "./format";
+import { cardBrand, expOk, fmtCard, fmtCep, fmtCpf, fmtExp, isEmail, isFullName, mmss, onlyDigits, printedNameOk } from "./format";
 import { cpfValid } from "@/lib/cpf";
 import { PhoneField } from "@/components/phone-field";
 import { phoneValid } from "@/lib/phone";
-import { BrandMark } from "@/components/brand-logo";
 import type { ResumeData } from "@/lib/payments/pending";
 
 export type CompraStep = "resumo" | "dados" | "pagamento" | "pix" | "proc" | "done";
@@ -103,9 +105,16 @@ type Props = {
   resume?: ResumeData | null;
   /** aviso no topo (ex.: a reserva do pedido anterior acabou) */
   notice?: string | null;
+  /** a conta já salvou cartão alguma vez: a etapa do cartão busca os cartões salvos */
+  hasSavedCards?: boolean;
 };
 
-export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, stripeKey, resume, notice }: Props) {
+/** Endereço de cobrança do titular (opcional), preenchido pelo CEP. */
+type Addr = { cep: string; street: string; number: string; complement: string; district: string; city: string; uf: string };
+const NO_ADDR: Addr = { cep: "", street: "", number: "", complement: "", district: "", city: "", uf: "" };
+const UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
+
+export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, stripeKey, resume, notice, hasSavedCards }: Props) {
   const live = !!stripeKey;
   const router = useRouter();
   const { flash } = useToast();
@@ -138,7 +147,23 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   });
   const [pay, setPay] = useState<"pix" | "card">(resume?.method === "card" ? "card" : "pix");
   const [inst, setInst] = useState(resume?.method === "card" ? resume.installments : 1);
-  const [cc, setCc] = useState({ num: "", name: "", exp: "", cvv: "" });
+  /** modo de teste (sem processador): número, validade e CVV digitados aqui, que não saem do navegador */
+  const [cc, setCc] = useState({ num: "", exp: "", cvv: "" });
+  /** nome impresso no cartão; null = ainda não mexeu (usa o nome de quem compra) */
+  const [cardName, setCardName] = useState<string | null>(null);
+  /** o cartão é de outra pessoa: CPF, e-mail e endereço do titular */
+  const [other, setOther] = useState(false);
+  const [holder, setHolder] = useState({ cpf: "", email: "" });
+  const [addrOpen, setAddrOpen] = useState(false);
+  const [addr, setAddr] = useState<Addr>(NO_ADDR);
+  const [cepBusy, setCepBusy] = useState(false);
+  const [cepMsg, setCepMsg] = useState<string | null>(null);
+  const numRef = useRef<HTMLInputElement>(null);
+  /** salvar o cartão novo para as próximas compras (só com o processador ligado) */
+  const [saveCard, setSaveCard] = useState(false);
+  /** cartões salvos da conta: null enquanto carrega; "new" = usar outro cartão */
+  const [saved, setSaved] = useState<SavedCard[] | null>(live && hasSavedCards ? null : []);
+  const [cardSel, setCardSel] = useState<string>("new");
   const [left, setLeft] = useState(resume ? resume.secondsLeft : RESERVA_SEG);
   const [pixLeft, setPixLeft] = useState(resume?.pix ? resume.pix.secondsLeft : PIX_SEG);
   const [copied, setCopied] = useState(false);
@@ -304,8 +329,57 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     holders: holders.map((h) => holderFp({ ticketTypeId: h.tier.id, name: holdName(h), meia: isMeia(h), me: hdOf(h).me, email: holdEmail(h) })),
     buyer: buyerFp({ name, email, cpf }), coupon: lock ? "" : coupon?.code ?? "",
   });
-  const ccOk = { num: onlyDigits(cc.num).length >= 15, name: cc.name.trim().length >= 3, exp: expOk(cc.exp), cvv: onlyDigits(cc.cvv).length >= 3 };
-  const cardValid = ccOk.num && ccOk.name && ccOk.exp && ccOk.cvv;
+  /* etapa do cartão: cartão salvo escolhido ou cartão novo (com titular, se for de outra pessoa) */
+  const usingSaved = live && cardSel !== "new" && !!saved?.some((c) => c.id === cardSel && !c.expired);
+  const printed = (cardName ?? (other ? "" : name)).trim();
+  const holderCpf = onlyDigits(holder.cpf);
+  const sameCpf = holderCpf.length === 11 && holderCpf === onlyDigits(cpf);
+  const addrUsed = other && addrOpen && Object.values(addr).some((v) => v.trim());
+  const addrOk = {
+    cep: onlyDigits(addr.cep).length === 8, street: addr.street.trim().length >= 2, number: addr.number.trim().length >= 1,
+    city: addr.city.trim().length >= 2, uf: UFS.includes(addr.uf.trim().toUpperCase()),
+  };
+  const ccOk = {
+    num: live || onlyDigits(cc.num).length >= 15, exp: live || expOk(cc.exp), cvv: live || onlyDigits(cc.cvv).length >= 3,
+    name: printedNameOk(printed),
+    cpf: !other || (cpfValid(holder.cpf) && !sameCpf),
+    email: !other || !holder.email.trim() || isEmail(holder.email),
+    addr: !addrUsed || Object.values(addrOk).every(Boolean),
+  };
+  const cardErr: string[] = [];
+  if (!usingSaved) {
+    if (!ccOk.num) cardErr.push("número do cartão");
+    if (!ccOk.exp) cardErr.push("validade");
+    if (!ccOk.cvv) cardErr.push("CVV");
+    if (!ccOk.name) cardErr.push(other ? "nome do titular como impresso no cartão" : "nome impresso no cartão");
+    if (!ccOk.cpf) cardErr.push(sameCpf ? "CPF do titular (é o seu CPF: se o cartão é seu, desligue “O cartão é de outra pessoa?”)" : "CPF do titular");
+    if (!ccOk.email) cardErr.push("e-mail do titular (ou deixe em branco)");
+    if (!ccOk.addr) cardErr.push("endereço de cobrança completo (ou feche o endereço)");
+  }
+  const cardValid = cardErr.length === 0;
+  const billingAddress = (): BillingAddress | null => addrUsed ? {
+    line1: `${addr.street.trim()}, ${addr.number.trim()}`.slice(0, 200),
+    line2: [addr.complement.trim(), addr.district.trim()].filter(Boolean).join(" - ").slice(0, 200) || undefined,
+    city: addr.city.trim(), state: addr.uf.trim().toUpperCase(), postal_code: fmtCep(addr.cep),
+  } : null;
+  const setA = (patch: Partial<Addr>) => setAddr((o) => ({ ...o, ...patch }));
+  async function lookupCep(v: string) {
+    const d = onlyDigits(v);
+    if (d.length !== 8) return;
+    setCepBusy(true);
+    setCepMsg(null);
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${d}/json/`);
+      const j = (await r.json()) as { erro?: boolean | string; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
+      if (j.erro) setCepMsg("CEP não encontrado. Preencha o endereço à mão.");
+      else {
+        setAddr((o) => ({ ...o, street: j.logradouro || o.street, district: j.bairro || o.district, city: j.localidade || o.city, uf: j.uf || o.uf }));
+        numRef.current?.focus();
+      }
+    } catch { setCepMsg("Não conseguimos buscar o CEP agora. Preencha o endereço à mão."); }
+    setCepBusy(false);
+  }
+  const pickCard = (id: string) => { setCardSel(id); setCardInst(null); setPayErr(null); setTried(false); };
   const bad = (ok: boolean) => (tried && !ok ? "in2 bad" : "in2");
   /* no Pix (que tem o próprio prazo) e durante a confirmação a reserva não corta a tela */
   const expired = left <= 0 && step !== "done" && step !== "pix" && step !== "proc";
@@ -337,6 +411,19 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     }, 3000);
     return () => { alive = false; clearInterval(iv); };
   }, [pixOrderId, finishWith, flash, setPending]);
+
+  /* cartões salvos: busca uma vez, quando a pessoa chega no cartão; escolhe o principal (ou o mais recente válido) */
+  const wantCards = live && !!hasSavedCards && step === "pagamento" && pay === "card";
+  const cardsAsked = useRef(false);
+  useEffect(() => {
+    if (!wantCards || cardsAsked.current) return;
+    cardsAsked.current = true;
+    void myCards().catch(() => null).then((r) => {
+      const list = r?.ok ? r.cards : [];
+      setSaved(list);
+      setCardSel(list.find((c) => !c.expired)?.id ?? "new");
+    });
+  }, [wantCards]);
 
   const setTierQty = (id: string, delta: number) => {
     if (lock) return;
@@ -407,10 +494,10 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   }
 
   /** Cartão pela Stripe: cobra, passa pelo 3D Secure se o banco pedir e espera a confirmação. */
-  async function payLive(orderId: string, paymentMethodId: string) {
+  async function payLive(orderId: string, card: Omit<PayCardInput, "orderId">) {
     go("proc");
     const fail = (msg: string, drop = false) => { if (drop) setPending(null); setPayErr(msg); go("pagamento"); };
-    const r = await payCard(orderId, paymentMethodId);
+    const r = await payCard({ orderId, ...card });
     if (!r.ok) {
       if (r.installments) setCardInst(r.installments);
       fail(r.error);
@@ -463,15 +550,26 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
           go("pix");
         }
       } else if (live) {
+        if (saved === null) { setPayErr("Carregando seus cartões salvos. Tente de novo em um instante."); return; }
+        if (!cardValid) { setTried(true); setPayErr(null); return; }
         setPayErr(null);
         setBusy(true);
-        const pm = await cardApi.current?.createPaymentMethod({ name, email, phone });
-        if (!pm || "error" in pm) { setBusy(false); setPayErr(pm?.error ?? "O formulário do cartão ainda está carregando."); return; }
+        let card: Omit<PayCardInput, "orderId">;
+        if (usingSaved) card = { paymentMethodId: cardSel, save: false, holder: null };
+        else {
+          // titular: nome impresso (sempre), e-mail do titular ou o de quem compra, endereço se informado
+          const pm = await cardApi.current?.createPaymentMethod(
+            { name: printed.toUpperCase(), email: other && holder.email.trim() ? holder.email.trim() : email, phone, address: billingAddress() },
+            { save: saveCard, metadata: saveCard ? (other ? { cardholder: "outra_pessoa", holder_cpf: holderCpf } : { cardholder: "comprador" }) : undefined },
+          );
+          if (!pm || "error" in pm) { setBusy(false); setPayErr(pm?.error ?? "O formulário do cartão ainda está carregando."); return; }
+          card = { paymentMethodId: pm.id, save: saveCard, holder: other ? { name: printed.toUpperCase(), cpf: holderCpf } : null };
+        }
         // nova tentativa sem mudar nada: reaproveita o pedido (e o PaymentIntent) pendente
         const orderId = await orderFor("card");
         if (!orderId) { setBusy(false); return; }
         setBusy(false);
-        await payLive(orderId, pm.id);
+        await payLive(orderId, card);
       } else {
         if (!cardValid) { setTried(true); return; }
         const orderId = await orderFor("card");
@@ -520,28 +618,30 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   return (
     <main className="wrap ck">
       {queueEventId && step !== "done" && <QueueGate eventId={queueEventId} title={event.title} />}
-      <div className="ck-top">
-        <Link className="ck-back" href={lock?.back ?? `/eventos/${event.slug}`}>
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4" /></svg>
-          {lock?.kind === "grupo" ? "Voltar ao grupo" : "Voltar ao evento"}
-        </Link>
-        <ol className="steps" aria-label="Etapas da compra">
-          {steps.map((st) => (
-            <li key={st.n} className={st.cls}>
-              <button className="st-b" type="button" onClick={st.go} aria-current={st.cls === "cur" ? "step" : undefined}>
-                <span className="st-n">{st.n}</span>
-                <span className="st-l">{st.label}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-        {step !== "done" && step !== "pix" && !expired && (
-          <span className={left < 120 ? "tmr low" : "tmr"}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-            Reservados por <b className="tm-v">{mmss(left)}</b>
-          </span>
-        )}
-      </div>
+      {step !== "done" && (
+        <div className="ck-top">
+          <Link className="ck-back" href={lock?.back ?? `/eventos/${event.slug}`}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4" /></svg>
+            {lock?.kind === "grupo" ? "Voltar ao grupo" : "Voltar ao evento"}
+          </Link>
+          <ol className="steps" aria-label="Etapas da compra">
+            {steps.map((st) => (
+              <li key={st.n} className={st.cls}>
+                <button className="st-b" type="button" onClick={st.go} aria-current={st.cls === "cur" ? "step" : undefined}>
+                  <span className="st-n">{st.n}</span>
+                  <span className="st-l">{st.label}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          {step !== "pix" && !expired && (
+            <span className={left < 120 ? "tmr low" : "tmr"}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+              Reservados por <b className="tm-v">{mmss(left)}</b>
+            </span>
+          )}
+        </div>
+      )}
 
       {expired && (
         <div className="exp">
@@ -775,58 +875,173 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   </div>
                 ) : (
                   <div className="cardf">
-                    {live && stripeKey ? <StripeCard publishableKey={stripeKey} amountCents={price.total} ref={cardApi} /> : <>
-                    <div className="cc" aria-hidden="true">
-                      <span className="cc-logo">
-                        <BrandMark size={22} />
-                        <span className="cc-brand">{cardBrand(cc.num)}</span>
-                      </span>
-                      <span className="cc-num">{(fmtCard(cc.num) + " •••• •••• •••• ••••").slice(0, 19)}</span>
-                      <span className="cc-row">
-                        <span className="cc-nm">{cc.name.trim() || "Nome no cartão"}</span>
-                        <span className="cc-ex">{fmtExp(cc.exp) || "MM/AA"}</span>
-                      </span>
+                    {live && saved === null && (
+                      <div className="scl" aria-busy="true">
+                        <span className="sco-sk" /><span className="sco-sk" />
+                        <span className="sr" role="status">Carregando seus cartões salvos…</span>
+                      </div>
+                    )}
+                    {live && saved && saved.length > 0 && (
+                      <div className="scl" role="radiogroup" aria-label="Cartões salvos">
+                        {saved.map((c) => (
+                          <button key={c.id} className={`sco${cardSel === c.id ? " on" : ""}`} type="button" role="radio" aria-checked={cardSel === c.id} disabled={c.expired} onClick={() => pickCard(c.id)}>
+                            <span className="pm-r" aria-hidden="true" />
+                            <CardBrand brand={c.brand} />
+                            <span className="sco-i">
+                              <b>{c.brand} <span className="sco-d">•••• {c.last4}</span></b>
+                              <small>{c.expired ? "Vencido" : `Validade ${expLabel(c.expMonth, c.expYear)}`}{c.holder ? ` · ${c.holder}` : ""}</small>
+                            </span>
+                            {c.isDefault && !c.expired && <span className="sco-tag">Principal</span>}
+                          </button>
+                        ))}
+                        <button className={`sco new${cardSel === "new" ? " on" : ""}`} type="button" role="radio" aria-checked={cardSel === "new"} onClick={() => pickCard("new")}>
+                          <span className="pm-r" aria-hidden="true" />
+                          <span className="cbr add" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M8 3v10M3 8h10" /></svg>
+                          </span>
+                          <span className="sco-i"><b>Usar outro cartão</b><small>Crédito de qualquer bandeira</small></span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* cartão novo: com cartão salvo escolhido fica escondido (o formulário continua montado para o 3D Secure) */}
+                    <div className="cd-new" hidden={usingSaved || (live && saved === null)}>
+                      {live && stripeKey ? <StripeCard publishableKey={stripeKey} amountCents={price.total} ref={cardApi} /> : (
+                        <div className="fg2 cd-tf">
+                          <label className="lf2 span2">
+                            <span className="lf2-l">Número do cartão</span>
+                            <span className="cd-numw">
+                              <input className={bad(ccOk.num)} type="text" inputMode="numeric" placeholder="0000 0000 0000 0000" value={cc.num} onChange={(e) => setCc((o) => ({ ...o, num: fmtCard(e.target.value) }))} autoComplete="cc-number" aria-invalid={tried && !ccOk.num} />
+                              {onlyDigits(cc.num).length >= 1 && <span className="cd-bd">{cardBrand(cc.num)}</span>}
+                            </span>
+                          </label>
+                          <label className="lf2">
+                            <span className="lf2-l">Validade</span>
+                            <input className={bad(ccOk.exp)} type="text" inputMode="numeric" placeholder="MM/AA" value={cc.exp} onChange={(e) => setCc((o) => ({ ...o, exp: fmtExp(e.target.value) }))} autoComplete="cc-exp" aria-invalid={tried && !ccOk.exp} />
+                          </label>
+                          <label className="lf2">
+                            <span className="lf2-l">Código de segurança</span>
+                            <input className={bad(ccOk.cvv)} type="text" inputMode="numeric" placeholder="CVV" value={cc.cvv} onChange={(e) => setCc((o) => ({ ...o, cvv: onlyDigits(e.target.value).slice(0, 4) }))} autoComplete="cc-csc" aria-invalid={tried && !ccOk.cvv} />
+                          </label>
+                        </div>
+                      )}
+                      <label className="lf2 cd-name">
+                        <span className="lf2-l">{other ? "Nome do titular, como impresso no cartão" : "Nome impresso no cartão"}</span>
+                        <input className={`${bad(ccOk.name)} cd-up`} type="text" placeholder="Como aparece no cartão" value={cardName ?? (other ? "" : name)} onChange={(e) => setCardName(e.target.value.replace(/[^\p{L}' .-]/gu, "").slice(0, 80))} autoComplete="cc-name" autoCapitalize="characters" spellCheck={false} aria-invalid={tried && !ccOk.name} />
+                      </label>
+
+                      <label className={other ? "cd-tg on" : "cd-tg"}>
+                        <input className="sr" type="checkbox" role="switch" checked={other} onChange={(e) => {
+                          const on = e.target.checked;
+                          setOther(on);
+                          // o nome veio do comprador: com o cartão de outra pessoa, começa vazio
+                          if (on && cardName !== null && cardName.trim() === name.trim()) setCardName(null);
+                          setTried(false);
+                        }} />
+                        <span className="cd-tg-t">
+                          <b>O cartão é de outra pessoa?</b>
+                          <small>Por exemplo, de um familiar. Os ingressos continuam no seu nome e na sua conta.</small>
+                        </span>
+                        <span className="cd-sw" aria-hidden="true" />
+                      </label>
+
+                      {other && (
+                        <div className="cd-hold">
+                          <span className="cd-hold-t">Dados do titular do cartão</span>
+                          <div className="fg2">
+                            <label className="lf2">
+                              <span className="lf2-l">CPF do titular</span>
+                              <input className={bad(ccOk.cpf)} type="text" inputMode="numeric" placeholder="000.000.000-00" value={holder.cpf} onChange={(e) => setHolder((o) => ({ ...o, cpf: fmtCpf(e.target.value) }))} autoComplete="off" aria-invalid={tried && !ccOk.cpf} />
+                            </label>
+                            <label className="lf2">
+                              <span className="lf2-l">E-mail do titular <em className="lf2-req">opcional</em></span>
+                              <input className={bad(ccOk.email)} type="email" inputMode="email" placeholder="nome@email.com" value={holder.email} onChange={(e) => setHolder((o) => ({ ...o, email: e.target.value }))} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-invalid={tried && !ccOk.email} />
+                            </label>
+                          </div>
+                          {tried && sameCpf && <p className="hold-err" role="alert">Esse é o seu CPF. Se o cartão é seu, desligue “O cartão é de outra pessoa?”.</p>}
+                          <button className={addrOpen ? "cd-more on" : "cd-more"} type="button" aria-expanded={addrOpen} aria-controls="cd-addr" onClick={() => setAddrOpen((v) => !v)}>
+                            <span>Endereço de cobrança <em>opcional</em></span>
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>
+                          </button>
+                          {addrOpen && (
+                            <div className="cd-addr" id="cd-addr">
+                              <label className="lf2 a-cep">
+                                <span className="lf2-l">CEP {cepBusy && <em className="lf2-req">buscando…</em>}</span>
+                                <input className={tried && addrUsed && !addrOk.cep ? "in2 bad" : "in2"} type="text" inputMode="numeric" placeholder="00000-000" value={addr.cep} onChange={(e) => { const v = fmtCep(e.target.value); setA({ cep: v }); if (onlyDigits(v).length === 8) void lookupCep(v); }} autoComplete="billing postal-code" />
+                              </label>
+                              <label className="lf2 a-st">
+                                <span className="lf2-l">Rua</span>
+                                <input className={tried && addrUsed && !addrOk.street ? "in2 bad" : "in2"} type="text" value={addr.street} onChange={(e) => setA({ street: e.target.value })} autoComplete="billing address-line1" />
+                              </label>
+                              <label className="lf2 a-n">
+                                <span className="lf2-l">Número</span>
+                                <input ref={numRef} className={tried && addrUsed && !addrOk.number ? "in2 bad" : "in2"} type="text" inputMode="numeric" value={addr.number} onChange={(e) => setA({ number: e.target.value.slice(0, 12) })} autoComplete="off" />
+                              </label>
+                              <label className="lf2 a-c">
+                                <span className="lf2-l">Complemento <em className="lf2-req">opcional</em></span>
+                                <input className="in2" type="text" value={addr.complement} onChange={(e) => setA({ complement: e.target.value })} autoComplete="billing address-line2" />
+                              </label>
+                              <label className="lf2 a-b">
+                                <span className="lf2-l">Bairro</span>
+                                <input className="in2" type="text" value={addr.district} onChange={(e) => setA({ district: e.target.value })} autoComplete="off" />
+                              </label>
+                              <label className="lf2 a-ci">
+                                <span className="lf2-l">Cidade</span>
+                                <input className={tried && addrUsed && !addrOk.city ? "in2 bad" : "in2"} type="text" value={addr.city} onChange={(e) => setA({ city: e.target.value })} autoComplete="billing address-level2" />
+                              </label>
+                              <label className="lf2 a-uf">
+                                <span className="lf2-l">UF</span>
+                                <input className={tried && addrUsed && !addrOk.uf ? "in2 bad" : "in2"} type="text" placeholder="SP" value={addr.uf} onChange={(e) => setA({ uf: e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase() })} autoComplete="billing address-level1" />
+                              </label>
+                              {cepMsg && <p className="cd-cepm span-all" role="status">{cepMsg}</p>}
+                            </div>
+                          )}
+                          <p className="cd-tip">O CPF do titular é usado só para validar este pagamento com o banco.</p>
+                        </div>
+                      )}
+
+                      {live && (
+                        <button className={saveCard ? "ckb cd-save on" : "ckb cd-save"} type="button" role="checkbox" aria-checked={saveCard} onClick={() => setSaveCard((v) => !v)}>
+                          <span className="ck-box" aria-hidden="true">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                          </span>
+                          <span className="ck-t">Salvar este cartão para as próximas compras<span className="ck-sub">Na sua conta aparecem só a bandeira e os 4 últimos dígitos.</span></span>
+                        </button>
+                      )}
+                      {tried && !cardValid && <p className="err" role="alert">Confira: {cardErr.join(", ")}.</p>}
                     </div>
-                    <div className="fg2">
-                      <label className="lf2 span2">
-                        <span className="lf2-l">Número do cartão</span>
-                        <input className={bad(ccOk.num)} type="text" inputMode="numeric" placeholder="0000 0000 0000 0000" value={cc.num} onChange={(e) => setCc((o) => ({ ...o, num: fmtCard(e.target.value) }))} autoComplete="cc-number" />
-                      </label>
-                      <label className="lf2 span2">
-                        <span className="lf2-l">Nome impresso no cartão</span>
-                        <input className={bad(ccOk.name)} type="text" placeholder="Como aparece no cartão" value={cc.name} onChange={(e) => setCc((o) => ({ ...o, name: e.target.value }))} autoComplete="cc-name" />
-                      </label>
-                      <label className="lf2">
-                        <span className="lf2-l">Validade</span>
-                        <input className={bad(ccOk.exp)} type="text" inputMode="numeric" placeholder="MM/AA" value={cc.exp} onChange={(e) => setCc((o) => ({ ...o, exp: fmtExp(e.target.value) }))} autoComplete="cc-exp" />
-                      </label>
-                      <label className="lf2">
-                        <span className="lf2-l">CVV</span>
-                        <input className={bad(ccOk.cvv)} type="text" inputMode="numeric" placeholder="123" value={cc.cvv} onChange={(e) => setCc((o) => ({ ...o, cvv: onlyDigits(e.target.value).slice(0, 4) }))} autoComplete="cc-csc" />
-                      </label>
-                    </div>
-                    {tried && !cardValid && <p className="err">Confira os dados do cartão destacados.</p>}
-                    </>}
+
                     <h2 className="ck-h3">Parcelas</h2>
                     <div className="inst" role="radiogroup" aria-label="Parcelas">
                       {installments.map((o) => {
-                        // a Stripe disse quais parcelas este cartão aceita: as outras ficam marcadas (ainda dá para trocar de cartão)
+                        // o banco disse quais parcelas este cartão aceita: as outras ficam marcadas (ainda dá para trocar de cartão)
                         const no = !!cardInst && o.n > 1 && !cardInst.includes(o.n);
                         return (
                           <button key={o.n} className={`ino${o.n === inst ? " on" : ""}${no ? " off" : ""}`} type="button" role="radio" aria-checked={o.n === inst} onClick={() => { setInst(o.n); setPayErr(null); }}>
-                            <b className="in-n">{o.n}x</b>
-                            <span className="in-v">{money(o.eachCents)}</span>
-                            <span className="in-s">{no ? "indisponível neste cartão" : o.interestFree ? "sem juros" : `total ${money(o.totalCents)}`}</span>
+                            <b className="in-n">{o.n}x <span className="in-v">{money(o.eachCents)}</span></b>
+                            <span className="in-s">{no ? "indisponível neste cartão" : o.interestFree ? "sem juros" : `com juros · total ${money(o.totalCents)}`}</span>
                           </button>
                         );
                       })}
                     </div>
+                    <div className="cd-tot" aria-live="polite">
+                      <span className="cd-tot-k">Total no cartão</span>
+                      <b className="cd-tot-v">{money(price.total)}</b>
+                      <span className="cd-tot-s">{inst === 1 ? "à vista, em 1x" : `${inst}x de ${money(installments.find((o) => o.n === inst)?.eachCents ?? Math.round(price.total / inst))} ${inst <= 3 ? "sem juros" : `com juros (${money(price.interest)})`}`}</span>
+                    </div>
                   </div>
                 )}
                 {payErr && <p className="err pay-err" role="alert">{payErr}</p>}
-                {live
-                  ? <p className="ck-test">Pagamento seguro, com conexão criptografada.{pay === "card" ? " Os dados do cartão não ficam salvos na Tickets Win." : ""}</p>
-                  : <p className="ck-test">Ambiente de teste: nenhuma cobrança real é feita e os dados do cartão não saem do seu navegador.</p>}
+                {live ? (
+                  <p className={pay === "card" ? "cd-sec" : "ck-test"}>
+                    {pay === "card" && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>}
+                    <span>Pagamento seguro, com conexão criptografada.{pay !== "card" ? "" : usingSaved
+                      ? " O cartão salvo fica guardado com segurança pelo nosso processador de pagamentos: a Tickets Win só vê a bandeira e os últimos dígitos."
+                      : saveCard
+                        ? " O cartão fica guardado com segurança pelo nosso processador de pagamentos: a Tickets Win só mostra a bandeira e os últimos dígitos. Dá para remover quando quiser em Minha conta › Pagamentos."
+                        : " Os dados do cartão não ficam salvos na Tickets Win."}</span>
+                  </p>
+                ) : <p className="ck-test">Ambiente de teste: nenhuma cobrança real é feita e os dados do cartão não saem do seu navegador.</p>}
               </div>
             )}
 

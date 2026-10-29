@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/conta", label: "Meus dados", icon: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0" /> },
   { href: "/conta/compras", label: "Minhas compras", icon: <path d="M5 7h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8zM9 7V5.5a3 3 0 0 1 6 0V7" /> },
+  { href: "/conta/pagamentos", label: "Pagamentos", icon: <><rect x="2.5" y="5" width="19" height="14" rx="3" /><path d="M2.5 10h19M6.5 15h4" /></> },
   { href: "/conta/seguranca", label: "Privacidade e segurança", icon: <path d="M12 3l7.5 3v5.5c0 4.4-3.1 8.2-7.5 9.5-4.4-1.3-7.5-5.1-7.5-9.5V6zM8.8 12.2l2.2 2.2 4.4-4.6" /> },
 ];
 

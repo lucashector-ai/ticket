@@ -26,3 +26,9 @@ export const expOk = (v: string) => {
   const now = new Date();
   return yy > now.getFullYear() || (yy === now.getFullYear() && mm >= now.getMonth() + 1);
 };
+export const fmtCep = (v: string) => onlyDigits(v).slice(0, 8).replace(/(\d{5})(\d)/, "$1-$2");
+/** Nome como impresso no cartão: só letras, espaço, ponto, hífen e apóstrofo (3 a 80). */
+export const printedNameOk = (v: string) => {
+  const t = v.trim();
+  return t.length >= 3 && t.length <= 80 && /^[\p{L}' .-]+$/u.test(t) && /\p{L}.*\p{L}/u.test(t);
+};
