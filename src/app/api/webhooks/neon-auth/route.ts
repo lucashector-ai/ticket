@@ -13,7 +13,11 @@ import { mailAuthCode, mailAuthLink, mailWelcome } from "@/lib/notify";
  */
 export async function POST(req: Request) {
   const raw = await req.text();
-  const jwksUrl = process.env.NEON_AUTH_JWKS_URL || `${process.env.NEON_AUTH_BASE_URL}/.well-known/jwks.json`;
+  // a chave pública sai do mesmo Neon Auth que o login usa (NEON_AUTH_BASE_URL, que já funciona);
+  // NEON_AUTH_JWKS_URL só entra se for um endereço de verdade (já esteve com o texto de exemplo)
+  const base = (process.env.NEON_AUTH_BASE_URL ?? "").replace(/\/$/, "");
+  const envJwks = process.env.NEON_AUTH_JWKS_URL ?? "";
+  const jwksUrl = base ? `${base}/.well-known/jwks.json` : /^https:\/\/[^<>\s]+$/.test(envJwks) ? envJwks : "";
   let ev;
   try {
     ev = await verifyNeonWebhook(raw, req.headers, jwksUrl);
