@@ -674,7 +674,7 @@ export const ARTICLES: HelpArticle[] = [
     keywords: "politica de cancelamento produtor regra fora do prazo nao posso ir",
     body: [
       p("Cada evento mostra a política de cancelamento do produtor na seção **O que você deve saber**, item **Cancelamento**. Leia antes de comprar."),
-      p("Ela vale para pedidos fora do [direito de arrependimento](/ajuda/pedir-reembolso), ou seja, depois de 7 dias do pagamento ou a menos de 48 horas do evento. O produtor pode liberar o cancelamento até alguns dias ou horas antes do evento e, nesses casos fora dos 7 dias, pode definir que a taxa de serviço não é devolvida. Nos casos de [cancelamento](/ajuda/evento-cancelado) e [adiamento](/ajuda/evento-adiado), valem as regras da Tickets Win."),
+      p("Ela vale para pedidos fora do [direito de arrependimento](/ajuda/pedir-reembolso), ou seja, depois de 7 dias do pagamento ou a menos de 48 horas do evento. O produtor pode liberar o cancelamento até alguns dias ou horas antes do evento. Nesses cancelamentos fora dos 7 dias, a taxa de serviço não é devolvida. Nos casos de [cancelamento](/ajuda/evento-cancelado) e [adiamento](/ajuda/evento-adiado), valem as regras da Tickets Win."),
       p("Não vai poder ir e o prazo passou? Você ainda pode [transferir o ingresso](/ajuda/transferir-ingresso) ou [vender na revenda oficial](/ajuda/vender-na-revenda), se o evento permitir."),
     ],
   },

@@ -354,7 +354,7 @@ function Policy({ p }: { p: RefundTab }) {
   const { flash } = useToast();
   const [f, setF] = useState<CancelPolicy>(p.policy);
   const [busy, start] = useTransition();
-  const dirty = f.mode !== p.policy.mode || (f.mode === "until" && (f.hoursBefore !== p.policy.hoursBefore || f.keepFee !== p.policy.keepFee));
+  const dirty = f.mode !== p.policy.mode || (f.mode === "until" && f.hoursBefore !== p.policy.hoursBefore);
   const save = () => start(async () => {
     const r = await saveCancelPolicy({ eventId: p.eventId, ...f });
     if (!r.ok) { flash(r.error); return; }
@@ -380,10 +380,7 @@ function Policy({ p }: { p: RefundTab }) {
                 {POLICY_HOURS.map((h) => <option key={h} value={h}>{hoursLabel(h)} antes do início</option>)}
               </select>
             </label>
-            <label className="tg2">
-              <span><b>Ficar com a taxa de serviço fora dos {LEGAL_DAYS} dias</b><small>Nos cancelamentos depois do direito de arrependimento, devolvemos só o valor do ingresso.</small></span>
-              <input className="sr" type="checkbox" checked={f.keepFee} onChange={(e) => setF({ ...f, keepFee: e.target.checked })} /><span className="sw" aria-hidden="true" />
-            </label>
+            <p className="rr-note">Fora dos {LEGAL_DAYS} dias de arrependimento, o comprador recebe o valor do ingresso: a taxa de serviço da Tickets Win não é devolvida.</p>
           </>
         )}
         <p className="rr-note">{policyText(f)}</p>

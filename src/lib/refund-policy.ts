@@ -4,7 +4,8 @@
  * Direito de arrependimento (CDC, art. 49, como está nos Termos): o comprador cancela em até 7 dias depois
  * do pagamento, desde que faltem mais de 48 horas para o evento, com reembolso integral (taxa inclusa).
  * Vale sempre, em qualquer evento. Por cima disso o produtor pode liberar o cancelamento até X horas antes
- * do evento e, só para os cancelamentos fora dos 7 dias, ficar com a taxa de serviço (keepFee).
+ * do evento. Regra da Tickets Win: nos cancelamentos pelo comprador fora dos 7 dias a taxa de serviço não volta
+ * (keepFee é sempre true; o campo fica no tipo para os registros antigos).
  */
 
 export type CancelPolicy = { mode: "legal" | "until"; hoursBefore: number; keepFee: boolean };
@@ -15,7 +16,7 @@ export const LEGAL_MIN_HOURS = 48;
 export const POSTPONE_REFUND_DAYS = 7;
 const H = 3_600_000;
 
-export const DEFAULT_POLICY: CancelPolicy = { mode: "legal", hoursBefore: 48, keepFee: false };
+export const DEFAULT_POLICY: CancelPolicy = { mode: "legal", hoursBefore: 48, keepFee: true };
 /** Opções do painel para "cancelar até X antes do evento". */
 export const POLICY_HOURS = [24, 48, 72, 168, 360, 720] as const;
 /** Opções do painel para os prazos de transferência e revenda (0 = até o início). */
@@ -25,7 +26,7 @@ export function policyOf(e: { cancelPolicy?: Partial<CancelPolicy> | null }): Ca
   const p = e.cancelPolicy;
   if (!p || p.mode !== "until") return DEFAULT_POLICY;
   const h = Number(p.hoursBefore);
-  return { mode: "until", hoursBefore: Number.isFinite(h) && h >= 1 && h <= 24 * 90 ? Math.round(h) : 48, keepFee: !!p.keepFee };
+  return { mode: "until", hoursBefore: Number.isFinite(h) && h >= 1 && h <= 24 * 90 ? Math.round(h) : 48, keepFee: true };
 }
 
 /** "48 horas", "7 dias", "1 dia". */
@@ -38,7 +39,7 @@ export function hoursLabel(h: number) {
 export function policyText(p: CancelPolicy): string {
   const legal = `Você pode cancelar em até ${LEGAL_DAYS} dias após a compra, desde que faltem mais de ${LEGAL_MIN_HOURS} horas para o evento, com reembolso integral (direito de arrependimento).`;
   if (p.mode === "legal") return `${legal} Depois disso, o ingresso não é reembolsável, mas você pode transferir ou revender se o evento permitir.`;
-  return `${legal} Fora desse prazo, o cancelamento pelo site vale até ${hoursLabel(p.hoursBefore)} antes do início, com reembolso ${p.keepFee ? "do valor do ingresso, sem a taxa de serviço" : "integral, taxa de serviço inclusa"}.`;
+  return `${legal} Fora desse prazo, o cancelamento pelo site vale até ${hoursLabel(p.hoursBefore)} antes do início, com reembolso do valor do ingresso (a taxa de serviço não é devolvida).`;
 }
 
 /** Regras fixas da Tickets Win para cancelamento e adiamento (mostradas junto com a política). */
