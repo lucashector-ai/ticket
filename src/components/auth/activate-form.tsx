@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
+import { resendActivation } from "@/lib/actions/auth";
 import { useToast } from "@/components/toast";
 import { FieldError, FormError, fieldCls, isEmail } from "@/components/auth/fields";
 
@@ -50,7 +51,7 @@ export function ActivateForm({ initialEmail, verified }: { initialEmail: string;
   async function resend() {
     if (!isEmail(email)) { setErr({ email: true }); return; }
     setBusy(true);
-    try { await authClient.emailOtp.sendVerificationOtp({ email: email.trim(), type: "email-verification" }); } catch { /* resposta genérica */ }
+    try { await resendActivation(email.trim()); } catch { /* resposta genérica */ }
     setBusy(false);
     flash("Se houver uma conta com este e-mail, mandamos um código novo.");
   }

@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { initials, slugify } from "@/lib/format";
 import { AUDIENCE, KINDS, PER_YEAR } from "@/lib/onboarding";
+import { isProducer } from "@/lib/data/producer";
 
 const { organizers } = schema;
 type R<T = object> = ({ ok: true } & T) | { ok: false; error: string };
@@ -38,4 +39,10 @@ export async function finishOnboarding(input: { name: string; kind: string; perY
   else await db.insert(organizers).values({ ...values, ownerUserId: user.id, contactEmail: user.email ?? null });
   // sem revalidar: a tela de "Tudo pronto" continua; o painel é dinâmico e já abre atualizado
   return { ok: true };
+}
+
+/** O usuário logado já é produtor? (o cabeçalho usa para mostrar Painel e Meus eventos) */
+export async function myProducerStatus(): Promise<boolean> {
+  const user = await getSessionUser();
+  return user ? isProducer(user) : false;
 }

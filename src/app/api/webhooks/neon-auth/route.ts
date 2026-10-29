@@ -1,7 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { after } from "next/server";
 import { verifyNeonWebhook } from "@/lib/auth/webhook";
-import { emailEnabled } from "@/lib/email";
+import { emailEnabled, logEmails } from "@/lib/email";
 import { mailAuthCode, mailAuthLink, mailWelcome } from "@/lib/notify";
 
 /*
@@ -19,6 +19,7 @@ export async function POST(req: Request) {
     ev = await verifyNeonWebhook(raw, req.headers, jwksUrl);
   } catch (e) {
     console.error("neon-auth webhook", e);
+    await logEmails("webhook-recusado", [{ to: "", subject: req.headers.get("x-neon-event-type") ?? "?" }], false, String(e).slice(0, 300));
     return Response.json({ error: "assinatura inválida" }, { status: 401 });
   }
 
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
   if (await env.KV.get(seenKey)) return Response.json({ ok: true, duplicate: true });
 
   const email = ev.user?.email ?? "", d = ev.event_data ?? {};
+  await logEmails("webhook", [{ to: email, subject: `${ev.event_type} ${d.otp_type ?? d.link_type ?? d.auth_provider ?? ""}`.trim() }], true, null);
   if (ev.event_type === "send.otp" || ev.event_type === "send.magic_link") {
     if (!emailEnabled()) return Response.json({ error: "e-mail não configurado" }, { status: 503 });
     if (d.delivery_preference === "sms") return Response.json({ ok: true, skipped: "sms" });

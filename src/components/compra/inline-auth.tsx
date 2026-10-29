@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
 import { signInInline, signUpInline } from "@/lib/actions/auth";
+import { maskPhone } from "@/components/auth/fields";
 
 /** Login/cadastro dentro do checkout, sem sair da página. */
 export function InlineAuth({ onDone, returnUrl, highlight }: { onDone: () => void; returnUrl: string; highlight: boolean }) {
   const [mode, setMode] = useState<"entrar" | "criar">("entrar");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -18,7 +20,7 @@ export function InlineAuth({ onDone, returnUrl, highlight }: { onDone: () => voi
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const r = mode === "entrar" ? await signInInline(email, password) : await signUpInline(name, email, password);
+    const r = mode === "entrar" ? await signInInline(email, password) : await signUpInline(name, email, password, phone);
     setBusy(false);
     if (!r.ok) { setError(r.error ?? "Não foi possível entrar."); return; }
     onDone();
@@ -50,6 +52,12 @@ export function InlineAuth({ onDone, returnUrl, highlight }: { onDone: () => voi
           <span className="lf2-l">E-mail</span>
           <input className="in2" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="nome@email.com" />
         </label>
+        {mode === "criar" && (
+          <label className="lf2">
+            <span className="lf2-l">Celular</span>
+            <input className="in2" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(maskPhone(e.target.value))} autoComplete="tel-national" placeholder="(11) 98765-4321" />
+          </label>
+        )}
         <label className="lf2">
           <span className="lf2-l">Senha</span>
           <span className="cka-pw">

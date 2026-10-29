@@ -1,6 +1,7 @@
 import "server-only";
 import { brandShell, brandSimple, escHtml } from "@/lib/mail/brand";
 import { renderTx, type TxMail } from "@/lib/mail/tx";
+import { db, schema } from "@/db";
 
 /*
  * E-mails transacionais pelo Resend (https://resend.com).
@@ -24,20 +25,41 @@ export function systemFrom() {
 
 /** Envia em lotes de 100 (limite do Resend). Devolve quantos foram aceitos. */
 export async function sendEmails(list: Mail[]): Promise<number> {
-  if (!emailEnabled() || !list.length) return 0;
+  if (!list.length) return 0;
+  if (!emailEnabled()) {
+    await logEmails("sem-chave", list, false, "RESEND_API_KEY não configurada");
+    return 0;
+  }
   const from = systemFrom();
   let sent = 0;
   for (let i = 0; i < list.length; i += 100) {
-    const batch = list.slice(i, i + 100).map((m) => ({ from, to: [m.to], subject: m.subject, html: m.html, text: m.text }));
-    const r = await fetch("https://api.resend.com/emails/batch", {
-      method: "POST",
-      headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify(batch),
-    });
-    if (r.ok) sent += batch.length;
-    else console.error("email", r.status, (await r.text()).slice(0, 300));
+    const part = list.slice(i, i + 100);
+    const batch = part.map((m) => ({ from, to: [m.to], subject: m.subject, html: m.html, text: m.text }));
+    let error: string | null = null;
+    try {
+      const r = await fetch("https://api.resend.com/emails/batch", {
+        method: "POST",
+        headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}`, "content-type": "application/json" },
+        body: JSON.stringify(batch),
+      });
+      if (r.ok) sent += batch.length;
+      else error = `Resend ${r.status}: ${(await r.text()).slice(0, 400)}`;
+    } catch (e) {
+      error = `rede: ${String(e).slice(0, 300)}`;
+    }
+    if (error) console.error("email", error);
+    await logEmails("resend", part, !error, error, from);
   }
   return sent;
+}
+
+/** Guarda o resultado de cada envio na tabela email_log (para saber por que um e-mail não chegou). */
+export async function logEmails(kind: string, list: { to: string; subject: string }[], ok: boolean, error: string | null, from?: string) {
+  try {
+    await db.insert(schema.emailLog).values(list.map((m) => ({ kind, toEmail: m.to.slice(0, 254), subject: `${from ? `[${from}] ` : ""}${m.subject}`.slice(0, 300), ok, error })));
+  } catch (e) {
+    console.error("email_log", e);
+  }
 }
 
 /** E-mail do sistema no formato Tickets Win: título, parágrafos e um botão, com o cabeçalho e o rodapé da marca. */

@@ -5,6 +5,16 @@ import { useState } from "react";
 export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 export const isEmail = (v: string) => EMAIL_RE.test(v.trim());
 
+/** Celular/telefone brasileiro com DDD: "(11) 98765-4321" ou "(11) 3456-7890". */
+export function maskPhone(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 2) return d ? `(${d}` : "";
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+export const isPhone = (v: string) => /^\d{10,11}$/.test(v.replace(/\D/g, "")) && !/^0/.test(v.replace(/\D/g, ""));
+
 export function fieldCls(bad: boolean) {
   return bad ? "fld-i err" : "fld-i";
 }

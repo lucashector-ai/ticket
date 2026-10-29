@@ -684,6 +684,21 @@ export const emailCampaigns = pgTable(
   (t) => [index("email_campaigns_org_idx").on(t.organizerId, t.createdAt), index("email_campaigns_user_idx").on(t.userId), index("email_campaigns_status_idx").on(t.status)],
 );
 
+/** Registro de cada e-mail do sistema (aceito ou recusado pelo Resend) e das chamadas do Neon Auth. */
+export const emailLog = pgTable(
+  "email_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: varchar("kind", { length: 40 }).notNull(),
+    toEmail: varchar("to_email", { length: 254 }),
+    subject: varchar("subject", { length: 300 }),
+    ok: boolean("ok").notNull(),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("email_log_created_idx").on(t.createdAt)],
+);
+
 /** Um e-mail de uma campanha para uma pessoa: fila de envio, aberturas, cliques e descadastro. */
 export const emailSends = pgTable(
   "email_sends",

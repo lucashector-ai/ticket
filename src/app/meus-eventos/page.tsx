@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
+import { isProducer } from "@/lib/data/producer";
 import { FlyerArt } from "@/components/art/flyer";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -17,6 +18,8 @@ export const metadata: Metadata = { title: "Meus eventos" };
 export default async function MeusEventosPage() {
   const user = await getSessionUser();
   if (!user) redirect("/entrar?next=/meus-eventos");
+  // só produtor tem Meus eventos: quem ainda não é vai para o cadastro de produtor
+  if (!(await isProducer(user))) redirect("/produtores/cadastro");
   const rows = await db.query.events.findMany({
     where: eq(schema.events.createdByUserId, user.id),
     with: { venue: { with: { city: true } }, ticketTypes: { columns: { sold: true, quantity: true } } },

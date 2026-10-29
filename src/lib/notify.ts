@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { emailEnabled, sendEmails, sendTx, siteBase, type Mail } from "@/lib/email";
 import { brl, dateNice, parts } from "@/lib/format";
@@ -357,4 +357,11 @@ export async function runReminders(now = new Date()) {
 export async function organizerName(orgId: string) {
   const o = await db.query.organizers.findFirst({ where: eq(organizers.id, orgId), columns: { name: true } });
   return o?.name ?? "Produtor";
+}
+
+/** Uma vez por hora: o registro de e-mails guarda só os últimos 30 dias. */
+export async function pruneEmailLog(now = new Date()) {
+  if (now.getUTCMinutes() !== 0) return "pula";
+  await db.delete(schema.emailLog).where(lt(schema.emailLog.createdAt, new Date(now.getTime() - 30 * 86_400_000)));
+  return "ok";
 }

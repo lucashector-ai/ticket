@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth/server";
 import { db, schema } from "@/db";
-import { emailEnabled } from "@/lib/email";
+import { emailEnabled, logEmails } from "@/lib/email";
 import { mailPasswordChanged } from "@/lib/notify";
 
 export type AuthState = { error?: string; ok?: boolean } | null;
@@ -14,6 +14,7 @@ const signInSchema = z.object({ email: z.string().email("Confira o e-mail."), pa
 const signUpSchema = z.object({
   name: z.string().trim().min(2, "Digite seu nome."),
   email: z.string().email("Confira o e-mail."),
+  phone: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => /^[1-9]\d{9,10}$/.test(v), "Digite o celular com DDD."),
   password: z.string().min(8, "A senha precisa ter pelo menos 8 caracteres."),
 });
 
@@ -31,13 +32,14 @@ export async function signInWithEmail(_prev: AuthState, formData: FormData): Pro
 }
 
 export async function signUpWithEmail(_prev: AuthState, formData: FormData): Promise<AuthState> {
-  const parsed = signUpSchema.safeParse({ name: formData.get("name"), email: formData.get("email"), password: formData.get("password") });
+  const parsed = signUpSchema.safeParse({ name: formData.get("name"), email: formData.get("email"), phone: String(formData.get("phone") ?? ""), password: formData.get("password") });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { data, error } = await auth.signUp.email(parsed.data);
+  const { phone, ...cred } = parsed.data;
+  const { data, error } = await auth.signUp.email(cred);
   if (error) return { error: friendly(error.message, error.code) };
   const userId = (data as { user?: { id?: string } } | null)?.user?.id;
   if (userId) {
-    await db.insert(schema.userProfiles).values({ userId, name: parsed.data.name, email: parsed.data.email }).onConflictDoNothing();
+    await db.insert(schema.userProfiles).values({ userId, name: parsed.data.name, email: parsed.data.email, phone }).onConflictDoNothing();
   }
   sendActivation(parsed.data.email);
   redirect(safeNext(formData.get("next")));
@@ -67,13 +69,14 @@ export async function signInInline(email: string, password: string): Promise<{ o
 }
 
 /** Cadastro sem redirecionar (usado dentro do checkout). */
-export async function signUpInline(name: string, email: string, password: string): Promise<{ ok: boolean; error?: string }> {
-  const parsed = signUpSchema.safeParse({ name, email, password });
+export async function signUpInline(name: string, email: string, password: string, phone: string): Promise<{ ok: boolean; error?: string }> {
+  const parsed = signUpSchema.safeParse({ name, email, phone, password });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
-  const { data, error } = await auth.signUp.email(parsed.data);
+  const { phone: tel, ...cred } = parsed.data;
+  const { data, error } = await auth.signUp.email(cred);
   if (error) return { ok: false, error: friendly(error.message, error.code) };
   const userId = (data as { user?: { id?: string } } | null)?.user?.id;
-  if (userId) await db.insert(schema.userProfiles).values({ userId, name: parsed.data.name, email: parsed.data.email }).onConflictDoNothing();
+  if (userId) await db.insert(schema.userProfiles).values({ userId, name: parsed.data.name, email: parsed.data.email, phone: tel }).onConflictDoNothing();
   sendActivation(parsed.data.email);
   return { ok: true };
 }
@@ -81,9 +84,25 @@ export async function signUpInline(name: string, email: string, password: string
 /** E-mail de ativação (código de confirmação) logo depois do cadastro. A conta já funciona antes de confirmar. */
 function sendActivation(email: string) {
   if (!emailEnabled()) return;
-  after(async () => {
-    try { await auth.emailOtp.sendVerificationOtp({ email, type: "email-verification" }); } catch (e) { console.error("activation", e); }
-  });
+  after(() => requestActivationCode(email));
+}
+
+/** Pede ao Neon Auth um código de ativação (o e-mail sai pelo nosso webhook). Registra falhas em email_log. */
+async function requestActivationCode(email: string) {
+  try {
+    const r = await auth.emailOtp.sendVerificationOtp({ email, type: "email-verification" });
+    if (r?.error) await logEmails("neon-otp", [{ to: email, subject: "email-verification" }], false, JSON.stringify(r.error).slice(0, 400));
+  } catch (e) {
+    console.error("activation", e);
+    await logEmails("neon-otp", [{ to: email, subject: "email-verification" }], false, String(e).slice(0, 400));
+  }
+}
+
+/** "Enviar outro código" da página /ativar-conta. */
+export async function resendActivation(email: string): Promise<{ ok: true }> {
+  const p = z.string().email().safeParse(email.trim().toLowerCase());
+  if (p.success) await requestActivationCode(p.data);
+  return { ok: true };
 }
 
 /** Nova senha com o código do e-mail; avisa por e-mail que a senha mudou. */

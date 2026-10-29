@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsProducer } from "@/components/use-producer";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -116,6 +117,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
 
   /* menu da conta (fora da barra de busca, que recorta o que passa da borda) */
   const [acct, setAcct] = useState(false);
+  const producer = useIsProducer(user?.id);
   const [acctAt, setAcctAt] = useState({ top: 72, right: 16 });
   useEffect(() => {
     if (!acct) return;
@@ -382,8 +384,8 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
           <span className="acct-who">{user.name?.split(" ")[0] || "Sua conta"}<small>{user.email}</small></span>
           <Link href="/meus-ingressos" role="menuitem">Meus ingressos</Link>
           <Link href="/explorar?salvos=1" role="menuitem">Eventos salvos{favs.length > 0 ? ` (${favs.length})` : ""}</Link>
-          <Link href="/painel" role="menuitem">Painel do produtor</Link>
-          <Link href="/meus-eventos" role="menuitem">Meus eventos</Link>
+          {producer && <Link href="/painel" role="menuitem">Painel do produtor</Link>}
+          {producer && <Link href="/meus-eventos" role="menuitem">Meus eventos</Link>}
           <form action={signOut}><button type="submit" role="menuitem">Sair</button></form>
         </div>
       )}
