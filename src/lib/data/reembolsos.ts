@@ -13,7 +13,7 @@ const fmt = (d: Date) => new Intl.DateTimeFormat("pt-BR", { day: "numeric", mont
 const METHOD: Record<string, string> = { pix: "Pix", card: "Cartão", free: "Gratuito", test: "Teste" };
 const KIND: Record<string, string> = {
   order: "Pedido inteiro", tickets: "Ingressos escolhidos", event: "Cancelamento do evento", request: "Pedido do comprador",
-  buyer: "Cancelado pelo comprador", stripe: "Direto na Stripe", auto: "Automático (compra não concluída)",
+  buyer: "Cancelado pelo comprador", stripe: "Estorno externo", auto: "Automático (compra não concluída)",
 };
 
 export type OrderStatusKey = "paid" | "partial" | "refunded" | "cancelled" | "pending" | "expired";

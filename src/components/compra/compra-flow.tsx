@@ -825,7 +825,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 )}
                 {payErr && <p className="err pay-err" role="alert">{payErr}</p>}
                 {live
-                  ? <p className="ck-test">Pagamento processado pela Stripe.{pay === "card" ? " Os dados do cartão vão direto para a Stripe e não passam pelos nossos servidores." : ""}</p>
+                  ? <p className="ck-test">Pagamento seguro, com conexão criptografada.{pay === "card" ? " Os dados do cartão não ficam salvos na Tickets Win." : ""}</p>
                   : <p className="ck-test">Ambiente de teste: nenhuma cobrança real é feita e os dados do cartão não saem do seu navegador.</p>}
               </div>
             )}

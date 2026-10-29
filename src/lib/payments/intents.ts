@@ -36,7 +36,7 @@ export async function ensureIntent(order: OrderRow): Promise<Stripe.PaymentInten
       allowed_payment_method_types: [kind],
       description: `Tickets Win · Pedido nº ${number}${ev ? ` · ${ev.title}`.slice(0, 200) : ""}`,
       metadata: { orderId: order.id, orderNumber: String(number), eventId: order.eventId, userId: order.userId },
-      ...(order.buyerEmail ? { receipt_email: order.buyerEmail } : {}),
+      // sem receipt_email: o recibo é o e-mail de confirmação da Tickets Win (não um e-mail do processador)
       ...(kind === "card"
         ? {
           // parcelamento: a Stripe devolve os planos que o cartão aceita depois que ele é informado

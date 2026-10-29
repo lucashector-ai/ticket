@@ -232,7 +232,7 @@ export const ARTICLES: HelpArticle[] = [
         "**Pix:** geramos um QR code e um código copia e cola. Pague pelo app do seu banco e a confirmação aparece no checkout sozinha. O código vale por 15 minutos.",
         "**Cartão de crédito:** em até 6 parcelas. De 1x a 3x é sem juros. Veja [como funciona o parcelamento](/ajuda/parcelamento).",
       ),
-      p("O pagamento acontece **dentro do checkout da Tickets Win**, sem abrir outra página, e é processado pela Stripe. Os dados do cartão vão direto para a Stripe e não passam pelos nossos servidores. Na fatura, a compra aparece com o número do pedido."),
+      p("O pagamento acontece **dentro do checkout da Tickets Win**, sem abrir outra página, com conexão criptografada. Os dados do cartão não ficam salvos com a gente. Na fatura, a compra aparece como Tickets Win, com o número do pedido."),
       p("No momento não aceitamos boleto."),
       p("A compra só é confirmada depois que o pagamento é aprovado. Ingressos gratuitos não passam por pagamento."),
     ],

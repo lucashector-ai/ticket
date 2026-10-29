@@ -124,19 +124,19 @@ export async function previewRefund(orderId: string, sel: string[] | "all", opts
 export function refundErrorMessage(e: unknown): string {
   const err = e as { type?: string; code?: string; message?: string };
   const map: Record<string, string> = {
-    amount_too_large: "O valor passa do que ainda pode ser estornado nesta cobrança. Ela pode já ter sido estornada direto na Stripe.",
+    amount_too_large: "O valor passa do que ainda pode ser estornado nesta cobrança. Ela pode já ter sido estornada.",
     charge_disputed: "Este pagamento está em contestação (chargeback) no banco do comprador. O estorno não pode ser feito agora.",
-    balance_insufficient: "Saldo insuficiente na conta Stripe da Tickets Win para estornar agora. Tente de novo mais tarde.",
-    insufficient_funds: "Saldo insuficiente na conta Stripe da Tickets Win para estornar agora. Tente de novo mais tarde.",
-    charge_expired_for_refund: "O prazo da Stripe para estornar este pagamento acabou. Será preciso devolver por Pix manualmente.",
-    refund_disputed_payment: "Este pagamento está em contestação (chargeback): o estorno não pode ser feito pela Stripe.",
-    resource_missing: "A cobrança não foi encontrada na Stripe. Confira o pedido no painel da Stripe.",
-    rate_limit: "Muitas solicitações seguidas à Stripe. Aguarde alguns segundos e tente de novo.",
+    balance_insufficient: "Não foi possível estornar agora por falta de saldo na conta de pagamentos. Tente de novo mais tarde ou fale com a Tickets Win.",
+    insufficient_funds: "Não foi possível estornar agora por falta de saldo na conta de pagamentos. Tente de novo mais tarde ou fale com a Tickets Win.",
+    charge_expired_for_refund: "O prazo para estornar este pagamento acabou. Será preciso devolver por Pix manualmente: fale com a Tickets Win.",
+    refund_disputed_payment: "Este pagamento está em contestação (chargeback): o estorno não pode ser feito agora. Fale com a Tickets Win.",
+    resource_missing: "A cobrança deste pedido não foi encontrada. Fale com a Tickets Win.",
+    rate_limit: "Muitas solicitações seguidas. Aguarde alguns segundos e tente de novo.",
   };
   if (err?.code && map[err.code]) return map[err.code];
-  if (err?.type === "StripeConnectionError" || err?.type === "StripeAPIError") return "Não conseguimos falar com a Stripe agora. Tente de novo em instantes: nada foi estornado.";
+  if (err?.type === "StripeConnectionError" || err?.type === "StripeAPIError") return "Não conseguimos processar o estorno agora. Tente de novo em instantes: nada foi estornado.";
   if (err?.type === "StripeRateLimitError") return map.rate_limit;
-  return `A Stripe não aceitou o estorno${err?.code ? ` (${err.code})` : ""}. Tente de novo ou estorne pelo painel da Stripe.`;
+  return `O estorno não foi aceito${err?.code ? ` (${err.code})` : ""}. Tente de novo ou fale com a Tickets Win.`;
 }
 
 export type RefundInput = {
@@ -204,8 +204,8 @@ export async function refundTickets(inp: RefundInput): Promise<RefundOutcome> {
       await db.update(orderRefunds).set({ status: "failed", error }).where(eq(orderRefunds.id, rowId));
       return { ok: false, code, error };
     };
-    if (!pi) return failRow("Este pedido não tem a cobrança da Stripe registrada. Estorne pelo painel da Stripe.", "invalid");
-    if (!stripeEnabled()) return failRow("A Stripe não está configurada neste ambiente: nada foi estornado.", "invalid");
+    if (!pi) return failRow("Este pedido não tem a cobrança registrada. Fale com a Tickets Win para estornar.", "invalid");
+    if (!stripeEnabled()) return failRow("Os pagamentos não estão configurados neste ambiente: nada foi estornado.", "invalid");
     try {
       const s = stripe();
       const prev = retry ? (await s.refunds.list({ payment_intent: pi, limit: 100 })).data.find((r) => r.metadata?.refundRowId === rowId && r.status !== "failed" && r.status !== "canceled") : undefined;
@@ -291,7 +291,7 @@ export async function refundOrder(orderId: string, opts: { amountCents?: number;
   const row = await db.query.orderRefunds.findFirst({ where: eq(orderRefunds.idemKey, key), columns: { id: true } });
   let refundId: string | null = null;
   if (o.stripePaymentIntentId && !isTestPayment(o) && o.totalCents > 0) {
-    if (!stripeEnabled()) return { ok: false, error: "A Stripe não está configurada: reembolse pelo painel da Stripe." };
+    if (!stripeEnabled()) return { ok: false, error: "Os pagamentos não estão configurados: fale com a Tickets Win para reembolsar." };
     try {
       const r = await stripe().refunds.create(
         {
@@ -309,7 +309,7 @@ export async function refundOrder(orderId: string, opts: { amountCents?: number;
       if (err.code !== "charge_already_refunded") {
         console.error("stripe refund", o.id, err.message);
         if (row) await db.update(orderRefunds).set({ status: "failed", error: refundErrorMessage(e) }).where(eq(orderRefunds.id, row.id));
-        return { ok: false, error: "Não foi possível estornar na Stripe. Tente de novo ou estorne pelo painel da Stripe." };
+        return { ok: false, error: "Não foi possível estornar agora. Tente de novo ou fale com a Tickets Win." };
       }
     }
   }
@@ -363,7 +363,7 @@ export async function syncStripeRefund(orderId: string, ch: { id: string; amount
     const prod = ch.fully ? Math.max(0, net - (s?.prod ?? 0)) : Math.min(Math.max(0, net - (s?.prod ?? 0)), o.totalCents ? Math.round((net * diff) / o.totalCents) : 0);
     await db.insert(orderRefunds).values({
       orderId: o.id, eventId: o.eventId, idemKey: `s:${ch.id}:${ch.amountRefunded}`, kind: "stripe", status: "succeeded", amountCents: diff, producerCents: prod,
-      actorName: "Stripe (fora da Tickets Win)", reason: "Estorno feito direto no painel da Stripe.",
+      actorName: "Tickets Win (estorno externo)", reason: "Estorno feito fora do painel do produtor.",
     }).onConflictDoNothing();
   }
   if (ch.fully) await markOrderRefunded(o.id);

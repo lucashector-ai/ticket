@@ -58,8 +58,8 @@ export function PainelReembolsos({ p }: { p: RefundTab }) {
               <li>O comprador recebe de volta o valor pago pelos ingressos, <b>com a taxa de serviço</b>, dividido por ingresso.</li>
               <li>Do seu saldo sai só o líquido que você recebeu por eles. A taxa é devolvida pela Tickets Win.</li>
               <li>Se você já sacou, o saldo fica negativo e é descontado das próximas vendas.</li>
-              <li>Pix e cartão voltam pela Stripe para o meio original. O prazo depende do banco ou do cartão.</li>
-              <li>Pedidos de teste são só marcados como reembolsados: nada passa pela Stripe.</li>
+              <li>Pix e cartão voltam para o meio de pagamento original. O prazo depende do banco ou do cartão.</li>
+              <li>Pedidos de teste são só marcados como reembolsados: nenhum dinheiro é movimentado.</li>
             </ul>
           </section>
           {!p.cancelled && <Policy p={p} />}
@@ -163,7 +163,7 @@ function OrderDialog({ eventId, orderId, request, onClose }: { eventId: string; 
       if ("code" in r && r.code !== "checked_in" && r.code !== "busy") { setStep(null); load(); router.refresh(); }
       return;
     }
-    flash(step.p.free ? "Ingressos cancelados. O comprador foi avisado por e-mail." : step.p.test ? `Reembolso de teste registrado (${brl(step.p.amountCents)}).` : `Reembolso de ${brl(step.p.amountCents)} enviado para a Stripe. O comprador foi avisado por e-mail.`);
+    flash(step.p.free ? "Ingressos cancelados. O comprador foi avisado por e-mail." : step.p.test ? `Reembolso de teste registrado (${brl(step.p.amountCents)}).` : `Reembolso de ${brl(step.p.amountCents)} solicitado. O comprador foi avisado por e-mail.`);
     setStep(null); setNote("");
     router.refresh();
     if (request) onClose(); else load();
@@ -214,7 +214,7 @@ function OrderDialog({ eventId, orderId, request, onClose }: { eventId: string; 
                 {o.money.refunded > 0 && <><span>Já reembolsado</span><b>−{brl(o.money.refunded)}</b></>}
                 {!o.free && <><span>Seu líquido neste pedido</span><b>{o.resale ? "compra na revenda" : brl(o.money.net)}</b></>}
               </div>
-              {o.test && <p className="rr-note">Pedido de teste (sem cobrança): o reembolso só é registrado, nada passa pela Stripe e o saldo não muda.</p>}
+              {o.test && <p className="rr-note">Pedido de teste (sem cobrança): o reembolso só é registrado, nenhum dinheiro é movimentado e o saldo não muda.</p>}
               {o.resale && <p className="rr-note">Ingresso comprado na revenda oficial: o comprador recebe o que pagou na revenda; do seu saldo sai o valor original do ingresso.</p>}
               <div className="rr-tk">
                 {o.tickets.map((t) => {
@@ -276,7 +276,7 @@ function ConfirmStep({ o, step, note, busy, okCheckedIn, setOkCheckedIn, onBack,
           <span>Sai do seu saldo no Banco Tickets Win</span><b>{p.test ? "nada (teste)" : brl(p.producerCents)}</b>
         </div>
       )}
-      {!p.free && <p className="dl-p">{p.test ? "Pedido de teste: só marcamos como reembolsado, sem passar pela Stripe." : MONEY_BACK}</p>}
+      {!p.free && <p className="dl-p">{p.test ? "Pedido de teste: só marcamos como reembolsado, sem movimentar dinheiro." : MONEY_BACK}</p>}
       <p className="dl-p">Os ingressos {p.full ? "do pedido" : "escolhidos"} deixam de valer na portaria na hora{p.resale ? "" : " e os lugares voltam para a venda"}. {note ? "O comprador recebe um e-mail com o seu recado." : "O comprador recebe um e-mail avisando."}</p>
       {p.checkedIn > 0 && (
         <label className="rr-chk">
@@ -461,7 +461,7 @@ function CancelEvent({ p }: { p: RefundTab }) {
                 <h2 className="card-t">Cancelar “{p.title}”?</h2>
                 <ul className="rv-how">
                   <li>As vendas param na hora, os anúncios da revenda saem do ar e os pedidos em pagamento são cancelados.</li>
-                  <li>Todos os pedidos pagos são reembolsados <b>integralmente, com a taxa de serviço</b>, pela Stripe, para o meio de pagamento original.</li>
+                  <li>Todos os pedidos pagos são reembolsados <b>integralmente, com a taxa de serviço</b>, para o meio de pagamento original.</li>
                   <li>Sai do seu saldo no Banco Tickets Win o líquido de cada venda. Se você já sacou, o saldo fica negativo.</li>
                   <li>Compradores, quem recebeu ingresso e a lista free recebem um e-mail.</li>
                 </ul>
