@@ -53,10 +53,10 @@ export async function sendEmails(list: Mail[]): Promise<number> {
   return sent;
 }
 
-/** Guarda o resultado de cada envio na tabela email_log (para saber por que um e-mail não chegou). */
+/** Guarda o resultado de cada envio na tabela email_log (para saber por que um e-mail não chegou). Códigos de 6 dígitos ficam mascarados. */
 export async function logEmails(kind: string, list: { to: string; subject: string }[], ok: boolean, error: string | null, from?: string) {
   try {
-    await db.insert(schema.emailLog).values(list.map((m) => ({ kind, toEmail: m.to.slice(0, 254), subject: `${from ? `[${from}] ` : ""}${m.subject}`.slice(0, 300), ok, error })));
+    await db.insert(schema.emailLog).values(list.map((m) => ({ kind, toEmail: m.to.slice(0, 254), subject: `${from ? `[${from}] ` : ""}${m.subject.replace(/\b\d{6}\b/g, "••••••")}`.slice(0, 300), ok, error })));
   } catch (e) {
     console.error("email_log", e);
   }
