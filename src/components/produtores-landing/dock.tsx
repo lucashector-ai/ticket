@@ -7,7 +7,6 @@ const LINKS = [
   { id: "como", label: "Como funciona" },
   { id: "recursos", label: "Recursos" },
   { id: "precos", label: "Preços" },
-  { id: "cases", label: "Cases" },
   { id: "faq", label: "Dúvidas" },
 ];
 

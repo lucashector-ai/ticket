@@ -4,7 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
-import { resaleCap } from "@/lib/resale";
+import { RESALE_MAX_PCT, resaleCap } from "@/lib/resale";
 import { getPainelScope } from "@/lib/data/painel";
 
 const { tickets, resaleListings, ticketTransfers } = schema;
@@ -63,7 +63,7 @@ export async function saveTransferResale(eventId: string, input: { transferEnabl
   const ev = await producerEvent(eventId);
   if (!ev) return { ok: false, error: "Sem permissão para este evento." };
   const pct = Math.round(input.resaleMaxPct);
-  if (!Number.isFinite(pct) || pct < 50 || pct > 300) return { ok: false, error: "O preço máximo vai de 50% a 300% do valor pago." };
+  if (!Number.isFinite(pct) || pct < 50 || pct > RESALE_MAX_PCT) return { ok: false, error: "O preço máximo vai de 50% a 100% do valor pago (ninguém revende acima do que pagou)." };
   await db.update(schema.events).set({ transferEnabled: !!input.transferEnabled, resaleEnabled: !!input.resaleEnabled, resaleMaxPct: pct }).where(eq(schema.events.id, ev.id));
   // revenda desligada: os anúncios abertos saem do ar (quem estiver pagando agora termina a compra)
   if (!input.resaleEnabled) await db.update(resaleListings).set({ status: "cancelled" }).where(and(eq(resaleListings.eventId, ev.id), eq(resaleListings.status, "active")));

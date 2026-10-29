@@ -22,7 +22,7 @@ export default function TermosPage() {
       </ul>
 
       <h2 id="compras">3. Compras, taxas e pagamentos</h2>
-      <p>O total exibido no checkout já inclui a taxa de serviço da Tickets Win (7,99% por ingresso), mostrada antes do pagamento. Aceitamos Pix e cartão de crédito em até 6x (até 3x sem juros), pagos dentro do checkout da Tickets Win. A compra é confirmada só depois da aprovação do pagamento; até lá, o ingresso fica reservado por 10 minutos.</p>
+      <p>O total exibido no checkout já inclui a taxa de serviço da Tickets Win (7,99% por ingresso), mostrada antes do pagamento. Aceitamos Pix e cartão de crédito em até 6x (até 3x sem juros), pagos dentro do checkout da Tickets Win. A compra é confirmada só depois da aprovação do pagamento; até lá, você tem 15 minutos para concluir o pagamento.</p>
       <p>Cada ingresso é nominal e vale para uma única entrada. O produtor pode limitar a quantidade de ingressos por pessoa (conferida pela conta e pelo CPF), e pedir documento na entrada fica a critério do local.</p>
 
       <h2 id="reembolso">4. Cancelamentos e reembolsos</h2>

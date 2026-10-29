@@ -38,7 +38,6 @@ function Kicker({ children, style }: { children: React.ReactNode; style?: React.
   );
 }
 
-const PRODUCERS = ["Futuro Produções", "Maré Alta Eventos", "Ácida Records", "Coletivo Subsolo", "Liga Nacional de Rima", "Ventania Cultural", "Casa Tangente", "Terreiro Coletivo"];
 
 // mapa de assentos do card "Lugar marcado": t = vendido, p = escolhendo agora, o = livre
 const SEATS = "ttpttttttooo" + "tpottttttoto" + "otottotoottt" + "tptootottopp" + "otttoototott" + "ttppotpttpot" + "ttootttotttt";
@@ -65,7 +64,7 @@ const SECURITY = [
   { b: "Análise de cada compra", p: "Todas as transações no cartão passam por verificação antifraude antes de aprovar." },
   { b: "Dados protegidos", p: "Não guardamos dados de cartão. Pagamentos processados em ambiente certificado." },
   { b: "QR que não se copia", p: "O código muda ao transferir e é validado uma única vez na portaria." },
-  { b: "Conexão segura", p: "Tudo trafega em HTTPS, com verificação diária contra malware e phishing." },
+  { b: "Conexão segura", p: "Tudo trafega em HTTPS, com proteção contra robôs no login e na compra." },
 ];
 
 export function ProdutoresLanding() {
@@ -93,18 +92,6 @@ export function ProdutoresLanding() {
           </div>
         </div>
         <HeroVisual />
-      </section>
-
-      {/* ---------- produtores (marquee) ---------- */}
-      <section className="pdl-w pdl-logos" aria-label="Produtores na plataforma">
-        <span>Produtores de todos os tamanhos já vendem com a gente</span>
-        <div className="pdl-mq">
-          <div className="pdl-mqi">
-            {[...PRODUCERS, ...PRODUCERS].map((p, i) => (
-              <b key={i} aria-hidden={i >= PRODUCERS.length ? true : undefined}>{p}</b>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* ---------- tipos de evento ---------- */}
@@ -204,8 +191,8 @@ export function ProdutoresLanding() {
           <div className="pdl-bx pdl-wide pdl-rv" data-spot style={d(1)}>
             <span className="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-6M22 19H2" /></svg></span>
             <b>Painel ao vivo</b>
-            <p>Vendas por dia, por setor e por origem, atualizando enquanto você olha. Nada de esperar relatório.</p>
-            <div className="pdl-pills" aria-hidden="true"><span>+<Num value={38} /> vendas/h</span><span>Instagram <Num value={42} />%</span></div>
+            <p>Vendas por dia, por setor e por promoter, atualizando enquanto você olha. Nada de esperar relatório.</p>
+            <div className="pdl-pills" aria-hidden="true"><span>+<Num value={38} /> vendas/h</span><span>Pista <Num value={42} />% vendida</span></div>
           </div>
           <div className="pdl-bx pdl-lm pdl-rv" data-spot style={d(2)}>
             <span className="ic scan"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M4 12h16" /></svg></span>
@@ -289,32 +276,6 @@ export function ProdutoresLanding() {
             </div>
           ))}
         </Spotlight>
-      </section>
-
-      {/* ---------- depoimentos ---------- */}
-      <section className="pdl-w pdl-sec" id="cases" aria-labelledby="pdl-cases">
-        <div className="pdl-rv">
-          <Kicker>Quem produz com a gente</Kicker>
-          <h2 className="pdl-h2" id="pdl-cases">Contado por quem lota.</h2>
-        </div>
-        <SnapRail className="pdl-dep" count={3} label="Depoimentos">
-          <figure className="pdl-q f pdl-rv" style={d(0)}>
-            <blockquote><p>“Virar lote era uma noite sem dormir. Agora vira sozinho, e eu acompanho a venda do celular, na fila do mercado.”</p></blockquote>
-            <div className="pdl-num">
-              <div><b><Num value={64} /></b><span>eventos realizados</span></div>
-              <div><b><Num value={4.8} fmt="dec1" /></b><span>nota do público</span></div>
-            </div>
-            <figcaption className="pdl-qa"><span className="av" aria-hidden="true">FP</span><span><b>Futuro Produções</b><span>Bailes e festas · São Paulo</span></span></figcaption>
-          </figure>
-          <figure className="pdl-q pdl-rv" style={d(1)}>
-            <blockquote><p>“O mapa 3D mudou o camarote. A pessoa vê de onde vai assistir e compra o setor mais caro sem medo.”</p></blockquote>
-            <figcaption className="pdl-qa"><span className="av" aria-hidden="true">MA</span><span><b>Maré Alta Eventos</b><span>Festival · Florianópolis</span></span></figcaption>
-          </figure>
-          <figure className="pdl-q pdl-rv" style={d(2)}>
-            <blockquote><p>“Repasse dois dias depois do evento e financeiro pronto no painel. Paro de correr atrás de planilha e foco no line-up.”</p></blockquote>
-            <figcaption className="pdl-qa"><span className="av" aria-hidden="true">ÁR</span><span><b>Ácida Records</b><span>Selo e festa · Porto Alegre</span></span></figcaption>
-          </figure>
-        </SnapRail>
       </section>
 
       {/* ---------- faq ---------- */}

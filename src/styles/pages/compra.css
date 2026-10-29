@@ -297,6 +297,7 @@
   .pay-err{padding:12px 16px;border-radius:14px;background:#FFF5F5;color:#B3261E}
   .pix-exp.low{color:#B3261E}
   .pix-chk{align-self:flex-start;height:48px;margin-top:4px}
+  .pix-test{align-self:flex-start;margin-top:6px;padding:8px 12px;border-radius:10px;background:#FFF4DE;color:#7A4A00;font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
   .ck-p a{text-decoration:underline;text-underline-offset:3px}
 }
 @keyframes speSk{0%{background-position:100% 0}100%{background-position:-100% 0}}

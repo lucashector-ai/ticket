@@ -368,7 +368,7 @@ export const events = pgTable(
     transferEnabled: boolean("transfer_enabled").notNull().default(true),
     /** revenda oficial entre fãs e o preço máximo, em % do valor pago */
     resaleEnabled: boolean("resale_enabled").notNull().default(true),
-    resaleMaxPct: integer("resale_max_pct").notNull().default(120),
+    resaleMaxPct: integer("resale_max_pct").notNull().default(100),
     ...timestamps,
   },
   (t) => [

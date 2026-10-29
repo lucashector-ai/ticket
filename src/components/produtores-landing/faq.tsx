@@ -8,7 +8,7 @@ const FAQ: [string, string][] = [
   ["Posso vender meia-entrada e meia social?", "Sim. Cada setor pode ter inteira, meia e meia social. Para a meia social, sugerimos um valor entre a meia e a inteira, mas o preço final é sempre seu."],
   ["Como funciona o mapa 3D com IA?", "Você envia uma foto ou rascunho do espaço. A IA identifica palco, pista, camarotes e bar e gera um mapa 3D. Você ajusta o que quiser antes de publicar, e o público escolhe o setor vendo o palco."],
   ["Como é o check-in no dia?", "A equipe abre o app da portaria no celular e entra com o código de acesso que você cria no painel. Cada QR vale uma entrada só, e o painel mostra quem entrou em tempo real."],
-  ["Consigo migrar meu evento de outra plataforma?", "Sim. Importamos a lista de participantes e configuramos os lotes com você. Fale com o nosso time e a migração fica pronta em até 1 dia útil."],
+  ["Consigo migrar meu evento de outra plataforma?", "Sim. Fale com o nosso time: a gente ajuda você a montar o evento aqui, com os mesmos lotes, setores e preços. Os ingressos já vendidos na outra plataforma continuam valendo por lá."],
 ];
 
 /** Acordeão: um item aberto por vez, altura animada via grid-template-rows. */

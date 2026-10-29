@@ -321,6 +321,10 @@ input,select{font:inherit;color:inherit}
 .sheet-up~section,main~footer{position:relative;z-index:4;background:#FFFFFF}
 .grab{position:absolute;left:50%;top:14px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#DADAD5}
 .cfh-m,.bnm-dots{display:none}
+/* pontos do banner no celular: o ponto continua com 7px, mas a área de toque cresce para ~35px */
+.bnm-dots button{position:relative}
+.bnm-dots button::before{content:"";position:absolute;inset:-14px -3px}
+.bnm-dots button:focus-visible{outline:2px solid #D3F55B;outline-offset:3px}
 @media (max-width:760px){
   /* capa no celular: banner 16:9 nítido, o mesmo banner desfocado ao fundo e as infos do evento */
   .bnx{height:calc(96px + (100vw - 32px) * 9 / 16 + 300px)}
@@ -382,8 +386,9 @@ input,select{font:inherit;color:inherit}
   .qb-new{width:40px;padding:0;justify-content:center}
 }
 .strip-b{position:relative;z-index:4;background:#FFFFFF}
-.bnx .bn-arr2{width:34px;height:34px;margin-top:-80px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.24);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 4px 14px -8px rgba(0,0,0,.18)}
+.bnx .bn-arr2{width:34px;height:34px;margin-top:-80px;background:rgba(17,17,17,.3);border:1px solid rgba(255,255,255,.24);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 4px 14px -8px rgba(0,0,0,.18)}
 .bnx .bn-arr2 svg{width:14px;height:14px}
+.bnx .bn-arr2:hover{background:rgba(17,17,17,.5)}
 .bnx .bn-prev{left:24px}
 .bnx .bn-next{right:24px}
 .cue2{left:auto;right:36px;bottom:116px;margin-left:0;width:36px;height:48px}

@@ -43,7 +43,7 @@ type Coupon = { code: string; percentOff: number; amountOffCents: number; amount
 const couponOf = (r: Coupon) => ({ code: r.code, percentOff: r.percentOff, amountOffCents: r.amountOffCents, amountPerTicket: r.amountPerTicket, sector: r.sector });
 type Hold = { name: string; me: boolean; meia: boolean };
 /** `live`: Pix de verdade (Stripe), confirmado sozinho; senão, o Pix de teste. */
-type PixOrder = { orderId: string; number: number; totalCents: number; pixCode: string; pixQrSvg: string; expiresAt: string | null; live: boolean };
+type PixOrder = { orderId: string; number: number; totalCents: number; pixCode: string; pixQrSvg: string; expiresAt: string | null; live: boolean; testUrl: string | null };
 type Done = Extract<ConfirmResult, { ok: true }>;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** segundos até um horário ISO (prazo do Pix gerado pela Stripe) */
@@ -53,7 +53,7 @@ const secondsUntil = (iso: string) => Math.max(0, Math.round((Date.parse(iso) - 
 const dayOf = (e: CompraEvent, t: CompraTier) => (e.sessions.length ? t.sessionId ?? "" : "");
 type TierGroup = { name: string | null; color: string | null; tiers: CompraTier[] };
 
-const RESERVA_SEG = 600;
+const RESERVA_SEG = 900; // igual ao prazo do pedido no servidor (15 min)
 const PIX_SEG = 900;
 const STEP_INDEX: Record<CompraStep, number> = { resumo: 0, dados: 1, pagamento: 2, pix: 2, proc: 2, done: 3 };
 
@@ -358,7 +358,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       if (pay === "pix") {
         const r = await submitOrder("pix");
         if (r) {
-          setOrder({ orderId: r.orderId, number: r.number, totalCents: r.totalCents, pixCode: r.pixCode, pixQrSvg: r.pixQrSvg, expiresAt: r.expiresAt, live: r.live });
+          setOrder({ orderId: r.orderId, number: r.number, totalCents: r.totalCents, pixCode: r.pixCode, pixQrSvg: r.pixQrSvg, expiresAt: r.expiresAt, live: r.live, testUrl: r.hostedUrl });
           setPixLeft(r.live && r.expiresAt ? secondsUntil(r.expiresAt) : PIX_SEG);
           setCopied(false);
           go("pix");
@@ -707,6 +707,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                       pixLeft > 0 ? <>
                         <span className="pix-wait" aria-live="polite"><span className="pw-dot" aria-hidden="true" />Aguardando pagamento · a confirmação aparece aqui sozinha</span>
                         <button className="sec2 pix-chk" type="button" onClick={() => void checkPixNow()} disabled={busy}>{busy ? "Conferindo…" : "Já paguei"}</button>
+                        {order.testUrl && <a className="pix-test" href={order.testUrl} target="_blank" rel="noopener noreferrer">Modo de teste: simular o pagamento deste Pix ↗</a>}
                       </> : <>
                         <span className="pix-wait">O código expirou e nada foi cobrado.</span>
                         <button className="go2" type="button" onClick={prev}>Gerar novo pagamento</button>

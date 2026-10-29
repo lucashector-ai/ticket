@@ -131,11 +131,11 @@ export const ARTICLES: HelpArticle[] = [
   {
     slug: "tempo-de-reserva", cat: "comprar",
     title: "Quanto tempo tenho para concluir a compra?",
-    summary: "O checkout dá 10 minutos para preencher e pagar. No Pix, o código vale por 15 minutos. O ingresso é seu quando o pagamento é aprovado.",
+    summary: "O checkout dá 15 minutos para preencher e pagar, inclusive no Pix. O ingresso é seu quando o pagamento é aprovado.",
     keywords: "reserva tempo esgotou expirou cronometro timer acabou o tempo",
     body: [
-      p("Ao começar a compra, um cronômetro no topo do checkout mostra o tempo que você tem para preencher os dados e escolher a forma de pagamento: **10 minutos**."),
-      p("Quando você gera o código Pix, ele vale por **15 minutos**. Pague dentro desse prazo e a confirmação aparece na tela sozinha."),
+      p("Ao começar a compra, um cronômetro no topo do checkout mostra o tempo que você tem para preencher os dados e pagar: **15 minutos**."),
+      p("O código Pix vale até o fim desse mesmo prazo. Pague dentro dele e a confirmação aparece na tela sozinha."),
       p("O ingresso só é garantido quando o pagamento é aprovado. Em vendas muito disputadas, um lote pode esgotar enquanto você paga. Se isso acontecer depois da cobrança, **o valor é estornado automaticamente** e avisamos por e-mail."),
       h("O tempo acabou. E agora?"),
       p("Nada foi cobrado. É só voltar à página do evento e escolher os ingressos de novo. Se o lote tiver esgotado nesse meio-tempo, outro lote pode estar disponível."),

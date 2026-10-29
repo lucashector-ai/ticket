@@ -23,7 +23,7 @@ const ST: Record<Listing["status"], [string, string]> = {
 export function PainelRevenda({ p }: { p: RevendaProps }) {
   const router = useRouter();
   const { flash } = useToast();
-  const [f, setF] = useState({ transferEnabled: p.transferEnabled, resaleEnabled: p.resaleEnabled, resaleMaxPct: String(p.resaleMaxPct) });
+  const [f, setF] = useState({ transferEnabled: p.transferEnabled, resaleEnabled: p.resaleEnabled, resaleMaxPct: String(Math.min(p.resaleMaxPct, 100)) });
   const [dirty, setDirty] = useState(false);
   const [busy, start] = useTransition();
   const [view, setView] = useState<"open" | "sold" | "all">("open");
@@ -46,7 +46,7 @@ export function PainelRevenda({ p }: { p: RevendaProps }) {
   const turningOff = p.resaleEnabled && !f.resaleEnabled && open.length > 0;
 
   const kpis: [string, string, string][] = [
-    ["Revenda", p.resaleEnabled ? "Ligada" : "Desligada", p.resaleEnabled ? `até ${p.resaleMaxPct}% do valor pago` : "ninguém pode anunciar"],
+    ["Revenda", p.resaleEnabled ? "Ligada" : "Desligada", p.resaleEnabled ? `até ${Math.min(p.resaleMaxPct, 100)}% do valor pago` : "ninguém pode anunciar"],
     ["À venda agora", String(p.kpis.active), "ingressos anunciados"],
     ["Revendidos", String(p.kpis.sold), `${p.kpis.volume} movimentados`],
     ["Transferências", String(p.kpis.transfers), p.transferEnabled ? "entre amigos, sem custo" : "desligadas"],
@@ -106,8 +106,8 @@ export function PainelRevenda({ p }: { p: RevendaProps }) {
               {f.resaleEnabled && (
                 <label className="fld">
                   <span>Preço máximo na revenda</span>
-                  <span className="pfx"><input type="number" min={50} max={300} step={5} value={f.resaleMaxPct} onChange={(e) => set({ resaleMaxPct: e.target.value })} /><em>% do valor pago</em></span>
-                  <small>{pct < 50 || pct > 300 ? "Use de 50% a 300%." : pct === 100 ? "Ninguém revende acima do que pagou." : `Um ingresso de R$ 100 pode ser revendido por até R$ ${pct}.`}</small>
+                  <span className="pfx"><input type="number" min={50} max={100} step={5} value={f.resaleMaxPct} onChange={(e) => set({ resaleMaxPct: e.target.value })} /><em>% do valor pago</em></span>
+                  <small>{pct < 50 || pct > 100 ? "Use de 50% a 100%: pelos Termos, ninguém revende acima do que pagou." : pct === 100 ? "Ninguém revende acima do que pagou." : `Um ingresso de R$ 100 pode ser revendido por até R$ ${pct}.`}</small>
                 </label>
               )}
               {turningOff && <small className="rv-w">Ao salvar, os {open.length} anúncios à venda saem do ar. Quem estiver pagando agora termina a compra.</small>}
