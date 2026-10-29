@@ -5,6 +5,7 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { LoginForm } from "@/components/auth/login-form";
 import { getAuthState } from "@/lib/auth/server";
 import { turnstileSiteKey } from "@/lib/turnstile";
+import { appleSignInEnabled } from "@/lib/auth/apple";
 import { safeNextParam } from "@/lib/auth/next-param";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export default async function EntrarPage({ searchParams }: Props) {
     <div className="pg-entrar">
       <SiteHeader user={null} variant="default" activePath="/entrar" />
       <AuthCard>
-        <LoginForm next={next} human={turnstileSiteKey()} />
+        <LoginForm next={next} human={turnstileSiteKey()} apple={appleSignInEnabled()} />
       </AuthCard>
     </div>
   );

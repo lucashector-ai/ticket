@@ -14,7 +14,7 @@ import { CodeBoxes } from "@/components/auth/verify-form";
 
 type Props = {
   mfa: { method: "email" | "totp" | null; to: string | null; recoveryLeft: number };
-  login: { password: boolean; google: boolean };
+  login: { password: boolean; google: boolean; apple: boolean };
   email: string;
   devices: DeviceRow[];
   activity: { id: string; kind: string; detail: string | null; ip: string | null; device: string; at: string }[];
@@ -209,18 +209,22 @@ function PasswordCard({ login, email }: { login: Props["login"]; email: string }
     return true;
   }
 
-  // conta criada pelo Google: a senha é a da conta Google
+  // conta criada pelo Google ou pela Apple: a senha é a da conta deles
   if (!login.password) {
+    const by = login.google ? "Google" : login.apple ? "Apple" : null;
     return (
       <section className="ct-card" aria-labelledby="pw-t">
         <div className="ct-row">
           <div>
-            <h2 className="ct-h" id="pw-t">Acesso pelo Google <span className="ct-pill">Google</span></h2>
+            <h2 className="ct-h" id="pw-t">{by ? <>Acesso pelo {by} <span className="ct-pill">{by}</span></> : "Senha"}</h2>
             <p className="ct-v">{login.google
               ? "Sua conta entra com o Google, então não tem senha na Tickets Win para trocar. A senha e a segurança do acesso ficam na sua conta Google."
-              : "Sua conta não tem senha na Tickets Win."}</p>
+              : login.apple
+                ? "Sua conta entra com a Apple, então não tem senha na Tickets Win para trocar. A senha e a segurança do acesso ficam no seu Apple ID."
+                : "Sua conta não tem senha na Tickets Win."}</p>
           </div>
           {login.google && <a className="ct-b" href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer">Segurança do Google</a>}
+          {!login.google && login.apple && <a className="ct-b" href="https://account.apple.com" target="_blank" rel="noopener noreferrer">Conta Apple</a>}
         </div>
       </section>
     );
@@ -231,7 +235,7 @@ function PasswordCard({ login, email }: { login: Props["login"]; email: string }
       <div className="ct-row">
         <div>
           <h2 className="ct-h" id="pw-t">Senha</h2>
-          <p className="ct-v">{login.google ? "Você entra com o Google ou com a sua senha. " : ""}Para trocar, mandamos um link para o seu e-mail. Só quem abre o e-mail consegue criar a senha nova.</p>
+          <p className="ct-v">{login.google ? "Você entra com o Google ou com a sua senha. " : login.apple ? "Você entra com a Apple ou com a sua senha. " : ""}Para trocar, mandamos um link para o seu e-mail. Só quem abre o e-mail consegue criar a senha nova.</p>
         </div>
         {!sent && <button className="ct-b" type="button" onClick={() => void send()} disabled={busy}>{busy ? "Enviando…" : "Trocar senha"}</button>}
       </div>

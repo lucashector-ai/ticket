@@ -198,12 +198,15 @@ export async function revokeOtherDevices(): Promise<R> {
   return { ok: true };
 }
 
-/** Como a pessoa entra: senha própria e/ou Google (conta criada pelo Google não tem senha aqui). */
-export async function loginMethods(): Promise<{ password: boolean; google: boolean }> {
-  await me();
-  const r = await auth.listAccounts().catch(() => null);
+/** Como a pessoa entra: senha própria, Google e/ou Apple (conta criada por eles não tem senha aqui). */
+export async function loginMethods(): Promise<{ password: boolean; google: boolean; apple: boolean }> {
+  const { user } = await me();
+  const [r, p] = await Promise.all([
+    auth.listAccounts().catch(() => null),
+    db.select({ appleSub: schema.userProfiles.appleSub }).from(schema.userProfiles).where(eq(schema.userProfiles.userId, user.id)).catch(() => []),
+  ]);
   const ids = ((r?.data ?? []) as { providerId?: string }[]).map((a) => a.providerId);
-  return { password: ids.includes("credential"), google: ids.includes("google") };
+  return { password: ids.includes("credential"), google: ids.includes("google"), apple: !!p[0]?.appleSub };
 }
 
 /* ============================== duas etapas ============================== */

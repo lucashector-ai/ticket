@@ -84,6 +84,8 @@ export const userProfiles = pgTable("user_profiles", {
   mfaRecovery: jsonb("mfa_recovery").$type<string[]>(),
   /** cliente no processador de pagamentos (cus_…), criado só quando a pessoa salva um cartão; os cartões ficam lá, não aqui */
   stripeCustomerId: varchar("stripe_customer_id", { length: 64 }),
+  /** identificador da pessoa na Apple (sub do id_token), quando entra com a Apple */
+  appleSub: varchar("apple_sub", { length: 128 }),
   ...timestamps,
 });
 
@@ -159,6 +161,16 @@ export const securityEvents = pgTable(
   },
   (t) => [index("security_events_user_idx").on(t.userId, t.createdAt)],
 );
+
+/**
+ * Entrar com Apple: o código de "entrar" que o Neon Auth gera para o e-mail confirmado pela Apple.
+ * A linha nasce sem código (esperando) e o webhook preenche; o callback lê e apaga em seguida.
+ */
+export const appleOtps = pgTable("apple_otps", {
+  emailHash: varchar("email_hash", { length: 64 }).primaryKey(),
+  otp: varchar("otp", { length: 32 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const organizers = pgTable(
   "organizers",

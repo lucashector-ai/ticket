@@ -5,12 +5,13 @@ import { useActionState, useEffect, useState } from "react";
 import { signInWithEmail } from "@/lib/actions/auth";
 import { useToast } from "@/components/toast";
 import { GoogleButton } from "@/components/auth/google-button";
+import { AppleButton } from "@/components/auth/apple-button";
 import { CheckIcon, FieldError, FormError, PasswordField, fieldCls, isEmail } from "@/components/auth/fields";
 import { Turnstile, useHuman } from "@/components/auth/turnstile";
 
 type Err = { email?: boolean; pw?: boolean };
 
-export function LoginForm({ next, human }: { next: string; human: string | null }) {
+export function LoginForm({ next, human, apple = false }: { next: string; human: string | null; apple?: boolean }) {
   const [state, formAction, isPending] = useActionState(signInWithEmail, null);
   const { flash } = useToast();
   const [email, setEmail] = useState("");
@@ -76,6 +77,7 @@ export function LoginForm({ next, human }: { next: string; human: string | null 
         {isPending ? "Entrando…" : humanOk ? "Entrar" : "Verificando…"}
       </button>
       <GoogleButton label="Entrar com Google" next={next} />
+      {apple && <AppleButton next={next} />}
       <p className="lx-sw">
         Ainda não tem conta? <Link className="au-lk" href={signupHref}>Criar conta</Link>
       </p>

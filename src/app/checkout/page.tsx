@@ -10,6 +10,7 @@ import { CompraFlow, type CompraEvent, type CompraSession, type CompraStep } fro
 import { dateNice, hourLabel, parts } from "@/lib/format";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
 import { turnstileSiteKey } from "@/lib/turnstile";
+import { appleSignInEnabled } from "@/lib/auth/apple";
 import { tierStatus } from "@/lib/tickets/status";
 import { canBuy } from "@/lib/launch";
 import { queueAllows } from "@/lib/queue";
@@ -139,6 +140,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         notice={notice}
         queueEventId={!special && e.queueMode !== "off" ? e.id : null}
         human={turnstileSiteKey()}
+        apple={appleSignInEnabled()}
         stripeKey={stripeKey}
         hasSavedCards={!!stripeKey && !!profile?.stripeCustomerId}
         lock={special ? (special.kind === "grupo"

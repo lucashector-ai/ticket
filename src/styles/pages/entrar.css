@@ -685,6 +685,8 @@
   .lx-btn:hover{background:#000;color:#FFFFFF}
   .lx-soc{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:50px;border-radius:12px;background:#F4F4F1;color:#111;font-size:14.5px;font-weight:600;text-align:center;transition:background .2s}
   .lx-soc:hover{background:#EAEAE4;color:#111}
+  .lx-soc.lx-ap{background:#000;color:#FFFFFF}
+  .lx-soc.lx-ap:hover{background:#1D1D1F;color:#FFFFFF}
   .lx-sw{margin:14px 0 0;text-align:center;font-size:14px;color:#6E6E73}
   .lx-sw .au-lk{text-decoration:none;font-weight:700}
   .lx-sw .au-lk:hover{text-decoration:underline}

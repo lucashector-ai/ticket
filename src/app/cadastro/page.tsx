@@ -5,6 +5,7 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { SignupForm } from "@/components/auth/signup-form";
 import { getAuthState } from "@/lib/auth/server";
 import { turnstileSiteKey } from "@/lib/turnstile";
+import { appleSignInEnabled } from "@/lib/auth/apple";
 import { safeNextParam } from "@/lib/auth/next-param";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export default async function CadastroPage({ searchParams }: Props) {
     <div className="pg-entrar">
       <SiteHeader user={null} variant="default" activePath="/entrar" />
       <AuthCard>
-        <SignupForm next={next} human={turnstileSiteKey()} initialEmail={email} />
+        <SignupForm next={next} human={turnstileSiteKey()} apple={appleSignInEnabled()} initialEmail={email} />
       </AuthCard>
     </div>
   );

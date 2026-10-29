@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { after } from "next/server";
+import { catchAppleOtp } from "@/lib/auth/apple";
 import { verifyNeonWebhook } from "@/lib/auth/webhook";
 import { emailEnabled, logEmails } from "@/lib/email";
 import { mailAuthCode, mailAuthLink, mailWelcome } from "@/lib/notify";
@@ -34,6 +35,11 @@ export async function POST(req: Request) {
 
   const email = ev.user?.email ?? "", d = ev.event_data ?? {};
   await logEmails("webhook", [{ to: email, subject: `${ev.event_type} ${d.otp_type ?? d.link_type ?? d.auth_provider ?? ""}`.trim() }], true, null);
+  // código de "entrar" pedido pelo login com Apple: fica no banco para o callback, não vira e-mail
+  if (ev.event_type === "send.otp" && d.otp_type === "sign-in" && (await catchAppleOtp(email, d.otp_code ?? ""))) {
+    await env.KV.put(seenKey, "1", { expirationTtl: 60 * 60 * 24 });
+    return Response.json({ ok: true, apple: true });
+  }
   if (ev.event_type === "send.otp" || ev.event_type === "send.magic_link") {
     if (!emailEnabled()) return Response.json({ error: "e-mail não configurado" }, { status: 503 });
     if (d.delivery_preference === "sms") return Response.json({ ok: true, skipped: "sms" });

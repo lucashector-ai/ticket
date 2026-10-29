@@ -20,7 +20,7 @@ function ua(s: string | null) {
 
 export default async function SegurancaPage() {
   const { user, profile } = await contaUser("/conta/seguranca");
-  const [mfa, devices, events, login] = await Promise.all([mfaSettings(user.id), listDevices().catch(() => []), listSecurityEvents(user.id), loginMethods().catch(() => ({ password: true, google: false }))]);
+  const [mfa, devices, events, login] = await Promise.all([mfaSettings(user.id), listDevices().catch(() => []), listSecurityEvents(user.id), loginMethods().catch(() => ({ password: true, google: false, apple: false }))]);
   const name = profile?.name || user.name || "";
   const mfaTo = mfa.method === "email" ? maskEmail(mfa.email || user.email) : null;
   return (

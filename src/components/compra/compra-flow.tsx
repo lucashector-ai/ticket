@@ -102,6 +102,8 @@ type Props = {
   lock?: CompraLock | null;
   /** chave do verificador de humanos (Turnstile), quando ligado */
   human?: string | null;
+  /** mostra "Continuar com a Apple" no login do checkout */
+  apple?: boolean;
   /** chave publicável da Stripe: com ela o pagamento é de verdade; sem ela, modo de teste */
   stripeKey?: string | null;
   /** pedido criado e ainda não pago (recarregou a página, voltou de Meus ingressos): continua nele */
@@ -117,7 +119,7 @@ type Addr = { cep: string; street: string; number: string; complement: string; d
 const NO_ADDR: Addr = { cep: "", street: "", number: "", complement: "", district: "", city: "", uf: "" };
 const UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
 
-export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, stripeKey, resume, notice, hasSavedCards }: Props) {
+export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, apple = false, stripeKey, resume, notice, hasSavedCards }: Props) {
   const live = !!stripeKey;
   const router = useRouter();
   const { flash } = useToast();
@@ -801,7 +803,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   </span>
                 ) : (
                   <div ref={authRef}>
-                    <InlineAuth onDone={() => router.refresh()} returnUrl={urlFor("dados")} highlight={authNudge || tried} human={human ?? null} />
+                    <InlineAuth onDone={() => router.refresh()} returnUrl={urlFor("dados")} highlight={authNudge || tried} human={human ?? null} apple={apple} />
                   </div>
                 )}
                 <div className="fg2">
