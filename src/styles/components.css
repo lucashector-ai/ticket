@@ -67,3 +67,16 @@ body:has(.mm) .mbar{display:none}
 .tel{display:flex;gap:8px;width:100%;min-width:0}
 .tel > input{flex:1 1 auto;min-width:0;width:auto !important}
 .tel > .tel-cc{flex:0 0 auto;width:auto !important;min-width:0;padding-left:14px !important;padding-right:36px !important;cursor:pointer;font-variant-numeric:tabular-nums;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-position:right 14px center !important;background-size:14px !important}
+
+/* Estado + Cidade (components/city-select): os dois com a mesma setinha; Cidade abre a lista do IBGE com busca */
+select.cs-uf,input.cs-in{-webkit-appearance:none;appearance:none;padding-right:40px !important;cursor:pointer;text-overflow:ellipsis;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-position:right 14px center !important;background-size:14px !important}
+input.cs-in:focus{cursor:text}
+input.cs-in:disabled,select.cs-uf:disabled{cursor:not-allowed;opacity:.6}
+.cs{position:relative;min-width:0;width:100%}
+.cs > input.cs-in{width:100%}
+.cs-pop{position:absolute;z-index:60;left:0;right:0;top:calc(100% + 6px);min-width:220px;max-height:280px;overflow-y:auto;margin:0;padding:6px;list-style:none;border-radius:16px;background:#fff;box-shadow:0 18px 50px rgba(17,17,17,.16),0 0 0 1px rgba(17,17,17,.06);overscroll-behavior:contain}
+.cs-pop li{padding:10px 12px;border-radius:10px;font-size:14.5px;font-weight:500;color:#111;cursor:pointer;text-align:left}
+.cs-pop li.hi{background:#F4F4F1}
+.cs-pop li.on{font-weight:700}
+.cs-pop li.on::after{content:"✓";float:right;color:#111}
+.cs-pop .cs-empty{color:#8A8A85;cursor:default;font-size:13.5px}

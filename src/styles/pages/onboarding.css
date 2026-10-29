@@ -31,7 +31,7 @@
   .ob-hint{font-size:13px;color:#8A8A90}
   .ob-hint b{color:#111}
   .ob-hint.bad{color:#B3261E}
-  .ob-2{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:12px}
+  .ob-2{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.2fr);gap:12px}
   .ob-terms{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.5;color:#3A3A3C}
   .ob-terms input{width:20px;height:20px;margin:1px 0 0;accent-color:#111;flex:none}
   .ob-terms a{color:#111;font-weight:600;text-decoration:underline;text-underline-offset:3px}

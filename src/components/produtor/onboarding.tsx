@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { checkOrganizerName, finishOnboarding } from "@/lib/actions/onboarding";
+import { CitySelect, UfSelect } from "@/components/city-select";
 
 type Init = { name: string; city: string; uf: string; instagram: string; tagline: string };
 type Props = { firstName: string; initial: Init; ufs: readonly string[] };
@@ -14,7 +15,7 @@ const initialsOf = (n: string) => n.trim().split(/\s+/).map((p) => p[0]).filter(
  * Cadastro do produtor aprovado: o nome público e como as pessoas te encontram,
  * com a página do produtor aparecendo ao vivo do lado.
  */
-export function ProducerOnboarding({ firstName, initial, ufs }: Props) {
+export function ProducerOnboarding({ firstName, initial }: Props) {
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [f, setF] = useState(initial);
   const [terms, setTerms] = useState(false);
@@ -84,8 +85,8 @@ export function ProducerOnboarding({ firstName, initial, ufs }: Props) {
               <h1 className="ob-h">Onde o público te encontra?</h1>
               <p className="ob-sub">Esses dados aparecem na sua página de produtor. Dá para mudar depois no painel.</p>
               <div className="ob-2">
-                <label className="ob-f"><span className="ob-l">Cidade principal</span><span className="ob-in"><input value={f.city} onChange={(e) => set({ city: e.target.value })} placeholder="São Paulo" maxLength={120} /></span></label>
-                <label className="ob-f"><span className="ob-l">Estado</span><span className="ob-in"><select value={f.uf} onChange={(e) => set({ uf: e.target.value })}><option value="">UF</option>{ufs.map((u) => <option key={u} value={u}>{u}</option>)}</select></span></label>
+                <label className="ob-f"><span className="ob-l">Estado</span><span className="ob-in"><UfSelect value={f.uf} onChange={(uf) => set({ uf })} /></span></label>
+                <label className="ob-f"><span className="ob-l">Cidade principal</span><span className="ob-in"><CitySelect uf={f.uf} value={f.city} onChange={(city) => set({ city })} /></span></label>
               </div>
               <label className="ob-f"><span className="ob-l">Instagram</span><span className="ob-in pre"><b>@</b><input value={f.instagram.replace(/^@/, "")} onChange={(e) => set({ instagram: e.target.value })} placeholder="suaprodutora" autoCapitalize="off" maxLength={60} /></span></label>
               <label className="ob-f"><span className="ob-l">Uma frase sobre vocês <em>opcional</em></span><span className="ob-in"><input value={f.tagline} onChange={(e) => set({ tagline: e.target.value })} placeholder="Ex.: Festas de música eletrônica em galpões desde 2019" maxLength={140} /></span><span className="ob-hint">{f.tagline.length}/140</span></label>

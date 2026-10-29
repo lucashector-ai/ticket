@@ -432,7 +432,7 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
               <div className="cv-mcard"><span className="tx"><b>{d.venue.name}</b><span className="s">{d.venue.place?.addr || d.venue.city || "Falta a cidade"}</span></span><button className="chg" type="button" onClick={() => { setQ(""); setEditing(true); }}>Trocar</button></div>
             </div>
             <label className="cv-fl cv-nm"><span>Nome do local</span><input className="cv-in" value={d.venue.name} onChange={(e) => setVenue(e.target.value, d.venue.city)} /></label>
-            <CityStatePicker value={d.venue.city} onChange={(v, auto) => setVenue(d.venue.name, v, null, auto ? undefined : null)} autoFocus={!cityOk} />
+            <CityStatePicker value={d.venue.city} onChange={(v, auto) => setVenue(d.venue.name, v, null, auto ? undefined : null)} />
             <div className="cv-tmb cap">
               <small>Lotação do local</small>
               <div className="r">

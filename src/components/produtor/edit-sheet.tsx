@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { uploadImage } from "@/components/criar/shared";
 import { useToast } from "@/components/toast";
 import { updateProducerProfile } from "@/lib/actions/produtor";
+import { CitySelect, UfSelect } from "@/components/city-select";
 
 export type ProducerForm = {
   name: string; tagline: string; bio: string; cityName: string; uf: string;
@@ -54,8 +55,8 @@ export function EditSheet({ orgId, initial, onClose, onSaved }: { orgId: string;
           <Field label="Frase de apresentação" hint={`${f.tagline.length}/200 · aparece embaixo do nome`}><input value={f.tagline} maxLength={200} onChange={(e) => set({ tagline: e.target.value })} placeholder="Festas de house e techno no centro de SP desde 2019." /></Field>
           <Field label="Sobre" hint="Separe os parágrafos com uma linha em branco."><textarea value={f.bio} maxLength={4000} onChange={(e) => set({ bio: e.target.value })} placeholder="Conte a história, o estilo dos eventos e o que o público pode esperar." /></Field>
           <div className="pe-cu">
-            <Field label="Cidade"><input value={f.cityName} maxLength={120} onChange={(e) => set({ cityName: e.target.value })} placeholder="São Paulo" /></Field>
-            <Field label="UF"><input value={f.uf} maxLength={2} onChange={(e) => set({ uf: e.target.value.toUpperCase() })} placeholder="SP" /></Field>
+            <Field label="Estado"><UfSelect value={f.uf} onChange={(uf) => set({ uf })} /></Field>
+            <Field label="Cidade"><CitySelect uf={f.uf} value={f.cityName} onChange={(cityName) => set({ cityName })} /></Field>
           </div>
 
           <span className="pe-sec">Contato e redes</span>

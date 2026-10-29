@@ -6,6 +6,7 @@ import { authorizeEmailChange, confirmNewEmail, requestNewEmail, resendEmailChan
 import { ResendButton } from "@/components/auth/resend";
 import { useToast } from "@/components/toast";
 import { PhoneField } from "@/components/phone-field";
+import { CitySelect, UfSelect } from "@/components/city-select";
 import { CodeBoxes } from "@/components/auth/verify-form";
 import type { UserAddress } from "@/db/schema";
 
@@ -111,8 +112,8 @@ export function ContaDados({ initial }: { initial: Initial }) {
           <label className="ct-f"><span className="ct-l">Número</span><input ref={numRef} className="ct-in" value={addr.number} onChange={(e) => setA({ number: e.target.value })} /></label>
           <label className="ct-f span2"><span className="ct-l">Complemento <em>opcional</em></span><input className="ct-in" value={addr.complement ?? ""} onChange={(e) => setA({ complement: e.target.value })} autoComplete="address-line2" placeholder="Apto, bloco, referência" /></label>
           <label className="ct-f"><span className="ct-l">Bairro</span><input className="ct-in" value={addr.district} onChange={(e) => setA({ district: e.target.value })} /></label>
-          <label className="ct-f"><span className="ct-l">Cidade</span><input className="ct-in" value={addr.city} onChange={(e) => setA({ city: e.target.value })} autoComplete="address-level2" /></label>
-          <label className="ct-f"><span className="ct-l">Estado</span><input className="ct-in" value={addr.uf} onChange={(e) => setA({ uf: e.target.value.toUpperCase().slice(0, 2) })} autoComplete="address-level1" placeholder="UF" /></label>
+          <label className="ct-f"><span className="ct-l">Estado</span><UfSelect className="ct-in" value={addr.uf} onChange={(uf) => setA({ uf })} /></label>
+          <label className="ct-f"><span className="ct-l">Cidade</span><CitySelect className="ct-in" uf={addr.uf} value={addr.city} onChange={(city) => setA({ city })} /></label>
         </div>
 
         {err && <p className="ct-err" role="alert">{err}</p>}

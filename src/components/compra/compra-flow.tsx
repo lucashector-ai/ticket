@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MINI_CHECK, PAY_APPROVED_MS, PAY_MIN_MS, playPaymentFlood } from "@/lib/pay-anim";
+import { CitySelect, UfSelect } from "@/components/city-select";
 import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { checkCoupon, confirmPayment, placeOrder, type ConfirmResult } from "@/lib/actions/compra";
@@ -1020,11 +1021,11 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                               </label>
                               <label className="lf2 a-ci">
                                 <span className="lf2-l">Cidade</span>
-                                <input className={tried && addrUsed && !addrOk.city ? "in2 bad" : "in2"} type="text" value={addr.city} onChange={(e) => setA({ city: e.target.value })} autoComplete="billing address-level2" />
+                                <CitySelect className="in2" invalid={tried && addrUsed && !addrOk.city} uf={addr.uf} value={addr.city} onChange={(city) => setA({ city })} />
                               </label>
                               <label className="lf2 a-uf">
                                 <span className="lf2-l">UF</span>
-                                <input className={tried && addrUsed && !addrOk.uf ? "in2 bad" : "in2"} type="text" placeholder="SP" value={addr.uf} onChange={(e) => setA({ uf: e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase() })} autoComplete="billing address-level1" />
+                                <UfSelect className="in2" short invalid={tried && addrUsed && !addrOk.uf} value={addr.uf} onChange={(uf) => setA({ uf })} autoComplete="billing address-level1" />
                               </label>
                               {cepMsg && <p className="cd-cepm span-all" role="status">{cepMsg}</p>}
                             </div>

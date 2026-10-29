@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { submitApplication, type AppInput } from "@/lib/actions/inscricao";
 import { PhoneField } from "@/components/phone-field";
+import { CitySelect, UfSelect } from "@/components/city-select";
 
 type App = { status: "pending" | "rejected"; createdAt: string; note: string | null; company: string | null; city: string; uf: string; category: string } | null;
 type Props = { email: string; firstName: string; lastName: string; phone: string; app: App; ufs: readonly string[]; categories: readonly string[]; sources: readonly string[] };
@@ -106,8 +107,8 @@ export function ProducerApply(p: Props) {
               <legend>Seus eventos</legend>
               <label className="ins-f"><span>Nome da produtora</span><input value={f.company} onChange={(e) => set({ company: e.target.value })} placeholder="Se tiver" maxLength={120} /></label>
               <div className="ins-g2 city">
-                <label className="ins-f"><span>Cidade do evento *</span><input value={f.city} onChange={(e) => set({ city: e.target.value })} autoComplete="address-level2" /></label>
-                <label className="ins-f"><span>Estado *</span><select value={f.uf} onChange={(e) => set({ uf: e.target.value })}><option value="">UF</option>{p.ufs.map((u) => <option key={u} value={u}>{u}</option>)}</select></label>
+                <label className="ins-f"><span>Estado *</span><UfSelect value={f.uf} onChange={(uf) => set({ uf })} /></label>
+                <label className="ins-f"><span>Cidade do evento *</span><CitySelect uf={f.uf} value={f.city} onChange={(city) => set({ city })} /></label>
               </div>
               <div className="ins-f"><span>Categoria do evento *</span>
                 <div className="ins-chips" role="radiogroup" aria-label="Categoria do evento">
