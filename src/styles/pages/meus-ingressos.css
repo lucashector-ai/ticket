@@ -472,6 +472,9 @@
 .lu-r .lu-go{display:none}
 }
   .mi{padding-top:56px;padding-bottom:24px;max-width:1280px}
+  .mi-verify{max-width:1280px;margin-top:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;border-radius:18px;background:#EEFBC4;color:#3D5200;font-size:14.5px;line-height:1.45}
+  .mi-verify span{flex:1;min-width:220px}
+  .mi-verify a{flex:none;height:38px;padding:0 16px;display:inline-flex;align-items:center;border-radius:999px;background:#111;color:#fff;font-weight:600;font-size:13.5px}
   .mi-h{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:36px}
   .mi-t{font-family:'Inter Tight',sans-serif;font-size:clamp(40px,4.6vw,64px);line-height:1;letter-spacing:-.04em;font-weight:600;margin:0;animation:rise .7s var(--ease) both}
   .mi-s{margin:14px 0 0;font-size:16px;color:#6E6E73;max-width:520px;animation:rise .7s .05s var(--ease) both}

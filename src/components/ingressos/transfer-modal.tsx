@@ -34,7 +34,7 @@ export function TransferModal({ title, ticketId, cur, qty, onClose, onDone }: Pr
         </div>
         <button className="pl-x mo-x" type="button" onClick={onClose} aria-label="Fechar"><IcoClose /></button>
       </div>
-      <p className="mo-p">Vamos enviar {which} para o e-mail abaixo. O QR code atual deixa de valer assim que a pessoa aceitar.</p>
+      <p className="mo-p">Vamos enviar {which} para o e-mail abaixo. A pessoa recebe um link para aceitar. O QR code atual deixa de valer na hora; enquanto ela não aceitar, você pode cancelar.</p>
       <form action={action} className="mo-f">
         <input type="hidden" name="ticketId" value={ticketId} />
         <label className="fld">

@@ -1,9 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth/server";
 import { db, schema } from "@/db";
+import { emailEnabled } from "@/lib/email";
+import { mailPasswordChanged } from "@/lib/notify";
 
 export type AuthState = { error?: string; ok?: boolean } | null;
 
@@ -36,6 +39,7 @@ export async function signUpWithEmail(_prev: AuthState, formData: FormData): Pro
   if (userId) {
     await db.insert(schema.userProfiles).values({ userId, name: parsed.data.name, email: parsed.data.email }).onConflictDoNothing();
   }
+  sendActivation(parsed.data.email);
   redirect(safeNext(formData.get("next")));
 }
 
@@ -70,5 +74,24 @@ export async function signUpInline(name: string, email: string, password: string
   if (error) return { ok: false, error: friendly(error.message, error.code) };
   const userId = (data as { user?: { id?: string } } | null)?.user?.id;
   if (userId) await db.insert(schema.userProfiles).values({ userId, name: parsed.data.name, email: parsed.data.email }).onConflictDoNothing();
+  sendActivation(parsed.data.email);
+  return { ok: true };
+}
+
+/** E-mail de ativação (código de confirmação) logo depois do cadastro. A conta já funciona antes de confirmar. */
+function sendActivation(email: string) {
+  if (!emailEnabled()) return;
+  after(async () => {
+    try { await auth.emailOtp.sendVerificationOtp({ email, type: "email-verification" }); } catch (e) { console.error("activation", e); }
+  });
+}
+
+/** Nova senha com o código do e-mail; avisa por e-mail que a senha mudou. */
+export async function resetPasswordWithCode(email: string, otp: string, password: string): Promise<{ ok: boolean }> {
+  const p = z.object({ email: z.string().email(), otp: z.string().trim().min(4).max(12), password: z.string().min(8).max(200) }).safeParse({ email, otp, password });
+  if (!p.success) return { ok: false };
+  const res = await auth.emailOtp.resetPassword({ email: p.data.email, otp: p.data.otp, password: p.data.password });
+  if (res?.error) return { ok: false };
+  after(() => mailPasswordChanged(p.data.email));
   return { ok: true };
 }

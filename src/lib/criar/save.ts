@@ -1,9 +1,11 @@
 import { randomBytes } from "node:crypto";
+import { after } from "next/server";
 import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { dateFull, dateNice, hourLabel, initials, parts, slugify } from "@/lib/format";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
+import { mailEventPublished } from "@/lib/notify";
 import { linkArtistSpotify } from "@/lib/spotify-artists";
 import { AREA_KINDS, KIND_COLOR, MAX_AREAS, normalizePlan } from "@/lib/criar/plan";
 import {
@@ -295,6 +297,7 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   const typesStart = presaleStart ?? salesStart;
 
   let eventId: string, slug: string;
+  const firstPublish = publish && !existing?.publishedAt;
   if (existing) {
     eventId = existing.id; slug = existing.slug;
     await db.update(events).set({ ...values, ...launch, publishedAt: publish ? existing.publishedAt ?? new Date() : existing.publishedAt }).where(eq(events.id, eventId));
@@ -407,5 +410,6 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   }
 
   await db.update(events).set({ draft: { form: d, dbMap } }).where(eq(events.id, eventId));
+  if (firstPublish) after(() => mailEventPublished(eventId));
   return { ok: true, eventId, slug, status: publish ? "published" : "draft", unlisted: d.vis === "link", dbMap };
 }

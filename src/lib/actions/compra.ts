@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { randomBytes } from "node:crypto";
 import QRCode from "qrcode";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
@@ -14,7 +15,7 @@ import { promoterForOrder } from "@/lib/promoters";
 import { queueAllows } from "@/lib/queue";
 import { heldByType, heldSql } from "@/lib/holds";
 import { claimSpecial, lookupSpecial, settleShare, shareStillHeld } from "@/lib/special";
-import { notifyResaleSold } from "@/lib/resale";
+import { mailGroupSharePaid, mailOrderConfirmed, mailResaleSold } from "@/lib/notify";
 
 const { orders, orderItems, tickets, ticketTypes, coupons, events, userProfiles, eventSignups, groupShares, resaleListings, ticketTransfers } = schema;
 
@@ -265,6 +266,8 @@ export async function confirmPayment(orderId: string): Promise<ConfirmResult> {
   if (order.couponId) await db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId));
   await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: `${method === "free" ? "FREE" : "TEST"}-${order.number}` }).where(eq(orders.id, order.id));
   if (order.groupShareId) await settleShare(order.groupShareId, order.id);
+  const shareId = order.groupShareId;
+  after(async () => { await mailOrderConfirmed(order.id); if (shareId) await mailGroupSharePaid(shareId); });
   const first = inserted[0];
   return {
     ok: true, number: order.number ?? 0, totalCents: order.totalCents, method, installments: order.installments,
@@ -294,7 +297,7 @@ async function confirmResale(order: typeof orders.$inferSelect & { items: (typeo
   }
   await db.update(ticketTransfers).set({ status: "cancelled" }).where(and(eq(ticketTransfers.ticketId, l.ticketId), eq(ticketTransfers.status, "pending")));
   await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: `TEST-${order.number}` }).where(eq(orders.id, order.id));
-  await notifyResaleSold(l.sellerUserId, l.event.title, l.priceCents);
+  after(async () => { await mailOrderConfirmed(order.id); await mailResaleSold(l.sellerUserId, l.event.title, l.priceCents); });
   return {
     ok: true, number: order.number ?? 0, totalCents: order.totalCents, method, installments: order.installments, ticketCount: 1, firstCode: t.code,
     ticketQrSvg: await QRCode.toString(await qrPayload(t.code, t.secret), { type: "svg", margin: 0 }), email: order.buyerEmail ?? "",

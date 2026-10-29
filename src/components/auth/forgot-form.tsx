@@ -4,18 +4,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
+import { resetPasswordWithCode } from "@/lib/actions/auth";
 import { useToast } from "@/components/toast";
 import { FieldError, FormError, PasswordField, fieldCls, isEmail } from "@/components/auth/fields";
 
 const GENERIC = "Se o e-mail estiver cadastrado, você receberá um código.";
 
-export function ForgotForm() {
+/** `initialEmail`/`withCode`: vindo do botão do e-mail, já abre no passo do código. */
+export function ForgotForm({ initialEmail = "", withCode = false }: { initialEmail?: string; withCode?: boolean }) {
   const { flash } = useToast();
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [errEmail, setErrEmail] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState(withCode && isEmail(initialEmail));
   const [otp, setOtp] = useState("");
   const [pw, setPw] = useState("");
   const [err, setErr] = useState<{ otp?: boolean; pw?: boolean }>({});
@@ -47,8 +49,8 @@ export function ForgotForm() {
     setBusy(true);
     setServerErr(null);
     try {
-      const res = await authClient.emailOtp.resetPassword({ email: email.trim(), otp: otp.trim(), password: pw });
-      if (res?.error) {
+      const res = await resetPasswordWithCode(email.trim(), otp.trim(), pw);
+      if (!res.ok) {
         setServerErr("Código inválido ou expirado. Peça um novo código.");
       } else {
         flash("Senha redefinida. Faça login com a nova senha.");

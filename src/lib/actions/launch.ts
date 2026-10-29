@@ -2,6 +2,7 @@
 
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
@@ -10,6 +11,7 @@ import { getPainelScope } from "@/lib/data/painel";
 import { randomToken, salePhase } from "@/lib/launch";
 import { sendOpeningNotice, sendPresaleLinks } from "@/lib/launch-notify";
 import { emailEnabled } from "@/lib/email";
+import { mailLaunchSignup } from "@/lib/notify";
 
 const { events, eventSignups } = schema;
 type R = { ok: true; message?: string } | { ok: false; error: string };
@@ -29,6 +31,7 @@ export async function signupLaunch(eventSlug: string, kind: "abertura" | "presal
     .values({ eventId: ev.id, kind, email, userId: user?.id ?? null, token: randomToken() })
     .onConflictDoNothing()
     .returning({ id: eventSignups.id });
+  if (row) after(() => mailLaunchSignup(email, ev.id, kind));
   return { ok: true, message: row ? undefined : "Você já estava na lista." };
 }
 

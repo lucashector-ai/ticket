@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FavoritesHydrator } from "@/components/favorites";
 import { MeusIngressos } from "@/components/ingressos/meus-ingressos";
@@ -58,6 +59,12 @@ export default async function MeusIngressosPage({ searchParams }: { searchParams
     <div className="pg-meus-ingressos">
       <FavoritesHydrator serverFavs={favs} loggedIn />
       <SiteHeader user={user} variant="default" activePath="/meus-ingressos" />
+      {!user.emailVerified && (
+        <div className="wrap mi-verify" role="status">
+          <span><b>Confirme seu e-mail.</b> Assim os ingressos, transferências e avisos do evento chegam certinho para você.</span>
+          <Link href="/ativar-conta">Ativar conta</Link>
+        </div>
+      )}
       <MeusIngressos groups={groups} confirmedOrder={confirmedOrder} wallet={{ apple: appleWalletEnabled(), google: googleWalletEnabled() }} />
       <SiteFooter />
     </div>

@@ -11,6 +11,7 @@ import { Modal } from "./modal";
 import { TransferModal } from "./transfer-modal";
 import { ResaleModal } from "./resale-modal";
 import { cancelListing } from "@/lib/actions/revenda";
+import { cancelTransfer } from "@/lib/actions/tickets";
 import { money } from "@/lib/pricing";
 import { WalletButtons, type WalletFlags } from "./wallet-buttons";
 import type { TicketItem } from "./types";
@@ -35,6 +36,8 @@ export type TicketViewData = {
   resale: { enabled: boolean; faceCents: number; maxCents: number; listing: { id: string; priceCents: number; reserved: boolean } | null };
   /** o produtor permite transferir */
   transferEnabled: boolean;
+  /** transferência enviada e ainda não aceita (e-mail de quem vai receber) */
+  pendingTo?: string | null;
   /** veio do atalho "Revender" da lista: já abre o anúncio */
   openResale?: boolean;
 };
@@ -43,7 +46,8 @@ export function TicketView({ data }: { data: TicketViewData }) {
   const { flash } = useToast();
   const [transfer, setTransfer] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [movedTo, setMovedTo] = useState<string | null>(null);
+  const [movedTo, setMovedTo] = useState<string | null>(data.pendingTo ?? null);
+  const [back, setBack] = useState(false);
   const [resell, setResell] = useState(!!data.openResale);
   const [listing, setListing] = useState(data.resale.listing);
   const unlist = async () => {
@@ -51,8 +55,12 @@ export function TicketView({ data }: { data: TicketViewData }) {
     const r = await cancelListing(listing.id);
     if (r.ok) { setListing(null); flash("Ingresso retirado da revenda"); } else flash(r.error);
   };
+  const undo = async () => {
+    const r = await cancelTransfer(data.ticket.id);
+    if (r.ok) { setMovedTo(null); setBack(true); flash("Transferência cancelada. O ingresso voltou com um QR code novo."); window.location.reload(); } else flash(r.error);
+  };
   const t = data.ticket;
-  const status = movedTo ? "transferred" : t.status;
+  const status = movedTo ? "transferred" : back ? "valid" : t.status;
   const valid = status === "valid";
 
   const kicker = !data.upcoming ? "Evento encerrado" : status === "valid" ? data.countdown : TICKET_STATUS_LABEL[status];
@@ -111,6 +119,13 @@ export function TicketView({ data }: { data: TicketViewData }) {
 
       {/* atalhos: transferir, revender e agenda */}
       <div className="tka">
+        {status === "transferred" && movedTo && (
+          <div className="tka-i on">
+            <span className="tka-ic" aria-hidden="true"><IcoArrow /></span>
+            <span className="tka-t"><b>Aguardando {movedTo} aceitar</b><small>O QR code antigo já não vale. Cancele para o ingresso voltar.</small></span>
+            <button className="tka-x" type="button" onClick={() => void undo()}>Cancelar transferência</button>
+          </div>
+        )}
         {valid && !listing && data.transferEnabled && (
           <button className="tka-i" type="button" onClick={() => setTransfer(true)}>
             <span className="tka-ic" aria-hidden="true"><IcoArrow /></span>

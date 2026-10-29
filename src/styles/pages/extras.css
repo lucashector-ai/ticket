@@ -116,6 +116,9 @@
   .gp-wa:hover{color:#fff;filter:brightness(.95)}
   .gp-foot{display:flex;justify-content:space-between;align-items:center;margin-top:18px;font-size:14px}
   .gp-foot a{font-weight:600}
+  .gp-foot .gp-pay,.gp-foot .gp-pay:hover{height:46px;padding:0 22px;border:0;background:#111;color:#fff;font-size:15px;cursor:pointer}
+  .gp-foot .gp-pay:hover{background:#2A2A2C}
+  .gp-foot .gp-pay:disabled{opacity:.6;cursor:default}
   .gp-foot button{border:0;background:none;color:#A3290F;font-weight:600;font-size:14px;cursor:pointer}
   @media (max-width:640px){.gp{padding:12px 0 60px}.gp-card{padding:18px;border-radius:22px}.gp-t{font-size:22px}}
 }

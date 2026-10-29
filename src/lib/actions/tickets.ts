@@ -3,9 +3,11 @@
 import { createHmac, randomBytes } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
+import { mailTransferAccepted, mailTransferCancelled, mailTransferSent } from "@/lib/notify";
 
 const { tickets, ticketTransfers } = schema;
 
@@ -15,12 +17,14 @@ export async function qrPayload(code: string, secret: string) {
   return `ONDE|${code}|${sig}`;
 }
 
-/** Transfere um ingresso para outro e-mail. O QR antigo é cancelado (segredo rotacionado). */
+/** Transfere um ingresso para outro e-mail. O QR antigo é cancelado na hora (segredo rotacionado);
+ *  o ingresso vai para a conta de quem recebe quando a pessoa aceita pelo link do e-mail. */
 export async function transferTicket(_prev: { ok?: boolean; error?: string } | null, formData: FormData) {
   const user = await getSessionUser();
   if (!user) return { error: "Faça login para transferir." };
   const parsed = z.object({ ticketId: z.string().uuid(), email: z.string().email("Confira o e-mail.") }).safeParse({ ticketId: formData.get("ticketId"), email: String(formData.get("email") ?? "").trim() });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (parsed.data.email.toLowerCase() === user.email?.toLowerCase()) return { error: "Esse é o seu próprio e-mail." };
   const t = await db.query.tickets.findFirst({ where: and(eq(tickets.id, parsed.data.ticketId), eq(tickets.holderUserId, user.id)), with: { event: { columns: { transferEnabled: true } } } });
   if (!t) return { error: "Ingresso não encontrado." };
   if (!t.event.transferEnabled) return { error: "O produtor deste evento não permite transferir ingressos." };
@@ -28,9 +32,53 @@ export async function transferTicket(_prev: { ok?: boolean; error?: string } | n
   const listed = await db.query.resaleListings.findFirst({ where: and(eq(schema.resaleListings.ticketId, t.id), inArray(schema.resaleListings.status, ["active", "reserved"])), columns: { id: true } });
   if (listed) return { error: "Este ingresso está na revenda. Tire do anúncio antes de transferir." };
   const token = randomBytes(24).toString("hex");
-  await db.insert(ticketTransfers).values({ ticketId: t.id, fromUserId: user.id, toEmail: parsed.data.email.toLowerCase(), token, status: "pending" });
-  // nesta fase a transferência é imediata: o titular passa a ser o e-mail de destino
+  const [tr] = await db.insert(ticketTransfers).values({ ticketId: t.id, fromUserId: user.id, toEmail: parsed.data.email.toLowerCase(), token, status: "pending" }).returning({ id: ticketTransfers.id });
   await db.update(tickets).set({ status: "transferred", secret: randomBytes(16).toString("hex") }).where(eq(tickets.id, t.id));
+  after(() => mailTransferSent(tr.id));
   revalidatePath("/meus-ingressos");
   return { ok: true };
+}
+
+/** Quem enviou desfaz a transferência enquanto ninguém aceitou: o ingresso volta com um QR novo. */
+export async function cancelTransfer(ticketId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Faça login de novo." };
+  const t = await db.query.tickets.findFirst({ where: and(eq(tickets.id, ticketId), eq(tickets.holderUserId, user.id), eq(tickets.status, "transferred")), columns: { id: true } });
+  if (!t) return { ok: false, error: "Esta transferência não pode mais ser cancelada." };
+  const [tr] = await db.update(ticketTransfers).set({ status: "cancelled" })
+    .where(and(eq(ticketTransfers.ticketId, t.id), eq(ticketTransfers.fromUserId, user.id), eq(ticketTransfers.status, "pending"))).returning({ id: ticketTransfers.id });
+  if (!tr) return { ok: false, error: "A pessoa já aceitou o ingresso." };
+  await db.update(tickets).set({ status: "valid", secret: randomBytes(16).toString("hex") }).where(eq(tickets.id, t.id));
+  after(() => mailTransferCancelled(tr.id));
+  revalidatePath("/meus-ingressos");
+  return { ok: true };
+}
+
+/** Quem recebeu aceita pelo link do e-mail: o ingresso vai para a conta logada, com QR novo. */
+export async function acceptTransfer(token: string): Promise<{ ok: true; code: string } | { ok: false; error: string; login?: boolean }> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Entre ou crie sua conta para aceitar.", login: true };
+  if (!/^[0-9a-f]{48}$/.test(token)) return { ok: false, error: "Link de transferência inválido." };
+  const tr = await db.query.ticketTransfers.findFirst({ where: eq(ticketTransfers.token, token) });
+  if (!tr || tr.status === "cancelled" || tr.status === "expired") return { ok: false, error: "Esta transferência foi cancelada por quem enviou." };
+  if (tr.status === "accepted") {
+    const t = await db.query.tickets.findFirst({ where: eq(tickets.id, tr.ticketId), columns: { code: true, holderUserId: true } });
+    return t && t.holderUserId === user.id ? { ok: true, code: t.code } : { ok: false, error: "Este ingresso já foi aceito por outra conta." };
+  }
+  if (tr.fromUserId === user.id) return { ok: false, error: "Você enviou este ingresso. Entre com a conta de quem vai receber." };
+  const [claimed] = await db.update(ticketTransfers).set({ status: "accepted", toUserId: user.id, acceptedAt: new Date() })
+    .where(and(eq(ticketTransfers.id, tr.id), eq(ticketTransfers.status, "pending"))).returning({ id: ticketTransfers.id });
+  if (!claimed) return { ok: false, error: "Esta transferência não está mais disponível." };
+  const [t] = await db.update(tickets)
+    .set({ holderUserId: user.id, holderName: user.name || null, status: "valid", secret: randomBytes(16).toString("hex") })
+    .where(and(eq(tickets.id, tr.ticketId), eq(tickets.holderUserId, tr.fromUserId), eq(tickets.status, "transferred")))
+    .returning({ code: tickets.code });
+  if (!t) {
+    await db.update(ticketTransfers).set({ status: "cancelled" }).where(eq(ticketTransfers.id, tr.id));
+    return { ok: false, error: "Este ingresso não pode mais ser transferido." };
+  }
+  await db.insert(schema.userProfiles).values({ userId: user.id, name: user.name ?? null, email: user.email }).onConflictDoNothing();
+  after(() => mailTransferAccepted(tr.id));
+  revalidatePath("/meus-ingressos");
+  return { ok: true, code: t.code };
 }

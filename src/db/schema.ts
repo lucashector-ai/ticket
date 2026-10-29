@@ -450,6 +450,8 @@ export const tickets = pgTable(
     halfPrice: boolean("half_price").notNull().default(false),
     status: ticketStatus("status").notNull().default("valid"),
     checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+    /** lembrete da véspera já enviado ao titular */
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
     // segredo rotativo usado na assinatura do QR; muda a cada transferência
     secret: varchar("secret", { length: 64 }).notNull(),
     ...timestamps,

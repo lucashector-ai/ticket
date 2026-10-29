@@ -3,12 +3,14 @@
 import { randomBytes } from "node:crypto";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { checkinTicket, type CheckinResult } from "@/lib/checkin";
 import { organizerFor } from "@/lib/criar/save";
 import { getPainelScope, type PainelRole } from "@/lib/data/painel";
+import { mailTeamInvite } from "@/lib/notify";
 import { AGES, parseBrDateTime } from "@/lib/criar/model";
 
 const { coupons, organizerMembers, organizers } = schema;
@@ -111,6 +113,7 @@ export async function inviteMember(email: string, role: string): Promise<R> {
   const org = s.org ?? (await organizerFor(s.user));
   await db.insert(organizerMembers).values({ organizerId: org.id, email: e.data, role: r.data })
     .onConflictDoUpdate({ target: [organizerMembers.organizerId, organizerMembers.email], set: { role: r.data } });
+  after(() => mailTeamInvite(e.data, r.data, org.name, s.user.name));
   revalidatePath("/painel/equipe");
   return { ok: true };
 }

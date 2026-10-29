@@ -1,5 +1,7 @@
 "use server";
 
+import { after } from "next/server";
+import { mailOrderConfirmed } from "@/lib/notify";
 import { randomBytes } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -102,6 +104,7 @@ export async function payOrder(orderId: string, method: "pix" | "card" | "test" 
   await db.insert(tickets).values(rows);
   if (order.couponId) await db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId));
   await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentMethod: method, paymentRef: `TEST-${order.number}` }).where(eq(orders.id, order.id));
+  after(() => mailOrderConfirmed(order.id));
   return { redirect: `/meus-ingressos?pedido=${order.number}` };
 }
 

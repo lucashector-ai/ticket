@@ -38,6 +38,7 @@ export default async function IngressoPage({ params, searchParams }: { params: P
   const now = new Date();
   const e = t.event;
   const listing = await db.query.resaleListings.findFirst({ where: and(eq(schema.resaleListings.ticketId, t.id), inArray(schema.resaleListings.status, ["active", "reserved"])) });
+  const pending = t.status === "transferred" ? await db.query.ticketTransfers.findFirst({ where: and(eq(schema.ticketTransfers.ticketId, t.id), eq(schema.ticketTransfers.status, "pending")), columns: { toEmail: true } }) : null;
   const L = eventLabels(e);
   const data: TicketViewData = {
     wallet: { apple: appleWalletEnabled(), google: googleWalletEnabled() },
@@ -48,6 +49,7 @@ export default async function IngressoPage({ params, searchParams }: { params: P
     tier: t.ticketType.name, orderNumber: t.order?.number ?? null,
     checkedInLabel: t.checkedInAt ? dateNice(t.checkedInAt) : null,
     transferEnabled: e.transferEnabled,
+    pendingTo: pending?.toEmail ?? null,
     resale: { enabled: e.resaleEnabled && e.status === "published" && t.ticketType.priceCents > 0, ...resaleCap(t.ticketType.priceCents, t.halfPrice, e.resaleMaxPct), listing: listing ? { id: listing.id, priceCents: listing.priceCents, reserved: listing.status === "reserved" && !!listing.reservedUntil && listing.reservedUntil > now } : null },
   };
 
