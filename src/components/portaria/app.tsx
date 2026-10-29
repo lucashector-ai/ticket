@@ -34,7 +34,7 @@ export function PortariaApp({ gate, event, counts: c0 }: { gate: string; event: 
     setRes({ ...r, at: Date.now() });
     buzz(r.ok);
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => { setRes(null); busy.current = false; }, r.ok ? 2400 : 3800);
+    timer.current = window.setTimeout(() => { setRes(null); busy.current = false; }, r.ok ? 1700 : 3000);
   }, []);
   const dismiss = () => { window.clearTimeout(timer.current); setRes(null); busy.current = false; };
 
@@ -81,7 +81,7 @@ export function PortariaApp({ gate, event, counts: c0 }: { gate: string; event: 
         <i style={{ width: `${pct}%` }} />
       </div>
 
-      <div className="pt-aim" aria-hidden="true"><span /><span /><span /><span /><b className="pt-grid" /><em><i /></em></div>
+      <div className="pt-aim" aria-hidden="true"><b className="pt-core" /><span /><span /><span /><span /></div>
       <p className="pt-hint">{camErr ? "Não conseguimos abrir a câmera." : "Aponte para o QR code do ingresso"}</p>
       {camErr && <button className="pt-retry" type="button" onClick={() => { setCamErr(false); setCamKey((k) => k + 1); }}>Permitir câmera</button>}
 
@@ -122,10 +122,8 @@ function ResultView({ r, onClose }: { r: Result; onClose: () => void }) {
   const name = r.ticket?.holderName?.trim() || (r.ticket ? "Sem nome no ingresso" : "");
   return (
     <button className={r.ok ? "pt-res ok" : "pt-res bad"} type="button" onClick={onClose} key={r.at} aria-live="assertive">
-      <span className="pt-mesh" aria-hidden="true"><i /><i /><i /><i /></span>
-      <span className="pt-wash" aria-hidden="true" />
-      <span className="pt-flash" aria-hidden="true" />
-      <span className="pt-edge" aria-hidden="true"><i /><i /><i /></span>
+      <span className="pt-edge" aria-hidden="true"><i /></span>
+      <span className="pt-edge core" aria-hidden="true"><i /></span>
       <span className="pt-glass">
         <span className="pt-mark" aria-hidden="true">
           <svg viewBox="0 0 52 52">

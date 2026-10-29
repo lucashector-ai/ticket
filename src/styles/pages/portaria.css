@@ -33,7 +33,7 @@
   /* ---------- câmera ---------- */
   .pt-app{position:absolute;inset:0}
   .pt-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-  .pt-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.72) 0%,transparent 26%,transparent 70%,rgba(0,0,0,.8) 100%)}
+  .pt-shade{position:absolute;inset:0;pointer-events:none;background:radial-gradient(min(52vw,230px) min(52vw,230px) at 50% 50%,transparent 70%,rgba(0,0,0,.42) 100%),linear-gradient(180deg,rgba(0,0,0,.72) 0%,transparent 26%,transparent 70%,rgba(0,0,0,.8) 100%)}
   .pt-top{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 16px 0}
   .pt-ev{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
   .pt-gate{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.14);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:12px;font-weight:700}
@@ -47,16 +47,14 @@
   .pt-count span{font-size:13.5px;color:rgba(255,255,255,.75)}
   .pt-count i{position:absolute;left:0;bottom:0;height:3px;border-radius:999px;background:#D3F55B;transition:width .6s cubic-bezier(.22,1,.36,1)}
   .pt-count::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:999px;background:rgba(255,255,255,.16);z-index:-1}
-  /* mira: cantos com luz, grade sutil e um laser que varre o QR */
-  .pt-aim{position:absolute;left:50%;top:50%;width:min(68vw,300px);aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none;border-radius:28px;box-shadow:0 0 0 100vmax rgba(0,0,0,.34)}
-  .pt-aim span{position:absolute;width:46px;height:46px;border:4px solid #EEFFB0;border-radius:6px;filter:drop-shadow(0 0 4px rgba(211,245,91,.95)) drop-shadow(0 0 16px rgba(211,245,91,.6));animation:ptCorner 2.4s ease-in-out infinite}
-  .pt-aim span:nth-child(1){left:0;top:0;border-right:0;border-bottom:0;border-top-left-radius:24px}
-  .pt-aim span:nth-child(2){right:0;top:0;border-left:0;border-bottom:0;border-top-right-radius:24px}
-  .pt-aim span:nth-child(3){left:0;bottom:0;border-right:0;border-top:0;border-bottom-left-radius:24px}
-  .pt-aim span:nth-child(4){right:0;bottom:0;border-left:0;border-top:0;border-bottom-right-radius:24px}
-  .pt-grid{position:absolute;inset:12px;border-radius:18px;background-image:linear-gradient(rgba(211,245,91,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(211,245,91,.2) 1px,transparent 1px);background-size:20px 20px;-webkit-mask:radial-gradient(closest-side,#000 30%,transparent);mask:radial-gradient(closest-side,#000 30%,transparent);opacity:.5;animation:ptGrid 3s ease-in-out infinite}
-  .pt-aim em{position:absolute;left:3%;right:3%;top:6%;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#F4FFD0 18%,#FFFFFF 50%,#F4FFD0 82%,transparent);box-shadow:0 0 10px 2px rgba(222,255,120,1),0 0 34px 8px rgba(211,245,91,.65),0 0 90px 22px rgba(211,245,91,.3);animation:ptScan 2.4s cubic-bezier(.45,0,.55,1) infinite alternate}
-  .pt-aim em i{position:absolute;left:4%;right:4%;top:-56px;height:115px;background:linear-gradient(180deg,transparent,rgba(211,245,91,.2) 46%,rgba(211,245,91,.2) 54%,transparent);filter:blur(2px)}
+  /* mira: cantos que piscam com brilho forte, luz correndo pela moldura e o centro pulsando */
+  .pt-aim{position:absolute;left:50%;top:50%;width:min(68vw,300px);aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none}
+  .pt-aim span{position:absolute;width:48px;height:48px;border:5px solid #F6FFD2;border-radius:6px;filter:drop-shadow(0 0 6px rgba(211,245,91,.95)) drop-shadow(0 0 16px rgba(211,245,91,.55));animation:ptBlink 1s ease-in-out infinite;will-change:opacity}
+  .pt-aim span:nth-child(2){left:-2px;top:-2px;border-right:0;border-bottom:0;border-top-left-radius:26px}
+  .pt-aim span:nth-child(3){right:-2px;top:-2px;border-left:0;border-bottom:0;border-top-right-radius:26px;animation-delay:.08s}
+  .pt-aim span:nth-child(4){left:-2px;bottom:-2px;border-right:0;border-top:0;border-bottom-left-radius:26px;animation-delay:.16s}
+  .pt-aim span:nth-child(5){right:-2px;bottom:-2px;border-left:0;border-top:0;border-bottom-right-radius:26px;animation-delay:.24s}
+  .pt-core{position:absolute;inset:14%;border-radius:50%;background:radial-gradient(closest-side,rgba(230,255,150,.45),rgba(211,245,91,.15) 55%,transparent);animation:ptCore 1s ease-in-out infinite;will-change:transform,opacity}
   .pt-hint{position:absolute;left:0;right:0;top:calc(50% + min(34vw,150px) + 18px);margin:0;text-align:center;font-size:15px;font-weight:600;color:rgba(255,255,255,.9);text-shadow:0 1px 8px rgba(0,0,0,.6)}
   .pt-retry{position:absolute;left:50%;top:calc(50% + min(34vw,150px) + 52px);transform:translateX(-50%);height:44px;padding:0 20px;border-radius:999px;background:#D3F55B;color:#111;font-weight:700}
   .pt-bar{position:absolute;left:16px;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -65,40 +63,34 @@
   .pt-inst-wrap{position:absolute;left:16px;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));display:flex;justify-content:center}
   /* ---------- resultado no estilo da Siri: clarão, faixa de luz atravessando a tela, manchas de luz
      coloridas se movendo e brilho grosso nas bordas (tudo somando luz por cima da câmera) ---------- */
-  .pt-res{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#fff;overflow:hidden;isolation:isolate;background:rgba(0,0,0,.38);-webkit-backdrop-filter:blur(14px) saturate(180%);backdrop-filter:blur(14px) saturate(180%);animation:ptIn .15s ease-out both}
-  .pt-res.ok{--g1:#F2FFF6;--g2:#5DFF9A;--g3:#22F0D2;--g4:#D2FF5C;--g5:#9DFFC4;--ink:#023A1C}
-  .pt-res.bad{--g1:#FFE6E1;--g2:#FF4D63;--g3:#FF2E9A;--g4:#FF9A3D;--g5:#FF8FA0;--ink:#FFFFFF}
+  .pt-res{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#fff;overflow:hidden;isolation:isolate;background:radial-gradient(120% 90% at 50% 50%,rgba(2,6,4,.88) 35%,rgba(2,6,4,.72) 100%);animation:ptIn .12s ease-out both}
+  .pt-res.ok{--g1:#F2FFF6;--g2:#5DFF9A;--g3:#22F0D2;--g4:#D2FF5C;--ink:#023A1C}
+  .pt-res.bad{--g1:#FFE6E1;--g2:#FF4D63;--g3:#FF2E9A;--g4:#FF9A3D;--ink:#FFFFFF}
   .pt-res > span{pointer-events:none}
-  /* manchas de luz que ficam se movendo atrás do cartão */
-  .pt-mesh{position:absolute;inset:-25%;z-index:-1;filter:blur(70px) saturate(140%);mix-blend-mode:screen;animation:ptMeshIn .9s cubic-bezier(.22,1,.36,1) both}
-  .pt-mesh i{position:absolute;width:62%;height:52%;border-radius:50%;opacity:.85;animation:ptBlob 5s ease-in-out infinite alternate}
-  .pt-mesh i:nth-child(1){left:2%;top:4%;background:var(--g2)}
-  .pt-mesh i:nth-child(2){right:0;top:22%;background:var(--g3);animation-delay:-1.4s;animation-duration:6s}
-  .pt-mesh i:nth-child(3){left:14%;bottom:2%;background:var(--g4);animation-delay:-2.6s;animation-duration:5.5s}
-  .pt-mesh i:nth-child(4){right:12%;bottom:12%;width:44%;height:40%;background:var(--g5);animation-delay:-.8s}
-  /* clarão: a tela acende inteira e baixa */
-  .pt-wash{position:absolute;inset:0;z-index:2;mix-blend-mode:screen;background:radial-gradient(120% 75% at 50% 105%,var(--g2),transparent 62%),radial-gradient(120% 75% at 50% -5%,var(--g3),transparent 62%),radial-gradient(60% 50% at 50% 50%,var(--g1),transparent 80%);animation:ptWash 1.1s cubic-bezier(.2,.8,.2,1) both}
-  /* faixa de luz atravessando a tela na diagonal */
-  .pt-flash{position:absolute;z-index:3;top:-30%;bottom:-30%;left:-85%;width:78%;mix-blend-mode:screen;filter:blur(12px) brightness(1.15);background:linear-gradient(90deg,transparent 0%,var(--g3) 22%,var(--g2) 38%,#FFFFFF 50%,var(--g4) 62%,var(--g2) 78%,transparent 100%);animation:ptSweep 1.05s .05s cubic-bezier(.45,.05,.25,1) both}
-  /* bordas: anel nítido + dois brilhos largos, em degradê girando */
-  .pt-edge{position:absolute;inset:0;z-index:4;mix-blend-mode:screen}
-  .pt-edge i{position:absolute;inset:0;border-radius:46px;padding:7px;background:conic-gradient(from var(--pt-a),var(--g1),var(--g2),var(--g3),var(--g5),var(--g4),var(--g2),var(--g1));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;filter:blur(2px);animation:ptSpin 3s linear infinite,ptEdgeIn .8s .12s cubic-bezier(.22,1,.36,1) both}
-  .pt-edge i:nth-child(2){padding:34px;filter:blur(26px);opacity:.95}
-  .pt-edge i:nth-child(3){padding:90px;filter:blur(60px);opacity:.7;animation:ptSpin 3s linear infinite reverse,ptEdgeIn .9s .1s ease-out both,ptBreath 2.4s 1s ease-in-out infinite}
+  /* luz só nas bordas, como a Siri: faixa larga em degradê + faixa clara rente à borda, girando (só transform) */
+  .pt-edge{position:absolute;inset:0;z-index:2;overflow:hidden;mix-blend-mode:screen;
+    -webkit-mask:linear-gradient(90deg,#000 0%,rgba(0,0,0,.55) 9%,rgba(0,0,0,.15) 20%,transparent 30%,transparent 70%,rgba(0,0,0,.15) 80%,rgba(0,0,0,.55) 91%,#000 100%),linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 7%,rgba(0,0,0,.15) 15%,transparent 23%,transparent 77%,rgba(0,0,0,.15) 85%,rgba(0,0,0,.55) 93%,#000 100%);
+    mask:linear-gradient(90deg,#000 0%,rgba(0,0,0,.55) 9%,rgba(0,0,0,.15) 20%,transparent 30%,transparent 70%,rgba(0,0,0,.15) 80%,rgba(0,0,0,.55) 91%,#000 100%),linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 7%,rgba(0,0,0,.15) 15%,transparent 23%,transparent 77%,rgba(0,0,0,.15) 85%,rgba(0,0,0,.55) 93%,#000 100%);
+    animation:ptEdgeIn .28s cubic-bezier(.22,1,.36,1) both,ptBreath 1.2s .3s ease-in-out infinite;will-change:transform,opacity}
+  .pt-edge i{position:absolute;left:50%;top:50%;width:160vmax;height:160vmax;margin:-80vmax 0 0 -80vmax;background:conic-gradient(var(--g2),var(--g3),var(--g4),var(--g1),var(--g2),var(--g3),var(--g2));animation:ptTurn 1.6s linear infinite;will-change:transform}
+  .pt-edge.core{z-index:3;
+    -webkit-mask:linear-gradient(90deg,#000,transparent 6%,transparent 94%,#000),linear-gradient(180deg,#000,transparent 4.5%,transparent 95.5%,#000);
+    mask:linear-gradient(90deg,#000,transparent 6%,transparent 94%,#000),linear-gradient(180deg,#000,transparent 4.5%,transparent 95.5%,#000);
+    animation:ptEdgeIn .22s ease-out both}
+  .pt-edge.core i{background:conic-gradient(var(--g1),#FFFFFF,var(--g4),var(--g1),var(--g3),#FFFFFF,var(--g1));animation:ptTurn 1.1s linear infinite reverse}
   /* sem cartão: só o ícone e os textos por cima da luz, com sombra suave para ler bem */
-  .pt-glass{position:relative;z-index:5;display:flex;flex-direction:column;align-items:center;gap:8px;width:min(100%,380px);padding:0 8px;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.25),0 2px 18px rgba(0,0,0,.35);animation:ptCard .65s .18s cubic-bezier(.2,1.25,.4,1) both}
-  .pt-mark{width:96px;height:96px;margin-bottom:8px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 32% 26%,var(--g1),var(--g2) 52%,var(--g3) 100%);box-shadow:0 0 0 9px color-mix(in srgb,var(--g2) 22%,transparent),0 0 60px 6px color-mix(in srgb,var(--g2) 55%,transparent);animation:ptPop .6s .16s cubic-bezier(.34,1.56,.64,1) both}
+  .pt-glass{position:relative;z-index:5;display:flex;flex-direction:column;align-items:center;gap:8px;width:min(100%,380px);padding:0 8px;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.25),0 2px 18px rgba(0,0,0,.35);animation:ptCard .35s .06s cubic-bezier(.2,1.2,.4,1) both}
+  .pt-mark{width:96px;height:96px;margin-bottom:8px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 32% 26%,var(--g1),var(--g2) 52%,var(--g3) 100%);box-shadow:0 0 0 9px color-mix(in srgb,var(--g2) 22%,transparent),0 0 60px 6px color-mix(in srgb,var(--g2) 55%,transparent);animation:ptPop .35s .05s cubic-bezier(.34,1.56,.64,1) both}
   .pt-mark svg{width:60px;height:60px;fill:none;stroke:var(--ink);stroke-width:4.6;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
-  .pt-mark .ring{stroke:color-mix(in srgb,var(--ink) 25%,transparent);stroke-width:1.6;stroke-dasharray:151;stroke-dashoffset:151;animation:ptDraw .8s .22s ease-out forwards}
-  .pt-mark .draw{stroke-dasharray:50;stroke-dashoffset:50;animation:ptDraw .5s .36s cubic-bezier(.65,0,.35,1) forwards}
+  .pt-mark .ring{stroke:color-mix(in srgb,var(--ink) 25%,transparent);stroke-width:1.6;stroke-dasharray:151;stroke-dashoffset:151;animation:ptDraw .4s .1s ease-out forwards}
+  .pt-mark .draw{stroke-dasharray:50;stroke-dashoffset:50;animation:ptDraw .28s .18s cubic-bezier(.65,0,.35,1) forwards}
   .pt-res-k{font-size:13.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#FFFFFF}
-  .pt-res-n{max-width:100%;font:600 clamp(34px,10vw,52px)/1.02 'Inter Tight',sans-serif;letter-spacing:-.035em;overflow-wrap:anywhere;animation:ptUp .5s .2s cubic-bezier(.22,1,.36,1) both}
+  .pt-res-n{max-width:100%;font:600 clamp(34px,10vw,52px)/1.02 'Inter Tight',sans-serif;letter-spacing:-.035em;overflow-wrap:anywhere;animation:ptUp .3s .08s cubic-bezier(.22,1,.36,1) both}
   .pt-res-t{font-size:17px;font-weight:600;color:rgba(255,255,255,.92)}
   .pt-res-e{max-width:300px;font-size:16px;line-height:1.4;font-weight:600;color:rgba(255,255,255,.92)}
   .pt-res-c{margin-top:6px;font:700 14px 'Space Mono',monospace;letter-spacing:.08em;color:rgba(255,255,255,.88)}
   .pt-res-tap{position:absolute;z-index:5;left:0;right:0;bottom:calc(30px + env(safe-area-inset-bottom));font-size:13px;color:rgba(255,255,255,.6)}
-  @media (min-width:700px){.pt-edge i{border-radius:28px}}
-  @media (prefers-reduced-motion:reduce){.pt-edge i,.pt-mesh i,.pt-aim em,.pt-grid,.pt-aim span{animation:none}.pt-flash{display:none}}
+  @media (prefers-reduced-motion:reduce){.pt-edge,.pt-edge i,.pt-core,.pt-aim span{animation:none}}
   /* ---------- folhas: lista, digitar, opções ---------- */
   .pt-sheet{position:absolute;inset:0;z-index:20;display:flex;align-items:flex-end;background:rgba(0,0,0,.55);animation:ptIn .2s ease-out both}
   .pt-sh-in{width:100%;max-height:100%;display:flex;flex-direction:column;gap:12px;padding:22px 18px calc(18px + env(safe-area-inset-bottom));border-radius:28px 28px 0 0;background:#141414;animation:ptSheet .35s cubic-bezier(.22,1,.36,1) both}
@@ -139,17 +131,11 @@
 @keyframes ptIn{from{opacity:0}to{opacity:1}}
 @keyframes ptSheet{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 @keyframes ptPop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
-@property --pt-a{syntax:"<angle>";inherits:false;initial-value:0deg}
-@keyframes ptSpin{to{--pt-a:360deg}}
-@keyframes ptWash{0%{opacity:0}18%{opacity:1}100%{opacity:.18}}
-@keyframes ptSweep{from{transform:translateX(0) skewX(-20deg);opacity:1}85%{opacity:1}to{transform:translateX(300%) skewX(-20deg);opacity:0}}
-@keyframes ptMeshIn{from{opacity:0;transform:scale(1.35)}to{opacity:1;transform:none}}
-@keyframes ptBlob{0%{transform:translate(0,0) scale(1)}50%{transform:translate(8%,-6%) scale(1.12)}100%{transform:translate(-6%,8%) scale(.92)}}
-@keyframes ptBreath{50%{opacity:.4}}
-@keyframes ptEdgeIn{from{opacity:0;transform:scale(1.05)}to{opacity:1;transform:none}}
+@keyframes ptTurn{to{transform:rotate(1turn)}}
+@keyframes ptBreath{50%{opacity:.7}}
+@keyframes ptEdgeIn{from{opacity:0;transform:scale(1.12)}to{opacity:1;transform:none}}
 @keyframes ptCard{from{opacity:0;transform:translateY(18px) scale(.92)}to{opacity:1;transform:none}}
 @keyframes ptDraw{to{stroke-dashoffset:0}}
-@keyframes ptScan{from{top:6%}to{top:92%}}
-@keyframes ptCorner{50%{opacity:.7}}
-@keyframes ptGrid{50%{opacity:.25}}
+@keyframes ptBlink{0%,100%{opacity:1}45%{opacity:.3}55%{opacity:.3}}
+@keyframes ptCore{0%,100%{opacity:.25;transform:scale(.86)}50%{opacity:.85;transform:scale(1.04)}}
 @keyframes ptPulse{50%{box-shadow:0 0 0 7px rgba(211,245,91,0)}}
