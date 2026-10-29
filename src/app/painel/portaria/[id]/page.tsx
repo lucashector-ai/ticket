@@ -7,7 +7,7 @@ import { painelAccess } from "@/lib/painel/access";
 import { whenLabel, whereLabel } from "@/lib/painel/build";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Leitor de ingressos" };
+export const metadata: Metadata = { title: "Check-in" };
 
 export default async function PortariaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

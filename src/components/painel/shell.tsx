@@ -22,7 +22,7 @@ const NAV: { href: string; label: string; icon: keyof typeof ICON }[] = [
   { href: "/painel/marketing", label: "Marketing", icon: "mkt" },
   { href: "/painel/promoters", label: "Promoters", icon: "prom" },
   { href: "/painel/emails", label: "E-mails", icon: "mail" },
-  { href: "/painel/equipe", label: "Equipe e portaria", icon: "team" },
+  { href: "/painel/equipe", label: "Equipe e check-in", icon: "team" },
   { href: "/painel/configuracoes", label: "Configurações", icon: "cfg" },
 ];
 

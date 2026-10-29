@@ -6,7 +6,7 @@ import { painelAccess } from "@/lib/painel/access";
 import { DAY, ended, nowMs, whenLabel, whereLabel } from "@/lib/painel/build";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Equipe e portaria" };
+export const metadata: Metadata = { title: "Equipe e check-in" };
 
 /** Quem ajuda a tocar os eventos (admin ou portaria) e o acesso ao leitor de ingressos. */
 export default async function PainelEquipePage() {

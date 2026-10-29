@@ -29,17 +29,17 @@ export function PainelEquipe(p: EquipeProps) {
 
   return (
     <div className="pane">
-      <div className="pg-h"><div><h1 className="pg-t">{p.role === "portaria" ? "Portaria" : "Equipe e portaria"}</h1><p className="pg-s">{p.role === "portaria" ? "Escolha o evento e valide os ingressos na entrada" : "Quem ajuda a tocar os seus eventos e o leitor de ingressos da entrada"}</p></div></div>
+      <div className="pg-h"><div><h1 className="pg-t">{p.role === "portaria" ? "Check-in" : "Equipe e check-in"}</h1><p className="pg-s">{p.role === "portaria" ? "Escolha o evento e valide os ingressos na entrada" : "Quem ajuda a tocar os seus eventos e o check-in na entrada"}</p></div></div>
 
       <div className="cols">
         <div className="maincol">
           <section className="cx">
-            <div className="card-h"><div><h2 className="card-t">Leitor de ingressos</h2><span className="card-s">Abra no celular da equipe: a câmera lê o QR code e marca a entrada na hora.</span></div></div>
+            <div className="card-h"><div><h2 className="card-t">Check-in</h2><span className="card-s">{p.role === "portaria" ? "Abra no celular: a câmera lê o QR code e marca a entrada na hora." : "Acompanhe as entradas e crie os acessos do app da portaria para cada portão ou pessoa da equipe."}</span></div></div>
             {p.events.length ? p.events.map((e) => (
               <div className="ptr" key={e.id}>
                 <div className="evr-art"><FlyerArt id={e.flyerId} /></div>
                 <div className="evr-i"><b className="evr-t">{e.title}</b><span className="evr-s">{e.when} · {e.where}</span>{e.soon && <span className="st on">Hoje ou amanhã</span>}</div>
-                <Link className="b2 dark" href={`/painel/portaria/${e.id}`}>Abrir leitor</Link>
+                <Link className="b2 dark" href={p.role === "portaria" ? `/painel/portaria/${e.id}` : `/painel/evento/${e.id}?aba=checkin`}>Abrir check-in</Link>
               </div>
             )) : <span className="card-s">Nenhum evento publicado com data futura.</span>}
           </section>
@@ -84,7 +84,7 @@ export function PainelEquipe(p: EquipeProps) {
             <div className="roles">
               <div><b>Dono:</b> tudo, inclusive equipe, conta de repasse e configurações.</div>
               <div><b>Admin:</b> vê vendas, participantes, financeiro e marketing; cria cupons.</div>
-              <div><b>Portaria:</b> só o leitor de ingressos dos eventos.</div>
+              <div><b>Portaria:</b> só o check-in dos eventos.</div>
             </div>
           </section>
         </aside>

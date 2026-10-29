@@ -997,7 +997,7 @@ export const ARTICLES: HelpArticle[] = [
     summary: "Convide pessoas pelo e-mail com o papel de administrador ou de portaria.",
     keywords: "equipe convidar membro administrador socio portaria permissao acesso painel",
     body: [
-      p("Em [Painel, Equipe e portaria](/painel/equipe), convide pessoas pelo e-mail:"),
+      p("Em [Painel, Equipe e check-in](/painel/equipe), convide pessoas pelo e-mail:"),
       ul(
         "**Administrador:** ajuda a gerir os eventos, cupons e marketing.",
         "**Portaria:** só faz o check-in dos ingressos.",
