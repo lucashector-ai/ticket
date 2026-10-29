@@ -458,3 +458,8 @@
   .pg-pdl *,.pg-pdl *::before,.pg-pdl *::after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001ms!important;transition-delay:0s!important}
   .pg-pdl .pdl-vis{--mx:0!important;--my:0!important}
 }
+/* ≤760px a barra flutuante (.pdl-dock) ocupa a largura toda na base da tela:
+   enquanto ela aparece, o botão de acessibilidade sobe para não cobrir o texto da taxa. */
+@media (max-width:760px){
+  body:has(.pdl-dock.on) .a11y-tab{bottom:calc(84px + env(safe-area-inset-bottom))}
+}
