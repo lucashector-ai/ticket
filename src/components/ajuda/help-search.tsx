@@ -39,6 +39,14 @@ export function HelpSearch({ docs, initialQ = "", variant = "hero", children }: 
     return () => clearTimeout(t);
   }, [q, hero]);
 
+  // um assunto aberto por âncora (/ajuda#reembolsos) precisa da lista de assuntos visível
+  useEffect(() => {
+    if (!hero) return;
+    const clear = () => setQ("");
+    window.addEventListener("hp:clear-search", clear);
+    return () => window.removeEventListener("hp:clear-search", clear);
+  }, [hero]);
+
   // "/" foca a busca (como em outros sites de ajuda)
   useEffect(() => {
     if (!hero) return;
