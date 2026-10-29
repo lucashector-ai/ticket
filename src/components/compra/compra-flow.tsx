@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MINI_CHECK, PAY_APPROVED_MS, PAY_MIN_MS, playPaymentFlood } from "@/lib/pay-anim";
 import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { checkCoupon, confirmPayment, placeOrder, type ConfirmResult } from "@/lib/actions/compra";
@@ -50,6 +51,8 @@ type Hold = { name: string; me: boolean; meia: boolean; email: string };
 type PixOrder = { orderId: string; number: number; totalCents: number; pixCode: string; pixQrSvg: string; expiresAt: string | null; live: boolean; testUrl: string | null };
 type Done = Extract<ConfirmResult, { ok: true }>;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** hora atual (só nos handlers de pagamento, para a animação durar o mínimo) */
+const nowMs = () => Date.now();
 /** segundos até um horário ISO (prazo do Pix gerado pela Stripe) */
 const secondsUntil = (iso: string) => Math.max(0, Math.round((Date.parse(iso) - Date.now()) / 1000));
 const low = (v: string) => v.trim().toLowerCase();
@@ -189,6 +192,9 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   }, []);
   const [slow, setSlow] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** botão de pagar: processando (lima, com a barra) → aprovado (check) → cortina */
+  const [payPhase, setPayPhase] = useState<"idle" | "paying" | "approved">("idle");
+  const ctaRef = useRef<HTMLButtonElement>(null);
   const [authNudge, setAuthNudge] = useState(false);
   const authRef = useRef<HTMLDivElement>(null);
   /* data escolhida no resumo: a dos ingressos já selecionados, senão a primeira */
@@ -398,6 +404,23 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     if (!lock) router.refresh();
   }, [lock, router, setPending, urlFor]);
 
+  /** Pagamento aprovado com animação: botão "aprovado" (cartão/grátis), cortina lima e a confirmação entra por baixo. */
+  const celebrate = useCallback(async (r: Done, o: { fromButton: boolean; startedAt?: number }) => {
+    if (o.fromButton) {
+      const rest = PAY_MIN_MS - (nowMs() - (o.startedAt ?? nowMs()));
+      if (rest > 0) await sleep(rest);
+      setPayPhase("approved");
+      await sleep(PAY_APPROVED_MS);
+    }
+    const how = r.method === "free" ? "Gratuito" : r.method === "card" ? `Cartão ${r.installments}x` : "Pix";
+    await playPaymentFlood({
+      origin: o.fromButton ? ctaRef.current?.getBoundingClientRect() : null,
+      summary: r.method === "free" ? `${how} · Pedido #${r.number}` : `${priceOf(r.totalCents)} · ${how} · Pedido #${r.number}`,
+      onCovered: () => { setPayPhase("idle"); finishWith(r); },
+      revealRoot: () => document.querySelector(".ck .done"),
+    });
+  }, [finishWith]);
+
   /* Pix de verdade: confere o pagamento a cada 3 s enquanto o QR está na tela */
   const pixOrderId = step === "pix" && order?.live ? order.orderId : null;
   useEffect(() => {
@@ -406,11 +429,11 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     const iv = setInterval(async () => {
       const r = await checkPayment(pixOrderId);
       if (!alive) return;
-      if (r.status === "paid") { alive = false; clearInterval(iv); finishWith(r.result); }
+      if (r.status === "paid") { alive = false; clearInterval(iv); void celebrate(r.result, { fromButton: false }); }
       else if (r.status === "closed" || r.status === "failed") { alive = false; clearInterval(iv); flash(r.error); setOrder(null); setPending(null); setStep("pagamento"); }
     }, 3000);
     return () => { alive = false; clearInterval(iv); };
-  }, [pixOrderId, finishWith, flash, setPending]);
+  }, [pixOrderId, celebrate, flash, setPending]);
 
   /* cartões salvos: busca uma vez, quando a pessoa chega no cartão; escolhe o principal (ou o mais recente válido) */
   const wantCards = live && !!hasSavedCards && step === "pagamento" && pay === "card";
@@ -486,24 +509,26 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   }
 
   /** Pedido grátis ou modo de teste (sem Stripe): confirma sem gateway. */
-  async function finish(orderId: string) {
-    go("proc");
+  async function finish(orderId: string, startedAt = nowMs()) {
+    // no Pix de teste ("Já fiz o pagamento") não há botão de pagar: a cortina nasce do centro
+    const fromButton = step !== "pix";
+    if (fromButton) setPayPhase("paying"); else go("proc");
     const r = await confirmPayment(orderId);
-    if (!r.ok) { flash(r.error); setPending(null); go(free ? "dados" : "pagamento"); return; }
-    finishWith(r);
+    if (!r.ok) { setPayPhase("idle"); flash(r.error); setPending(null); go(free ? "dados" : "pagamento"); return; }
+    await celebrate(r, { fromButton, startedAt });
   }
 
   /** Cartão pela Stripe: cobra, passa pelo 3D Secure se o banco pedir e espera a confirmação. */
-  async function payLive(orderId: string, card: Omit<PayCardInput, "orderId">) {
-    go("proc");
-    const fail = (msg: string, drop = false) => { if (drop) setPending(null); setPayErr(msg); go("pagamento"); };
+  async function payLive(orderId: string, card: Omit<PayCardInput, "orderId">, startedAt = nowMs()) {
+    setPayPhase("paying");
+    const fail = (msg: string, drop = false) => { if (drop) setPending(null); setPayPhase("idle"); setPayErr(msg); go("pagamento"); };
     const r = await payCard({ orderId, ...card });
     if (!r.ok) {
       if (r.installments) setCardInst(r.installments);
       fail(r.error);
       return;
     }
-    if (r.status === "paid") { finishWith(r.result); return; }
+    if (r.status === "paid") { await celebrate(r.result, { fromButton: true, startedAt }); return; }
     if (r.status === "requires_action") {
       const a = await cardApi.current?.handleNextAction(r.clientSecret);
       if (!a || "error" in a) { fail(a?.error ?? "O banco não confirmou o pagamento. Tente de novo."); return; }
@@ -511,7 +536,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     // aprovado no banco: o pedido é confirmado pelo webhook ou por esta conferência (o que chegar primeiro)
     for (let i = 0; i < 90; i++) {
       const c = await checkPayment(orderId);
-      if (c.status === "paid") { finishWith(c.result); return; }
+      if (c.status === "paid") { await celebrate(c.result, { fromButton: true, startedAt }); return; }
       if (c.status === "failed") { fail(c.error); return; }
       if (c.status === "closed") { fail(c.error, true); return; }
       if (i === 8) setSlow(true);
@@ -530,8 +555,10 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       if (dadosErr.length) { setTried(true); return; }
       if (free) {
         // nada a pagar: o pedido é confirmado e os ingressos saem na hora
+        const startedAt = nowMs();
+        setPayPhase("paying");
         const id = await orderFor("free");
-        if (id) await finish(id);
+        if (id) await finish(id, startedAt); else setPayPhase("idle");
         return;
       }
       go("pagamento");
@@ -566,14 +593,18 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
           card = { paymentMethodId: pm.id, save: saveCard, holder: other ? { name: printed.toUpperCase(), cpf: holderCpf } : null };
         }
         // nova tentativa sem mudar nada: reaproveita o pedido (e o PaymentIntent) pendente
+        const startedAt = nowMs();
+        setPayPhase("paying");
         const orderId = await orderFor("card");
-        if (!orderId) { setBusy(false); return; }
+        if (!orderId) { setBusy(false); setPayPhase("idle"); return; }
         setBusy(false);
-        await payLive(orderId, card);
+        await payLive(orderId, card, startedAt);
       } else {
         if (!cardValid) { setTried(true); return; }
+        const startedAt = nowMs();
+        setPayPhase("paying");
         const orderId = await orderFor("card");
-        if (orderId) await finish(orderId);
+        if (orderId) await finish(orderId, startedAt); else setPayPhase("idle");
       }
     }
   }
@@ -601,7 +632,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     setBusy(true);
     const r = await checkPayment(order.orderId);
     setBusy(false);
-    if (r.status === "paid") finishWith(r.result);
+    if (r.status === "paid") void celebrate(r.result, { fromButton: false });
     else if (r.status === "pending") flash("Ainda não recebemos o Pix. Assim que cair, a confirmação aparece aqui.");
     else { flash(r.error); setOrder(null); setPending(null); go("pagamento"); }
   }
@@ -1144,9 +1175,15 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 <span className="sm-inst">{price.installments}x de {money(Math.round(price.total / price.installments))}{price.installments <= 3 ? " sem juros" : ""}</span>
               )}
               {(step === "resumo" || step === "dados" || step === "pagamento") && (
-                <button className="go2 block" type="button" onClick={() => void next()} disabled={busy || expired}>
-                  {busy ? "Aguarde…" : ctaLabel}
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
+                <button
+                  ref={ctaRef}
+                  className={`go2 block tw-pay-btn${payPhase === "paying" ? " is-paying" : payPhase === "approved" ? " is-paying is-approved" : ""}`}
+                  type="button" onClick={() => void next()} disabled={busy || expired || payPhase !== "idle"} aria-live="polite"
+                >
+                  {payPhase === "paying" && <span className="tw-spin" aria-hidden="true" />}
+                  {payPhase === "approved" && <span className="tw-mini-check" aria-hidden="true" dangerouslySetInnerHTML={{ __html: MINI_CHECK }} />}
+                  <span data-label>{payPhase === "paying" ? "Processando pagamento" : payPhase === "approved" ? "Pagamento aprovado" : busy ? "Aguarde…" : ctaLabel}</span>
+                  <svg className="tw-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
                 </button>
               )}
               {(step === "dados" || step === "pagamento" || step === "pix") && (
@@ -1163,14 +1200,14 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
 
       {step === "done" && done && (
         <div className="done">
-          <span className="done-ok" aria-hidden="true">
+          <span className="done-ok" aria-hidden="true" data-tw-reveal="pop" style={{ "--i": 0 } as React.CSSProperties}>
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
           </span>
-          <h1 className="done-h">Pedido confirmado!</h1>
-          <p className="done-p">{done.sentTo.length >= done.ticketCount
+          <h1 className="done-h" data-tw-reveal style={{ "--i": 1 } as React.CSSProperties}>Pedido confirmado!</h1>
+          <p className="done-p" data-tw-reveal style={{ "--i": 2 } as React.CSSProperties}>{done.sentTo.length >= done.ticketCount
             ? <>Enviamos a confirmação para <b className="done-b">{done.email || "seu e-mail"}</b> e cada ingresso para quem vai usar.</>
             : <>Enviamos os ingressos para <b className="done-b">{done.email || "seu e-mail"}</b>. Eles também já estão em Meus ingressos.</>}</p>
-          <div className="ld-tk done-tk">
+          <div className="ld-tk done-tk" data-tw-reveal="ticket" style={{ "--i": 3 } as React.CSSProperties}>
             <div className="ld-main">
               <span className="ld-k">Tickets Win · Ingresso · Pedido #{done.number}</span>
               <b className="ld-t">{event.title}</b>
@@ -1184,7 +1221,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
             </div>
           </div>
           {done.sentTo.length > 0 && (
-            <div className="dn-sent">
+            <div className="dn-sent" data-tw-reveal style={{ "--i": 4 } as React.CSSProperties}>
               <b className="dn-sent-t">{done.sentTo.length === 1 ? "1 ingresso enviado por e-mail" : `${done.sentTo.length} ingressos enviados por e-mail`}</b>
               <ul className="dn-sent-l">
                 {done.sentTo.map((x, i) => (
@@ -1197,12 +1234,12 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               <span className="dn-sent-s">Cada pessoa entra ou cria uma conta com esse e-mail para receber. Até lá, o ingresso fica com você em Meus ingressos, onde dá para reenviar ou cancelar.</span>
             </div>
           )}
-          <div className="done-a">
+          <div className="done-a" data-tw-reveal style={{ "--i": 5 } as React.CSSProperties}>
             <Link className="go2" href={`/meus-ingressos?pedido=${done.number}`}>Ver meus ingressos</Link>
             <a className="sec2" href={`/api/ingressos/${done.firstCode}/ics`} onClick={() => flash("Evento adicionado à sua agenda")}>Adicionar à agenda</a>
             <Link className="lk2" href="/">Voltar para o início</Link>
           </div>
-          <div className="done-sum">
+          <div className="done-sum" data-tw-reveal style={{ "--i": 6 } as React.CSSProperties}>
             <div className="ds"><span className="ds-k">Pagamento</span><b className="ds-v">{payLabel}</b></div>
             <div className="ds"><span className="ds-k">Total pago</span><b className="ds-v">{priceOf(done.totalCents)}</b></div>
             <div className="ds"><span className="ds-k">Pedido</span><b className="ds-v">#{done.number}</b></div>

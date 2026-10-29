@@ -1,0 +1,70 @@
+/* Animação de pagamento aprovado (feita no Claude Design): botão processando → aprovado,
+   cortina lima que cobre a tela, celebração e entrada da tela de confirmação. Usada em lib/pay-anim.ts. */
+:root{
+  --tw-lime:#D3F55B;
+  --tw-lime-2:#B9E23A;
+  --tw-ink:#111111;
+  --tw-ease:cubic-bezier(.22,1,.36,1);
+  --tw-spring:cubic-bezier(.34,1.56,.64,1);
+  --tw-curtain:cubic-bezier(.76,0,.24,1);
+}
+
+/* 1) Botão: estados "processando" e "aprovado" */
+.tw-pay-btn{position:relative;overflow:hidden;transition:background .45s var(--tw-ease),color .3s,transform .5s var(--tw-spring),box-shadow .4s}
+.tw-pay-btn>*{position:relative;z-index:1}
+.tw-pay-btn.is-paying,.tw-pay-btn.is-paying:disabled{background:var(--tw-lime) !important;color:var(--tw-ink) !important;opacity:1 !important;cursor:default;pointer-events:none;transform:scale(1.02)}
+.tw-pay-btn.is-paying::before{content:'';position:absolute;left:0;top:0;bottom:0;width:0;background:var(--tw-lime-2);animation:twPayFill 1.5s cubic-bezier(.65,0,.35,1) .15s forwards}
+.tw-pay-btn.is-approved{transform:scale(1.04);box-shadow:0 0 0 8px rgba(211,245,91,.35)}
+.tw-pay-btn .tw-arrow{transition:opacity .2s}
+.tw-pay-btn.is-paying .tw-arrow{display:none}
+@keyframes twPayFill{to{width:100%}}
+.tw-spin{width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(17,17,17,.2);border-top-color:var(--tw-ink);animation:twSpin .7s linear infinite}
+@keyframes twSpin{to{transform:rotate(360deg)}}
+.tw-mini-check{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--tw-ink);animation:twPop .45s var(--tw-spring) both}
+@keyframes twPop{from{transform:scale(0)}to{transform:none}}
+
+/* 2) Cortina lima que nasce do botão e cobre a tela */
+.tw-flood{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--tw-lime);clip-path:circle(0px at var(--ox) var(--oy));animation:twFlood 1s var(--tw-curtain) forwards;will-change:clip-path,transform}
+@keyframes twFlood{to{clip-path:circle(160vmax at var(--ox) var(--oy))}}
+.tw-flood.is-full,.tw-flood.is-leaving{animation:none;clip-path:circle(160vmax at var(--ox) var(--oy))}
+.tw-flood.is-leaving{transform:translateY(-104%);border-radius:0 0 50% 50% / 0 0 160px 160px;transition:transform .9s var(--tw-curtain),border-radius .9s var(--tw-curtain)}
+.tw-flood::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at var(--ox) var(--oy),rgba(255,255,255,.45),rgba(255,255,255,0) 40%);opacity:0;animation:twGlow 1.2s ease .2s both}
+@keyframes twGlow{0%{opacity:0}40%{opacity:1}100%{opacity:0}}
+
+/* 3) Conteúdo da celebração */
+.tw-flood-in{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;color:var(--tw-ink);padding:0 24px}
+.tw-flood.is-leaving .tw-flood-in{opacity:0;transform:translateY(-30px);transition:opacity .35s,transform .5s var(--tw-curtain)}
+.tw-big-check{position:relative;width:132px;height:132px;border-radius:50%;background:var(--tw-ink);display:grid;place-items:center;animation:twCheckIn .7s var(--tw-spring) both}
+@keyframes twCheckIn{from{transform:scale(0) rotate(-45deg)}to{transform:none}}
+.tw-big-check svg{position:relative}
+.tw-big-check path{stroke-dasharray:40;stroke-dashoffset:40;animation:twDraw .5s cubic-bezier(.65,0,.35,1) .35s forwards}
+@keyframes twDraw{to{stroke-dashoffset:0}}
+.tw-ring{position:absolute;left:50%;top:50%;width:132px;height:132px;margin:-66px 0 0 -66px;border-radius:50%;background:rgba(17,17,17,.12);animation:twRing 1.6s var(--tw-ease) .3s both}
+.tw-ring.r2{background:rgba(17,17,17,.07);animation-delay:.55s}
+@keyframes twRing{from{transform:scale(1);opacity:1}to{transform:scale(3.4);opacity:0}}
+.tw-spark{position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:3px;background:var(--tw-ink);opacity:0;animation:twSpark .9s var(--tw-ease) .45s both}
+@keyframes twSpark{0%{opacity:1;transform:rotate(var(--a)) translateY(0) scale(1)}100%{opacity:0;transform:rotate(var(--a)) translateY(-120px) scale(.4)}}
+.tw-flood-title{margin:40px 0 0;font:600 clamp(40px,6vw,64px)/1 'Inter Tight',Inter,sans-serif;letter-spacing:-.045em;animation:twUp .7s var(--tw-ease) .5s both}
+.tw-flood-sub{margin:16px 0 0;font:500 17px Inter,sans-serif;color:#3D5200;animation:twUp .7s var(--tw-ease) .62s both}
+.tw-flood-pill{display:inline-flex;align-items:center;gap:10px;margin-top:30px;height:40px;padding:0 18px;border-radius:999px;background:var(--tw-ink);color:var(--tw-lime);font:600 14px Inter,sans-serif;animation:twUp .7s var(--tw-ease) .75s both}
+.tw-flood-pill i{width:6px;height:6px;border-radius:50%;background:var(--tw-lime);animation:twDot 1s ease-in-out infinite}
+.tw-flood-pill i:nth-child(2){animation-delay:.15s}
+.tw-flood-pill i:nth-child(3){animation-delay:.3s}
+@keyframes twDot{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+@keyframes twUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+
+/* 4) Entrada da tela de confirmação (coloque data-tw-reveal nos itens) */
+.tw-reveal-hold [data-tw-reveal]{opacity:0}
+.tw-reveal [data-tw-reveal]{animation:twIn .8s var(--tw-ease) both;animation-delay:calc(var(--i,0) * 80ms + 250ms)}
+.tw-reveal [data-tw-reveal="pop"]{animation-name:twRevealPop;animation-timing-function:var(--tw-spring)}
+.tw-reveal [data-tw-reveal="ticket"]{animation-name:twTicket;animation-duration:.9s}
+@keyframes twIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+@keyframes twRevealPop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+@keyframes twTicket{from{opacity:0;transform:translateY(60px) rotate(-3deg) scale(.96)}to{opacity:1;transform:none}}
+
+/* botão de acessibilidade some enquanto a cortina cobre a tela */
+body:has(.tw-flood) .a11y-tab{opacity:0;pointer-events:none}
+
+@media (prefers-reduced-motion:reduce){
+  .tw-flood,.tw-flood *,.tw-pay-btn,.tw-reveal [data-tw-reveal]{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
