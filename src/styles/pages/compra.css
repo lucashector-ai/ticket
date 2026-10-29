@@ -160,7 +160,7 @@
   .go2 svg{transition:transform .35s var(--ease)}
   .go2:hover svg{transform:translateX(3px)}
   .pix-i .go2{align-self:flex-start;margin-top:6px}
-  .back2{width:100%;height:44px;margin-top:8px;border-radius:999px;font-size:14px;font-weight:600;color:#55555A}
+  .back2{display:flex;align-items:center;justify-content:center;text-align:center;width:100%;height:44px;margin-top:8px;border-radius:999px;font-size:14px;font-weight:600;color:#55555A}
   .back2:hover{background:#F4F4F1;color:#111}
   .sec2{display:inline-flex;align-items:center;height:56px;padding:0 24px;border-radius:999px;background:#F4F4F1;font-size:15px;font-weight:600}
   .sec2:hover{background:#EAEAE4}
