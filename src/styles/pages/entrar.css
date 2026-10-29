@@ -687,6 +687,8 @@
   .lx-soc:hover{background:#EAEAE4;color:#111}
   .lx-soc.lx-ap{background:#000;color:#FFFFFF}
   .lx-soc.lx-ap:hover{background:#1D1D1F;color:#FFFFFF}
+  .ap-fin{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-size:16px;color:#111}
+  .ap-fin-ic{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#000;color:#fff;animation:apFin 1.2s ease-in-out infinite}
   .lx-sw{margin:14px 0 0;text-align:center;font-size:14px;color:#6E6E73}
   .lx-sw .au-lk{text-decoration:none;font-weight:700}
   .lx-sw .au-lk:hover{text-decoration:underline}
@@ -734,3 +736,4 @@
   .cf-human{display:flex;justify-content:center;height:0;overflow:hidden;margin:-6px 0}
   .cf-human.on{height:auto;overflow:visible;margin:0}
 }
+@keyframes apFin{50%{transform:scale(.92);opacity:.75}}

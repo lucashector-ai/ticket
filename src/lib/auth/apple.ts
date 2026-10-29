@@ -114,3 +114,72 @@ export async function takeAppleOtp(email: string, timeoutMs = 10_000): Promise<s
     await new Promise((res) => setTimeout(res, 300));
   }
 }
+
+/* Fim do login (a partir do nosso site): a volta da Apple deixa a identidade conferida lacrada num cookie. */
+export const APPLE_DONE_COOKIE = "tw_apple_ok";
+export type AppleDone = { email: string; sub: string; name: string; next: string; exp: number };
+
+export async function sealApple(d: AppleDone) {
+  const { sealSecret } = await import("@/lib/mfa");
+  return sealSecret(JSON.stringify(d));
+}
+
+export async function openApple(sealed: string | undefined): Promise<AppleDone | null> {
+  if (!sealed) return null;
+  try {
+    const { openSecret } = await import("@/lib/mfa");
+    const d = JSON.parse(await openSecret(sealed)) as AppleDone;
+    return d.exp > Date.now() && d.email && d.sub ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Cria a conta (se for nova) ou entra na existente e devolve para onde ir.
+ * Conta nova: o Neon Auth só manda código para quem já tem conta, então a conta nasce no cadastro, já com
+ * sessão, com senha aleatória que ninguém conhece (se um dia quiser senha, a pessoa usa "Esqueci a senha").
+ * Conta existente: código de "entrar" do Neon Auth, que o nosso webhook guarda em vez de mandar por e-mail.
+ */
+export async function completeAppleSignIn(d: AppleDone): Promise<{ ok: true; to: string } | { ok: false; why: string }> {
+  const [{ sql }, { auth }, mfa, { mailWelcome }] = await Promise.all([import("drizzle-orm"), import("@/lib/auth/server"), import("@/lib/mfa"), import("@/lib/notify")]);
+  const found = await db.execute<{ id: string }>(sql`select id from neon_auth."user" where lower(email) = ${d.email} limit 1`).catch(() => null);
+  if (!found) return { ok: false, why: "não foi possível consultar as contas" };
+  const isNew = found.rows.length === 0;
+
+  let data: unknown;
+  if (isNew) {
+    const r = await auth.signUp.email({ email: d.email, password: `${randomBytes(24).toString("base64url")}aA1!`, name: d.name || d.email.split("@")[0] });
+    if (r.error) return { ok: false, why: `signUp: ${r.error.message ?? r.error.code}` };
+    data = r.data;
+  } else {
+    await expectAppleOtp(d.email);
+    const sent = await auth.emailOtp.sendVerificationOtp({ email: d.email, type: "sign-in" }).catch((e) => ({ error: e }));
+    if (sent && "error" in sent && sent.error) return { ok: false, why: `otp: ${JSON.stringify(sent.error).slice(0, 200)}` };
+    const otp = await takeAppleOtp(d.email);
+    if (!otp) return { ok: false, why: "o código do Neon Auth não chegou pelo webhook" };
+    const r = await auth.signIn.emailOtp({ email: d.email, otp });
+    if (r.error) return { ok: false, why: `signIn: ${r.error.message ?? r.error.code}` };
+    data = r.data;
+  }
+
+  const user = (data as { user?: { id?: string; name?: string | null } } | null)?.user;
+  const userId = user?.id;
+  if (!userId) return { ok: false, why: "sessão sem usuário" };
+  // a Apple já confirmou o e-mail: não pede ativação
+  await db.execute(sql`update neon_auth."user" set "emailVerified" = true where id = ${userId} and not "emailVerified"`).catch(() => null);
+  if (d.name && !user?.name?.trim()) await db.execute(sql`update neon_auth."user" set name = ${d.name} where id = ${userId} and coalesce(name, '') = ''`).catch(() => null);
+  await db.insert(schema.userProfiles).values({ userId, name: d.name || user?.name?.trim() || null, email: d.email, appleSub: d.sub })
+    .onConflictDoUpdate({ target: schema.userProfiles.userId, set: { appleSub: d.sub } }).catch(() => null);
+  await mfa.rememberDevice((data as { token?: string } | null)?.token);
+  if (isNew) await mailWelcome(d.email, d.name || null);
+
+  // mesma segunda etapa do login com senha
+  const s = await mfa.mfaSettings(userId);
+  if (s.method) {
+    if (s.method === "email" && s.email) await mfa.issueCode(userId, "login", s.email, s.name);
+    return { ok: true, to: `/verificacao?next=${encodeURIComponent(d.next)}` };
+  }
+  await mfa.logSecurity(userId, "login", "Apple");
+  return { ok: true, to: d.next };
+}

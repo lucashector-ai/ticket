@@ -1,14 +1,8 @@
-import { randomBytes } from "node:crypto";
-import { sql } from "drizzle-orm";
 import { cookies } from "next/headers";
-import { after, NextResponse } from "next/server";
-import { db, schema } from "@/db";
-import { APPLE_COOKIE, expectAppleOtp, readAppleCookie, takeAppleOtp, verifyAppleIdToken } from "@/lib/auth/apple";
-import { auth } from "@/lib/auth/server";
+import { NextResponse } from "next/server";
+import { APPLE_COOKIE, APPLE_DONE_COOKIE, readAppleCookie, sealApple, verifyAppleIdToken } from "@/lib/auth/apple";
 import { safeNextParam } from "@/lib/auth/next-param";
 import { logEmails } from "@/lib/email";
-import { issueCode, logSecurity, mfaSettings, rememberDevice } from "@/lib/mfa";
-import { mailWelcome } from "@/lib/notify";
 
 /** "Nome Sobrenome" do campo `user` que a Apple manda só na primeira vez. */
 function nameFrom(raw: FormDataEntryValue | null) {
@@ -43,47 +37,10 @@ export async function POST(req: Request) {
     return fail(`id_token: ${String(e)}`);
   }
 
-  const name = nameFrom(form.get("user"));
-  const found = await db.execute<{ id: string }>(sql`select id from neon_auth."user" where lower(email) = ${who.email} limit 1`).catch(() => null);
-  if (!found) return fail("não foi possível consultar as contas");
-  const isNew = found.rows.length === 0;
-
-  let data: unknown;
-  if (isNew) {
-    // conta nova: o Neon Auth só manda código para quem já tem conta, então a conta nasce aqui, já com sessão.
-    // A senha é aleatória e ninguém a conhece; se um dia quiser senha, a pessoa usa "Esqueci a senha".
-    const r = await auth.signUp.email({ email: who.email, password: `${randomBytes(24).toString("base64url")}aA1!`, name: name || who.email.split("@")[0] });
-    if (r.error) return fail(`signUp: ${r.error.message ?? r.error.code}`);
-    data = r.data;
-  } else {
-    // conta existente: código de "entrar" do Neon Auth, que o nosso webhook guarda em vez de mandar por e-mail
-    await expectAppleOtp(who.email);
-    const sent = await auth.emailOtp.sendVerificationOtp({ email: who.email, type: "sign-in" }).catch((e) => ({ error: e }));
-    if (sent && "error" in sent && sent.error) return fail(`otp: ${JSON.stringify(sent.error).slice(0, 200)}`);
-    const otp = await takeAppleOtp(who.email);
-    if (!otp) return fail("o código do Neon Auth não chegou pelo webhook");
-    const r = await auth.signIn.emailOtp({ email: who.email, otp });
-    if (r.error) return fail(`signIn: ${r.error.message ?? r.error.code}`);
-    data = r.data;
-  }
-
-  const user = (data as { user?: { id?: string; name?: string | null } } | null)?.user;
-  const userId = user?.id;
-  if (!userId) return fail("sessão sem usuário");
-  // a Apple já confirmou o e-mail: não pede ativação
-  await db.execute(sql`update neon_auth."user" set "emailVerified" = true where id = ${userId} and not "emailVerified"`).catch(() => null);
-  if (name && !user?.name?.trim()) await db.execute(sql`update neon_auth."user" set name = ${name} where id = ${userId} and coalesce(name, '') = ''`).catch(() => null);
-  await db.insert(schema.userProfiles).values({ userId, name: name || user?.name?.trim() || null, email: who.email, appleSub: who.sub })
-    .onConflictDoUpdate({ target: schema.userProfiles.userId, set: { appleSub: who.sub } }).catch(() => null);
-  await rememberDevice((data as { token?: string } | null)?.token);
-  if (isNew) after(() => mailWelcome(who.email, name || null));
-
-  // mesma segunda etapa do login com senha
-  const s = await mfaSettings(userId);
-  if (s.method) {
-    if (s.method === "email" && s.email) await issueCode(userId, "login", s.email, s.name);
-    return NextResponse.redirect(new URL(`/verificacao?next=${encodeURIComponent(next)}`, req.url), 303);
-  }
-  await logSecurity(userId, "login", "Apple");
-  return NextResponse.redirect(new URL(next, req.url), 303);
+  // Terminar o login aqui não dá: o Neon Auth recusa pedidos cuja origem é a página da Apple (appleid.apple.com).
+  // A identidade conferida vai lacrada num cookie e a página /entrar/apple termina o login a partir do nosso site.
+  const sealed = await sealApple({ email: who.email, sub: who.sub, name: nameFrom(form.get("user")), next, exp: Date.now() + 120_000 });
+  const res = NextResponse.redirect(new URL("/entrar/apple", req.url), 303);
+  res.cookies.set(APPLE_DONE_COOKIE, sealed, { httpOnly: true, secure: true, sameSite: "lax", path: "/entrar/apple", maxAge: 120 });
+  return res;
 }
