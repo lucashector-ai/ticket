@@ -81,7 +81,7 @@ export function PortariaApp({ gate, event, counts: c0 }: { gate: string; event: 
         <i style={{ width: `${pct}%` }} />
       </div>
 
-      <div className="pt-aim" aria-hidden="true"><b className="pt-core" /><span /><span /><span /><span /></div>
+      <div className="pt-aim" aria-hidden="true"><b className="pt-core" /><span /><span /><span /><span /><i className="pt-scan" /></div>
       <p className="pt-hint">{camErr ? "Não conseguimos abrir a câmera." : "Aponte para o QR code do ingresso"}</p>
       {camErr && <button className="pt-retry" type="button" onClick={() => { setCamErr(false); setCamKey((k) => k + 1); }}>Permitir câmera</button>}
 
@@ -123,12 +123,11 @@ function ResultView({ r, onClose }: { r: Result; onClose: () => void }) {
   return (
     <button className={r.ok ? "pt-res ok" : "pt-res bad"} type="button" onClick={onClose} key={r.at} aria-live="assertive">
       <span className="pt-edge" aria-hidden="true"><i /></span>
-      <span className="pt-edge core" aria-hidden="true"><i /></span>
       <span className="pt-glass">
         <span className="pt-mark" aria-hidden="true">
+          <i className="wave" />
           <svg viewBox="0 0 52 52">
-            <circle className="ring" cx="26" cy="26" r="24" />
-            {r.ok ? <path className="draw" d="M15 27.5l7.5 7.5L38 18.5" /> : <path className="draw" d="M17.5 17.5l17 17M34.5 17.5l-17 17" />}
+            {r.ok ? <path className="draw" d="M14 27l8 8L38 18" /> : <><path className="draw" d="M17 17l18 18" /><path className="draw" d="M35 17L17 35" /></>}
           </svg>
         </span>
         <span className="pt-res-k">{r.ok ? "Entrada liberada" : used ? `Já entrou às ${hhmm(r.checkedInAt)}` : "Não liberado"}</span>

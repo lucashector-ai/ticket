@@ -33,7 +33,7 @@
   /* ---------- câmera ---------- */
   .pt-app{position:absolute;inset:0}
   .pt-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-  .pt-shade{position:absolute;inset:0;pointer-events:none;background:radial-gradient(min(52vw,230px) min(52vw,230px) at 50% 50%,transparent 70%,rgba(0,0,0,.42) 100%),linear-gradient(180deg,rgba(0,0,0,.72) 0%,transparent 26%,transparent 70%,rgba(0,0,0,.8) 100%)}
+  .pt-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.72) 0%,transparent 26%,transparent 70%,rgba(0,0,0,.8) 100%)}
   .pt-top{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 16px 0}
   .pt-ev{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
   .pt-gate{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.14);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:12px;font-weight:700}
@@ -54,6 +54,11 @@
   .pt-aim span:nth-child(3){right:-2px;top:-2px;border-left:0;border-bottom:0;border-top-right-radius:26px;animation-delay:.08s}
   .pt-aim span:nth-child(4){left:-2px;bottom:-2px;border-right:0;border-top:0;border-bottom-left-radius:26px;animation-delay:.16s}
   .pt-aim span:nth-child(5){right:-2px;bottom:-2px;border-left:0;border-top:0;border-bottom-right-radius:26px;animation-delay:.24s}
+  /* linha de leitura descendo e subindo (só transform): o invólucro tem a altura do leitor, então translateY(%) = altura do leitor */
+  /* a máscara no invólucro some com linha e brilho juntos nas pontas (sem "buraco" escuro onde a linha acaba) */
+  .pt-scan{position:absolute;inset:0;-webkit-mask:linear-gradient(90deg,transparent 4%,#000 24%,#000 76%,transparent 96%);mask:linear-gradient(90deg,transparent 4%,#000 24%,#000 76%,transparent 96%);animation:ptScan 1.7s cubic-bezier(.45,0,.55,1) infinite alternate;will-change:transform}
+  .pt-scan::before{content:"";position:absolute;left:0;right:0;top:50%;height:44px;margin-top:-22px;background:linear-gradient(180deg,transparent,rgba(211,245,91,.16) 45%,rgba(211,245,91,.16) 55%,transparent)}
+  .pt-scan::after{content:"";position:absolute;left:0;right:0;top:50%;height:3px;margin-top:-1.5px;background:#F6FFD2;box-shadow:0 0 10px 1px rgba(211,245,91,.9),0 0 26px 4px rgba(211,245,91,.45)}
   .pt-core{position:absolute;inset:14%;border-radius:50%;background:radial-gradient(closest-side,rgba(230,255,150,.45),rgba(211,245,91,.15) 55%,transparent);animation:ptCore 1s ease-in-out infinite;will-change:transform,opacity}
   .pt-hint{position:absolute;left:0;right:0;top:calc(50% + min(34vw,150px) + 18px);margin:0;text-align:center;font-size:15px;font-weight:600;color:rgba(255,255,255,.9);text-shadow:0 1px 8px rgba(0,0,0,.6)}
   .pt-retry{position:absolute;left:50%;top:calc(50% + min(34vw,150px) + 52px);transform:translateX(-50%);height:44px;padding:0 20px;border-radius:999px;background:#D3F55B;color:#111;font-weight:700}
@@ -64,33 +69,30 @@
   /* ---------- resultado no estilo da Siri: clarão, faixa de luz atravessando a tela, manchas de luz
      coloridas se movendo e brilho grosso nas bordas (tudo somando luz por cima da câmera) ---------- */
   .pt-res{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#fff;overflow:hidden;isolation:isolate;background:radial-gradient(120% 90% at 50% 50%,rgba(2,6,4,.88) 35%,rgba(2,6,4,.72) 100%);animation:ptIn .12s ease-out both}
-  .pt-res.ok{--g1:#F2FFF6;--g2:#5DFF9A;--g3:#22F0D2;--g4:#D2FF5C;--ink:#023A1C}
-  .pt-res.bad{--g1:#FFE6E1;--g2:#FF4D63;--g3:#FF2E9A;--g4:#FF9A3D;--ink:#FFFFFF}
+  .pt-res.ok{--g1:#7DFFA8;--g2:#00F05A;--g3:#00D44E;--g4:#3BFF6E;--m1:#22E266;--m2:#00B83F;--mg:rgba(0,226,90,.6)}
+  .pt-res.bad{--g1:#FF7A8A;--g2:#FF1F3D;--g3:#F0002E;--g4:#FF3B2A;--m1:#FF3B52;--m2:#D80022;--mg:rgba(255,24,56,.6)}
   .pt-res > span{pointer-events:none}
-  /* luz só nas bordas, como a Siri: faixa larga em degradê + faixa clara rente à borda, girando (só transform) */
+  /* luz só nas bordas, como a Siri: degradê girando que se desfaz devagar para dentro (esfumaçado, só transform) */
   .pt-edge{position:absolute;inset:0;z-index:2;overflow:hidden;mix-blend-mode:screen;
-    -webkit-mask:linear-gradient(90deg,#000 0%,rgba(0,0,0,.5) 6%,rgba(0,0,0,.12) 13%,transparent 20%,transparent 80%,rgba(0,0,0,.12) 87%,rgba(0,0,0,.5) 94%,#000 100%),linear-gradient(180deg,#000 0%,rgba(0,0,0,.5) 4.5%,rgba(0,0,0,.12) 10%,transparent 15%,transparent 85%,rgba(0,0,0,.12) 90%,rgba(0,0,0,.5) 95.5%,#000 100%);
-    mask:linear-gradient(90deg,#000 0%,rgba(0,0,0,.5) 6%,rgba(0,0,0,.12) 13%,transparent 20%,transparent 80%,rgba(0,0,0,.12) 87%,rgba(0,0,0,.5) 94%,#000 100%),linear-gradient(180deg,#000 0%,rgba(0,0,0,.5) 4.5%,rgba(0,0,0,.12) 10%,transparent 15%,transparent 85%,rgba(0,0,0,.12) 90%,rgba(0,0,0,.5) 95.5%,#000 100%);
+    -webkit-mask:linear-gradient(90deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.6) 2.5%,rgba(0,0,0,.43) 5%,rgba(0,0,0,.29) 8%,rgba(0,0,0,.18) 11%,rgba(0,0,0,.1) 14.5%,rgba(0,0,0,.045) 18%,transparent 23%,transparent 77%,rgba(0,0,0,.045) 82%,rgba(0,0,0,.1) 85.5%,rgba(0,0,0,.18) 89%,rgba(0,0,0,.29) 92%,rgba(0,0,0,.43) 95%,rgba(0,0,0,.6) 97.5%,rgba(0,0,0,.78) 100%),linear-gradient(180deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.6) 1.8%,rgba(0,0,0,.43) 3.6%,rgba(0,0,0,.29) 5.8%,rgba(0,0,0,.18) 8%,rgba(0,0,0,.1) 10.5%,rgba(0,0,0,.045) 13%,transparent 17%,transparent 83%,rgba(0,0,0,.045) 87%,rgba(0,0,0,.1) 89.5%,rgba(0,0,0,.18) 92%,rgba(0,0,0,.29) 94.2%,rgba(0,0,0,.43) 96.4%,rgba(0,0,0,.6) 98.2%,rgba(0,0,0,.78) 100%);
+    mask:linear-gradient(90deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.6) 2.5%,rgba(0,0,0,.43) 5%,rgba(0,0,0,.29) 8%,rgba(0,0,0,.18) 11%,rgba(0,0,0,.1) 14.5%,rgba(0,0,0,.045) 18%,transparent 23%,transparent 77%,rgba(0,0,0,.045) 82%,rgba(0,0,0,.1) 85.5%,rgba(0,0,0,.18) 89%,rgba(0,0,0,.29) 92%,rgba(0,0,0,.43) 95%,rgba(0,0,0,.6) 97.5%,rgba(0,0,0,.78) 100%),linear-gradient(180deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.6) 1.8%,rgba(0,0,0,.43) 3.6%,rgba(0,0,0,.29) 5.8%,rgba(0,0,0,.18) 8%,rgba(0,0,0,.1) 10.5%,rgba(0,0,0,.045) 13%,transparent 17%,transparent 83%,rgba(0,0,0,.045) 87%,rgba(0,0,0,.1) 89.5%,rgba(0,0,0,.18) 92%,rgba(0,0,0,.29) 94.2%,rgba(0,0,0,.43) 96.4%,rgba(0,0,0,.6) 98.2%,rgba(0,0,0,.78) 100%);
     animation:ptEdgeIn .28s cubic-bezier(.22,1,.36,1) both,ptBreath 1.2s .3s ease-in-out infinite;will-change:transform,opacity}
   .pt-edge i{position:absolute;left:50%;top:50%;width:160vmax;height:160vmax;margin:-80vmax 0 0 -80vmax;background:conic-gradient(var(--g2),var(--g3),var(--g4),var(--g1),var(--g2),var(--g3),var(--g2));animation:ptTurn 1.6s linear infinite;will-change:transform}
-  .pt-edge.core{z-index:3;
-    -webkit-mask:linear-gradient(90deg,#000,transparent 4%,transparent 96%,#000),linear-gradient(180deg,#000,transparent 3%,transparent 97%,#000);
-    mask:linear-gradient(90deg,#000,transparent 4%,transparent 96%,#000),linear-gradient(180deg,#000,transparent 3%,transparent 97%,#000);
-    animation:ptEdgeIn .22s ease-out both}
-  .pt-edge.core i{background:conic-gradient(var(--g1),#FFFFFF,var(--g4),var(--g1),var(--g3),#FFFFFF,var(--g1));animation:ptTurn 1.1s linear infinite reverse}
   /* sem cartão: só o ícone e os textos por cima da luz, com sombra suave para ler bem */
   .pt-glass{position:relative;z-index:5;display:flex;flex-direction:column;align-items:center;gap:8px;width:min(100%,380px);padding:0 8px;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.25),0 2px 18px rgba(0,0,0,.35);animation:ptCard .35s .06s cubic-bezier(.2,1.2,.4,1) both}
-  .pt-mark{width:96px;height:96px;margin-bottom:8px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 32% 26%,var(--g1),var(--g2) 52%,var(--g3) 100%);box-shadow:0 0 0 9px color-mix(in srgb,var(--g2) 22%,transparent),0 0 60px 6px color-mix(in srgb,var(--g2) 55%,transparent);animation:ptPop .35s .05s cubic-bezier(.34,1.56,.64,1) both}
-  .pt-mark svg{width:60px;height:60px;fill:none;stroke:var(--ink);stroke-width:4.6;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
-  .pt-mark .ring{stroke:color-mix(in srgb,var(--ink) 25%,transparent);stroke-width:1.6;stroke-dasharray:151;stroke-dashoffset:151;animation:ptDraw .4s .1s ease-out forwards}
-  .pt-mark .draw{stroke-dasharray:50;stroke-dashoffset:50;animation:ptDraw .28s .18s cubic-bezier(.65,0,.35,1) forwards}
+  /* ícone: círculo cheio na cor forte, ✓/✕ branco grosso desenhado rápido e uma onda que se abre uma vez */
+  .pt-mark{position:relative;width:108px;height:108px;margin-bottom:10px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(160deg,var(--m1),var(--m2));box-shadow:inset 0 2px 0 rgba(255,255,255,.3),inset 0 -8px 18px rgba(0,0,0,.16),0 12px 44px -4px var(--mg);text-shadow:none;animation:ptPop .34s .04s cubic-bezier(.34,1.56,.64,1) both}
+  .pt-mark .wave{position:absolute;inset:0;border-radius:50%;background:var(--m1);opacity:0;animation:ptWave .7s .14s cubic-bezier(.22,1,.36,1) both}
+  .pt-mark svg{position:relative;width:56px;height:56px;fill:none;stroke:#fff;stroke-width:6.2;stroke-linecap:round;stroke-linejoin:round;overflow:visible;filter:drop-shadow(0 1px 1px rgba(0,0,0,.14))}
+  .pt-mark .draw{stroke-dasharray:40;stroke-dashoffset:40;animation:ptDraw .24s .16s cubic-bezier(.65,0,.35,1) forwards}
+  .pt-mark .draw + .draw{animation-delay:.26s}
   .pt-res-k{font-size:13.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#FFFFFF}
   .pt-res-n{max-width:100%;font:600 clamp(34px,10vw,52px)/1.02 'Inter Tight',sans-serif;letter-spacing:-.035em;overflow-wrap:anywhere;animation:ptUp .3s .08s cubic-bezier(.22,1,.36,1) both}
   .pt-res-t{font-size:17px;font-weight:600;color:rgba(255,255,255,.92)}
   .pt-res-e{max-width:300px;font-size:16px;line-height:1.4;font-weight:600;color:rgba(255,255,255,.92)}
   .pt-res-c{margin-top:6px;font:700 14px 'Space Mono',monospace;letter-spacing:.08em;color:rgba(255,255,255,.88)}
   .pt-res-tap{position:absolute;z-index:5;left:0;right:0;bottom:calc(30px + env(safe-area-inset-bottom));font-size:13px;color:rgba(255,255,255,.6)}
-  @media (prefers-reduced-motion:reduce){.pt-edge,.pt-edge i,.pt-core,.pt-aim span{animation:none}}
+  @media (prefers-reduced-motion:reduce){.pt-edge,.pt-edge i,.pt-core,.pt-scan,.pt-aim span{animation:none}}
   /* ---------- folhas: lista, digitar, opções ---------- */
   .pt-sheet{position:absolute;inset:0;z-index:20;display:flex;align-items:flex-end;background:rgba(0,0,0,.55);animation:ptIn .2s ease-out both}
   .pt-sh-in{width:100%;max-height:100%;display:flex;flex-direction:column;gap:12px;padding:22px 18px calc(18px + env(safe-area-inset-bottom));border-radius:28px 28px 0 0;background:#141414;animation:ptSheet .35s cubic-bezier(.22,1,.36,1) both}
@@ -136,6 +138,8 @@
 @keyframes ptEdgeIn{from{opacity:0;transform:scale(1.12)}to{opacity:.9;transform:none}}
 @keyframes ptCard{from{opacity:0;transform:translateY(18px) scale(.92)}to{opacity:1;transform:none}}
 @keyframes ptDraw{to{stroke-dashoffset:0}}
+@keyframes ptWave{0%{opacity:.55;transform:none}100%{opacity:0;transform:scale(1.9)}}
 @keyframes ptBlink{0%,100%{opacity:1}45%{opacity:.3}55%{opacity:.3}}
+@keyframes ptScan{from{transform:translateY(-44%)}to{transform:translateY(44%)}}
 @keyframes ptCore{0%,100%{opacity:.25;transform:scale(.86)}50%{opacity:.85;transform:scale(1.04)}}
 @keyframes ptPulse{50%{box-shadow:0 0 0 7px rgba(211,245,91,0)}}
