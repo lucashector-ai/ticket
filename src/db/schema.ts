@@ -761,6 +761,8 @@ export const checkinLinks = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
     token: varchar("token", { length: 48 }).notNull(),
+    /** código curto que a equipe digita no app da portaria (/portaria), ex.: "K7PX-3MQ9" */
+    code: varchar("code", { length: 12 }),
     label: varchar("label", { length: 60 }).notNull(),
     createdByUserId: text("created_by_user_id"),
     scans: integer("scans").notNull().default(0),
@@ -768,7 +770,7 @@ export const checkinLinks = pgTable(
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("checkin_links_token_idx").on(t.token), index("checkin_links_event_idx").on(t.eventId)],
+  (t) => [uniqueIndex("checkin_links_token_idx").on(t.token), uniqueIndex("checkin_links_code_idx").on(t.code), index("checkin_links_event_idx").on(t.eventId)],
 );
 
 export const citiesRelations = relations(cities, ({ many }) => ({ venues: many(venues) }));

@@ -7,7 +7,8 @@ import { useEffect, useRef, type RefObject } from "react";
  * Câmera traseira + jsQR (funciona no iPhone e no Android): lê um quadro a cada ~200ms e chama `onRead`
  * com o texto do QR. O mesmo QR só é lido de novo depois de 4s; `busy` pausa a leitura enquanto mostra um resultado.
  */
-export function useQrCamera(on: boolean, onRead: (text: string) => unknown, busy: RefObject<boolean>, onError: () => void) {
+/** `restart`: mudar o número reabre a câmera (depois de negar a permissão, por exemplo). */
+export function useQrCamera(on: boolean, onRead: (text: string) => unknown, busy: RefObject<boolean>, onError: () => void, restart = 0) {
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const last = useRef<{ text: string; at: number }>({ text: "", at: 0 });
@@ -45,7 +46,7 @@ export function useQrCamera(on: boolean, onRead: (text: string) => unknown, busy
       }
     })();
     return () => { stop = true; clearTimeout(timer); stream?.getTracks().forEach((t) => t.stop()); };
-  }, [on, onRead, busy, onError]);
+  }, [on, onRead, busy, onError, restart]);
 
   return { video, canvas };
 }

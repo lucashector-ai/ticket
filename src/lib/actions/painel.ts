@@ -11,6 +11,7 @@ import { checkinTicket, type CheckinResult } from "@/lib/checkin";
 import { organizerFor } from "@/lib/criar/save";
 import { getPainelScope, type PainelRole } from "@/lib/data/painel";
 import { mailTeamInvite } from "@/lib/notify";
+import { newAccessCode } from "@/lib/portaria";
 import { AGES, parseBrDateTime } from "@/lib/criar/model";
 
 const { coupons, organizerMembers, organizers } = schema;
@@ -35,7 +36,7 @@ export async function scanTicket(eventId: string, input: string): Promise<Omit<C
 
 /* ---------- check-in pelo celular: links externos ---------- */
 
-export async function createCheckinLink(eventId: string, label: string): Promise<{ ok: true; id: string; token: string } | { ok: false; error: string }> {
+export async function createCheckinLink(eventId: string, label: string): Promise<{ ok: true; id: string; token: string; code: string } | { ok: false; error: string }> {
   const s = await scope("admin");
   if (!s || !s.events.some((e) => e.id === eventId)) return { ok: false, error: "Sem permissão para este evento." };
   const name = label.trim().slice(0, 60) || "Portaria";
@@ -43,9 +44,15 @@ export async function createCheckinLink(eventId: string, label: string): Promise
     .where(and(eq(schema.checkinLinks.eventId, eventId), isNull(schema.checkinLinks.revokedAt)));
   if (open.length >= 20) return { ok: false, error: "Este evento já tem 20 links ativos. Desligue algum antes de criar outro." };
   const token = randomBytes(18).toString("base64url");
-  const [row] = await db.insert(schema.checkinLinks).values({ eventId, token, label: name, createdByUserId: s.user.id }).returning({ id: schema.checkinLinks.id });
-  revalidatePath(`/painel/evento/${eventId}`);
-  return { ok: true, id: row.id, token };
+  // código curto para digitar no app da portaria (único; tenta de novo no raro caso de colisão)
+  for (let i = 0; i < 5; i++) {
+    const code = newAccessCode();
+    const [row] = await db.insert(schema.checkinLinks).values({ eventId, token, code, label: name, createdByUserId: s.user.id }).onConflictDoNothing().returning({ id: schema.checkinLinks.id });
+    if (!row) continue;
+    revalidatePath(`/painel/evento/${eventId}`);
+    return { ok: true, id: row.id, token, code };
+  }
+  return { ok: false, error: "Não foi possível criar o acesso. Tente de novo." };
 }
 
 export async function revokeCheckinLink(id: string): Promise<R> {

@@ -498,6 +498,7 @@
   .cl-i{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
   .cl-i b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cl-i span{font-size:12.5px;color:#6E6E73}
+  .cl-code{margin-left:8px;padding:2px 8px;border-radius:7px;background:#111;color:#D3F55B;font:700 12px 'Space Mono',monospace;letter-spacing:.06em;vertical-align:1px;user-select:all}
   .cl-b{flex:none;height:30px;padding:0 11px;border-radius:999px;background:#fff;font-size:12.5px;font-weight:600;color:#111;display:inline-flex;align-items:center;text-decoration:none;transition:background .2s}
   .cl-b:hover,.cl-b.on{background:#EAEAE4}
   .cl-b.danger{color:#B42318}

@@ -111,7 +111,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
     }),
     checkin: {
       total: valid.length, inside: inside.length, perMin: (lastHour / 15).toFixed(1).replace(".", ","),
-      links: links.map((l) => ({ id: l.id, label: l.label, token: l.token, scans: l.scans, used: l.lastUsedAt ? ago(l.lastUsedAt, now) : null })),
+      links: links.map((l) => ({ id: l.id, label: l.label, token: l.token, code: l.code ?? "", scans: l.scans, used: l.lastUsedAt ? ago(l.lastUsedAt, now) : null })),
       sectors: [...sectors].map(([name, x]) => ({ name, n: x.inn, total: x.n, pct: x.n ? Math.round((x.inn / x.n) * 100) : 0 })),
       last: inside.sort((a, b) => b.checkedInAt!.getTime() - a.checkedInAt!.getTime()).slice(0, 8).map((p) => ({ id: p.id, name: p.holder || p.buyer || "Participante", what: [p.sector, p.type].filter(Boolean).join(" · "), at: hm(p.checkedInAt!) })),
     },
