@@ -74,7 +74,7 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
             Próximos <span className="seg-n">{up.length}</span>
           </button>
           <button className={tab === "past" ? "seg-b on" : "seg-b"} type="button" role="tab" aria-selected={tab === "past"} onClick={() => setTab("past")}>
-            Passados <span className="seg-n">{past.length}</span>
+            Anteriores <span className="seg-n">{past.length}</span>
           </button>
         </div>
       </div>
@@ -233,13 +233,18 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
                 <article className="tm" key={g.key}>
                   <div className="tm-art"><div className="in"><FlyerArt id={g.flyerId} /></div></div>
                   <div className="tm-i">
-                    <span className="tm-k done">Encerrado</span>
+                    <span className="tm-k done">{g.ended ? "Encerrado" : "Você já entrou"}</span>
                     <b className="tm-t">{g.title}</b>
                     <span className="tm-d">{g.datePast}</span>
                     <span className="tm-d">{g.venue}{g.city && <> · {g.city}</>}</span>
-                    <span className="tm-q">{qtyLabel(g.tickets.length)} · {used ? "Ingresso utilizado" : "Evento encerrado"}</span>
+                    <span className="tm-q">{qtyLabel(g.tickets.length)} · {used ? (g.tickets.length > 1 ? "Ingressos utilizados" : "Ingresso utilizado") : g.ended ? "Evento encerrado" : "Cancelado"}</span>
                   </div>
-                  <div className="tm-s">
+                  {!g.ended ? (
+                    <div className="tm-s">
+                      <Link className="tm-go" href={`/ingressos/${g.tickets[0].code}`}>Ver ingresso</Link>
+                      <span className="tm-rt">Bom evento! Avalie quando acabar.</span>
+                    </div>
+                  ) : <div className="tm-s">
                     <div className="stars" role="group" aria-label={`Avaliar ${g.title}`}>
                       {[1, 2, 3, 4, 5].map((k) => (
                         <button key={k} className={k <= r ? "st on" : "st"} type="button" onClick={() => rate(g, k)} aria-label={`${k} ${k === 1 ? "estrela" : "estrelas"}`} aria-pressed={k <= r}>
@@ -248,15 +253,15 @@ export function MeusIngressos({ groups, confirmedOrder, wallet }: Props) {
                       ))}
                     </div>
                     <span className="tm-rt">{r ? "Obrigado pela avaliação!" : "Como foi o evento?"}</span>
-                  </div>
+                  </div>}
                 </article>
               );
             })}
           </div>
         ) : (
           <div className="empty mi-empty">
-            <h3>Nenhum evento passado</h3>
-            <p>Os eventos que você já curtiu ficam guardados aqui, com espaço para avaliar.</p>
+            <h3>Nada em Anteriores ainda</h3>
+            <p>Depois que você entra no evento, o ingresso vem para cá, com espaço para avaliar.</p>
           </div>
         )
       )}

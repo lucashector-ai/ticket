@@ -13,7 +13,11 @@ export type TicketItem = {
 /** Um "ingresso" do design: todos os ingressos de um pedido (mesmo evento). */
 export type TicketGroup = {
   key: string;
+  /** pedido do grupo quando é um só (com várias compras do mesmo evento, null) */
   orderNumber: number | null;
+  orderNumbers: number[];
+  /** o evento já acabou (senão está em Anteriores porque os ingressos já foram usados) */
+  ended: boolean;
   eventSlug: string;
   title: string;
   flyerId: string;

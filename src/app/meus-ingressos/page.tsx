@@ -16,11 +16,15 @@ import { ticketQrSvg } from "@/lib/tickets/qr";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Meus ingressos" };
 
-/** Agrupa os ingressos por pedido (cada pedido é de um só evento): um "ingresso" do design com carrossel dos QR codes. */
+/** Já usado, cancelado ou reembolsado: vai para "Anteriores" mesmo antes do evento acabar. */
+const finished = (t: TicketWithEvent) => t.status === "used" || t.status === "cancelled" || t.status === "refunded";
+
+/** Agrupa os ingressos por evento (todas as compras juntas): um "ingresso" do design com carrossel dos QR codes.
+ *  Os já utilizados formam um grupo à parte, que aparece em Anteriores. */
 async function groupTickets(rows: TicketWithEvent[], now: Date): Promise<TicketGroup[]> {
   const byOrder = new Map<string, TicketWithEvent[]>();
   for (const t of rows) {
-    const k = `${t.orderId}:${t.eventId}`;
+    const k = `${t.eventId}:${finished(t) ? "fim" : "ativo"}`;
     const arr = byOrder.get(k);
     if (arr) arr.push(t); else byOrder.set(k, [t]);
   }
@@ -37,9 +41,11 @@ async function groupTickets(rows: TicketWithEvent[], now: Date): Promise<TicketG
       qrSvg: await ticketQrSvg(t.code, t.secret),
     })));
     const end = e.endAt ?? e.startAt;
+    const ended = end.getTime() < now.getTime();
+    const orders = [...new Set(list.map((t) => t.order?.number).filter((n): n is number => n != null))];
     groups.push({
-      key, orderNumber: list[0].order?.number ?? null, eventSlug: e.slug, title: e.title, flyerId: e.flyerId,
-      startAt: e.startAt.toISOString(), upcoming: end.getTime() >= now.getTime(), countdown: countdownLabel(e.startAt, now),
+      key, orderNumber: orders.length === 1 ? orders[0] : null, orderNumbers: orders, ended, eventSlug: e.slug, title: e.title, flyerId: e.flyerId,
+      startAt: e.startAt.toISOString(), upcoming: !ended && !list.every(finished), countdown: countdownLabel(e.startAt, now),
       dateFull: L.dateFull, dateNice: L.dateNice, datePast: datePast(e.startAt), doors: L.doors, venue: L.venue, addr: L.addr, city: L.city,
       tier: tiers.join(" + "), resale: e.resaleEnabled && list.some((t) => t.ticketType.priceCents > 0), transfer: e.transferEnabled, tickets,
     });
@@ -53,7 +59,7 @@ export default async function MeusIngressosPage({ searchParams }: { searchParams
   const [{ pedido }, rows, favs] = await Promise.all([searchParams, listUserTickets(user.id), getUserFavoriteSlugs(user.id)]);
   const groups = await groupTickets(rows, new Date());
   const n = Number(pedido);
-  const confirmedOrder = Number.isInteger(n) && groups.some((g) => g.orderNumber === n) ? n : null;
+  const confirmedOrder = Number.isInteger(n) && groups.some((g) => g.orderNumbers.includes(n)) ? n : null;
 
   return (
     <div className="pg-meus-ingressos">

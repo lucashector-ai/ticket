@@ -12,36 +12,8 @@ type Result = PortariaScan & { at: number };
 const hhmm = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }) : "");
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
-/** Bipe de liberado (duas notas subindo) ou de recusado (grave). O áudio só destrava depois do primeiro toque. */
-function useBeep() {
-  const ctx = useRef<AudioContext | null>(null);
-  useEffect(() => {
-    const unlock = () => {
-      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!ctx.current && AC) ctx.current = new AC();
-      void ctx.current?.resume();
-    };
-    window.addEventListener("pointerdown", unlock, { passive: true });
-    return () => window.removeEventListener("pointerdown", unlock);
-  }, []);
-  return useCallback((ok: boolean) => {
-    navigator.vibrate?.(ok ? 60 : [80, 60, 80]);
-    const c = ctx.current;
-    if (!c) return;
-    const notes = ok ? [880, 1320] : [220, 180];
-    notes.forEach((f, i) => {
-      const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + i * 0.11;
-      o.type = ok ? "sine" : "square";
-      o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(ok ? 0.25 : 0.12, t + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-      o.connect(g).connect(c.destination);
-      o.start(t);
-      o.stop(t + 0.18);
-    });
-  }, []);
-}
+/** Sem som: só uma vibração curta (Android), uma para liberado e duas para recusado. */
+const buzz = (ok: boolean) => { try { navigator.vibrate?.(ok ? 40 : [60, 50, 60]); } catch { /* sem vibração */ } };
 
 /** App da portaria: câmera em tela cheia; ao ler um QR a tela brilha (verde liberado / vermelho recusado) e mostra quem é. */
 export function PortariaApp({ gate, event, counts: c0 }: { gate: string; event: { title: string; when: string }; counts: Counts }) {
@@ -53,7 +25,6 @@ export function PortariaApp({ gate, event, counts: c0 }: { gate: string; event: 
   const [camKey, setCamKey] = useState(0);
   const [off, setOff] = useState(false);
   const busy = useRef(false);
-  const beep = useBeep();
   const timer = useRef(0);
 
   const show = useCallback((r: PortariaScan) => {
@@ -61,10 +32,10 @@ export function PortariaApp({ gate, event, counts: c0 }: { gate: string; event: 
     if (typeof r.inside === "number" && typeof r.total === "number") setCounts({ inside: r.inside, total: r.total });
     busy.current = true;
     setRes({ ...r, at: Date.now() });
-    beep(r.ok);
+    buzz(r.ok);
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => { setRes(null); busy.current = false; }, r.ok ? 2200 : 3800);
-  }, [beep]);
+    timer.current = window.setTimeout(() => { setRes(null); busy.current = false; }, r.ok ? 2400 : 3800);
+  }, []);
   const dismiss = () => { window.clearTimeout(timer.current); setRes(null); busy.current = false; };
 
   const onRead = useCallback(async (text: string) => {
@@ -110,7 +81,7 @@ export function PortariaApp({ gate, event, counts: c0 }: { gate: string; event: 
         <i style={{ width: `${pct}%` }} />
       </div>
 
-      <div className="pt-aim" aria-hidden="true"><span /><span /><span /><span /><em /></div>
+      <div className="pt-aim" aria-hidden="true"><span /><span /><span /><span /><b className="pt-grid" /><em><i /></em></div>
       <p className="pt-hint">{camErr ? "Não conseguimos abrir a câmera." : "Aponte para o QR code do ingresso"}</p>
       {camErr && <button className="pt-retry" type="button" onClick={() => { setCamErr(false); setCamKey((k) => k + 1); }}>Permitir câmera</button>}
 
@@ -144,22 +115,30 @@ export function PortariaApp({ gate, event, counts: c0 }: { gate: string; event: 
   );
 }
 
+/** Resultado no estilo da Siri: uma onda de luz entra pelas bordas, fica um contorno luminoso
+ *  girando em volta da tela e, no meio, um cartão de vidro com o nome. Verde claro = liberado. */
 function ResultView({ r, onClose }: { r: Result; onClose: () => void }) {
   const used = !r.ok && !!r.checkedInAt;
   const name = r.ticket?.holderName?.trim() || (r.ticket ? "Sem nome no ingresso" : "");
   return (
     <button className={r.ok ? "pt-res ok" : "pt-res bad"} type="button" onClick={onClose} key={r.at} aria-live="assertive">
-      <span className="pt-res-glow" aria-hidden="true" />
-      <span className="pt-res-ic" aria-hidden="true">
-        {r.ok
-          ? <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-          : <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>}
+      <span className="pt-mesh" aria-hidden="true"><i /><i /><i /><i /></span>
+      <span className="pt-wash" aria-hidden="true" />
+      <span className="pt-flash" aria-hidden="true" />
+      <span className="pt-edge" aria-hidden="true"><i /><i /><i /></span>
+      <span className="pt-glass">
+        <span className="pt-mark" aria-hidden="true">
+          <svg viewBox="0 0 52 52">
+            <circle className="ring" cx="26" cy="26" r="24" />
+            {r.ok ? <path className="draw" d="M15 27.5l7.5 7.5L38 18.5" /> : <path className="draw" d="M17.5 17.5l17 17M34.5 17.5l-17 17" />}
+          </svg>
+        </span>
+        <span className="pt-res-k">{r.ok ? "Entrada liberada" : used ? `Já entrou às ${hhmm(r.checkedInAt)}` : "Não liberado"}</span>
+        {name && <b className="pt-res-n">{name}</b>}
+        {r.ticket && <span className="pt-res-t">{[r.ticket.sector, r.ticket.ticketType].filter(Boolean).join(" · ")}</span>}
+        {!r.ok && !used && <span className="pt-res-e">{r.error}</span>}
+        {r.ticket && <code className="pt-res-c">{r.ticket.code}</code>}
       </span>
-      <span className="pt-res-k">{r.ok ? "Entrada liberada" : used ? `Já entrou às ${hhmm(r.checkedInAt)}` : "Não liberado"}</span>
-      {name && <b className="pt-res-n">{name}</b>}
-      {r.ticket && <span className="pt-res-t">{[r.ticket.sector, r.ticket.ticketType].filter(Boolean).join(" · ")}</span>}
-      {!r.ok && !used && <span className="pt-res-e">{r.error}</span>}
-      {r.ticket && <code className="pt-res-c">{r.ticket.code}</code>}
       <span className="pt-res-tap">Toque para continuar</span>
     </button>
   );
