@@ -69,13 +69,13 @@
   .pt-res > span{pointer-events:none}
   /* luz só nas bordas, como a Siri: faixa larga em degradê + faixa clara rente à borda, girando (só transform) */
   .pt-edge{position:absolute;inset:0;z-index:2;overflow:hidden;mix-blend-mode:screen;
-    -webkit-mask:linear-gradient(90deg,#000 0%,rgba(0,0,0,.55) 9%,rgba(0,0,0,.15) 20%,transparent 30%,transparent 70%,rgba(0,0,0,.15) 80%,rgba(0,0,0,.55) 91%,#000 100%),linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 7%,rgba(0,0,0,.15) 15%,transparent 23%,transparent 77%,rgba(0,0,0,.15) 85%,rgba(0,0,0,.55) 93%,#000 100%);
-    mask:linear-gradient(90deg,#000 0%,rgba(0,0,0,.55) 9%,rgba(0,0,0,.15) 20%,transparent 30%,transparent 70%,rgba(0,0,0,.15) 80%,rgba(0,0,0,.55) 91%,#000 100%),linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 7%,rgba(0,0,0,.15) 15%,transparent 23%,transparent 77%,rgba(0,0,0,.15) 85%,rgba(0,0,0,.55) 93%,#000 100%);
+    -webkit-mask:linear-gradient(90deg,#000 0%,rgba(0,0,0,.5) 6%,rgba(0,0,0,.12) 13%,transparent 20%,transparent 80%,rgba(0,0,0,.12) 87%,rgba(0,0,0,.5) 94%,#000 100%),linear-gradient(180deg,#000 0%,rgba(0,0,0,.5) 4.5%,rgba(0,0,0,.12) 10%,transparent 15%,transparent 85%,rgba(0,0,0,.12) 90%,rgba(0,0,0,.5) 95.5%,#000 100%);
+    mask:linear-gradient(90deg,#000 0%,rgba(0,0,0,.5) 6%,rgba(0,0,0,.12) 13%,transparent 20%,transparent 80%,rgba(0,0,0,.12) 87%,rgba(0,0,0,.5) 94%,#000 100%),linear-gradient(180deg,#000 0%,rgba(0,0,0,.5) 4.5%,rgba(0,0,0,.12) 10%,transparent 15%,transparent 85%,rgba(0,0,0,.12) 90%,rgba(0,0,0,.5) 95.5%,#000 100%);
     animation:ptEdgeIn .28s cubic-bezier(.22,1,.36,1) both,ptBreath 1.2s .3s ease-in-out infinite;will-change:transform,opacity}
   .pt-edge i{position:absolute;left:50%;top:50%;width:160vmax;height:160vmax;margin:-80vmax 0 0 -80vmax;background:conic-gradient(var(--g2),var(--g3),var(--g4),var(--g1),var(--g2),var(--g3),var(--g2));animation:ptTurn 1.6s linear infinite;will-change:transform}
   .pt-edge.core{z-index:3;
-    -webkit-mask:linear-gradient(90deg,#000,transparent 6%,transparent 94%,#000),linear-gradient(180deg,#000,transparent 4.5%,transparent 95.5%,#000);
-    mask:linear-gradient(90deg,#000,transparent 6%,transparent 94%,#000),linear-gradient(180deg,#000,transparent 4.5%,transparent 95.5%,#000);
+    -webkit-mask:linear-gradient(90deg,#000,transparent 4%,transparent 96%,#000),linear-gradient(180deg,#000,transparent 3%,transparent 97%,#000);
+    mask:linear-gradient(90deg,#000,transparent 4%,transparent 96%,#000),linear-gradient(180deg,#000,transparent 3%,transparent 97%,#000);
     animation:ptEdgeIn .22s ease-out both}
   .pt-edge.core i{background:conic-gradient(var(--g1),#FFFFFF,var(--g4),var(--g1),var(--g3),#FFFFFF,var(--g1));animation:ptTurn 1.1s linear infinite reverse}
   /* sem cartão: só o ícone e os textos por cima da luz, com sombra suave para ler bem */
