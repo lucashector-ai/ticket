@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { bankSetupEmail, bankSetupPassword, bankSetupStart, bankSetupTotp } from "@/lib/actions/banco";
-import { Turnstile } from "@/components/auth/turnstile";
+import { Turnstile, useHuman } from "@/components/auth/turnstile";
 import { CodeBoxes } from "@/components/auth/verify-form";
 import { BancoMark } from "./mark";
 
@@ -13,7 +13,7 @@ export function BancoSetup({ base, human, contaUrl }: { base: string; human: str
   const [step, setStep] = useState(0);
   const [email, setEmail] = useState("");
   const [to, setTo] = useState("");
-  const [token, setToken] = useState("");
+  const { token, setToken, ready: humanOk } = useHuman(human);
   const [tries, setTries] = useState(0);
   const [code, setCode] = useState("");
   const [pw, setPw] = useState("");
@@ -85,7 +85,7 @@ export function BancoSetup({ base, human, contaUrl }: { base: string; human: str
                 {err && <p className="bk-err" role="alert">{err}</p>}
                 <label className="bk-f"><span>E-mail da conta de produtor</span><input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(null); }} autoComplete="username" placeholder="voce@produtora.com" autoFocus /></label>
                 <Turnstile siteKey={human} action="banco_criar" onToken={setToken} resetKey={tries} />
-                <button className="bk-go" type="submit" disabled={busy || !email.trim()}>{busy ? "Enviando…" : "Enviar código"}</button>
+                <button className="bk-go" type="submit" disabled={busy || !email.trim() || !humanOk}>{busy ? "Enviando…" : humanOk ? "Enviar código" : "Verificando…"}</button>
               </form>
             )}
 

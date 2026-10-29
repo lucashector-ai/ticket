@@ -721,6 +721,6 @@
   .vf-alt .au-lk{background:none;border:0;cursor:pointer}
   .vf-alt .au-lk:disabled{color:#8A8A90;text-decoration:none;cursor:default}
   .lx-sw button.au-lk{background:none;border:0;cursor:pointer;padding:0}
-  .cf-human:empty{display:none}
-  .cf-human{display:flex;justify-content:center}
+  .cf-human{display:flex;justify-content:center;height:0;overflow:hidden;margin:-6px 0}
+  .cf-human.on{height:auto;overflow:visible;margin:0}
 }

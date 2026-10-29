@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { bankLogin, bankVerify } from "@/lib/actions/banco";
-import { Turnstile } from "@/components/auth/turnstile";
+import { Turnstile, useHuman } from "@/components/auth/turnstile";
 import { CodeBoxes } from "@/components/auth/verify-form";
 import { BancoMark } from "./mark";
 
@@ -11,7 +11,7 @@ export function BancoLogin({ base, human, pending }: { base: string; human: stri
   const [step, setStep] = useState<"senha" | "codigo">(pending ? "codigo" : "senha");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
-  const [token, setToken] = useState("");
+  const { token, setToken, ready: humanOk } = useHuman(human);
   const [tries, setTries] = useState(0);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -46,7 +46,7 @@ export function BancoLogin({ base, human, pending }: { base: string; human: stri
             <label className="bk-f"><span>E-mail</span><input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(null); }} autoComplete="username" placeholder="voce@produtora.com" autoFocus /></label>
             <label className="bk-f"><span>Senha do banco</span><input type="password" value={pw} onChange={(e) => { setPw(e.target.value); setErr(null); }} autoComplete="current-password" placeholder="Não é a senha do site" /></label>
             <Turnstile siteKey={human} action="banco" onToken={setToken} resetKey={tries} />
-            <button className="bk-go" type="submit" disabled={busy}>{busy ? "Conferindo…" : "Continuar"}</button>
+            <button className="bk-go" type="submit" disabled={busy || !humanOk}>{busy ? "Conferindo…" : humanOk ? "Continuar" : "Verificando…"}</button>
             <a className="bk-sec" href={`${base}/criar`}>Criar ou recuperar acesso</a>
           </form>
         ) : (

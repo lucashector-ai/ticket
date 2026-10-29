@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type TurnstileApi = {
   render: (el: HTMLElement, opts: Record<string, unknown>) => string;
@@ -30,6 +30,8 @@ function loadScript() {
  */
 export function Turnstile({ siteKey, onToken, resetKey, action }: { siteKey: string | null; onToken?: (t: string) => void; resetKey?: unknown; action?: string }) {
   const box = useRef<HTMLDivElement>(null);
+  // só ocupa espaço quando a Cloudflare pede uma interação (no resto do tempo confere em segundo plano)
+  const [shown, setShown] = useState(false);
   const id = useRef<string | null>(null);
   const cb = useRef(onToken);
   useEffect(() => { cb.current = onToken; }, [onToken]);
@@ -43,6 +45,8 @@ export function Turnstile({ siteKey, onToken, resetKey, action }: { siteKey: str
         sitekey: siteKey, action, language: "pt-br", appearance: "interaction-only", theme: "light",
         callback: (t: string) => cb.current?.(t),
         "expired-callback": () => cb.current?.(""),
+        "before-interactive-callback": () => setShown(true),
+        "after-interactive-callback": () => setShown(false),
         "error-callback": () => cb.current?.(""),
       });
     }).catch(() => {});
@@ -56,5 +60,17 @@ export function Turnstile({ siteKey, onToken, resetKey, action }: { siteKey: str
   }, [resetKey]);
 
   if (!siteKey) return null;
-  return <div className="cf-human" ref={box} />;
+  return <div className={shown ? "cf-human on" : "cf-human"} ref={box} />;
+}
+
+/** Token do verificador para um formulário. `ready`: já dá para enviar (verificado, desligado ou demorou demais e o servidor decide). */
+export function useHuman(siteKey: string | null) {
+  const [token, setToken] = useState("");
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!siteKey) return;
+    const t = setTimeout(() => setSlow(true), 10_000);
+    return () => clearTimeout(t);
+  }, [siteKey]);
+  return { token, setToken, ready: !siteKey || !!token || slow };
 }

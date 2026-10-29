@@ -6,7 +6,7 @@ import { signUpWithEmail } from "@/lib/actions/auth";
 import { useToast } from "@/components/toast";
 import { GoogleButton } from "@/components/auth/google-button";
 import { CheckIcon, FieldError, FormError, PasswordField, fieldCls, isEmail, isPhone, maskPhone } from "@/components/auth/fields";
-import { Turnstile } from "@/components/auth/turnstile";
+import { Turnstile, useHuman } from "@/components/auth/turnstile";
 
 type Err = { name?: boolean; email?: boolean; phone?: boolean; pw?: boolean; terms?: boolean };
 
@@ -27,6 +27,7 @@ export function SignupForm({ next, human }: { next: string; human: string | null
   const { flash } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const { setToken: setHumanToken, ready: humanOk } = useHuman(human);
   const [phone, setPhone] = useState("");
   const [pw, setPw] = useState("");
   const [terms, setTerms] = useState(false);
@@ -139,9 +140,9 @@ export function SignupForm({ next, human }: { next: string; human: string | null
         </span>
       </div>
       {err.terms && <FieldError>Você precisa aceitar os termos para continuar.</FieldError>}
-      <Turnstile siteKey={human} action="signup" resetKey={state} />
-      <button className="lx-btn" type="submit" disabled={isPending} aria-busy={isPending}>
-        {isPending ? "Criando conta…" : "Criar conta"}
+      <Turnstile siteKey={human} action="signup" resetKey={state} onToken={setHumanToken} />
+      <button className="lx-btn" type="submit" disabled={isPending || !humanOk} aria-busy={isPending || !humanOk}>
+        {isPending ? "Criando conta…" : humanOk ? "Criar conta" : "Verificando…"}
       </button>
       <GoogleButton label="Cadastrar com Google" next={next} />
       <p className="lx-sw">
