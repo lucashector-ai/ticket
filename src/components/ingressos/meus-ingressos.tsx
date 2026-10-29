@@ -7,7 +7,8 @@ import { useToast } from "@/components/toast";
 import { qtyLabel, TICKET_STATUS_LABEL } from "@/lib/tickets/labels";
 import { HelpStrip } from "./help-strip";
 import { WalletButtons, type WalletFlags } from "./wallet-buttons";
-import { IcoArrow, IcoCalendar, IcoCheck, IcoChevron, IcoClose, IcoNext, IcoPin, IcoPrev, IcoStar, IcoSun, IcoTag, IcoTicket, IcoUser } from "./icons";
+import { TicketPdfButton } from "./ticket-card";
+import { IcoArrow, IcoCalendar, IcoCheck, IcoChevron, IcoClose, IcoNext, IcoPin, IcoPrev, IcoStar, IcoSun, IcoTag, IcoTicket, IcoUser, IcoDownload } from "./icons";
 import { Modal } from "./modal";
 import { TicketStack } from "./ticket-stack";
 import { TransferModal } from "./transfer-modal";
@@ -148,8 +149,11 @@ export function MeusIngressos({ groups, lists = [], pending = [], sent = [], inc
                     </ul>
                   );
                 })()}
-                {f.tickets[idx(f)].status === "valid" && !moved[f.tickets[idx(f)].id] && (wallet.apple || wallet.google) && (
-                  <div className="tkb-w"><WalletButtons code={f.tickets[idx(f)].code} flags={wallet} pills /></div>
+                {f.tickets[idx(f)].status === "valid" && !moved[f.tickets[idx(f)].id] && (
+                  <div className="tkb-w">
+                    <WalletButtons code={f.tickets[idx(f)].code} flags={wallet} pills />
+                    {f.tickets[idx(f)].card && <TicketPdfButton className="wl-p wl-pd" t={f.tickets[idx(f)].card!} qrSvg={f.tickets[idx(f)].qrSvg}><IcoDownload />Baixar PDF</TicketPdfButton>}
+                  </div>
                 )}
               </div>
               {(() => {

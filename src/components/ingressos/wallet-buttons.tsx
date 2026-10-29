@@ -24,7 +24,7 @@ const MSG: Record<string, string> = {
  * "Adicionar à Apple Wallet" / "Salvar no Google Wallet" (os que estiverem configurados) + agenda.
  * `pills`: só as duas carteiras, em botões curtos lado a lado (página do ingresso; a agenda vai nos atalhos).
  */
-export function WalletButtons({ code, flags, pills = false }: { code: string; flags: WalletFlags; pills?: boolean }) {
+export function WalletButtons({ code, flags, pills = false, children }: { code: string; flags: WalletFlags; pills?: boolean; children?: React.ReactNode }) {
   const { flash } = useToast();
   // volta das rotas de carteira com ?wallet=… quando algo falha
   useEffect(() => {
@@ -39,6 +39,7 @@ export function WalletButtons({ code, flags, pills = false }: { code: string; fl
     <>
       {flags.apple && <a className="wl-p wl-pa" href={`/api/ingressos/${code}/apple`}><AppleIcon />Apple Wallet</a>}
       {flags.google && <a className="wl-p wl-pg" href={`/api/ingressos/${code}/google`}><GoogleIcon />Google Wallet</a>}
+      {children}
     </>
   );
   return (

@@ -1,3 +1,5 @@
+import type { TicketCardData } from "@/lib/tickets/card";
+
 export type TicketStatus = "valid" | "used" | "transferred" | "cancelled" | "refunded";
 
 export type TicketItem = {
@@ -10,6 +12,8 @@ export type TicketItem = {
   qrSvg: string;
   /** enviado para outra pessoa e ainda não aceito (o ingresso volta se o envio for cancelado) */
   sentTo?: { transferId: string; email: string; gift: boolean } | null;
+  /** dados do ingresso "de papel" para o PDF */
+  card?: TicketCardData;
 };
 
 /** Pedido criado e não pago, dentro da reserva: "Aguardando pagamento" com o botão de pagar. */

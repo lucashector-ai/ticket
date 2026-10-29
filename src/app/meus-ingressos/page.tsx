@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ticketCard } from "@/lib/tickets/card";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MeusIngressos } from "@/components/ingressos/meus-ingressos";
@@ -45,6 +46,7 @@ async function groupTickets(rows: TicketWithEvent[], now: Date, sentOf: Map<stri
       id: t.id, code: t.code, holderName: t.holderName, status: t.status, checkedInAt: t.checkedInAt?.toISOString() ?? null,
       qrSvg: await ticketQrSvg(t.code, t.secret),
       sentTo: t.status === "transferred" ? sentOf.get(t.id) ?? null : null,
+      card: ticketCard(t, e),
     })));
     const end = e.endAt ?? e.startAt;
     const ended = end.getTime() < now.getTime();

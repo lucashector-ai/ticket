@@ -7,7 +7,7 @@ import { FlyerArt } from "@/components/art/flyer";
 import { useToast } from "@/components/toast";
 import { TICKET_STATUS_LABEL } from "@/lib/tickets/labels";
 import { HelpStrip } from "./help-strip";
-import { IcoArrow, IcoBack, IcoCalendar, IcoChevron, IcoClose, IcoPin, IcoSun, IcoTag, IcoTicket, IcoUser } from "./icons";
+import { IcoArrow, IcoBack, IcoCalendar, IcoChevron, IcoClose, IcoPin, IcoSun, IcoTag, IcoTicket, IcoUser, IcoDownload } from "./icons";
 import { Modal } from "./modal";
 import { TicketStack } from "./ticket-stack";
 import { TransferModal } from "./transfer-modal";
@@ -50,9 +50,6 @@ export type TicketViewData = {
   card: TicketCardData;
 };
 
-function IcoDownload() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14" /></svg>;
-}
 
 export function TicketView({ data }: { data: TicketViewData }) {
   const { flash } = useToast();
@@ -118,8 +115,11 @@ export function TicketView({ data }: { data: TicketViewData }) {
               <div><b>{t.holderName ?? "Titular não informado"}</b><span className="tkb-sub">{movedTo ? `Transferido para ${movedTo}` : "Titular do ingresso"}</span></div>
             </li>
           </ul>
-          {valid && data.upcoming && (data.wallet.apple || data.wallet.google) && (
-            <div className="tkb-w"><WalletButtons code={t.code} flags={data.wallet} pills /></div>
+          {valid && (
+            <div className="tkb-w">
+              {data.upcoming && <WalletButtons code={t.code} flags={data.wallet} pills />}
+              <TicketPdfButton className="wl-p wl-pd" t={data.card} qrSvg={t.qrSvg}><IcoDownload />Baixar PDF</TicketPdfButton>
+            </div>
           )}
         </div>
         <div className={valid ? "tkb-s" : "tkb-s off"}>
@@ -162,13 +162,6 @@ export function TicketView({ data }: { data: TicketViewData }) {
             <IcoChevron />
           </button>
         ))}
-        {valid && (
-          <TicketPdfButton className="tka-i" t={data.card} qrSvg={t.qrSvg}>
-            <span className="tka-ic" aria-hidden="true"><IcoDownload /></span>
-            <span className="tka-t"><b>Baixar PDF</b><small>O ingresso com QR code para imprimir ou guardar</small></span>
-            <IcoChevron />
-          </TicketPdfButton>
-        )}
         <a className="tka-i" href={`/api/ingressos/${t.code}/ics`} download={`ticketswin-${t.code}.ics`}>
           <span className="tka-ic" aria-hidden="true"><IcoCalendar /></span>
           <span className="tka-t"><b>Adicionar à agenda</b><small>Google, Apple ou Outlook</small></span>
