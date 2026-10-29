@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SpotifyArtistSearch, SpotifyIcon, type SpotifyHit } from "@/components/spotify-search";
 import { pickPlace, searchVenues, type VenueHit } from "@/lib/actions/criar";
 import { AGES, EVENT_TYPES, num, parseCity, ROLES, type DraftSession, type EventMode, type VenuePlace } from "@/lib/criar/model";
+import { CityField, CityStatePicker } from "./city-picker";
 import { initials } from "@/lib/format";
 import type { Derived } from "./flow";
 import { isoDate, MO, MONTHS, parseIso, Spark, WD, XIcon, type Ctx } from "./shared";
@@ -325,7 +326,9 @@ function useVenueSearch(q: string, active: boolean) {
     const r = await pickPlace(v.placeId, tok.current).catch(() => null);
     tok.current = "";
     setBusy(null);
-    return { name: v.name, city: r?.city ?? "", cap: null, place: r?.place ?? null };
+    // sem detalhes do Google: a cidade sai do próprio texto da sugestão ("Rio Vermelho, Florianópolis - SC")
+    const fromAddr = parseCity(v.addr.split(",").pop() ?? "");
+    return { name: v.name, city: r?.city || (fromAddr ? `${fromAddr.name} – ${fromAddr.uf}` : ""), cap: null, place: r?.place ?? null };
   };
   return { hits, busy, pick };
 }
@@ -382,17 +385,16 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
     const setOne = (id: string, patch: Partial<DraftSession>) => upd((o) => ({ ...o, sessions: o.sessions.map((s) => (s.id === id ? { ...s, ...patch } : s)) }), "where");
     return (
       <section className="cv-st cv-wide">
-        <StepHead n={4} k="locais" q="Onde vai ser cada data?" s="Na turnê, cada data tem o seu local e cidade. Use o formato São Paulo – SP." />
+        <StepHead n={4} k="locais" q="Onde vai ser cada data?" s="Na turnê, cada data tem o seu local e cidade. Digite a cidade e escolha na lista." />
         <div className="cv-b cv-tour">
           {!x.sessions.length && <div className="cv-empty">Escolha as datas na etapa anterior.<button className="cv-lnk" type="button" onClick={() => c.go(2)}>Ir para Quando</button></div>}
           {x.sessions.map((s, i) => {
             const dt = parseIso(s.date);
-            const okCity = !!parseCity(s.city);
             return (
               <div key={s.id} className="row" style={{ animationDelay: `${i * 40}ms` }}>
                 <span className="dd"><small>{WD[dt.getDay()]}</small><b>{dt.getDate()}</b><small>{MO[dt.getMonth()]}</small></span>
                 <TourVenue s={s} label={`Local de ${dt.getDate()}/${dt.getMonth() + 1}`} onChange={(p) => setOne(s.id, p)} />
-                <input className={s.city && !okCity ? "cv-in bad" : "cv-in"} value={s.city} onChange={(e) => setOne(s.id, { city: e.target.value, place: undefined })} placeholder="Cidade – UF" aria-label={`Cidade de ${dt.getDate()}/${dt.getMonth() + 1}`} />
+                <CityField value={s.city} onChange={(v) => setOne(s.id, { city: v, place: undefined })} label={`Cidade de ${dt.getDate()}/${dt.getMonth() + 1}`} />
                 <input className="cv-in cap" inputMode="numeric" value={s.cap} onChange={(e) => setOne(s.id, { cap: e.target.value.replace(/\D/g, "") })} aria-label="Lotação" title="Lotação" />
               </div>
             );
@@ -429,10 +431,8 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
               <svg className="mp" width="44" height="54" viewBox="0 0 44 54" aria-hidden="true"><path d="M22 54S2 34 2 21a20 20 0 0 1 40 0c0 13-20 33-20 33z" fill="#111" /><circle cx="22" cy="21" r="8" fill="#D3F55B" /></svg>
               <div className="cv-mcard"><span className="tx"><b>{d.venue.name}</b><span className="s">{d.venue.place?.addr || d.venue.city || "Falta a cidade"}</span></span><button className="chg" type="button" onClick={() => { setQ(""); setEditing(true); }}>Trocar</button></div>
             </div>
-            <div className="cv-2">
-              <label className="cv-fl"><span>Nome do local</span><input className="cv-in" value={d.venue.name} onChange={(e) => setVenue(e.target.value, d.venue.city)} /></label>
-              <label className="cv-fl"><span>Cidade</span><input className={d.venue.city && !cityOk ? "cv-in bad" : "cv-in"} value={d.venue.city} onChange={(e) => setVenue(d.venue.name, e.target.value, null, null)} placeholder="São Paulo – SP" autoFocus={!cityOk} /></label>
-            </div>
+            <label className="cv-fl cv-nm"><span>Nome do local</span><input className="cv-in" value={d.venue.name} onChange={(e) => setVenue(e.target.value, d.venue.city)} /></label>
+            <CityStatePicker value={d.venue.city} onChange={(v, auto) => setVenue(d.venue.name, v, null, auto ? undefined : null)} autoFocus={!cityOk} />
             <div className="cv-tmb cap">
               <small>Lotação do local</small>
               <div className="r">
@@ -440,7 +440,7 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
                 <span className="cv-stp"><button type="button" onClick={() => setCap(num(cap) - 50)} aria-label="Menos 50">−</button><button type="button" onClick={() => setCap(num(cap) + 50)} aria-label="Mais 50">+</button></span>
               </div>
             </div>
-            <div className="cv-hint"><Spark size={16} /><span>{cityOk ? `Lotação de ${num(cap).toLocaleString("pt-BR")} pessoas. Usamos isso para sugerir os ingressos.` : "Escreva a cidade com o estado, assim: São Paulo – SP."}</span></div>
+            <div className="cv-hint"><Spark size={16} /><span>{cityOk ? `Lotação de ${num(cap).toLocaleString("pt-BR")} pessoas. Usamos isso para sugerir os ingressos.` : "Escolha o estado e a cidade onde vai ser o evento."}</span></div>
           </>
         )}
       </div>
