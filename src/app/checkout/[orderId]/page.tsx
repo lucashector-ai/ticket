@@ -30,6 +30,8 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   const ev = order.event;
   const expired = order.status === "expired" || (order.status === "pending" && !!order.expiresAt && order.expiresAt < new Date());
   const pending = order.status === "pending" && !expired;
+  // pedido não pago e dentro da reserva: o checkout do evento retoma de onde parou (mesmo Pix / mesmo pedido)
+  if (pending) redirect(`/checkout?pedido=${order.id}`);
   const venue = ev.venueNameOverride ?? ev.venue?.name ?? "";
   const city = ev.venue ? `${ev.venue.city.name}, ${ev.venue.city.uf}` : "";
   const qty = order.items.reduce((s, i) => s + i.quantity, 0);

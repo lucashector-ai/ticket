@@ -24,11 +24,11 @@ function score(pw: string) {
   return sc;
 }
 
-export function SignupForm({ next, human }: { next: string; human: string | null }) {
+export function SignupForm({ next, human, initialEmail = "" }: { next: string; human: string | null; initialEmail?: string }) {
   const [state, formAction, isPending] = useActionState(signUpWithEmail, null);
   const { flash } = useToast();
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const { setToken: setHumanToken, ready: humanOk } = useHuman(human);
   const [phone, setPhone] = useState("");
   const [pw, setPw] = useState("");

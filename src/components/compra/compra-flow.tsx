@@ -16,6 +16,7 @@ import { cpfValid } from "@/lib/cpf";
 import { PhoneField } from "@/components/phone-field";
 import { phoneValid } from "@/lib/phone";
 import { BrandMark } from "@/components/brand-logo";
+import type { ResumeData } from "@/lib/payments/pending";
 
 export type CompraStep = "resumo" | "dados" | "pagamento" | "pix" | "proc" | "done";
 /**
@@ -41,13 +42,29 @@ export type CompraEvent = {
 };
 type Coupon = { code: string; percentOff: number; amountOffCents: number; amountPerTicket: boolean; sector: string | null };
 const couponOf = (r: Coupon) => ({ code: r.code, percentOff: r.percentOff, amountOffCents: r.amountOffCents, amountPerTicket: r.amountPerTicket, sector: r.sector });
-type Hold = { name: string; me: boolean; meia: boolean };
+/** `me`: o ingresso é do comprador (fica na conta dele); senão vai por e-mail para `email` depois do pagamento. */
+type Hold = { name: string; me: boolean; meia: boolean; email: string };
 /** `live`: Pix de verdade (Stripe), confirmado sozinho; senão, o Pix de teste. */
 type PixOrder = { orderId: string; number: number; totalCents: number; pixCode: string; pixQrSvg: string; expiresAt: string | null; live: boolean; testUrl: string | null };
 type Done = Extract<ConfirmResult, { ok: true }>;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** segundos até um horário ISO (prazo do Pix gerado pela Stripe) */
 const secondsUntil = (iso: string) => Math.max(0, Math.round((Date.parse(iso) - Date.now()) / 1000));
+const low = (v: string) => v.trim().toLowerCase();
+
+/**
+ * "Impressão digital" do pedido: se nada mudou desde que o pedido pendente foi criado (itens, titulares, comprador,
+ * cupom, forma de pagamento, parcelas e total), ele é reaproveitado; senão o servidor cria outro e libera o antigo.
+ */
+type Fp = { method: string; inst: number; total: number; items: string[]; holders: string[]; buyer: string; coupon: string };
+const fpKey = (f: Fp) => JSON.stringify({ ...f, inst: f.method === "card" ? f.inst : 1, items: [...f.items].sort(), holders: [...f.holders].sort() });
+const holderFp = (h: { ticketTypeId: string; name: string; meia: boolean; me: boolean; email: string }) => `${h.ticketTypeId}|${h.name.trim()}|${h.meia}|${h.me}|${h.me ? "" : low(h.email)}`;
+const buyerFp = (b: { name: string; email: string; cpf: string }) => `${b.name.trim()}|${low(b.email)}|${onlyDigits(b.cpf)}`;
+const resumeKey = (r: ResumeData) => fpKey({
+  method: r.method, inst: r.installments, total: r.totalCents,
+  items: r.items.map((i) => `${i.ticketTypeId}:${i.quantity}`), holders: r.holders.map(holderFp), buyer: buyerFp(r.buyer), coupon: r.coupon?.code ?? "",
+});
+type Pending = { orderId: string; key: string };
 
 /** chave da data do ingresso no resumo ("" quando o evento tem uma data só) */
 const dayOf = (e: CompraEvent, t: CompraTier) => (e.sessions.length ? t.sessionId ?? "" : "");
@@ -82,36 +99,69 @@ type Props = {
   human?: string | null;
   /** chave publicável da Stripe: com ela o pagamento é de verdade; sem ela, modo de teste */
   stripeKey?: string | null;
+  /** pedido criado e ainda não pago (recarregou a página, voltou de Meus ingressos): continua nele */
+  resume?: ResumeData | null;
+  /** aviso no topo (ex.: a reserva do pedido anterior acabou) */
+  notice?: string | null;
 };
 
-export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, stripeKey }: Props) {
+export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, stripeKey, resume, notice }: Props) {
   const live = !!stripeKey;
   const router = useRouter();
   const { flash } = useToast();
-  const [step, setStep] = useState<CompraStep>(initialStep);
+  /* retomada: Pix já gerado → tela do QR; cartão → etapa de pagamento; grátis → dados (confirma de novo) */
+  const [step, setStep] = useState<CompraStep>(() => !resume ? initialStep : resume.method === "free" ? "dados" : resume.method === "pix" && resume.pix ? "pix" : "pagamento");
   const [qty, setQty] = useState<Record<string, number>>(initialQty);
-  const [couponInput, setCouponInput] = useState(initialCoupon ?? "");
-  const [coupon, setCoupon] = useState<Coupon | null>(null);
+  const [couponInput, setCouponInput] = useState(resume?.coupon?.code ?? initialCoupon ?? "");
+  const [coupon, setCoupon] = useState<Coupon | null>(resume?.coupon ?? null);
   const [cupErr, setCupErr] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
-  const [name, setName] = useState(profile?.name || user?.name || "");
-  const [email, setEmail] = useState(user?.email ?? "");
-  const [phone, setPhone] = useState(profile?.phone ?? "");
-  const [cpf, setCpf] = useState(profile?.cpf ? fmtCpf(profile.cpf) : "");
-  const [hold, setHold] = useState<Record<string, Hold>>({});
-  const [pay, setPay] = useState<"pix" | "card">("pix");
-  const [inst, setInst] = useState(1);
+  const [name, setName] = useState(resume?.buyer.name || profile?.name || user?.name || "");
+  const [email, setEmail] = useState(resume?.buyer.email || user?.email || "");
+  const [phone, setPhone] = useState(resume?.buyer.phone || profile?.phone || "");
+  const [cpf, setCpf] = useState(resume?.buyer.cpf ? fmtCpf(resume.buyer.cpf) : profile?.cpf ? fmtCpf(profile.cpf) : "");
+  /* titulares do pedido retomado, na mesma ordem em que o checkout monta os ingressos */
+  const [hold, setHold] = useState<Record<string, Hold>>(() => {
+    const o: Record<string, Hold> = {};
+    if (!resume) return o;
+    const queue = [...resume.holders];
+    for (const t of event.tiers) {
+      if (!t.open) continue;
+      for (let k = 0; k < (initialQty[t.id] ?? 0); k++) {
+        const i = queue.findIndex((h) => h.ticketTypeId === t.id);
+        if (i < 0) continue;
+        const h = queue.splice(i, 1)[0];
+        o[`${t.id}-${k}`] = { name: h.me ? "" : h.name, me: h.me, meia: h.meia, email: h.email };
+      }
+    }
+    return o;
+  });
+  const [pay, setPay] = useState<"pix" | "card">(resume?.method === "card" ? "card" : "pix");
+  const [inst, setInst] = useState(resume?.method === "card" ? resume.installments : 1);
   const [cc, setCc] = useState({ num: "", name: "", exp: "", cvv: "" });
-  const [left, setLeft] = useState(RESERVA_SEG);
-  const [pixLeft, setPixLeft] = useState(PIX_SEG);
+  const [left, setLeft] = useState(resume ? resume.secondsLeft : RESERVA_SEG);
+  const [pixLeft, setPixLeft] = useState(resume?.pix ? resume.pix.secondsLeft : PIX_SEG);
   const [copied, setCopied] = useState(false);
-  const [order, setOrder] = useState<PixOrder | null>(null);
+  const [order, setOrder] = useState<PixOrder | null>(resume?.pix
+    ? { orderId: resume.orderId, number: resume.number, totalCents: resume.totalCents, pixCode: resume.pix.pixCode, pixQrSvg: resume.pix.pixQrSvg, expiresAt: resume.pix.expiresAt, live: resume.pix.live, testUrl: resume.pix.testUrl }
+    : null);
   const [done, setDone] = useState<Done | null>(null);
-  /* Stripe: cartão no Payment Element, erro do pagamento, parcelas aceitas pelo cartão, pedido em cobrança */
+  /* Stripe: cartão no Payment Element, erro do pagamento, parcelas aceitas pelo cartão */
   const cardApi = useRef<StripeCardApi>(null);
   const [payErr, setPayErr] = useState<string | null>(null);
   const [cardInst, setCardInst] = useState<number[] | null>(null);
-  const cardOrder = useRef<{ orderId: string; key: string } | null>(null);
+  /** prazo do pedido aberto e do Pix dele (ISO): os cronômetros contam até eles */
+  const deadline = useRef<string | null>(resume?.expiresAt ?? null);
+  const pixDeadline = useRef<string | null>(resume?.pix?.expiresAt ?? null);
+  /** pedido pendente desta compra (criado agora ou retomado): reaproveitado enquanto nada mudar */
+  const pendingRef = useRef<Pending | null>(resume ? { orderId: resume.orderId, key: resumeKey(resume) } : null);
+  const [pendingId, setPendingId] = useState<string | null>(resume?.orderId ?? null);
+  const setPending = useCallback((p: Pending | null) => {
+    pendingRef.current = p;
+    setPendingId(p?.orderId ?? null);
+    // sem pedido aberto, o cronômetro volta a contar sozinho (não vence pelo prazo de um pedido cancelado)
+    if (!p) { deadline.current = null; pixDeadline.current = null; }
+  }, []);
   const [slow, setSlow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [authNudge, setAuthNudge] = useState(false);
@@ -133,11 +183,11 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     return o;
   });
 
-  /* cronômetros da reserva e do Pix */
+  /* cronômetros da reserva e do Pix: com pedido criado, contam até o prazo dele (pelo relógio do aparelho) */
   useEffect(() => {
     const iv = setInterval(() => {
-      setLeft((l) => (l > 0 ? l - 1 : 0));
-      setPixLeft((l) => (l > 0 ? l - 1 : 0));
+      setLeft((l) => (deadline.current ? secondsUntil(deadline.current) : l > 0 ? l - 1 : 0));
+      setPixLeft((l) => (pixDeadline.current ? secondsUntil(pixDeadline.current) : l > 0 ? l - 1 : 0));
     }, 1000);
     return () => clearInterval(iv);
   }, []);
@@ -177,8 +227,11 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     return `/checkout?${p.toString()}`;
   }, [qty, coupon, event.slug, lock]);
   useEffect(() => {
-    if (step === "resumo" || step === "dados") window.history.replaceState(null, "", urlFor(step));
-  }, [step, urlFor]);
+    if (step === "done") return;
+    // com pedido criado, a URL aponta para ele: recarregar (ou voltar depois) continua no mesmo pagamento
+    if (pendingId && step !== "resumo" && step !== "dados") window.history.replaceState(null, "", `/checkout?pedido=${pendingId}`);
+    else if (step === "resumo" || step === "dados" || step === "pagamento") window.history.replaceState(null, "", urlFor(step === "pagamento" ? "dados" : step));
+  }, [step, urlFor, pendingId]);
 
   /* ingressos e titulares */
   const holders = useMemo(() => {
@@ -218,13 +271,39 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const dayLabel = (id: string) => (multiDay ? event.sessions.find((s) => s.id === event.tiers.find((t) => t.id === id)?.sessionId)?.label ?? null : null);
 
   /* validação */
-  const holdName = (h: { key: string }) => (hold[h.key]?.name ?? "").trim();
+  const blankHold = (h: { n: number }): Hold => ({ name: "", me: h.n === 1, meia: false, email: "" });
+  const hdOf = (h: { key: string; n: number }) => hold[h.key] ?? blankHold(h);
+  /** "Sou eu": o nome é o do comprador */
+  const holdName = (h: { key: string; n: number }) => (hdOf(h).me ? name : hdOf(h).name).trim();
+  const holdEmail = (h: { key: string; n: number }) => (hdOf(h).me ? "" : low(hdOf(h).email));
+  const ownEmails = [email, user?.email ?? ""].map(low).filter(Boolean);
+  /** problema no e-mail de quem recebe (null = ok) */
+  const perEmail = new Map<string, number>();
+  const holdEmailErr = new Map<string, string>();
+  for (const h of holders) {
+    if (hdOf(h).me) continue;
+    const em = holdEmail(h);
+    if (!isEmail(em)) { holdEmailErr.set(h.key, "Informe o e-mail de quem vai usar este ingresso."); continue; }
+    if (ownEmails.includes(em)) { holdEmailErr.set(h.key, "Esse é o seu e-mail. Para o seu ingresso, toque em “Sou eu”."); continue; }
+    const k = `${em}|${h.tier.id}`;
+    const n = (perEmail.get(k) ?? 0) + 1;
+    perEmail.set(k, n);
+    if (n > h.tier.limit) holdEmailErr.set(h.key, `Cada pessoa pode receber até ${h.tier.limit} ${h.tier.limit === 1 ? "ingresso" : "ingressos"} de ${h.tier.name}.`);
+  }
   const dadosErr: string[] = [];
   if (!isFullName(name)) dadosErr.push("nome e sobrenome");
   if (!isEmail(email)) dadosErr.push("e-mail");
   if (!phoneValid(phone)) dadosErr.push("celular com DDD");
   if (!cpfValid(cpf)) dadosErr.push(onlyDigits(cpf).length === 11 ? "CPF válido (confira os números)" : "CPF (obrigatório)");
   if (!holders.every((h) => isFullName(holdName(h)))) dadosErr.push("nome completo de cada titular");
+  if (holdEmailErr.size) dadosErr.push("e-mail de quem vai receber cada ingresso");
+  /** impressão digital do que está na tela, para reaproveitar o pedido pendente */
+  const fpNow = (method: "pix" | "card" | "free") => fpKey({
+    method, inst, total: price.total,
+    items: lines.map((l) => `${l.ticketTypeId}:${l.quantity}`),
+    holders: holders.map((h) => holderFp({ ticketTypeId: h.tier.id, name: holdName(h), meia: isMeia(h), me: hdOf(h).me, email: holdEmail(h) })),
+    buyer: buyerFp({ name, email, cpf }), coupon: lock ? "" : coupon?.code ?? "",
+  });
   const ccOk = { num: onlyDigits(cc.num).length >= 15, name: cc.name.trim().length >= 3, exp: expOk(cc.exp), cvv: onlyDigits(cc.cvv).length >= 3 };
   const cardValid = ccOk.num && ccOk.name && ccOk.exp && ccOk.cvv;
   const bad = (ok: boolean) => (tried && !ok ? "in2 bad" : "in2");
@@ -235,13 +314,15 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
 
   /** Pagamento aprovado: tela de confirmação no lugar. */
   const finishWith = useCallback((r: Done) => {
-    cardOrder.current = null;
+    setPending(null);
     setDone(r);
     setStep("done");
     window.scrollTo({ top: 0, behavior: "smooth" });
+    // o pedido está pago: a URL volta para o evento (um ?pedido= pago levaria para Meus ingressos)
+    window.history.replaceState(null, "", urlFor("resumo"));
     // parte de grupo / revenda: recarregar a página levaria de volta ao grupo (a vaga já está paga)
     if (!lock) router.refresh();
-  }, [lock, router]);
+  }, [lock, router, setPending, urlFor]);
 
   /* Pix de verdade: confere o pagamento a cada 3 s enquanto o QR está na tela */
   const pixOrderId = step === "pix" && order?.live ? order.orderId : null;
@@ -252,10 +333,10 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       const r = await checkPayment(pixOrderId);
       if (!alive) return;
       if (r.status === "paid") { alive = false; clearInterval(iv); finishWith(r.result); }
-      else if (r.status === "closed" || r.status === "failed") { alive = false; clearInterval(iv); flash(r.error); setOrder(null); setStep("pagamento"); }
+      else if (r.status === "closed" || r.status === "failed") { alive = false; clearInterval(iv); flash(r.error); setOrder(null); setPending(null); setStep("pagamento"); }
     }, 3000);
     return () => { alive = false; clearInterval(iv); };
-  }, [pixOrderId, finishWith, flash]);
+  }, [pixOrderId, finishWith, flash, setPending]);
 
   const setTierQty = (id: string, delta: number) => {
     if (lock) return;
@@ -291,7 +372,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       coupon: lock ? null : coupon?.code ?? null,
       ...lock?.ref,
       buyer: { name, email, phone, cpf },
-      holders: holders.map((h) => ({ ticketTypeId: h.tier.id, name: holdName(h), meia: isMeia(h) })),
+      holders: holders.map((h) => ({ ticketTypeId: h.tier.id, name: holdName(h), meia: isMeia(h), me: hdOf(h).me, email: hdOf(h).me ? null : holdEmail(h) })),
       method,
       installments: method === "card" ? inst : 1,
     });
@@ -301,21 +382,34 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       if (r.needsLogin) go("dados");
       return null;
     }
+    if (r.expiresAt) { deadline.current = r.expiresAt; setLeft(secondsUntil(r.expiresAt)); }
     return r;
+  }
+
+  /** Pedido pendente que vale para o que está na tela (o mesmo de antes, se nada mudou) ou um novo. */
+  async function orderFor(method: "card" | "free") {
+    const key = fpNow(method);
+    const p = pendingRef.current;
+    if (p && p.key === key) return p.orderId;
+    // o servidor libera o pedido anterior deste evento ao criar o novo
+    const r = await submitOrder(method);
+    if (!r) return null;
+    setPending({ orderId: r.orderId, key });
+    return r.orderId;
   }
 
   /** Pedido grátis ou modo de teste (sem Stripe): confirma sem gateway. */
   async function finish(orderId: string) {
     go("proc");
     const r = await confirmPayment(orderId);
-    if (!r.ok) { flash(r.error); go(free ? "dados" : "pagamento"); return; }
+    if (!r.ok) { flash(r.error); setPending(null); go(free ? "dados" : "pagamento"); return; }
     finishWith(r);
   }
 
   /** Cartão pela Stripe: cobra, passa pelo 3D Secure se o banco pedir e espera a confirmação. */
   async function payLive(orderId: string, paymentMethodId: string) {
     go("proc");
-    const fail = (msg: string, drop = false) => { if (drop) cardOrder.current = null; setPayErr(msg); go("pagamento"); };
+    const fail = (msg: string, drop = false) => { if (drop) setPending(null); setPayErr(msg); go("pagamento"); };
     const r = await payCard(orderId, paymentMethodId);
     if (!r.ok) {
       if (r.installments) setCardInst(r.installments);
@@ -349,17 +443,22 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       if (dadosErr.length) { setTried(true); return; }
       if (free) {
         // nada a pagar: o pedido é confirmado e os ingressos saem na hora
-        const r = await submitOrder("free");
-        if (r) await finish(r.orderId);
+        const id = await orderFor("free");
+        if (id) await finish(id);
         return;
       }
       go("pagamento");
     } else if (step === "pagamento") {
       if (pay === "pix") {
+        // o Pix deste mesmo pedido ainda na memória (voltou sem cancelar): mostra o mesmo código
+        const key = fpNow("pix");
+        if (order && pendingRef.current?.orderId === order.orderId && pendingRef.current.key === key) { go("pix"); return; }
         const r = await submitOrder("pix");
         if (r) {
+          setPending({ orderId: r.orderId, key });
           setOrder({ orderId: r.orderId, number: r.number, totalCents: r.totalCents, pixCode: r.pixCode, pixQrSvg: r.pixQrSvg, expiresAt: r.expiresAt, live: r.live, testUrl: r.hostedUrl });
-          setPixLeft(r.live && r.expiresAt ? secondsUntil(r.expiresAt) : PIX_SEG);
+          pixDeadline.current = r.expiresAt;
+          setPixLeft(r.expiresAt ? secondsUntil(r.expiresAt) : PIX_SEG);
           setCopied(false);
           go("pix");
         }
@@ -368,30 +467,36 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
         setBusy(true);
         const pm = await cardApi.current?.createPaymentMethod({ name, email, phone });
         if (!pm || "error" in pm) { setBusy(false); setPayErr(pm?.error ?? "O formulário do cartão ainda está carregando."); return; }
-        // nova tentativa com o mesmo valor e parcelas: reaproveita o pedido (e o PaymentIntent) pendente
-        const key = `${inst}:${price.total}`;
-        let orderId = cardOrder.current?.key === key ? cardOrder.current.orderId : null;
-        if (!orderId) {
-          const r = await submitOrder("card");
-          if (!r) return;
-          orderId = r.orderId;
-          cardOrder.current = { orderId, key };
-        }
+        // nova tentativa sem mudar nada: reaproveita o pedido (e o PaymentIntent) pendente
+        const orderId = await orderFor("card");
+        if (!orderId) { setBusy(false); return; }
         setBusy(false);
         await payLive(orderId, pm.id);
       } else {
         if (!cardValid) { setTried(true); return; }
-        const r = await submitOrder("card");
-        if (r) await finish(r.orderId);
+        const orderId = await orderFor("card");
+        if (orderId) await finish(orderId);
       }
     }
   }
 
   const prev = () => {
-    // saindo do Pix de verdade: cancela o código gerado (e o pedido) para não pagar duas vezes
-    if (step === "pix" && order?.live) { void abandonPayment(order.orderId); setOrder(null); }
+    // saindo do Pix: cancela o código gerado (e o pedido) para não pagar duas vezes nem deixar pedido aberto
+    if (step === "pix" && order) { void abandonPayment(order.orderId); setOrder(null); setPending(null); }
     go(step === "dados" ? "resumo" : step === "pagamento" ? "dados" : "pagamento");
   };
+  /** Desiste do pedido retomado: cancela e volta para a escolha com os mesmos ingressos. */
+  async function dropResume() {
+    const id = pendingRef.current?.orderId;
+    if (!id || busy) return;
+    setBusy(true);
+    const r = await abandonPayment(id);
+    if (r.paid) { window.location.assign(`/meus-ingressos?pedido=${r.paid}`); return; }
+    if (r.paying) { setBusy(false); flash("O pagamento deste pedido já está sendo confirmado. Confira em Meus ingressos em instantes."); return; }
+    setPending(null);
+    setOrder(null);
+    window.location.assign(`${urlFor("resumo")}&aviso=cancelado`);
+  }
   /** Já paguei: confere na hora (o checkout também confere sozinho a cada 3 s). */
   async function checkPixNow() {
     if (!order) return;
@@ -400,7 +505,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     setBusy(false);
     if (r.status === "paid") finishWith(r.result);
     else if (r.status === "pending") flash("Ainda não recebemos o Pix. Assim que cair, a confirmação aparece aqui.");
-    else { flash(r.error); setOrder(null); go("pagamento"); }
+    else { flash(r.error); setOrder(null); setPending(null); go("pagamento"); }
   }
   const idx = STEP_INDEX[step];
   const steps = ["Resumo", "Dados", free ? "Sem pagamento" : "Pagamento", "Confirmação"].map((label, i) => ({
@@ -445,6 +550,28 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
             <span className="exp-s">Seus ingressos voltaram para a venda. Escolha de novo para garantir o lugar.</span>
           </div>
           <Link className="go2" href={`/eventos/${event.slug}`}>Escolher de novo</Link>
+        </div>
+      )}
+
+      {notice && step === "resumo" && !expired && (
+        <div className="ck-note" role="status">
+          <span className="ck-note-i" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+          </span>
+          <span className="ck-note-t">{notice}</span>
+        </div>
+      )}
+
+      {resume && pendingId === resume.orderId && !expired && (step === "pagamento" || step === "pix") && (
+        <div className="rsm" role="status">
+          <span className="rsm-i" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /></svg>
+          </span>
+          <span className="rsm-t">
+            <b>Pedido #{resume.number} aguardando pagamento</b>
+            <span>Continuamos de onde você parou: mesmos ingressos, titulares e valor. A reserva vale enquanto o tempo não acabar.</span>
+          </span>
+          <button className="rsm-x" type="button" onClick={() => void dropResume()} disabled={busy}>Cancelar pedido</button>
         </div>
       )}
 
@@ -526,7 +653,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   <p className={cupErr ? "errm" : "okm"}>{cupErr ?? `Cupom ${coupon?.code} aplicado: ${coupon?.percentOff ? `${coupon.percentOff}% de desconto` : `${money(coupon?.amountOffCents ?? 0)} de desconto`}.`}</p>
                 )}
                 <div className="know">
-                  <Know icon={<path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z" />} title="Ingressos nominais" text="Na próxima etapa você informa o nome de quem vai usar cada ingresso." />
+                  <Know icon={<path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z" />} title="Ingressos nominais" text="Na próxima etapa você diz quem vai usar cada ingresso. Os de outras pessoas vão por e-mail para elas." />
                   {!lock && <Know icon={<path d="M4 7h16M4 12h10M4 17h7" />} title="Meia-entrada" text="Estudantes, PcD, jovens de baixa renda e maiores de 60. Marque na etapa de dados e leve o documento." />}
                   <Know icon={<path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" />} title="Cancelamento" text="Até 7 dias após a compra, desde que falte mais de 48h para o evento." />
                 </div>
@@ -566,21 +693,45 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 </div>
                 {tried && user && dadosErr.length > 0 && <p className="err">Falta preencher: {dadosErr.join(", ")}.</p>}
                 <h2 className="ck-h2">Quem vai usar os ingressos</h2>
-                <p className="ck-p">Cada ingresso é nominal. O nome aparece no QR code e é conferido na entrada com documento.</p>
+                <p className="ck-p">Cada ingresso é nominal. Quem não for você recebe o ingresso por e-mail e precisa entrar ou criar uma conta para ficar com ele.</p>
                 <div className="holds">
-                  {holders.map((h, i) => {
-                    const hd = hold[h.key] ?? { name: "", me: false, meia: false };
-                    const upd = (patch: Partial<Hold>) => setHold((o) => ({ ...o, [h.key]: { ...{ name: "", me: false, meia: false }, ...o[h.key], ...patch } }));
+                  {holders.map((h) => {
+                    const hd = hdOf(h);
+                    const upd = (patch: Partial<Hold>) => setHold((o) => ({ ...o, [h.key]: { ...blankHold(h), ...o[h.key], ...patch } }));
+                    /* "Sou eu" vale para um ingresso só: marcar aqui desmarca o outro */
+                    const toggleMe = () => setHold((o) => {
+                      const nx: Record<string, Hold> = {};
+                      for (const x of holders) {
+                        const cur = o[x.key] ?? blankHold(x);
+                        nx[x.key] = x.key === h.key ? { ...cur, me: !hd.me } : cur.me ? { ...cur, me: false, name: "" } : cur;
+                      }
+                      return nx;
+                    });
+                    const emErr = tried ? holdEmailErr.get(h.key) : undefined;
                     return (
-                      <div key={h.key} className="hold">
+                      <div key={h.key} className={hd.me ? "hold mine" : "hold"}>
                         <div className="hold-h">
                           <span className="hold-n">Ingresso {h.n}</span>
                           <span className="hold-t">{h.tier.name}</span>
-                          {i === 0 && (
-                            <button className={hd.me ? "me on" : "me"} type="button" onClick={() => upd(hd.me ? { me: false, name: "" } : { me: true, name })}>Sou eu</button>
-                          )}
+                          <button className={hd.me ? "me on" : "me"} type="button" onClick={toggleMe} aria-pressed={hd.me}>Sou eu</button>
                         </div>
-                        <input className={tried && !isFullName(hd.name) ? "in2 bad" : "in2"} type="text" placeholder="Nome de quem vai usar" value={hd.name} onChange={(e) => upd({ name: e.target.value, me: false })} aria-label={`Nome do titular do ingresso ${h.n}`} />
+                        {hd.me ? (
+                          <div className="hold-me">
+                            <span className="hold-av" aria-hidden="true">{(name.trim()[0] ?? "?").toUpperCase()}</span>
+                            <span className="hold-mi">
+                              <b className={tried && !isFullName(name) ? "bad" : undefined}>{name.trim() || "Seu nome completo (acima)"}</b>
+                              <small>Fica na sua conta{user?.email ? ` · ${user.email}` : ""}</small>
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="hold-f">
+                              <input className={tried && !isFullName(hd.name) ? "in2 bad" : "in2"} type="text" placeholder="Nome de quem vai usar" value={hd.name} onChange={(e) => upd({ name: e.target.value })} autoComplete="off" aria-label={`Nome do titular do ingresso ${h.n}`} />
+                              <input className={emErr ? "in2 bad" : "in2"} type="email" inputMode="email" placeholder="E-mail de quem vai usar" value={hd.email} onChange={(e) => upd({ email: e.target.value })} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-label={`E-mail de quem vai receber o ingresso ${h.n}`} aria-invalid={!!emErr} />
+                            </div>
+                            {emErr ? <p className="hold-err" role="alert">{emErr}</p> : <p className="hold-tip">Depois do pagamento, enviamos o ingresso para este e-mail. A pessoa entra ou cria uma conta com ele para receber.</p>}
+                          </>
+                        )}
                         {h.tier.meiaOk && (
                           <button className={hd.meia ? "ckb on" : "ckb"} type="button" role="checkbox" aria-checked={hd.meia} onClick={() => upd({ meia: !hd.meia })}>
                             <span className="ck-box" aria-hidden="true">
@@ -801,7 +952,9 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
           </span>
           <h1 className="done-h">Pedido confirmado!</h1>
-          <p className="done-p">Enviamos os ingressos para <b className="done-b">{done.email || "seu e-mail"}</b>. Eles também já estão em Meus ingressos.</p>
+          <p className="done-p">{done.sentTo.length >= done.ticketCount
+            ? <>Enviamos a confirmação para <b className="done-b">{done.email || "seu e-mail"}</b> e cada ingresso para quem vai usar.</>
+            : <>Enviamos os ingressos para <b className="done-b">{done.email || "seu e-mail"}</b>. Eles também já estão em Meus ingressos.</>}</p>
           <div className="ld-tk done-tk">
             <div className="ld-main">
               <span className="ld-k">Tickets Win · Ingresso · Pedido #{done.number}</span>
@@ -810,9 +963,25 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               <span className="dn-q">{done.ticketCount} {done.ticketCount === 1 ? "ingresso" : "ingressos"}</span>
             </div>
             <div className="ld-stub done-stub">
-              <span className="qr dn-qr qr-svg" aria-hidden="true" dangerouslySetInnerHTML={{ __html: done.ticketQrSvg }} />
+              {done.ticketQrSvg
+                ? <span className="qr dn-qr qr-svg" aria-hidden="true" dangerouslySetInnerHTML={{ __html: done.ticketQrSvg }} />
+                : <span className="ld-code" aria-hidden="true" />}
             </div>
           </div>
+          {done.sentTo.length > 0 && (
+            <div className="dn-sent">
+              <b className="dn-sent-t">{done.sentTo.length === 1 ? "1 ingresso enviado por e-mail" : `${done.sentTo.length} ingressos enviados por e-mail`}</b>
+              <ul className="dn-sent-l">
+                {done.sentTo.map((x, i) => (
+                  <li key={`${x.email}-${i}`}>
+                    <span className="dn-sent-av" aria-hidden="true">{(x.name.trim()[0] ?? x.email[0] ?? "?").toUpperCase()}</span>
+                    <span className="dn-sent-i"><b>{x.name || x.email}</b><small>{x.email} · aguardando</small></span>
+                  </li>
+                ))}
+              </ul>
+              <span className="dn-sent-s">Cada pessoa entra ou cria uma conta com esse e-mail para receber. Até lá, o ingresso fica com você em Meus ingressos, onde dá para reenviar ou cancelar.</span>
+            </div>
+          )}
           <div className="done-a">
             <Link className="go2" href={`/meus-ingressos?pedido=${done.number}`}>Ver meus ingressos</Link>
             <a className="sec2" href={`/api/ingressos/${done.firstCode}/ics`} onClick={() => flash("Evento adicionado à sua agenda")}>Adicionar à agenda</a>

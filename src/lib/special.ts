@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { deadlineOpen } from "@/lib/refund-policy";
 
 /*
  * Compras "especiais" que passam pelo mesmo checkout, com 1 ingresso travado:
@@ -27,8 +28,10 @@ export async function lookupSpecial(eventId: string, ref: { groupShareId?: strin
     return { ok: true, s: { kind: "grupo", shareId: share.id, groupId: share.groupId, groupCode: share.group.code, ticketTypeId: share.ticketTypeId, priceCents: share.priceCents, slot: order.findIndex((x) => x.id === share.id) + 1, slots: order.length } };
   }
   if (ref.resaleListingId) {
-    const l = await db.query.resaleListings.findFirst({ where: eq(resaleListings.id, ref.resaleListingId), with: { ticket: { columns: { status: true, holderUserId: true } } } });
+    const l = await db.query.resaleListings.findFirst({ where: eq(resaleListings.id, ref.resaleListingId), with: { ticket: { columns: { status: true, holderUserId: true } }, event: { columns: { startAt: true, resaleUntilHours: true } } } });
     if (!l || l.eventId !== eventId) return { ok: false, error: "Anúncio não encontrado." };
+    // prazo da revenda definido pelo produtor (até X horas antes do início)
+    if (!deadlineOpen(l.event.startAt, l.event.resaleUntilHours, now)) return { ok: false, error: "O prazo da revenda deste evento acabou." };
     if (l.sellerUserId === userId) return { ok: false, error: "Este anúncio é seu." };
     if (l.status === "sold" || l.status === "cancelled" || l.ticket.status !== "valid" || l.ticket.holderUserId !== l.sellerUserId) return { ok: false, error: "Este ingresso não está mais à venda." };
     if (l.status === "reserved" && l.reservedBy !== userId && l.reservedUntil && l.reservedUntil > now) return { ok: false, error: "Alguém está comprando este ingresso agora. Tente outro anúncio ou volte em alguns minutos." };

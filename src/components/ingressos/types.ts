@@ -8,6 +8,25 @@ export type TicketItem = {
   checkedInAt: string | null;
   /** SVG do QR code assinado (gerado no server com a lib qrcode). */
   qrSvg: string;
+  /** enviado para outra pessoa e ainda não aceito (o ingresso volta se o envio for cancelado) */
+  sentTo?: { transferId: string; email: string; gift: boolean } | null;
+};
+
+/** Pedido criado e não pago, dentro da reserva: "Aguardando pagamento" com o botão de pagar. */
+export type PendingOrderView = {
+  id: string; number: number; title: string; flyerId: string; dateNice: string; venue: string;
+  items: string; totalCents: number; method: "pix" | "card" | "free"; secondsLeft: number;
+};
+
+/** Ingresso enviado para outra pessoa (na compra ou por Transferir). */
+export type SentView = {
+  id: string; ticketId: string; toEmail: string; status: "pending" | "accepted"; gift: boolean;
+  holderName: string | null; tier: string; eventTitle: string;
+};
+
+/** Ingresso enviado para o e-mail da conta, esperando a pessoa receber. */
+export type IncomingView = {
+  token: string; title: string; flyerId: string; dateNice: string; venue: string; tier: string; holderName: string | null; gift: boolean;
 };
 
 /** Um "ingresso" do design: todos os ingressos de um pedido (mesmo evento). */

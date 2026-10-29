@@ -78,6 +78,13 @@ export async function signOut() {
   redirect("/");
 }
 
+/** Sai e abre o login voltando para `next` (ex.: receber um ingresso enviado para outra conta). */
+export async function signOutTo(next: string) {
+  await auth.signOut();
+  (await cookies()).delete("tw_mfa");
+  redirect(`/entrar?next=${encodeURIComponent(safeNextParam(next))}`);
+}
+
 function friendly(message?: string, code?: string) {
   if (code?.startsWith("NETWORK_")) return "Não foi possível falar com o servidor de login. Tente de novo em instantes.";
   const m = (message ?? "").toLowerCase();

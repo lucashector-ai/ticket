@@ -17,7 +17,7 @@ type Props = {
 const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const day = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "America/Sao_Paulo" }).replace(".", "");
 const dayTime = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).replace(".", "");
-const STATUS: Record<BankEntry["status"], string> = { liberado: "Liberado", "a liberar": "A liberar", requested: "Em análise", processing: "Processando", paid: "Pago", rejected: "Recusado", cancelled: "Cancelado" };
+const STATUS: Record<BankEntry["status"], string> = { liberado: "Liberado", "a liberar": "A liberar", retido: "Retido · evento cancelado", requested: "Em análise", processing: "Processando", paid: "Pago", rejected: "Recusado", cancelled: "Cancelado" };
 /** "1.234,56" → centavos */
 const toCents = (v: string) => { const d = v.replace(/\D/g, ""); return d ? Number(d) : 0; };
 const fmtInput = (c: number) => (c ? (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
@@ -31,7 +31,7 @@ export function BancoHome({ base, name, email, configUrl, wallet, rules }: Props
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
 
-  const list = useMemo(() => (wallet?.entries ?? []).filter((e) => filter === "tudo" || (filter === "entradas" ? e.kind === "venda" : e.kind === "saque")), [wallet, filter]);
+  const list = useMemo(() => (wallet?.entries ?? []).filter((e) => filter === "tudo" || (filter === "entradas" ? e.kind === "venda" : e.kind !== "venda")), [wallet, filter]);
 
   async function logout() { await bankLogout(); router.replace(`${base}/entrar`); }
   async function withdraw(v = code) {
@@ -67,7 +67,7 @@ export function BancoHome({ base, name, email, configUrl, wallet, rules }: Props
       <section className="bk-hero">
           <div className="bk-bal">
           <span className="bk-k">Saldo disponível</span>
-          <b className="bk-v">{brl(w.available)}</b>
+          <b className="bk-v">{w.available < 0 ? `−${brl(-w.available)}` : brl(w.available)}</b>
           <span className="bk-n">{w.destination ? <>Saque para <b>{w.destination}</b></> : <>Cadastre a conta para receber em <a href={configUrl}>Configurações</a></>}</span>
         </div>
         <div className="bk-hero-a">
@@ -75,7 +75,7 @@ export function BancoHome({ base, name, email, configUrl, wallet, rules }: Props
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" /></svg>
             Pedir saque
           </button>
-          {!canWithdraw && <small>{!w.destination ? "Falta a conta para receber." : `Saque mínimo de ${brl(rules.min)}.`}</small>}
+          {!canWithdraw && <small>{w.available < 0 ? "Saldo negativo por reembolsos: é descontado das próximas vendas." : !w.destination ? "Falta a conta para receber." : `Saque mínimo de ${brl(rules.min)}.`}</small>}
         </div>
         <div className="bk-mini">
           <div><span>A liberar</span><b>{brl(w.pending)}</b><small>{w.nextRelease ? `próxima liberação em ${day(w.nextRelease)}` : "nenhuma venda aguardando"}</small></div>
@@ -118,7 +118,7 @@ export function BancoHome({ base, name, email, configUrl, wallet, rules }: Props
               <span className="bk-ic" aria-hidden="true">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{e.kind === "venda" ? <path d="M17 7L7 17M15 17H7V9" /> : <path d="M7 17L17 7M9 7h8v8" />}</svg>
               </span>
-              <span className="bk-lt2"><b>{e.kind === "venda" ? `Vendas · ${e.title}` : e.title}</b><small>{e.detail} · {dayTime(e.at)}</small></span>
+              <span className="bk-lt2"><b>{e.kind === "venda" ? `Vendas · ${e.title}` : e.kind === "reembolso" ? `Reembolsos · ${e.title}` : e.title}</b><small>{e.detail} · {dayTime(e.at)}</small></span>
               <span className="bk-lr">
                 <b className={e.amount < 0 ? "neg" : "pos"}>{e.amount < 0 ? "−" : "+"}{brl(Math.abs(e.amount))}</b>
                 <span className={`bk-st ${e.status.replace(" ", "-")}`}>{e.status === "a liberar" && e.releaseAt ? `Libera em ${day(e.releaseAt)}` : STATUS[e.status]}</span>

@@ -12,10 +12,12 @@ import { Feed, type FeedRow } from "./home";
 import { PainelLancamento, type LaunchProps } from "./lancamento";
 import { PainelRevenda, type RevendaProps } from "./revenda";
 import { PainelLista, type ListaProps } from "./lista";
+import { PainelReembolsos } from "./reembolsos";
+import type { RefundTab } from "@/lib/data/reembolsos";
 import { CheckinLinks, type CheckinLink } from "./checkin-links";
 import { useOrigin } from "./use-origin";
 
-type Tab = "geral" | "participantes" | "lista" | "checkin" | "financeiro" | "lancamento" | "revenda";
+type Tab = "geral" | "participantes" | "lista" | "checkin" | "financeiro" | "lancamento" | "revenda" | "reembolsos";
 type Person = { id: string; name: string; ini: string; bg: string; email: string; ticket: string; meia: boolean; order: string; date: string; status: string; inAt: string | null };
 
 export type EventoPainelProps = {
@@ -33,6 +35,7 @@ export type EventoPainelProps = {
   launch?: LaunchProps;
   revenda?: RevendaProps;
   lista?: ListaProps;
+  reembolsos?: RefundTab;
 };
 
 const n = (v: number) => v.toLocaleString("pt-BR");
@@ -50,7 +53,7 @@ export function PainelEvento(p: EventoPainelProps) {
     window.history.replaceState(null, "", u.toString());
   };
   const copy = async () => { try { await navigator.clipboard.writeText(url); flash("Link copiado."); } catch { flash("Não foi possível copiar."); } };
-  const TABS: [Tab, string, number][] = [["geral", "Visão geral", 0], ["participantes", "Participantes", p.people.length], ["lista", "Lista free", p.lista?.guests.length ?? 0], ["checkin", "Check-in", 0], ["financeiro", "Financeiro", p.fin.refunds.length], ["lancamento", "Lançamento", p.launch?.signups.length ?? 0], ["revenda", "Revenda e transferência", p.revenda?.kpis.active ?? 0]];
+  const TABS: [Tab, string, number][] = [["geral", "Visão geral", 0], ["participantes", "Participantes", p.people.length], ["lista", "Lista free", p.lista?.guests.length ?? 0], ["checkin", "Check-in", 0], ["financeiro", "Financeiro", p.fin.refunds.length], ["lancamento", "Lançamento", p.launch?.signups.length ?? 0], ["revenda", "Revenda e transferência", p.revenda?.kpis.active ?? 0], ["reembolsos", "Cancelamentos e reembolsos", p.reembolsos?.kpis.pending ?? 0]];
 
   return (
     <div className="pane">
@@ -71,6 +74,7 @@ export function PainelEvento(p: EventoPainelProps) {
               <button className="mn-i" type="button" onClick={() => { setMore(false); exportCsv(p.ev.title, p.people); }}>Exportar participantes (CSV)</button>
               <button className="mn-i" type="button" onClick={() => { setMore(false); pick("financeiro"); }}>Ver financeiro</button>
               <Link className="mn-i" href={`/criar-evento?editar=${p.ev.id}`}>Gerenciar lotes e cupons</Link>
+              <button className="mn-i" type="button" onClick={() => { setMore(false); pick("reembolsos"); }}>Cancelar, adiar ou reembolsar</button>
               <button className="mn-i danger" type="button" onClick={() => { setMore(false); setDel(true); }}>Excluir evento</button>
             </div>
           )}
@@ -89,13 +93,14 @@ export function PainelEvento(p: EventoPainelProps) {
       {tab === "financeiro" && <Fin p={p} />}
       {tab === "lancamento" && p.launch && <PainelLancamento p={p.launch} />}
       {tab === "revenda" && p.revenda && <PainelRevenda p={p.revenda} />}
-      {del && <DeleteEvent id={p.ev.id} title={p.ev.title} sold={p.kpis.sold + p.fin.refunds.length} onClose={() => setDel(false)} />}
+      {tab === "reembolsos" && p.reembolsos && <PainelReembolsos p={p.reembolsos} />}
+      {del && <DeleteEvent id={p.ev.id} title={p.ev.title} sold={p.kpis.sold + p.fin.refunds.length} onClose={() => setDel(false)} onRefunds={() => { setDel(false); pick("reembolsos"); }} />}
     </div>
   );
 }
 
 /** Confirmação para excluir: só eventos sem venda; pede o nome do evento para não excluir sem querer. */
-function DeleteEvent({ id, title, sold, onClose }: { id: string; title: string; sold: number; onClose: () => void }) {
+function DeleteEvent({ id, title, sold, onClose, onRefunds }: { id: string; title: string; sold: number; onClose: () => void; onRefunds: () => void }) {
   const router = useRouter();
   const { flash } = useToast();
   const [typed, setTyped] = useState("");
@@ -115,8 +120,8 @@ function DeleteEvent({ id, title, sold, onClose }: { id: string; title: string; 
             <>
               <span className="dl-ic warn" aria-hidden="true">!</span>
               <h2 className="card-t">Este evento já vendeu ingressos</h2>
-              <p className="dl-p">Quem comprou tem ingresso válido para “{title}”, então ele não pode ser excluído. Se o evento não vai acontecer, fale com a gente para cancelar e devolver o dinheiro de todos os compradores.</p>
-              <div className="dl-a"><button className="b2" type="button" onClick={onClose}>Fechar</button><Link className="b2 dark" href="/ajuda">Falar com o suporte</Link></div>
+              <p className="dl-p">Quem comprou tem ingresso válido para “{title}”, então ele não pode ser excluído. Se o evento não vai acontecer, cancele em Cancelamentos e reembolsos: todos os compradores recebem o dinheiro de volta automaticamente.</p>
+              <div className="dl-a"><button className="b2" type="button" onClick={onClose}>Fechar</button><button className="b2 dark" type="button" onClick={onRefunds}>Cancelar o evento</button></div>
             </>
           ) : (
             <form onSubmit={(e) => { e.preventDefault(); if (ok) go(); }}>

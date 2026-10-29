@@ -10,10 +10,11 @@ import { safeNextParam } from "@/lib/auth/next-param";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Criar conta" };
 
-type Props = { searchParams: Promise<{ next?: string | string[] }> };
+type Props = { searchParams: Promise<{ next?: string | string[]; email?: string | string[] }> };
 
 export default async function CadastroPage({ searchParams }: Props) {
-  const { next: rawNext } = await searchParams;
+  const { next: rawNext, email: rawEmail } = await searchParams;
+  const email = typeof rawEmail === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) ? rawEmail.slice(0, 254) : "";
   const next = safeNextParam(rawNext);
   const { user, pending } = await getAuthState();
   if (pending) redirect(`/verificacao?next=${encodeURIComponent(next)}`);
@@ -22,7 +23,7 @@ export default async function CadastroPage({ searchParams }: Props) {
     <div className="pg-entrar">
       <SiteHeader user={null} variant="default" activePath="/entrar" />
       <AuthCard>
-        <SignupForm next={next} human={turnstileSiteKey()} />
+        <SignupForm next={next} human={turnstileSiteKey()} initialEmail={email} />
       </AuthCard>
     </div>
   );

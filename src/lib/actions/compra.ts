@@ -1,6 +1,5 @@
 "use server";
 
-import QRCode from "qrcode";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { cpfValid } from "@/lib/cpf";
@@ -16,6 +15,8 @@ import { heldByType } from "@/lib/holds";
 import { claimSpecial, lookupSpecial } from "@/lib/special";
 import { boughtByType, fulfillOrder, overLimit, type FulfillResult } from "@/lib/payments/fulfill";
 import { startPix, STRIPE_MIN_BRL_CENTS } from "@/lib/payments/intents";
+import { releaseOthers } from "@/lib/payments/pending";
+import { testPix } from "@/lib/payments/pix-test";
 import { stripeEnabled } from "@/lib/payments/stripe";
 
 const { orders, orderItems, coupons, events, userProfiles } = schema;
@@ -33,7 +34,15 @@ const placeSchema = z.object({
     phone: z.string().transform(normalizePhone).refine(phoneValid, "celular com DDD"),
     cpf: z.string().refine(cpfValid, "CPF válido (obrigatório)"),
   }),
-  holders: z.array(z.object({ ticketTypeId: z.string().uuid(), name: fullName, meia: z.boolean() })),
+  /**
+   * `me`: o ingresso é do próprio comprador (fica na conta dele). Os outros vão por e-mail para quem vai usar
+   * depois do pagamento: a pessoa entra (ou cria a conta) com esse e-mail e aceita.
+   */
+  holders: z.array(z.object({
+    ticketTypeId: z.string().uuid(), name: fullName, meia: z.boolean(),
+    me: z.boolean().optional().default(false),
+    email: z.string().trim().toLowerCase().max(254).email("e-mail válido de quem vai receber cada ingresso").optional().nullable().or(z.literal("")),
+  })),
   /** "free": pedido de valor zero (ingresso grátis ou cupom de 100%), confirmado sem pagamento */
   method: z.enum(["pix", "card", "free"]),
   installments: z.number().int().min(1).max(6),
@@ -70,9 +79,25 @@ function couponView(c: typeof coupons.$inferSelect) {
   return { ok: true as const, code: c.code, percentOff: c.percentOff ?? 0, amountOffCents: c.amountOffCents ?? 0, amountPerTicket: c.amountPerTicket, sector: c.sector };
 }
 
-function pixCopyPaste(orderNumber: number, totalCents: number) {
-  const amount = (totalCents / 100).toFixed(2);
-  return `00020126580014BR.GOV.BCB.PIX0136ticketswin-pix-${orderNumber}5204000053039865406${amount}5802BR5911TICKETS WIN6009SAO PAULO62070503***6304A1F3`;
+/**
+ * Titulares: no máximo um "Sou eu"; cada ingresso de outra pessoa precisa de um e-mail (que não seja o do
+ * comprador) e um mesmo e-mail não recebe mais ingressos de um tipo do que o limite por pessoa.
+ */
+function checkHolders(holders: PlaceOrderInput["holders"], own: string[], limits: Map<string, { name: string; max: number }>): string | null {
+  if (holders.filter((h) => h.me).length > 1) return "Só um dos ingressos pode ser o seu (“Sou eu”).";
+  const perEmail = new Map<string, number>();
+  for (const h of holders) {
+    if (h.me) continue;
+    const email = (h.email ?? "").trim().toLowerCase();
+    if (!email) return "Falta preencher: e-mail de quem vai receber cada ingresso.";
+    if (own.includes(email)) return "Esse é o seu e-mail. Para o seu próprio ingresso, use “Sou eu”.";
+    const k = `${email}|${h.ticketTypeId}`;
+    const n = (perEmail.get(k) ?? 0) + 1;
+    perEmail.set(k, n);
+    const lim = limits.get(h.ticketTypeId);
+    if (lim && n > lim.max) return `O limite é ${lim.max} ${lim.max === 1 ? "ingresso" : "ingressos"} de ${lim.name} por pessoa: ${email} está recebendo ${n}.`;
+  }
+  return null;
 }
 
 /** Cria o pedido com os dados do checkout. Exige login (pedido na etapa Dados). */
@@ -123,9 +148,16 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       lines.push({ ticketTypeId: tt.id, priceCents: tt.priceCents, quantity: it.quantity, sector: tt.sector, meiaOk: (!tt.kind || tt.kind === "inteira") && tt.priceCents > 0 });
     }
   }
+  const own = [buyer.email, user.email ?? ""].map((e) => e.trim().toLowerCase()).filter(Boolean);
+  const limits = new Map(ev.ticketTypes.map((t) => [t.id, { name: t.name, max: special ? 1 : Math.min(t.maxPerOrder, ev.maxPerOrder) }]));
+  const holderErr = checkHolders(holders, own, limits);
+  if (holderErr) return { ok: false, error: holderErr };
   // meia só onde o checkout oferece (tipos de inteira); meia/social já têm preço próprio
   const meiaOk = new Map(lines.map((l) => [l.ticketTypeId, l.meiaOk]));
-  const cleanHolders = holders.map((h) => ({ ...h, meia: h.meia && meiaOk.get(h.ticketTypeId) !== false }));
+  const cleanHolders = holders.map((h) => ({
+    ticketTypeId: h.ticketTypeId, name: h.name.trim(), meia: h.meia && meiaOk.get(h.ticketTypeId) !== false,
+    me: !!h.me, email: h.me ? null : (h.email ?? "").trim().toLowerCase() || null,
+  }));
 
   let couponRow: typeof coupons.$inferSelect | null = null;
   if (coupon) {
@@ -139,6 +171,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const free = p.total === 0;
   const live = stripeEnabled();
   if (live && !free && p.total < STRIPE_MIN_BRL_CENTS) return { ok: false, error: "O valor mínimo para pagamento online é R$ 0,50." };
+  // um pedido aberto por evento: o anterior (recarregou, voltou, trocou a forma de pagamento) é liberado
+  const released = await releaseOthers(user.id, ev.id, { groupShareId: special?.kind === "grupo" ? special.shareId : null, resaleListingId: special?.kind === "revenda" ? special.listingId : null });
+  if (!released.ok) return { ok: false, error: released.error };
   // comissão do parceiro: % do valor dos ingressos (sem taxa e sem juros)
   const promoter = special?.kind === "revenda" ? null : await promoterForOrder(ev);
 
@@ -148,7 +183,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     interestCents: p.interest, installments: p.installments, totalCents: p.total,
     couponId: couponRow?.id ?? null, paymentMethod: free ? "free" : method,
     buyerName: buyer.name.trim(), buyerEmail: buyer.email.trim().toLowerCase(), buyerPhone: buyer.phone, buyerCpf: digits(buyer.cpf),
-    holders: cleanHolders.map((h) => ({ ticketTypeId: h.ticketTypeId, name: h.name.trim(), meia: h.meia })),
+    holders: cleanHolders,
     expiresAt: new Date(Date.now() + 15 * 60_000),
     presaleSignupId,
     groupShareId: special?.kind === "grupo" ? special.shareId : null,
@@ -176,8 +211,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       }
       return { ok: true, orderId: order.id, number, totalCents: p.total, live: true, ...px.pix };
     }
-    const pixCode = pixCopyPaste(number, p.total);
-    const pixQrSvg = await QRCode.toString(pixCode, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
+    const { pixCode, pixQrSvg } = await testPix(number, p.total);
     return { ok: true, orderId: order.id, number, totalCents: p.total, live: false, pixCode, pixQrSvg, expiresAt: order.expiresAt?.toISOString() ?? null, hostedUrl: null };
   }
   return { ok: true, orderId: order.id, number, totalCents: p.total, live, pixCode: "", pixQrSvg: "", expiresAt: order.expiresAt?.toISOString() ?? null, hostedUrl: null };

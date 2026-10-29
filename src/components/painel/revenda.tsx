@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { producerCancelListing, saveTransferResale } from "@/lib/actions/revenda";
+import { DEADLINE_HOURS, deadlineLabel } from "@/lib/refund-policy";
 
 type Listing = { id: string; code: string; what: string; price: string; pct: number; status: "active" | "reserved" | "sold" | "cancelled"; when: string };
 export type RevendaProps = {
@@ -11,6 +12,9 @@ export type RevendaProps = {
   transferEnabled: boolean;
   resaleEnabled: boolean;
   resaleMaxPct: number;
+  /** prazos: até X horas antes do início (0 = até o início) */
+  transferUntilHours: number;
+  resaleUntilHours: number;
   kpis: { active: number; sold: number; volume: string; transfers: number };
   listings: Listing[];
 };
@@ -23,14 +27,14 @@ const ST: Record<Listing["status"], [string, string]> = {
 export function PainelRevenda({ p }: { p: RevendaProps }) {
   const router = useRouter();
   const { flash } = useToast();
-  const [f, setF] = useState({ transferEnabled: p.transferEnabled, resaleEnabled: p.resaleEnabled, resaleMaxPct: String(Math.min(p.resaleMaxPct, 100)) });
+  const [f, setF] = useState({ transferEnabled: p.transferEnabled, resaleEnabled: p.resaleEnabled, resaleMaxPct: String(Math.min(p.resaleMaxPct, 100)), transferUntilHours: p.transferUntilHours, resaleUntilHours: p.resaleUntilHours });
   const [dirty, setDirty] = useState(false);
   const [busy, start] = useTransition();
   const [view, setView] = useState<"open" | "sold" | "all">("open");
   const set = (x: Partial<typeof f>) => { setF((o) => ({ ...o, ...x })); setDirty(true); };
 
   const save = () => start(async () => {
-    const r = await saveTransferResale(p.eventId, { transferEnabled: f.transferEnabled, resaleEnabled: f.resaleEnabled, resaleMaxPct: Number(f.resaleMaxPct) || 0 });
+    const r = await saveTransferResale(p.eventId, { transferEnabled: f.transferEnabled, resaleEnabled: f.resaleEnabled, resaleMaxPct: Number(f.resaleMaxPct) || 0, transferUntilHours: f.transferUntilHours, resaleUntilHours: f.resaleUntilHours });
     if (!r.ok) { flash(r.error); return; }
     setDirty(false); flash("Regras salvas."); router.refresh();
   });
@@ -99,6 +103,7 @@ export function PainelRevenda({ p }: { p: RevendaProps }) {
                 <span><b>Permitir transferência</b><small>O comprador envia o ingresso para outra pessoa pelo e-mail, de graça. O QR code muda na hora.</small></span>
                 <input className="sr" type="checkbox" checked={f.transferEnabled} onChange={(e) => set({ transferEnabled: e.target.checked })} /><span className="sw" aria-hidden="true" />
               </label>
+              {f.transferEnabled && <Deadline label="Prazo para transferir" value={f.transferUntilHours} onChange={(v) => set({ transferUntilHours: v })} />}
               <label className="tg2">
                 <span><b>Permitir revenda oficial</b><small>O comprador anuncia o ingresso aqui na Tickets Win e recebe quando alguém compra. Sem cambista, sem golpe.</small></span>
                 <input className="sr" type="checkbox" checked={f.resaleEnabled} onChange={(e) => set({ resaleEnabled: e.target.checked })} /><span className="sw" aria-hidden="true" />
@@ -110,11 +115,13 @@ export function PainelRevenda({ p }: { p: RevendaProps }) {
                   <small>{pct < 50 || pct > 100 ? "Use de 50% a 100%: pelos Termos, ninguém revende acima do que pagou." : pct === 100 ? "Ninguém revende acima do que pagou." : `Um ingresso de R$ 100 pode ser revendido por até R$ ${pct}.`}</small>
                 </label>
               )}
+              {f.resaleEnabled && <Deadline label="Prazo para anunciar e comprar na revenda" value={f.resaleUntilHours} onChange={(v) => set({ resaleUntilHours: v })} />}
               {turningOff && <small className="rv-w">Ao salvar, os {open.length} anúncios à venda saem do ar. Quem estiver pagando agora termina a compra.</small>}
               <ul className="rv-how">
                 <li>O vendedor recebe o valor anunciado menos 5%.</li>
                 <li>O comprador paga a taxa de serviço normal.</li>
                 <li>Ingresso já usado na portaria não pode ser anunciado.</li>
+                <li>O envio do ingresso para outra pessoa na hora da compra vale sempre, mesmo com a transferência desligada ou fora do prazo.</li>
               </ul>
             </div>
           </section>
@@ -128,5 +135,17 @@ export function PainelRevenda({ p }: { p: RevendaProps }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Até quando vale (horas antes do início do evento). */
+function Deadline({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <label className="fld">
+      <span>{label}</span>
+      <select value={value} onChange={(e) => onChange(Number(e.target.value))}>
+        {DEADLINE_HOURS.map((h) => <option key={h} value={h}>{deadlineLabel(h).replace(/^até /, "Até ")}</option>)}
+      </select>
+    </label>
   );
 }

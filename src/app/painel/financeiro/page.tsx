@@ -40,7 +40,7 @@ export default async function PainelFinanceiro() {
       {wallet && (
         <BancoCard
           url={bankUrl()} hasPassword={!!cred} hasApp={mfa?.method === "totp"} releaseDays={RELEASE_DAYS}
-          available={brl(wallet.available)} pending={brl(wallet.pending)} inFlight={brl(wallet.inFlight)} paidOut={brl(wallet.paidOut)}
+          available={wallet.available < 0 ? `−${brl(-wallet.available)}` : brl(wallet.available)} pending={brl(wallet.pending)} inFlight={brl(wallet.inFlight)} paidOut={brl(wallet.paidOut)}
           nextRelease={wallet.nextRelease ? dm(wallet.nextRelease) : null}
           destination={hasDestination(wallet.destination) ? destLabel(wallet.destination) : null}
           payouts={wallet.payouts.slice(0, 5).map((x) => ({ id: x.id, at: dm(x.createdAt.toISOString()), amount: brl(x.amountCents), status: x.status }))}

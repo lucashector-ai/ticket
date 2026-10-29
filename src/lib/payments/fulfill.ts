@@ -7,7 +7,7 @@ import { db, schema } from "@/db";
 import { qrPayload } from "@/lib/actions/tickets";
 import { heldSql } from "@/lib/holds";
 import { settleShare, shareStillHeld } from "@/lib/special";
-import { mailGroupSharePaid, mailOrderConfirmed, mailResaleSold } from "@/lib/notify";
+import { mailGroupSharePaid, mailOrderConfirmed, mailResaleSold, mailTransferSent } from "@/lib/notify";
 import { refundOrder } from "@/lib/payments/refund";
 
 /*
@@ -24,7 +24,9 @@ import { refundOrder } from "@/lib/payments/refund";
 const { orders, orderItems, tickets, ticketTypes, coupons, eventSignups, groupShares, resaleListings, ticketTransfers } = schema;
 
 type Method = "pix" | "card" | "free";
-export type FulfillOk = { ok: true; number: number; totalCents: number; method: Method; installments: number; ticketCount: number; firstCode: string; ticketQrSvg: string; email: string };
+/** `sentTo`: ingressos de outras pessoas, enviados por e-mail (cada uma aceita com a própria conta). */
+export type FulfillOk = { ok: true; number: number; totalCents: number; method: Method; installments: number; ticketCount: number; firstCode: string; ticketQrSvg: string; email: string; sentTo: SentTo[] };
+export type SentTo = { name: string; email: string };
 /** `busy`: outra chamada está emitindo agora; `retry`: falhou algo que vale tentar de novo (ex.: o estorno). */
 export type FulfillResult = FulfillOk | { ok: false; error: string; busy?: boolean; refunded?: boolean; retry?: boolean };
 
@@ -82,11 +84,33 @@ export function overLimit(items: { ticketTypeId: string; quantity: number }[], t
 export async function paidView(orderId: string): Promise<FulfillOk | null> {
   const o = await db.query.orders.findFirst({ where: eq(orders.id, orderId), with: { tickets: true } });
   if (!o || o.status !== "paid") return null;
-  const first = o.tickets[0];
+  const gifts = o.tickets.length ? await db.query.ticketTransfers.findMany({
+    where: and(inArray(ticketTransfers.ticketId, o.tickets.map((t) => t.id)), eq(ticketTransfers.kind, "gift"), ne(ticketTransfers.status, "cancelled")),
+    columns: { ticketId: true, toEmail: true },
+  }) : [];
+  const gifted = new Map(gifts.map((g) => [g.ticketId, g.toEmail]));
+  // o QR da tela é de um ingresso que ficou com quem comprou (os enviados não valem até a pessoa aceitar)
+  const first = o.tickets.find((t) => !gifted.has(t.id) && t.holderUserId === o.userId) ?? null;
   return {
     ok: true, number: o.number ?? 0, totalCents: o.totalCents, method: methodOf(o), installments: o.installments, ticketCount: o.tickets.length,
-    firstCode: first?.code ?? "", ticketQrSvg: first ? await qrSvg(first.code, first.secret) : "", email: o.buyerEmail ?? "",
+    firstCode: first?.code ?? o.tickets[0]?.code ?? "", ticketQrSvg: first ? await qrSvg(first.code, first.secret) : "", email: o.buyerEmail ?? "",
+    sentTo: o.tickets.filter((t) => gifted.has(t.id)).map((t) => ({ name: t.holderName ?? "", email: gifted.get(t.id)! })),
   };
+}
+
+/**
+ * Ingressos de outras pessoas (titular com e-mail no checkout): o ingresso nasce na conta de quem comprou,
+ * travado (status transferred) e com um link de entrega (ticket_transfers kind "gift") para o e-mail do titular.
+ * Quando a pessoa entra com esse e-mail e aceita, ele vai para a conta dela com um QR novo. Não depende de o
+ * produtor permitir transferências: faz parte da compra.
+ */
+async function startGifts(fromUserId: string, list: { ticketId: string; email: string }[]): Promise<string[]> {
+  if (!list.length) return [];
+  const trs = await db.insert(ticketTransfers).values(list.map((g) => ({
+    ticketId: g.ticketId, fromUserId, toEmail: g.email, token: randomBytes(24).toString("hex"), status: "pending" as const, kind: "gift",
+  }))).returning({ id: ticketTransfers.id });
+  await db.update(tickets).set({ status: "transferred" }).where(inArray(tickets.id, list.map((g) => g.ticketId)));
+  return trs.map((t) => t.id);
 }
 
 /**
@@ -136,6 +160,9 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
     return { ok: false, error: `${why} Nada foi cobrado.` };
   };
 
+  // evento cancelado pelo produtor enquanto a pessoa pagava (ex.: Pix pago depois): não emite, estorna
+  const evState = await db.query.events.findFirst({ where: eq(schema.events.id, order.eventId), columns: { status: true } });
+  if (evState?.status === "cancelled") return fail("O evento foi cancelado pelo produtor.");
   if (!order.groupShareId && !order.resaleListingId) {
     // limite por pessoa de novo na confirmação: outro pedido pode ter sido pago no meio do caminho
     const types = await db.query.ticketTypes.findMany({ where: inArray(ticketTypes.id, order.items.map((i) => i.ticketTypeId)), columns: { id: true, name: true, maxPerOrder: true } });
@@ -168,25 +195,34 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
     undo.push(() => db.update(ticketTypes).set({ sold: sql`greatest(${ticketTypes.sold} - ${it.quantity}, 0)` }).where(eq(ticketTypes.id, it.ticketTypeId)));
   }
   const holderQueue = [...(order.holders ?? [])];
+  const giftTo = new Map<string, { name: string; email: string }>();
   const rows = order.items.flatMap((it) => Array.from({ length: it.quantity }, () => {
     const idx = holderQueue.findIndex((h) => h.ticketTypeId === it.ticketTypeId);
     const h = idx >= 0 ? holderQueue.splice(idx, 1)[0] : null;
+    const code = ticketCode();
+    if (h && !h.me && h.email) giftTo.set(code, { name: h.name, email: h.email });
     return {
-      code: ticketCode(), orderId: order.id, orderItemId: it.id, eventId: order.eventId, ticketTypeId: it.ticketTypeId,
+      code, orderId: order.id, orderItemId: it.id, eventId: order.eventId, ticketTypeId: it.ticketTypeId,
       holderUserId: order.userId, holderName: h?.name ?? order.buyerName ?? null, halfPrice: !!h?.meia,
       secret: randomBytes(16).toString("hex"),
     };
   }));
-  const inserted = await db.insert(tickets).values(rows).returning({ code: tickets.code, secret: tickets.secret });
+  const inserted = await db.insert(tickets).values(rows).returning({ id: tickets.id, code: tickets.code, secret: tickets.secret });
+  const gifts = await startGifts(order.userId, inserted.filter((t) => giftTo.has(t.code)).map((t) => ({ ticketId: t.id, email: giftTo.get(t.code)!.email })));
   if (order.couponId) await db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId));
   await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: pay.ref }).where(eq(orders.id, order.id));
   if (order.groupShareId) await settleShare(order.groupShareId, order.id);
   const shareId = order.groupShareId;
-  after(async () => { await mailOrderConfirmed(order.id); if (shareId) await mailGroupSharePaid(shareId); });
-  const first = inserted[0];
+  after(async () => {
+    await mailOrderConfirmed(order.id);
+    for (const id of gifts) await mailTransferSent(id);
+    if (shareId) await mailGroupSharePaid(shareId);
+  });
+  const first = inserted.find((t) => !giftTo.has(t.code)) ?? null;
   return {
     ok: true, number: order.number ?? 0, totalCents: order.totalCents, method: methodOf(order), installments: order.installments,
-    ticketCount: inserted.length, firstCode: first.code, ticketQrSvg: await qrSvg(first.code, first.secret), email: order.buyerEmail ?? "",
+    ticketCount: inserted.length, firstCode: first?.code ?? inserted[0].code, ticketQrSvg: first ? await qrSvg(first.code, first.secret) : "", email: order.buyerEmail ?? "",
+    sentTo: [...giftTo.values()],
   };
 }
 
@@ -204,16 +240,24 @@ async function fulfillResale(order: OrderRow & { items: ItemRow[] }, pay: { ref:
   const [t] = await db.update(tickets)
     .set({ holderUserId: userId, holderName: holder, secret: randomBytes(16).toString("hex"), orderId: order.id, orderItemId: order.items[0]?.id ?? null })
     .where(and(eq(tickets.id, l.ticketId), eq(tickets.holderUserId, l.sellerUserId), eq(tickets.status, "valid")))
-    .returning({ code: tickets.code, secret: tickets.secret });
+    .returning({ id: tickets.id, code: tickets.code, secret: tickets.secret });
   if (!t) {
     await db.update(resaleListings).set({ status: "cancelled" }).where(eq(resaleListings.id, l.id));
     return fail(gone);
   }
   await db.update(ticketTransfers).set({ status: "cancelled" }).where(and(eq(ticketTransfers.ticketId, l.ticketId), eq(ticketTransfers.status, "pending")));
+  // comprou para outra pessoa: vai por e-mail, como na compra normal
+  const h = order.holders?.[0];
+  const gift = h && !h.me && h.email ? { name: h.name, email: h.email } : null;
+  const gifts = gift ? await startGifts(userId, [{ ticketId: t.id, email: gift.email }]) : [];
   await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: pay.ref }).where(eq(orders.id, order.id));
-  after(async () => { await mailOrderConfirmed(order.id); await mailResaleSold(l.sellerUserId, l.event.title, l.priceCents); });
+  after(async () => {
+    await mailOrderConfirmed(order.id);
+    for (const id of gifts) await mailTransferSent(id);
+    await mailResaleSold(l.sellerUserId, l.event.title, l.priceCents);
+  });
   return {
     ok: true, number: order.number ?? 0, totalCents: order.totalCents, method: methodOf(order), installments: order.installments, ticketCount: 1,
-    firstCode: t.code, ticketQrSvg: await qrSvg(t.code, t.secret), email: order.buyerEmail ?? "",
+    firstCode: t.code, ticketQrSvg: gift ? "" : await qrSvg(t.code, t.secret), email: order.buyerEmail ?? "", sentTo: gift ? [gift] : [],
   };
 }

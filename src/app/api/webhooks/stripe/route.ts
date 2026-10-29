@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { fulfillOrder } from "@/lib/payments/fulfill";
-import { markOrderRefunded } from "@/lib/payments/refund";
+import { syncStripeRefund } from "@/lib/payments/refund";
 import { stripeEnabled, stripeRef, verifyStripeEvent } from "@/lib/payments/stripe";
 
 /*
@@ -86,10 +86,10 @@ export async function POST(req: Request) {
         const piId = typeof ch.payment_intent === "string" ? ch.payment_intent : ch.payment_intent?.id;
         if (!piId) break;
         const o = await orderFor({ id: piId, metadata: ch.metadata });
-        // reembolso total (pelo nosso refundOrder ou direto no painel da Stripe): ingressos deixam de valer.
-        // Parcial: só registra (o pedido continua pago).
-        if (o && ch.refunded) await markOrderRefunded(o.id);
-        else if (o) console.warn("stripe webhook: reembolso parcial", o.id, ch.amount_refunded);
+        // Estornos feitos pela Tickets Win já estão na trilha (order_refunds, criada antes da chamada) e não são
+        // processados de novo; o que foi estornado direto no painel da Stripe entra como linha "stripe".
+        // Parcial: o pedido segue pago com refunded_cents; total: os ingressos deixam de valer.
+        if (o) await syncStripeRefund(o.id, { id: ch.id, amountRefunded: ch.amount_refunded, fully: ch.refunded });
         break;
       }
       default:

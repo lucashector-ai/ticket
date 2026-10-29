@@ -617,7 +617,7 @@ export const ARTICLES: HelpArticle[] = [
   {
     slug: "pedir-reembolso", cat: "reembolsos",
     title: "Como pedir reembolso (direito de arrependimento)",
-    summary: "Até 7 dias após o pagamento, desde que faltem mais de 48 horas para o evento. O pedido é feito pelo nosso contato.",
+    summary: "Até 7 dias após o pagamento, desde que faltem mais de 48 horas para o evento. Você cancela pelo próprio ingresso, em Meus ingressos.",
     keywords: "reembolso devolucao estorno desistir arrependimento cancelar compra 7 dias 48 horas dinheiro de volta",
     body: [
       p("Pelo Código de Defesa do Consumidor, você pode desistir de uma compra feita pela internet. Na Tickets Win a regra é:"),
@@ -627,12 +627,13 @@ export const ARTICLES: HelpArticle[] = [
       ),
       h("Como pedir"),
       ol(
-        "Abra o [formulário de contato](/contato?assunto=reembolso) e escolha o assunto **Reembolso ou cancelamento**.",
-        "Informe o **número do pedido** (está no e-mail de confirmação e em [Minha conta, Compras](/conta/compras)) e quais ingressos quer cancelar.",
-        "Respondemos em até 1 dia útil com a confirmação.",
+        "Abra o ingresso em [Meus ingressos](/meus-ingressos) e desça até **Cancelamento e reembolso**.",
+        "Toque em **Cancelar ingresso**. O valor que volta para você aparece antes de confirmar.",
+        "Confirme. O cancelamento é na hora e você recebe um e-mail com o valor.",
       ),
+      p("Cada ingresso é cancelado separadamente, e só quem comprou pode cancelar (o dinheiro volta para quem pagou). Ingressos comprados na revenda oficial não são cancelados por aqui. Se o botão não aparecer, [fale com a gente](/contato?assunto=reembolso) com o número do pedido."),
       p("Com o reembolso aprovado, os ingressos são cancelados e o QR code deixa de valer. O valor volta pelo mesmo meio de pagamento: no Pix, para a conta de origem; no cartão, como estorno na fatura. O prazo para aparecer depende do seu banco ou da operadora do cartão."),
-      p("Fora desse prazo, vale a [política de cancelamento do evento](/ajuda/politica-do-evento), definida pelo produtor."),
+      p("Fora desse prazo, vale a [política de cancelamento do evento](/ajuda/politica-do-evento), definida pelo produtor. Se ela permitir, o botão **Cancelar ingresso** continua aparecendo até o prazo dela."),
     ],
     related: ["evento-cancelado", "evento-adiado"],
   },
@@ -657,7 +658,7 @@ export const ARTICLES: HelpArticle[] = [
     keywords: "evento adiado remarcado nova data mudou data mudou local",
     body: [
       p("Quando o produtor adia um evento, **o seu ingresso continua válido para a nova data**, com o mesmo QR code. Não precisa fazer nada."),
-      p("Se a nova data não der para você, peça o reembolso em até **7 dias depois do anúncio** do adiamento, pelo [formulário de contato](/contato?assunto=reembolso), informando o número do pedido."),
+      p("Se a nova data não der para você, peça o reembolso em até **7 dias depois do anúncio** do adiamento: abra o ingresso em [Meus ingressos](/meus-ingressos) e toque em **Pedir reembolso**. O produtor aprova e o valor integral volta pelo mesmo meio de pagamento."),
       h("Outras opções"),
       ul(
         "[Transferir](/ajuda/transferir-ingresso) o ingresso para alguém que possa ir.",
@@ -673,7 +674,7 @@ export const ARTICLES: HelpArticle[] = [
     keywords: "politica de cancelamento produtor regra fora do prazo nao posso ir",
     body: [
       p("Cada evento mostra a política de cancelamento do produtor na seção **O que você deve saber**, item **Cancelamento**. Leia antes de comprar."),
-      p("Ela vale para pedidos fora do [direito de arrependimento](/ajuda/pedir-reembolso), ou seja, depois de 7 dias do pagamento ou a menos de 48 horas do evento. Nos casos de [cancelamento](/ajuda/evento-cancelado) e [adiamento](/ajuda/evento-adiado), valem as regras da Tickets Win."),
+      p("Ela vale para pedidos fora do [direito de arrependimento](/ajuda/pedir-reembolso), ou seja, depois de 7 dias do pagamento ou a menos de 48 horas do evento. O produtor pode liberar o cancelamento até alguns dias ou horas antes do evento e, nesses casos fora dos 7 dias, pode definir que a taxa de serviço não é devolvida. Nos casos de [cancelamento](/ajuda/evento-cancelado) e [adiamento](/ajuda/evento-adiado), valem as regras da Tickets Win."),
       p("Não vai poder ir e o prazo passou? Você ainda pode [transferir o ingresso](/ajuda/transferir-ingresso) ou [vender na revenda oficial](/ajuda/vender-na-revenda), se o evento permitir."),
     ],
   },
@@ -1016,6 +1017,7 @@ export const ARTICLES: HelpArticle[] = [
       ul(
         "Cada venda paga entra como **a liberar** e fica **disponível 2 dias depois do fim do evento**.",
         "Vendas da revenda oficial e vendas de teste não geram repasse.",
+        "Reembolsos saem do saldo na hora. Se o valor já tinha sido sacado, o saldo fica negativo e é descontado das próximas vendas.",
         "Se você absorve a taxa, os 7,99% já saem do valor líquido.",
       ),
       h("Como sacar"),
@@ -1029,6 +1031,24 @@ export const ARTICLES: HelpArticle[] = [
       warn("Depois de 5 senhas erradas seguidas, o banco fica bloqueado por 15 minutos e avisamos o dono por e-mail."),
     ],
     related: ["taxa-para-produtores"],
+  },
+  {
+    slug: "cancelar-adiar-reembolsar", cat: "produtores",
+    title: "Cancelar, adiar ou reembolsar ingressos",
+    summary: "No painel do evento, aba Cancelamentos e reembolsos: reembolse pedidos, responda pedidos dos compradores, adie ou cancele o evento.",
+    keywords: "reembolsar estornar cancelar evento adiar mudar data devolver dinheiro politica de cancelamento produtor",
+    body: [
+      p("Tudo fica no painel do evento, na aba **Cancelamentos e reembolsos**. Só o dono e os administradores da equipe têm acesso."),
+      ul(
+        "**Reembolsar:** busque pelo nome, e-mail, número do pedido ou código do ingresso e reembolse o pedido inteiro ou só alguns ingressos. O comprador recebe o valor pago por eles, **com a taxa de serviço**, e um e-mail com o seu recado.",
+        "**Do seu saldo** sai só o líquido que você recebeu pelos ingressos. A taxa é devolvida pela Tickets Win. Se você já sacou, o saldo fica negativo e é descontado das próximas vendas.",
+        "**Adiar:** escolha a nova data. Os compradores recebem um e-mail e podem pedir reembolso em até 7 dias; os pedidos aparecem na mesma aba.",
+        "**Cancelar o evento:** as vendas param e todos os pedidos pagos são reembolsados automaticamente, com a taxa. Você acompanha quantos já foram e pode tentar de novo os que falharem.",
+        "**Política de cancelamento:** além dos 7 dias do direito de arrependimento, você pode deixar o comprador cancelar sozinho até um prazo antes do evento.",
+      ),
+      p("Os prazos para transferir e revender ficam na aba **Revenda e transferência**."),
+    ],
+    related: ["financeiro-e-saques", "regras-de-transferencia-e-revenda"],
   },
   {
     slug: "email-marketing", cat: "produtores",
@@ -1080,6 +1100,7 @@ export const ARTICLES: HelpArticle[] = [
       ),
       p("Você acompanha os anúncios ativos e pode tirar do ar um anúncio com problema. Se desligar a revenda, os anúncios abertos saem do ar."),
       p("Ingressos já usados na portaria saem da revenda automaticamente."),
+      p("Você também define **até quando** dá para transferir e para anunciar ou comprar na revenda (por exemplo, até 24 horas antes do início). O envio do ingresso para outra pessoa na hora da compra vale sempre."),
     ],
     related: ["vender-na-revenda"],
   },

@@ -7,6 +7,7 @@ import { emailEnabled } from "@/lib/email";
 import { salePhase } from "@/lib/launch";
 import { resaleCap } from "@/lib/resale";
 import { listEventCoupons, listOrders, listParticipants, revenueByType } from "@/lib/data/painel";
+import { refundTabData } from "@/lib/data/reembolsos";
 import { painelAccess } from "@/lib/painel/access";
 import { brl, dateNice, initials } from "@/lib/format";
 import { GUEST_MAX_PER_EVENT, GUEST_MAX_PER_PASTE } from "@/lib/guest-list";
@@ -90,7 +91,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
   const st = statusOf(e, now);
   const days = Math.ceil((e.startAt.getTime() - now) / DAY);
   const props: EventoPainelProps = {
-    tab: aba === "participantes" || aba === "checkin" || aba === "financeiro" || aba === "lancamento" || aba === "revenda" || aba === "lista" ? aba : "geral",
+    tab: aba === "participantes" || aba === "checkin" || aba === "financeiro" || aba === "lancamento" || aba === "revenda" || aba === "lista" || aba === "reembolsos" ? aba : "geral",
     ev: {
       id: e.id, slug: e.slug, title: e.title, flyerId: e.flyerId, when: whenLabel(e), where: whereLabel(e), status: st.label, stCls: st.cls,
       countdown: ended(e, now) ? "" : days <= 0 ? "É hoje" : days === 1 ? "Amanhã" : `Faltam ${days} dias`, draft: e.status === "draft", absorbFee: e.absorbFee,
@@ -137,6 +138,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
   const rsSold = resale.filter((r) => r.status === "sold");
   props.revenda = {
     eventId: e.id, transferEnabled: e.transferEnabled, resaleEnabled: e.resaleEnabled, resaleMaxPct: e.resaleMaxPct,
+    transferUntilHours: e.transferUntilHours, resaleUntilHours: e.resaleUntilHours,
     kpis: {
       active: resale.filter((r) => r.status === "active" || r.status === "reserved").length, sold: rsSold.length,
       volume: brl(rsSold.reduce((s, r) => s + r.priceCents, 0)), transfers: transfers?.n ?? 0,
@@ -158,5 +160,6 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
       inAt: x.checkedInAt ? `${dm(x.checkedInAt)}, ${hm(x.checkedInAt)}` : null, by: x.checkedInBy, invited: !!x.invitedAt, added: dm(x.createdAt),
     })),
   };
+  props.reembolsos = await refundTabData(e, localInput(e.startAt), whenLabel(e), now);
   return <PainelEvento {...props} />;
 }

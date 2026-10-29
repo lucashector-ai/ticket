@@ -9,7 +9,10 @@ import { getPainelScope, listOrders } from "@/lib/data/painel";
 /*
  * Banco Tickets Win: a carteira do dono dos eventos.
  * Cada venda paga (sem as de teste e sem a revenda) entra como "a liberar" e fica disponível
- * RELEASE_DAYS dias depois do fim do evento. Disponível = liberado − saques pedidos/pagos.
+ * RELEASE_DAYS dias depois do fim do evento. Disponível = liberado − reembolsos − saques pedidos/pagos.
+ * Reembolso (order_refunds.producer_cents) sai na hora do mesmo grupo da venda: se o dinheiro já tinha
+ * sido sacado, o saldo fica negativo (é descontado das próximas vendas, e não dá para sacar enquanto isso).
+ * Evento cancelado nunca libera: o valor fica retido até os reembolsos terminarem.
  * O acesso é separado do site: subdomínio próprio, senha própria e código por e-mail.
  */
 
@@ -18,8 +21,8 @@ export const MIN_PAYOUT = 1000;
 const ACTIVE = ["requested", "processing", "paid"] as const;
 
 export type BankEntry = {
-  id: string; at: string; kind: "venda" | "saque"; title: string; detail: string; amount: number;
-  status: "liberado" | "a liberar" | "requested" | "processing" | "paid" | "rejected" | "cancelled"; releaseAt?: string;
+  id: string; at: string; kind: "venda" | "saque" | "reembolso"; title: string; detail: string; amount: number;
+  status: "liberado" | "a liberar" | "retido" | "requested" | "processing" | "paid" | "rejected" | "cancelled"; releaseAt?: string;
 };
 
 const spDay = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
@@ -30,15 +33,27 @@ export async function walletFor(userId: string) {
   if (scope.role !== "owner") return null;
   const evs = scope.events.filter((e) => e.status !== "draft");
   const byId = new Map(evs.map((e) => [e.id, e]));
-  const orders = (await listOrders(evs.map((e) => e.id), new Map(evs.map((e) => [e.id, e.absorbFee])))).filter((o) => o.status === "paid");
+  const evIds = evs.map((e) => e.id);
+  const refunds = evIds.length ? await db.select({
+    orderId: schema.orderRefunds.orderId, eventId: schema.orderRefunds.eventId, cents: schema.orderRefunds.producerCents, at: schema.orderRefunds.createdAt,
+  }).from(schema.orderRefunds).where(and(
+    inArray(schema.orderRefunds.eventId, evIds), inArray(schema.orderRefunds.status, ["pending", "succeeded"]),
+    eq(schema.orderRefunds.test, false), sql`${schema.orderRefunds.producerCents} > 0`,
+  )) : [];
+  const refundedOrders = new Set(refunds.map((r) => r.orderId));
+  // pedido reembolsado entra como venda + reembolso; os antigos, sem trilha, simplesmente não entram (como antes)
+  const orders = (await listOrders(evIds, new Map(evs.map((e) => [e.id, e.absorbFee])))).filter((o) => o.status === "paid" || refundedOrders.has(o.id));
   // venda de teste (sem gateway: payment_ref TEST-… ou método "test") nunca vira saldo sacável
   const real = orders.filter((o) => !o.test && o.net > 0);
   const now = Date.now();
 
   const releaseOf = (eventId: string) => {
     const e = byId.get(eventId)!;
+    // evento cancelado: o dinheiro fica retido até o fim dos reembolsos (nunca libera para saque)
+    if (e.status === "cancelled") return new Date(8.64e15);
     return new Date((e.endAt ?? e.startAt).getTime() + RELEASE_DAYS * 864e5);
   };
+  const stOf = (eventId: string): BankEntry["status"] => byId.get(eventId)!.status === "cancelled" ? "retido" : releaseOf(eventId).getTime() <= now ? "liberado" : "a liberar";
 
   // vendas agrupadas por evento e dia (no fuso de São Paulo)
   const groups = new Map<string, { eventId: string; day: string; at: Date; net: number; n: number; qty: number }>();
@@ -49,6 +64,16 @@ export async function walletFor(userId: string) {
     if (o.at > g.at) g.at = o.at;
     groups.set(k, g);
   }
+  // reembolsos agrupados por evento e dia
+  const rgroups = new Map<string, { eventId: string; at: Date; cents: number; n: number }>();
+  for (const r of refunds) {
+    if (!byId.has(r.eventId)) continue;
+    const k = `${r.eventId}:${spDay(r.at)}`;
+    const g = rgroups.get(k) ?? { eventId: r.eventId, at: r.at, cents: 0, n: 0 };
+    g.cents += r.cents; g.n += 1;
+    if (r.at > g.at) g.at = r.at;
+    rgroups.set(k, g);
+  }
   const payouts = await db.query.payoutRequests.findMany({ where: eq(schema.payoutRequests.userId, userId), orderBy: [desc(schema.payoutRequests.createdAt)], limit: 200 });
 
   const entries: BankEntry[] = [
@@ -57,25 +82,32 @@ export async function walletFor(userId: string) {
       return {
         id: `v:${g.eventId}:${g.day}`, at: g.at.toISOString(), kind: "venda", title: byId.get(g.eventId)!.title,
         detail: `${g.n} ${g.n === 1 ? "pedido" : "pedidos"} · ${g.qty} ${g.qty === 1 ? "ingresso" : "ingressos"}`,
-        amount: g.net, status: rel.getTime() <= now ? "liberado" : "a liberar", releaseAt: rel.toISOString(),
+        amount: g.net, status: stOf(g.eventId), releaseAt: rel.toISOString(),
       };
     }),
+    ...[...rgroups.entries()].map(([k, g]): BankEntry => ({
+      id: `r:${k}`, at: g.at.toISOString(), kind: "reembolso", title: byId.get(g.eventId)!.title,
+      detail: `${g.n} ${g.n === 1 ? "reembolso" : "reembolsos"} a compradores`, amount: -g.cents, status: stOf(g.eventId),
+    })),
     ...payouts.map((p): BankEntry => ({
       id: `s:${p.id}`, at: p.createdAt.toISOString(), kind: "saque", title: "Saque",
       detail: destLabel(p.destination), amount: -p.amountCents, status: p.status,
     })),
   ].sort((a, b) => b.at.localeCompare(a.at));
 
-  const released = [...groups.values()].filter((g) => releaseOf(g.eventId).getTime() <= now).reduce((s, g) => s + g.net, 0);
-  const pending = [...groups.values()].filter((g) => releaseOf(g.eventId).getTime() > now).reduce((s, g) => s + g.net, 0);
+  const isReleased = (eventId: string) => releaseOf(eventId).getTime() <= now;
+  const refundedOut = (rel: boolean) => [...rgroups.values()].filter((g) => isReleased(g.eventId) === rel).reduce((s, g) => s + g.cents, 0);
+  const released = [...groups.values()].filter((g) => isReleased(g.eventId)).reduce((s, g) => s + g.net, 0) - refundedOut(true);
+  const pending = [...groups.values()].filter((g) => !isReleased(g.eventId)).reduce((s, g) => s + g.net, 0) - refundedOut(false);
   const out = payouts.filter((p) => (ACTIVE as readonly string[]).includes(p.status)).reduce((s, p) => s + p.amountCents, 0);
   const paidOut = payouts.filter((p) => p.status === "paid").reduce((s, p) => s + p.amountCents, 0);
   const inFlight = payouts.filter((p) => p.status === "requested" || p.status === "processing").reduce((s, p) => s + p.amountCents, 0);
-  const next = [...groups.values()].map((g) => releaseOf(g.eventId)).filter((d) => d.getTime() > now).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+  const next = [...groups.values()].map((g) => releaseOf(g.eventId)).filter((d) => d.getTime() > now && d.getTime() < 8e15).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
 
   return {
     org: scope.org, entries, payouts,
-    available: Math.max(0, released - out), pending, paidOut, inFlight,
+    // pode ficar negativo: reembolso de venda já sacada (descontado das próximas vendas)
+    available: released - out, pending, paidOut, inFlight, refunded: refunds.reduce((s, r) => s + r.cents, 0),
     nextRelease: next?.toISOString() ?? null,
     testSales: orders.length - real.length,
     destination: (scope.org?.payout ?? null) as OrganizerPayout | null,

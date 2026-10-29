@@ -259,11 +259,25 @@ export const mailOrderConfirmed = safe("order", async (orderId: string) => {
   const free = o.totalCents === 0;
   const resale = !!o.resaleListingId;
   const n = o.tickets.length;
+  // ingressos de outras pessoas: foram por e-mail para cada uma (ficam com quem comprou até a pessoa aceitar)
+  const gifts = await db.query.ticketTransfers.findMany({
+    where: and(inArray(ticketTransfers.ticketId, o.tickets.map((t) => t.id)), eq(ticketTransfers.kind, "gift")),
+    columns: { ticketId: true, toEmail: true },
+  });
+  const sentTo = new Map(gifts.map((g) => [g.ticketId, g.toEmail]));
+  const mine = n - sentTo.size;
   const items = o.tickets.map((t) => ({
     name: t.ticketType.name + (t.halfPrice ? " · meia" : ""),
-    sub: [t.holderName && `Titular: ${t.holderName}`, t.ticketType.session ? dateNice(t.ticketType.session.startAt) : null].filter(Boolean).join(" · "),
+    sub: [
+      sentTo.has(t.id) ? `Enviado para ${t.holderName ? `${t.holderName} (${sentTo.get(t.id)})` : sentTo.get(t.id)}` : t.holderName && `Titular: ${t.holderName}`,
+      t.ticketType.session ? dateNice(t.ticketType.session.startAt) : null,
+    ].filter(Boolean).join(" · "),
     right: t.code,
   }));
+  const sentNote: TxBlock[] = sentTo.size ? [{
+    kind: "note",
+    text: `${sentTo.size === 1 ? "1 ingresso foi enviado" : `${sentTo.size} ingressos foram enviados`} por e-mail para quem vai usar (${[...new Set(sentTo.values())].join(", ")}). Cada pessoa precisa entrar ou criar uma conta com o e-mail informado e aceitar o ingresso. Enquanto ninguém aceitar, você pode reenviar ou cancelar em Meus ingressos.`,
+  }] : [];
   const rows: [string, string][] = [["Pedido", `nº ${o.number ?? "—"}`]];
   if (!free) rows.push(["Pagamento", o.paymentMethod === "card" && o.installments > 1 ? `Cartão em ${o.installments}x` : METHOD[o.paymentMethod ?? "pix"] ?? "Pix"]);
   if (!free && o.feeCents) rows.push(["Taxa de serviço", brl(o.feeCents)]);
@@ -273,8 +287,8 @@ export const mailOrderConfirmed = safe("order", async (orderId: string) => {
     preheader: `${n} ${n === 1 ? "ingresso" : "ingressos"} para ${e.title}. O QR code já está em Meus ingressos.`,
     eyebrow: `Pedido nº ${o.number ?? ""}`.trim(),
     title: resale ? "O ingresso é seu" : free ? "Ingresso garantido!" : "Compra confirmada!",
-    paragraphs: [`${hello(o.buyerName)} ${resale ? "Você comprou um ingresso na revenda oficial. O QR code anterior foi cancelado e um novo já é seu." : n === 1 ? "Seu ingresso está garantido." : `Seus ${n} ingressos estão garantidos.`} Mostre o QR code na entrada: ele fica em Meus ingressos e pode ir para a carteira do celular.`],
-    blocks: [eventBlock(e), { kind: "items", title: n === 1 ? "Seu ingresso" : "Seus ingressos", items }, { kind: "rows", rows }, { kind: "note", text: "Não tire print do QR code para mandar a outras pessoas: ele muda quando o ingresso é transferido. Para passar o ingresso, use Transferir em Meus ingressos." }],
+    paragraphs: [`${hello(o.buyerName)} ${resale ? "Você comprou um ingresso na revenda oficial. O QR code anterior foi cancelado e um novo já é seu." : n === 1 ? "Seu ingresso está garantido." : `Seus ${n} ingressos estão garantidos.`} ${mine ? "Mostre o QR code na entrada: ele fica em Meus ingressos e pode ir para a carteira do celular." : "Cada pessoa recebe o próprio ingresso por e-mail."}`],
+    blocks: [eventBlock(e), { kind: "items", title: n === 1 ? "Seu ingresso" : "Seus ingressos", items }, ...sentNote, { kind: "rows", rows }, { kind: "note", text: "Não tire print do QR code para mandar a outras pessoas: ele muda quando o ingresso é transferido. Para passar o ingresso, use Transferir em Meus ingressos." }],
     cta: { label: "Ver meus ingressos", url: "/meus-ingressos" },
     ...(maps ? { link: { label: "Como chegar", url: maps } } : {}),
     reason: "Você recebeu este e-mail porque fez um pedido na Tickets Win.",
@@ -344,25 +358,45 @@ async function transferData(transferId: string) {
   return { tr, t, e: t.event as EvRow, from: await userContact(tr.fromUserId) };
 }
 
-/** Quem recebe ganha o link para aceitar; quem enviou recebe a confirmação. */
-export const mailTransferSent = safe("transfer", async (transferId: string) => {
+/**
+ * Quem recebe ganha o link para aceitar; quem enviou recebe a confirmação (só na transferência: no ingresso de
+ * outra pessoa enviado na compra, o e-mail do pedido já conta para quem foi). `resend`: só o e-mail de quem recebe.
+ */
+export const mailTransferSent = safe("transfer", async (transferId: string, resend = false) => {
   const x = await transferData(transferId);
   if (!x) return;
-  const fromName = x.from?.name || "Alguém";
-  const ticket: TxBlock = { kind: "items", items: [{ name: x.t.ticketType.name + (x.t.halfPrice ? " · meia" : ""), sub: "Ingresso digital com QR code" }] };
+  const gift = x.tr.kind === "gift";
+  let fromName = x.from?.name || "Alguém";
+  if (gift) {
+    // na compra vale o nome que a pessoa informou no pedido
+    const o = await db.query.orders.findFirst({ where: eq(orders.id, x.t.orderId), columns: { buyerName: true } });
+    fromName = o?.buyerName || fromName;
+  }
+  const first = firstName(fromName) || fromName;
+  const ticket: TxBlock = { kind: "items", items: [{ name: x.t.ticketType.name + (x.t.halfPrice ? " · meia" : ""), sub: gift && x.t.holderName ? `Titular: ${x.t.holderName}` : "Ingresso digital com QR code" }] };
   const mails: Mail[] = [{
     to: x.tr.toEmail,
-    subject: `${firstName(fromName) || fromName} te enviou um ingresso para ${x.e.title}`,
-    ...renderTx({
+    subject: gift ? `${first} te mandou um ingresso para ${x.e.title}` : `${first} te enviou um ingresso para ${x.e.title}`,
+    ...renderTx(gift ? {
+      preheader: "Entre ou crie sua conta com este e-mail e aceite para o ingresso ficar com você.",
+      eyebrow: "Ingresso para você", title: `${first} te mandou um ingresso`,
+      paragraphs: [
+        `${hello(x.t.holderName)} ${fromName} comprou um ingresso de ${x.e.title} para você.`,
+        "Para ficar com ele, toque no botão, entre na sua conta (ou crie uma, é grátis) com este e-mail e aceite. O ingresso aparece em Meus ingressos com um QR code só seu.",
+      ],
+      blocks: [eventBlock(x.e), ticket, { kind: "note", text: `O ingresso é nominal: leve um documento com foto. Use a conta do e-mail ${x.tr.toEmail}, é só ela que pode receber este ingresso.` }],
+      cta: { label: "Receber meu ingresso", url: `/transferencia/${x.tr.token}` },
+      reason: `Você recebeu este e-mail porque ${fromName} comprou um ingresso para ${x.tr.toEmail} na Tickets Win.`,
+    } : {
       preheader: "Aceite para o ingresso ir para a sua conta.",
-      eyebrow: "Ingresso recebido", title: `${firstName(fromName) || fromName} te enviou um ingresso`,
+      eyebrow: "Ingresso recebido", title: `${first} te enviou um ingresso`,
       paragraphs: [`${fromName} transferiu um ingresso de ${x.e.title} para este e-mail. Aceite para ele aparecer em Meus ingressos com um QR code novo, só seu.`],
       blocks: [eventBlock(x.e), ticket, { kind: "note", text: "Se você ainda não tem conta, crie com este mesmo e-mail. É grátis." }],
       cta: { label: "Aceitar ingresso", url: `/transferencia/${x.tr.token}` },
       reason: `Você recebeu este e-mail porque ${fromName} transferiu um ingresso para ${x.tr.toEmail} na Tickets Win.`,
     }, siteBase()),
   }];
-  if (x.from) mails.push({
+  if (x.from && !gift && !resend) mails.push({
     to: x.from.email,
     subject: `Transferência enviada: ${x.e.title}`,
     ...renderTx({
@@ -381,9 +415,10 @@ export const mailTransferAccepted = safe("transfer-ok", async (transferId: strin
   const x = await transferData(transferId);
   if (!x?.from) return;
   const to = (x.tr.toUserId && (await userContact(x.tr.toUserId))?.name) || x.tr.toEmail;
-  await sendTx(x.from.email, `${firstName(to) || to} aceitou o seu ingresso`, {
+  const gift = x.tr.kind === "gift";
+  await sendTx(x.from.email, gift ? `${firstName(to) || to} recebeu o ingresso de ${x.e.title}` : `${firstName(to) || to} aceitou o seu ingresso`, {
     preheader: `O ingresso de ${x.e.title} agora está na conta de ${to}.`,
-    eyebrow: x.e.title, title: "Transferência concluída",
+    eyebrow: x.e.title, title: gift ? "Ingresso recebido" : "Transferência concluída",
     paragraphs: [`${to} aceitou o ingresso de ${x.e.title}. Agora ele está na conta dessa pessoa, com um QR code novo.`],
     cta: { label: "Ver meus ingressos", url: "/meus-ingressos" },
     reason: "Você recebeu este e-mail porque transferiu um ingresso na Tickets Win.",
@@ -394,10 +429,11 @@ export const mailTransferAccepted = safe("transfer-ok", async (transferId: strin
 export const mailTransferCancelled = safe("transfer-x", async (transferId: string) => {
   const x = await transferData(transferId);
   if (!x) return;
-  await sendTx(x.tr.toEmail, `Transferência cancelada: ${x.e.title}`, {
+  const gift = x.tr.kind === "gift";
+  await sendTx(x.tr.toEmail, gift ? `Envio cancelado: ${x.e.title}` : `Transferência cancelada: ${x.e.title}`, {
     preheader: "O ingresso voltou para quem enviou.",
-    title: "Transferência cancelada",
-    paragraphs: [`${x.from?.name || "Quem enviou"} cancelou a transferência do ingresso de ${x.e.title}. O link que você recebeu não vale mais.`],
+    title: gift ? "Envio do ingresso cancelado" : "Transferência cancelada",
+    paragraphs: [`${x.from?.name || "Quem enviou"} cancelou ${gift ? "o envio" : "a transferência"} do ingresso de ${x.e.title}. O link que você recebeu não vale mais.`],
     cta: { label: "Ver o evento", url: `/eventos/${x.e.slug}` },
     reason: `Você recebeu este e-mail porque um ingresso foi transferido para ${x.tr.toEmail} na Tickets Win.`,
   });

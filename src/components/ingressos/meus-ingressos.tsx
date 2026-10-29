@@ -11,7 +11,8 @@ import { IcoArrow, IcoCalendar, IcoCheck, IcoChevron, IcoClose, IcoNext, IcoPin,
 import { Modal } from "./modal";
 import { TicketStack } from "./ticket-stack";
 import { TransferModal } from "./transfer-modal";
-import type { TicketGroup, TicketItem } from "./types";
+import { IncomingTickets, PendingOrders, SentTickets } from "./envios";
+import type { IncomingView, PendingOrderView, SentView, TicketGroup, TicketItem } from "./types";
 
 /** Ingresso de lista (lista free) do e-mail da conta: não é pedido nem ingresso comprado; abre em /lista/<token>. */
 export type ListTicket = {
@@ -22,6 +23,11 @@ export type ListTicket = {
 type Props = {
   groups: TicketGroup[];
   lists?: ListTicket[];
+  /** pedidos não pagos dentro da reserva */
+  pending?: PendingOrderView[];
+  /** ingressos mandados para outras pessoas / recebidos por e-mail e ainda não aceitos */
+  sent?: SentView[];
+  incoming?: IncomingView[];
   /** número do pedido confirmado (?pedido=N), se pertencer ao usuário */
   confirmedOrder: number | null;
   wallet: WalletFlags;
@@ -30,6 +36,7 @@ type Props = {
 /** Linha "Titular: …" / status do ingresso dentro do carrossel. */
 function holderLabel(t: TicketItem, moved: Record<string, string>) {
   if (moved[t.id]) return `Transferido para ${moved[t.id]}`;
+  if (t.status === "transferred" && t.sentTo) return `Enviado para ${t.sentTo.email} · aguardando`;
   if (t.status === "transferred") return "Transferido";
   if (t.status === "used") return `Utilizado · ${t.holderName ?? "Titular"}`;
   if (t.status === "cancelled") return "Cancelado";
@@ -37,7 +44,7 @@ function holderLabel(t: TicketItem, moved: Record<string, string>) {
   return `Titular: ${t.holderName ?? "—"}`;
 }
 
-export function MeusIngressos({ groups, lists = [], confirmedOrder, wallet }: Props) {
+export function MeusIngressos({ groups, lists = [], pending = [], sent = [], incoming = [], confirmedOrder, wallet }: Props) {
   const { flash } = useToast();
   const [tab, setTab] = useState<"up" | "past">("up");
   const [cur, setCur] = useState<Record<string, number>>({});
@@ -95,7 +102,10 @@ export function MeusIngressos({ groups, lists = [], confirmedOrder, wallet }: Pr
         </div>
       )}
 
-      {groups.length === 0 && !lists.length && (
+      <PendingOrders orders={pending} />
+      {tab === "up" && <IncomingTickets items={incoming} />}
+
+      {groups.length === 0 && !lists.length && !pending.length && !incoming.length && (
         <div className="empty mi-empty">
           <span className="mi-empty-i" aria-hidden="true"><IcoTicket /></span>
           <h3>Você ainda não tem ingressos</h3>
@@ -133,7 +143,7 @@ export function MeusIngressos({ groups, lists = [], confirmedOrder, wallet }: Pr
                       </li>
                       <li>
                         <span className="tkb-ic" aria-hidden="true"><IcoUser /></span>
-                        <div><b>{t.holderName ?? "Titular não informado"}</b><span className="tkb-sub">{moved[t.id] ? `Transferido para ${moved[t.id]}` : "Titular do ingresso"}</span></div>
+                        <div><b>{t.holderName ?? "Titular não informado"}</b><span className="tkb-sub">{moved[t.id] ? `Transferido para ${moved[t.id]}` : t.status === "transferred" && t.sentTo ? `Enviado para ${t.sentTo.email} · aguardando` : "Titular do ingresso"}</span></div>
                       </li>
                     </ul>
                   );
@@ -258,6 +268,8 @@ export function MeusIngressos({ groups, lists = [], confirmedOrder, wallet }: Pr
           </div>
         </>
       )}
+
+      {tab === "up" && <SentTickets sent={sent} />}
 
       {tab === "past" && groups.length > 0 && (
         past.length > 0 ? (

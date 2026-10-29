@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { deadlineOpen, EVENT_RULES, policyOf, policyText } from "@/lib/refund-policy";
 import { DEFAULT_TEASER } from "@/lib/criar/model";
 import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
@@ -57,7 +58,8 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     ? { id: e.organizer.id, slug: e.organizer.slug, avatarUrl: e.organizer.avatarUrl, name: e.organizer.name, initials: e.organizer.initials ?? initials(e.organizer.name), bio: e.organizer.bio, verified: e.organizer.verified, email: e.organizer.contactEmail }
     : null;
   const tiers: TierItem[] = e.ticketTypes.map((t) => {
-    const status = tierStatus(t);
+    // evento cancelado: nenhum ingresso à venda
+    const status = e.status === "cancelled" ? "closed" : tierStatus(t);
     return {
       id: t.id, name: t.name, note: status === "upcoming" && t.salesStart ? salesStartNote(t.salesStart) : t.note, desc: t.description,
       priceCents: t.priceCents, limit: Math.min(t.maxPerOrder, e.maxPerOrder), status, available: Math.max(0, t.quantity - t.sold - (held.get(t.id) ?? 0)),
@@ -98,7 +100,8 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     paragraphs,
     age: e.ageRating,
     halfPrice: e.halfPriceInfo,
-    refund: e.refundPolicy,
+    // política estruturada (painel → Cancelamentos e reembolsos) + o texto livre do produtor, se houver
+    refund: e.status === "cancelled" ? "Evento cancelado pelo produtor. Quem comprou recebe o reembolso integral, com a taxa de serviço, automaticamente." : [policyText(policyOf(e)), e.refundPolicy?.trim(), EVENT_RULES].filter(Boolean).join(" "),
     lineup,
     organizer,
     tiers,
@@ -107,7 +110,7 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     maxPerOrder: e.maxPerOrder,
     queueOn: e.queueMode !== "off",
     resale: {
-      offers: e.resaleEnabled ? offers.flatMap((o) => {
+      offers: e.resaleEnabled && e.status === "published" && deadlineOpen(e.startAt, e.resaleUntilHours) ? offers.flatMap((o) => {
         const t = e.ticketTypes.find((x) => x.id === o.ticketTypeId);
         if (!t) return [];
         const s = t.sessionId ? sessions.find((x) => x.id === t.sessionId) : null;

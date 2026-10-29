@@ -35,6 +35,7 @@
 @import "../styles/footer.css";
 @import "../styles/a11y.css";
 @import "../styles/pages/sobre.css";
+@import "../styles/pages/reembolsos.css";
 
 @theme inline {
   --color-ink: #111111;

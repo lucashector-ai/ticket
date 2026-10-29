@@ -6,6 +6,7 @@ import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { RESALE_MAX_PCT, resaleCap } from "@/lib/resale";
 import { getPainelScope } from "@/lib/data/painel";
+import { DEADLINE_HOURS, deadlineLabel, deadlineOpen } from "@/lib/refund-policy";
 
 const { tickets, resaleListings, ticketTransfers } = schema;
 type R = { ok: true } | { ok: false; error: string };
@@ -16,12 +17,13 @@ export async function createListing(ticketId: string, priceCents: number): Promi
   if (!user) return { ok: false, error: "Entre na sua conta." };
   const t = await db.query.tickets.findFirst({
     where: and(eq(tickets.id, ticketId), eq(tickets.holderUserId, user.id)),
-    with: { event: { columns: { id: true, slug: true, status: true, startAt: true, endAt: true, resaleEnabled: true, resaleMaxPct: true } }, ticketType: { columns: { priceCents: true } } },
+    with: { event: { columns: { id: true, slug: true, status: true, startAt: true, endAt: true, resaleEnabled: true, resaleMaxPct: true, resaleUntilHours: true } }, ticketType: { columns: { priceCents: true } } },
   });
   if (!t) return { ok: false, error: "Ingresso não encontrado." };
   if (t.status !== "valid") return { ok: false, error: "Só ingressos válidos podem ir para a revenda." };
   if (!t.event.resaleEnabled || t.event.status !== "published") return { ok: false, error: "O produtor não liberou revenda para este evento." };
   if ((t.event.endAt ?? t.event.startAt) < new Date()) return { ok: false, error: "O evento já aconteceu." };
+  if (!deadlineOpen(t.event.startAt, t.event.resaleUntilHours)) return { ok: false, error: `O prazo da revenda deste evento acabou (${deadlineLabel(t.event.resaleUntilHours)}).` };
   if (!t.ticketType.priceCents) return { ok: false, error: "Ingresso grátis não vai para a revenda. Se não puder ir, transfira para alguém." };
   const { maxCents } = resaleCap(t.ticketType.priceCents, t.halfPrice, t.event.resaleMaxPct);
   const price = Math.round(priceCents);
@@ -59,12 +61,19 @@ async function producerEvent(eventId: string) {
   return s.events.find((e) => e.id === eventId) ?? null;
 }
 
-export async function saveTransferResale(eventId: string, input: { transferEnabled: boolean; resaleEnabled: boolean; resaleMaxPct: number }): Promise<R> {
+export async function saveTransferResale(eventId: string, input: { transferEnabled: boolean; resaleEnabled: boolean; resaleMaxPct: number; transferUntilHours?: number; resaleUntilHours?: number }): Promise<R> {
   const ev = await producerEvent(eventId);
   if (!ev) return { ok: false, error: "Sem permissão para este evento." };
   const pct = Math.round(input.resaleMaxPct);
   if (!Number.isFinite(pct) || pct < 50 || pct > RESALE_MAX_PCT) return { ok: false, error: "O preço máximo vai de 50% a 100% do valor pago (ninguém revende acima do que pagou)." };
-  await db.update(schema.events).set({ transferEnabled: !!input.transferEnabled, resaleEnabled: !!input.resaleEnabled, resaleMaxPct: pct }).where(eq(schema.events.id, ev.id));
+  // prazos: transferir / revender até X horas antes do início (0 = até o início)
+  const okH = (h: unknown) => (DEADLINE_HOURS as readonly number[]).includes(Number(h));
+  if ((input.transferUntilHours !== undefined && !okH(input.transferUntilHours)) || (input.resaleUntilHours !== undefined && !okH(input.resaleUntilHours))) return { ok: false, error: "Escolha um dos prazos da lista." };
+  await db.update(schema.events).set({
+    transferEnabled: !!input.transferEnabled, resaleEnabled: !!input.resaleEnabled, resaleMaxPct: pct,
+    ...(input.transferUntilHours !== undefined ? { transferUntilHours: Number(input.transferUntilHours) } : {}),
+    ...(input.resaleUntilHours !== undefined ? { resaleUntilHours: Number(input.resaleUntilHours) } : {}),
+  }).where(eq(schema.events.id, ev.id));
   // revenda desligada: os anúncios abertos saem do ar (quem estiver pagando agora termina a compra)
   if (!input.resaleEnabled) await db.update(resaleListings).set({ status: "cancelled" }).where(and(eq(resaleListings.eventId, ev.id), eq(resaleListings.status, "active")));
   revalidatePath(`/painel/evento/${ev.id}`);

@@ -14,6 +14,9 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { resaleCap } from "@/lib/resale";
 import { googleWalletEnabled } from "@/lib/wallet/google";
+import { MeuReembolsoBox } from "@/components/ingressos/meu-reembolso";
+import { meuReembolso } from "@/lib/data/meu-reembolso";
+import { deadlineOpen } from "@/lib/refund-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -52,18 +55,21 @@ export default async function IngressoPage({ params, searchParams }: { params: P
     dateFull: L.dateFull, dateNice: L.dateNice, doors: L.doors, venue: L.venue, addr: L.addr,
     tier: t.ticketType.name, orderNumber: t.order?.number ?? null,
     checkedInLabel: t.checkedInAt ? dateNice(t.checkedInAt) : null,
-    transferEnabled: e.transferEnabled,
+    // prazos do produtor: fora deles os botões somem (a caixa de cancelamento abaixo explica o porquê)
+    transferEnabled: e.transferEnabled && e.status === "published" && deadlineOpen(e.startAt, e.transferUntilHours, now),
     pendingTo: pending?.toEmail ?? null,
     siblings: siblings.map((s) => ({ code: s.code, holder: s.holderName })),
     card: ticketCard(t, e),
-    resale: { enabled: e.resaleEnabled && e.status === "published" && t.ticketType.priceCents > 0, ...resaleCap(t.ticketType.priceCents, t.halfPrice, e.resaleMaxPct), listing: listing ? { id: listing.id, priceCents: listing.priceCents, reserved: listing.status === "reserved" && !!listing.reservedUntil && listing.reservedUntil > now } : null },
+    resale: { enabled: e.resaleEnabled && e.status === "published" && t.ticketType.priceCents > 0 && deadlineOpen(e.startAt, e.resaleUntilHours, now), ...resaleCap(t.ticketType.priceCents, t.halfPrice, e.resaleMaxPct), listing: listing ? { id: listing.id, priceCents: listing.priceCents, reserved: listing.status === "reserved" && !!listing.reservedUntil && listing.reservedUntil > now } : null },
   };
 
+  const refund = await meuReembolso(t.id, user.id);
   data.openResale = revender === "1" && data.resale.enabled && !data.resale.listing && t.status === "valid";
   return (
     <div className="pg-meus-ingressos">
       <SiteHeader user={user} variant="default" activePath="/meus-ingressos" />
       <TicketView data={data} />
+      {refund && <MeuReembolsoBox p={refund} />}
       <SiteFooter />
     </div>
   );

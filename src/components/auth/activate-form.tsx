@@ -44,7 +44,12 @@ export function ActivateForm({ initialEmail, known, verified, next }: { initialE
     try {
       const res = await authClient.emailOtp.verifyEmail({ email: email.trim(), otp: v });
       if (res?.error) { setErr("Código incorreto ou expirado. Confira ou peça outro."); setCode(""); }
-      else { flash("Conta ativada!"); setDone(true); }
+      else {
+        flash("Conta ativada!");
+        // veio de um convite (ex.: ingresso enviado por alguém): volta direto para ele
+        if (next !== "/") { window.location.href = next; return; }
+        setDone(true);
+      }
     } catch {
       // o cliente do Neon Auth lança erro no 400 (INVALID_OTP)
       setErr("Código incorreto ou expirado. Confira ou peça outro."); setCode("");

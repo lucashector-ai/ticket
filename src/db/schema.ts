@@ -369,6 +369,19 @@ export const events = pgTable(
     /** revenda oficial entre fãs e o preço máximo, em % do valor pago */
     resaleEnabled: boolean("resale_enabled").notNull().default(true),
     resaleMaxPct: integer("resale_max_pct").notNull().default(100),
+    /** prazos: transferir / anunciar ou comprar na revenda até X horas antes do início (0 = até o início) */
+    transferUntilHours: integer("transfer_until_hours").notNull().default(0),
+    resaleUntilHours: integer("resale_until_hours").notNull().default(0),
+    /** política de cancelamento pelo comprador (null = só o direito de arrependimento); ver lib/refund-policy */
+    cancelPolicy: jsonb("cancel_policy").$type<CancelPolicyRow>(),
+    /* ---- cancelamento e adiamento (painel → Cancelamentos e reembolsos) ---- */
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelReason: text("cancel_reason"),
+    cancelledByUserId: text("cancelled_by_user_id"),
+    /** último adiamento: quando foi anunciado, a data anterior e até quando o comprador pode pedir reembolso */
+    postponedAt: timestamp("postponed_at", { withTimezone: true }),
+    postponedFrom: timestamp("postponed_from", { withTimezone: true }),
+    refundRequestsUntil: timestamp("refund_requests_until", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [
@@ -490,8 +503,11 @@ export const orders = pgTable(
     buyerEmail: varchar("buyer_email", { length: 254 }),
     buyerPhone: varchar("buyer_phone", { length: 20 }),
     buyerCpf: varchar("buyer_cpf", { length: 14 }),
-    /** titulares informados no checkout, na ordem dos ingressos */
-    holders: jsonb("holders").$type<{ ticketTypeId: string; name: string; meia: boolean }[]>(),
+    /**
+     * titulares informados no checkout, na ordem dos ingressos. `me`: o ingresso é do próprio comprador;
+     * `email`: o de outra pessoa, que recebe o ingresso por e-mail depois do pagamento (ticket_transfers kind "gift")
+     */
+    holders: jsonb("holders").$type<{ ticketTypeId: string; name: string; meia: boolean; me?: boolean; email?: string | null }[]>(),
     meiaCents: integer("meia_cents").notNull().default(0),
     installments: integer("installments").notNull().default(1),
     interestCents: integer("interest_cents").notNull().default(0),
@@ -506,6 +522,8 @@ export const orders = pgTable(
     presaleSignupId: uuid("presale_signup_id"),
     /** PaymentIntent da Stripe (pi_...) que cobra este pedido; um por pedido, reaproveitado nas novas tentativas */
     stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 64 }),
+    /** quanto já voltou para quem pagou (soma dos order_refunds concluídos); o pedido segue "paid" no reembolso parcial */
+    refundedCents: integer("refunded_cents").notNull().default(0),
     ...timestamps,
   },
   (t) => [
@@ -565,9 +583,17 @@ export const ticketTransfers = pgTable(
     status: transferStatus("status").notNull().default("pending"),
     token: varchar("token", { length: 64 }).notNull(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    /**
+     * transfer: o titular passou o ingresso adiante (Transferir em Meus ingressos; depende do produtor permitir);
+     * gift: ingresso de outra pessoa na compra, entregue por e-mail depois do pagamento (vale sempre)
+     */
+    kind: varchar("kind", { length: 16 }).notNull().default("transfer"),
     ...timestamps,
   },
-  (t) => [uniqueIndex("ticket_transfers_token_idx").on(t.token), index("ticket_transfers_ticket_idx").on(t.ticketId)],
+  (t) => [
+    uniqueIndex("ticket_transfers_token_idx").on(t.token), index("ticket_transfers_ticket_idx").on(t.ticketId),
+    index("ticket_transfers_from_idx").on(t.fromUserId), index("ticket_transfers_to_email_idx").on(t.toEmail),
+  ],
 );
 
 /* ---------- social ---------- */
@@ -892,6 +918,70 @@ export const guestListEntries = pgTable(
   (t) => [index("guest_list_event_idx").on(t.eventId), uniqueIndex("guest_list_token_idx").on(t.token)],
 );
 
+export type CancelPolicyRow = { mode: "legal" | "until"; hoursBefore: number; keepFee: boolean };
+
+/**
+ * Reembolsos (trilha de auditoria): cada estorno feito pelo produtor, pelo comprador (política do evento),
+ * pelo cancelamento do evento, direto na Stripe ou automático. A linha nasce "pending" ANTES de chamar a
+ * Stripe (idem_key único por pedido + ingressos, contra clique duplo) e vira succeeded/failed.
+ * producer_cents sai do saldo do dono no Banco Tickets Win (pode deixar o saldo negativo).
+ */
+export const orderRefunds = pgTable(
+  "order_refunds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    idemKey: varchar("idem_key", { length: 120 }).notNull(),
+    /** order | tickets | event | request | buyer | stripe | auto */
+    kind: varchar("kind", { length: 16 }).notNull(),
+    /** pending | succeeded | failed */
+    status: varchar("status", { length: 12 }).notNull().default("pending"),
+    amountCents: integer("amount_cents").notNull(),
+    /** parte da taxa de serviço devolvida (dentro de amount_cents) */
+    feeCents: integer("fee_cents").notNull().default(0),
+    /** taxa de serviço que ficou com a Tickets Win (cancelamento do comprador fora dos 7 dias, se a política do evento manda) */
+    keptFeeCents: integer("kept_fee_cents").notNull().default(0),
+    producerCents: integer("producer_cents").notNull().default(0),
+    ticketIds: jsonb("ticket_ids").$type<string[]>(),
+    ticketCodes: jsonb("ticket_codes").$type<string[]>(),
+    reason: text("reason"),
+    stripeRefundId: varchar("stripe_refund_id", { length: 64 }),
+    error: text("error"),
+    attempts: integer("attempts").notNull().default(1),
+    /** pedido de teste (TEST-…): nada passou pela Stripe e não mexe no saldo */
+    test: boolean("test").notNull().default(false),
+    actorUserId: text("actor_user_id"),
+    actorName: varchar("actor_name", { length: 160 }),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("order_refunds_idem_idx").on(t.idemKey), index("order_refunds_event_idx").on(t.eventId, t.createdAt), index("order_refunds_order_idx").on(t.orderId)],
+);
+
+/** Pedido de reembolso do comprador (evento adiado, ou cancelado e ainda não reembolsado): o produtor aprova ou recusa. */
+export const refundRequests = pgTable(
+  "refund_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    /** adiamento | cancelamento */
+    reason: varchar("reason", { length: 16 }).notNull(),
+    message: text("message"),
+    /** pending | approved | rejected */
+    status: varchar("status", { length: 12 }).notNull().default("pending"),
+    answer: text("answer"),
+    decidedByUserId: text("decided_by_user_id"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("refund_requests_pending_idx").on(t.orderId).where(sql`status = 'pending'`),
+    index("refund_requests_event_idx").on(t.eventId, t.status),
+  ],
+);
+
 export const citiesRelations = relations(cities, ({ many }) => ({ venues: many(venues) }));
 export const venuesRelations = relations(venues, ({ one, many }) => ({
   city: one(cities, { fields: [venues.cityId], references: [cities.id] }),
@@ -980,6 +1070,12 @@ export const emailSendsRelations = relations(emailSends, ({ one }) => ({
 }));
 export const checkinLinksRelations = relations(checkinLinks, ({ one }) => ({
   event: one(events, { fields: [checkinLinks.eventId], references: [events.id] }),
+}));
+export const orderRefundsRelations = relations(orderRefunds, ({ one }) => ({
+  order: one(orders, { fields: [orderRefunds.orderId], references: [orders.id] }),
+}));
+export const refundRequestsRelations = relations(refundRequests, ({ one }) => ({
+  order: one(orders, { fields: [refundRequests.orderId], references: [orders.id] }),
 }));
 export const guestListEntriesRelations = relations(guestListEntries, ({ one }) => ({
   event: one(events, { fields: [guestListEntries.eventId], references: [events.id] }),

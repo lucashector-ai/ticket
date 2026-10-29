@@ -64,7 +64,7 @@ const MS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out"
 const ML = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
 /** "Qui, 19 Nov · 21h" para cada data; o rótulo do card resume o período. */
-function dateLabels(starts: Date[], nCities: number, tour: boolean) {
+export function dateLabels(starts: Date[], nCities: number, tour: boolean) {
   const first = starts[0], last = starts[starts.length - 1];
   if (starts.length === 1) return { label: dateNice(first), full: dateFull(first) };
   const a = parts(first), b = parts(last);
@@ -209,6 +209,8 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   if (input.eventId) {
     const found = await db.query.events.findFirst({ where: eq(events.id, input.eventId), with: { sessions: true, ticketTypes: true } });
     if (!found || found.createdByUserId !== user.id) return fail("Você não pode editar este evento.");
+    // cancelado no painel (Cancelamentos e reembolsos): não volta a ser publicado por uma edição
+    if (found.status === "cancelled") return fail("Este evento foi cancelado e não pode mais ser editado.");
     existing = found;
   }
 

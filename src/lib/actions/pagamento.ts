@@ -1,11 +1,13 @@
 "use server";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { fulfillOrder, paidView, type FulfillOk } from "@/lib/payments/fulfill";
-import { cancelIntent, chargeCard } from "@/lib/payments/intents";
+import { chargeCard } from "@/lib/payments/intents";
+import { releasePending } from "@/lib/payments/pending";
 import { stripe, stripeEnabled, stripeErrorMessage, stripeRef } from "@/lib/payments/stripe";
 
 /*
@@ -96,17 +98,17 @@ export async function checkPayment(orderId: string): Promise<CheckResult> {
   }
 }
 
-/** Quem volta do Pix para trocar a forma de pagamento: cancela o código gerado e o pedido. */
-export async function abandonPayment(orderId: string): Promise<{ ok: boolean }> {
+/**
+ * Quem volta do Pix para trocar a forma de pagamento, cancela o pedido em Meus ingressos ou desiste da retomada:
+ * cancela o código gerado (e o pedido). `paying`: a Stripe já está cobrando; o pedido segue e o webhook emite.
+ */
+export async function abandonPayment(orderId: string): Promise<{ ok: boolean; paying?: boolean; paid?: number }> {
   const r = await ownOrder(orderId);
   if ("error" in r) return { ok: false };
   const { order } = r;
-  if (order.status !== "pending") return { ok: false };
-  if (order.stripePaymentIntentId && stripeEnabled()) {
-    const st = await cancelIntent(order.stripePaymentIntentId);
-    // já pago (ou pagando): não cancela o pedido; o webhook emite os ingressos
-    if (st !== "canceled") return { ok: false };
-  }
-  await db.update(orders).set({ status: "cancelled" }).where(and(eq(orders.id, order.id), inArray(orders.status, ["pending"])));
-  return { ok: true };
+  if (order.status === "paid") return { ok: false, paid: order.number ?? 0 };
+  const st = await releasePending(order);
+  if (st === "paying") return { ok: false, paying: true };
+  revalidatePath("/meus-ingressos");
+  return { ok: st === "cancelled" };
 }
