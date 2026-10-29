@@ -118,7 +118,7 @@ export function MeusIngressos({ groups, lists = [], pending = [], sent = [], inc
         <>
           {f ? (
             <TicketStack total={f.tickets.length} cur={idx(f)} labels={f.tickets.map((t) => t.holderName)} onPick={(i) => setCur((c) => ({ ...c, [f.key]: i }))}>
-            <article className="tkb" aria-label={`Próximo evento: ${f.title}`}>
+            <article className={f.tickets[idx(f)].status === "valid" && !moved[f.tickets[idx(f)].id] ? "tkb" : "tkb dim"} aria-label={`Próximo evento: ${f.title}`}>
               <Link className="tkb-art" href={`/eventos/${f.eventSlug}`} aria-label={`Ver evento ${f.title}`}>
                 <div className="in"><FlyerArt id={f.flyerId} /></div>
               </Link>
@@ -219,7 +219,7 @@ export function MeusIngressos({ groups, lists = [], pending = [], sent = [], inc
                 {others.map((g) => {
                   const t = g.tickets[idx(g)];
                   return (
-                    <article className="tm" key={g.key}>
+                    <article className={t.status === "valid" ? "tm" : "tm dim"} key={g.key}>
                       <div className="tm-art"><div className="in"><FlyerArt id={g.flyerId} /></div></div>
                       <div className="tm-i">
                         <span className="tm-k">{g.countdown}</span>
@@ -278,7 +278,7 @@ export function MeusIngressos({ groups, lists = [], pending = [], sent = [], inc
               const r = rates[g.key] ?? 0;
               const used = g.tickets.some((t) => t.status === "used");
               return (
-                <article className="tm" key={g.key}>
+                <article className="tm dim" key={g.key}>
                   <div className="tm-art"><div className="in"><FlyerArt id={g.flyerId} /></div></div>
                   <div className="tm-i">
                     <span className="tm-k done">{g.ended ? "Encerrado" : "Você já entrou"}</span>

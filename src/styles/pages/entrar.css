@@ -624,6 +624,11 @@
   .au-lk{font-size:13.5px;font-weight:600;color:#111;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(17,17,17,.3)}
   .au-lk:hover{text-decoration-color:#111}
   .au-lk:disabled{opacity:.6;text-decoration:none;cursor:default}
+  .vf-help{display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:16px;background:#F5F7EC;text-align:left;font-size:13.5px;line-height:1.5;color:#55555A}
+  .vf-help b{color:#111;font-size:14px}
+  .vf-help-a{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:6px}
+  .vf-wa{display:inline-flex;align-items:center;height:40px;padding:0 16px;border-radius:999px;background:#111;color:#fff;font-weight:600;font-size:13.5px}
+  .vf-wa:hover{background:#2A2A2A;color:#fff}
   .au-bk{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;text-decoration:none;margin-bottom:8px}
   .str{display:flex;align-items:center;gap:12px;margin-top:-4px}
   .str-b{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}

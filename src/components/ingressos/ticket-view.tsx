@@ -93,7 +93,7 @@ export function TicketView({ data }: { data: TicketViewData }) {
 
       <TicketStack total={data.siblings.length} cur={Math.max(0, data.siblings.findIndex((s) => s.code === t.code))} labels={data.siblings.map((s) => s.holder)}
         onPick={(i) => router.push(`/ingressos/${data.siblings[i].code}`, { scroll: false })}>
-      <article className="tkb" aria-label={`Ingresso para ${data.title}`}>
+      <article className={valid ? "tkb" : "tkb dim"} aria-label={`Ingresso para ${data.title}`}>
         <Link className="tkb-art" href={`/eventos/${data.eventSlug}`} aria-label={`Ver evento ${data.title}`}>
           <div className="in"><FlyerArt id={data.flyerId} /></div>
         </Link>

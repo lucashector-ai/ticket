@@ -5,6 +5,7 @@ import { ensureLoginCode, resendLoginCode, verifyLoginCode } from "@/lib/actions
 import { signOut } from "@/lib/actions/auth";
 import { FormError } from "@/components/auth/fields";
 import { ResendButton } from "@/components/auth/resend";
+import { SUPPORT } from "@/lib/site";
 
 /** Seis caixinhas de código, com colar e apagar naturais. Também usada em Minha conta. */
 export function CodeBoxes({ value, onChange, onDone, disabled, autoFocus = true }: { value: string; onChange: (v: string) => void; onDone?: (v: string) => void; disabled?: boolean; autoFocus?: boolean }) {
@@ -102,6 +103,16 @@ export function VerifyForm({ next }: { next: string }) {
           ? <button type="button" className="au-lk" onClick={() => { setRec(rec === null ? "" : null); setErr(null); }}>{rec === null ? "Perdi o celular: usar código de recuperação" : "Usar o app autenticador"}</button>
           : info?.ch === "email" && <ResendButton onResend={resend} wait={info.wait} disabled={busy} />}
       </div>
+      {(rec !== null || info?.ch === "email") && (
+        <div className="vf-help">
+          <b>{rec !== null ? "Perdeu o celular e os códigos?" : "Não consegue receber o código?"}</b>
+          <span>Fale com o suporte da Tickets Win: a gente confirma que a conta é sua e ajuda você a entrar.</span>
+          <span className="vf-help-a">
+            <a className="vf-wa" href={`${SUPPORT.whatsappUrl}?text=${encodeURIComponent("Oi! Não consigo entrar na minha conta da Tickets Win: perdi o acesso à verificação em duas etapas.")}`} target="_blank" rel="noopener noreferrer">Chamar no WhatsApp</a>
+            <a className="au-lk" href="/contato?assunto=conta">Mandar mensagem</a>
+          </span>
+        </div>
+      )}
       <p className="lx-sw">Não é você? <button type="button" className="au-lk" onClick={() => void signOut()}>Entrar com outra conta</button></p>
     </form>
   );

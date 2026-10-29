@@ -51,10 +51,16 @@ const qrSvg = async (code: string, secret: string) => QRCode.toString(await qrPa
 /**
  * Ingressos que a pessoa já comprou de cada tipo (pedidos pagos), para o limite por pessoa.
  * Conta pela conta e também pelo CPF do comprador, para o limite valer mesmo com outra conta.
+ * `all`: tudo que conta para o limite; `mine`: só os desta conta (o resto veio do mesmo CPF em outra conta).
  */
-export async function boughtByType(userId: string, cpf: string | null, typeIds: string[], exceptOrderId?: string) {
-  if (!typeIds.length) return new Map<string, number>();
-  const rows = await db.select({ id: orderItems.ticketTypeId, n: sql<number>`coalesce(sum(${orderItems.quantity}), 0)` })
+export type Bought = Map<string, { all: number; mine: number }>;
+export async function boughtByType(userId: string, cpf: string | null, typeIds: string[], exceptOrderId?: string): Promise<Bought> {
+  if (!typeIds.length) return new Map();
+  const rows = await db.select({
+    id: orderItems.ticketTypeId,
+    all: sql<number>`coalesce(sum(${orderItems.quantity}), 0)`,
+    mine: sql<number>`coalesce(sum(case when ${orders.userId} = ${userId} then ${orderItems.quantity} else 0 end), 0)`,
+  })
     .from(orderItems).innerJoin(orders, eq(orders.id, orderItems.orderId))
     .where(and(
       cpf && cpf.length === 11 ? or(eq(orders.userId, userId), eq(orders.buyerCpf, cpf)) : eq(orders.userId, userId),
@@ -63,18 +69,23 @@ export async function boughtByType(userId: string, cpf: string | null, typeIds: 
       exceptOrderId ? ne(orders.id, exceptOrderId) : undefined,
     ))
     .groupBy(orderItems.ticketTypeId);
-  return new Map(rows.map((r) => [r.id, Number(r.n)]));
+  return new Map(rows.map((r) => [r.id, { all: Number(r.all), mine: Number(r.mine) }]));
 }
 
-/** Confere o limite por pessoa de cada tipo; devolve a mensagem de erro ou null. */
-export function overLimit(items: { ticketTypeId: string; quantity: number }[], types: { id: string; name: string; maxPerOrder: number }[], bought: Map<string, number>) {
+/** Confere o limite por pessoa de cada tipo; devolve a mensagem de erro (dizendo de onde vem a conta) ou null. */
+export function overLimit(items: { ticketTypeId: string; quantity: number }[], types: { id: string; name: string; maxPerOrder: number }[], bought: Bought) {
   for (const it of items) {
     const tt = types.find((t) => t.id === it.ticketTypeId);
     if (!tt) continue;
-    const had = bought.get(tt.id) ?? 0;
+    const { all: had, mine } = bought.get(tt.id) ?? { all: 0, mine: 0 };
     if (had + it.quantity > tt.maxPerOrder) {
-      const lim = `${tt.maxPerOrder} ${tt.maxPerOrder === 1 ? "ingresso" : "ingressos"} de ${tt.name} por pessoa`;
-      return had ? `O limite é ${lim} e você já tem ${had}.` : `O limite é ${lim}.`;
+      const lim = `O limite é ${tt.maxPerOrder} ${tt.maxPerOrder === 1 ? "ingresso" : "ingressos"} de ${tt.name} por pessoa, conferido pela conta e pelo CPF.`;
+      if (!had) return lim;
+      const left = Math.max(0, tt.maxPerOrder - had);
+      const rest = left ? ` Você ainda pode comprar ${left}.` : " Não dá para comprar mais deste tipo.";
+      const other = had - mine;
+      if (!other) return `${lim} Esta conta já tem ${had}.${rest}`;
+      return `${lim} Já existem ${had} ${had === 1 ? "ingresso" : "ingressos"} deste tipo comprados com o CPF informado${mine ? ` (${mine} nesta conta e ${other} em outra conta)` : ", em outra conta"}.${rest} Se não foi você, fale com a Tickets Win.`;
     }
   }
   return null;
