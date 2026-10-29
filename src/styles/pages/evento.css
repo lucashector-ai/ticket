@@ -648,3 +648,8 @@
   .buy.flash{animation:buyFlash 1.2s ease}
 }
 @keyframes buyFlash{0%,100%{box-shadow:0 30px 60px -40px rgba(17,17,17,.25)}30%{box-shadow:0 0 0 6px #D3F55B,0 30px 60px -40px rgba(17,17,17,.25)}}
+/* Mobile: a barra fixa de compra (.mbar, 64px a 12px do fundo) ocupa a base da tela;
+   o botão de acessibilidade sobe para ficar acima dela em vez de cobrir o preço. */
+@media (max-width:640px){
+  body:has(.pg-evento .mbar) .a11y-tab{bottom:calc(88px + env(safe-area-inset-bottom))}
+}
