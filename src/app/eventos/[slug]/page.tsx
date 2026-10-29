@@ -15,6 +15,7 @@ import { heldByType } from "@/lib/holds";
 import { and, asc, eq, lt, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
+import { artVersion, eventShareArt } from "@/lib/share-image";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,16 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const ev = await getEventBySlug(slug);
   if (!ev) return { title: "Evento não encontrado" };
-  return { title: ev.title, description: ev.tagline ?? ev.description ?? undefined };
+  const description = ev.tagline ?? ev.description?.slice(0, 200) ?? undefined;
+  // prévia do link (WhatsApp etc.): a arte do evento em JPG leve
+  const art = eventShareArt(ev);
+  const image = art ? { url: `/api/og/evento/${slug}?v=${artVersion(art.src)}`, ...(art.wide ? { width: 1200, height: 630 } : {}), alt: ev.title } : null;
+  return {
+    title: ev.title,
+    description,
+    openGraph: { title: `${ev.title} · Tickets Win`, description, url: `/eventos/${slug}`, type: "website", siteName: "Tickets Win", locale: "pt_BR", ...(image ? { images: [image] } : {}) },
+    twitter: { card: image?.width ? "summary_large_image" : "summary", title: ev.title, description, ...(image ? { images: [image.url] } : {}) },
+  };
 }
 
 /* Paleta do design (mesma do seed) usada nos gradientes das faixas do player mock. */
