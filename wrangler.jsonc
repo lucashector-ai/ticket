@@ -11,8 +11,11 @@
   },
   "observability": { "enabled": true },
   "placement": { "mode": "smart" },
+  // mantém as variáveis criadas no painel da Cloudflare (ex.: chaves do Turnstile) a cada deploy
+  "keep_vars": true,
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://ticketswin.com.br",
+    "BANK_URL": "https://banco.ticketswin.com.br",
     "NEXT_INC_CACHE_R2_PREFIX": "incremental-cache"
   },
   "r2_buckets": [
