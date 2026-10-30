@@ -142,7 +142,9 @@ function ResultView({ r, onClose }: { r: Result; onClose: () => void }) {
         {r.ticket && <span className="pt-res-t">{[r.ticket.sector, r.ticket.ticketType].filter(Boolean).join(" · ")}</span>}
         {!r.ok && !used && <span className="pt-res-e">{r.error}</span>}
         {/* QR que não é de nenhum ingresso: o que fazer com a pessoa na fila */}
-        {!r.ok && !used && /^(QR code inválido|Ingresso não encontrado)/.test(r.error ?? "") && <span className="pt-res-h">Peça o ingresso aberto em Meus ingressos ou no e-mail e confira o código (ou use Digitar código).</span>}
+        {/* "não encontrado" vem quase sempre do código digitado: aí não faz sentido mandar "usar Digitar código" */}
+        {!r.ok && !used && /^QR code inválido/.test(r.error ?? "") && <span className="pt-res-h">Peça o ingresso aberto em Meus ingressos ou no e-mail e leia de novo, ou use Digitar código.</span>}
+        {!r.ok && !used && /^Ingresso não encontrado/.test(r.error ?? "") && <span className="pt-res-h">Confira as letras e os números do código ou peça o ingresso aberto em Meus ingressos ou no e-mail.</span>}
         {r.ticket && <code className="pt-res-c">{r.ticket.code}</code>}
       </span>
       <span className="pt-res-tap">Toque para continuar</span>
