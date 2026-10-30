@@ -12,15 +12,21 @@ import { randomToken, salePhase } from "@/lib/launch";
 import { sendOpeningNotice, sendPresaleLinks } from "@/lib/launch-notify";
 import { emailEnabled } from "@/lib/email";
 import { mailLaunchSignup } from "@/lib/notify";
+import { allowHit, clientIp } from "@/lib/rate-limit";
 
 const { events, eventSignups } = schema;
 type R = { ok: true; message?: string } | { ok: false; error: string };
 
 /* ---------- comprador: "me avise" e cadastro da pré-venda ---------- */
 
+/** cadastros ("me avise" / pré-venda) por IP a cada hora */
+const SIGNUPS_PER_HOUR = 15;
+
 export async function signupLaunch(eventSlug: string, kind: "abertura" | "presale", rawEmail: string): Promise<R> {
-  const email = rawEmail.trim().toLowerCase();
+  const email = String(rawEmail ?? "").trim().toLowerCase();
   if (!z.email().safeParse(email).success) return { ok: false, error: "Digite um e-mail válido." };
+  // sem login e cada cadastro manda um e-mail: freio por IP para ninguém usar o site para disparar e-mails
+  if (!(await allowHit(`signup:${await clientIp()}`, SIGNUPS_PER_HOUR, 3600))) return { ok: false, error: "Muitos cadastros em pouco tempo. Tente de novo mais tarde." };
   const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), columns: { id: true, status: true, salesOpenAt: true, presaleAt: true } });
   if (!ev || ev.status !== "published") return { ok: false, error: "Evento indisponível." };
   const phase = salePhase(ev);

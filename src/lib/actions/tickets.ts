@@ -11,6 +11,7 @@ import { mailTransferAccepted, mailTransferCancelled, mailTransferSent } from "@
 import { deadlineLabel, deadlineOpen } from "@/lib/refund-policy";
 import { ticketCode } from "@/lib/tickets/code";
 import { signingSecret } from "@/lib/signing-secret";
+import { allowHit } from "@/lib/rate-limit";
 
 const { tickets, ticketTransfers } = schema;
 
@@ -36,6 +37,8 @@ export async function transferTicket(_prev: { ok?: boolean; error?: string } | n
   if (t.status !== "valid") return { error: "Este ingresso não pode ser transferido." };
   const listed = await db.query.resaleListings.findFirst({ where: and(eq(schema.resaleListings.ticketId, t.id), inArray(schema.resaleListings.status, ["active", "reserved"])), columns: { id: true } });
   if (listed) return { error: "Este ingresso está na revenda. Tire do anúncio antes de transferir." };
+  // cada transferência manda um e-mail: transferir e cancelar em sequência viraria disparo de e-mails
+  if (!(await allowHit(`transfer:${user.id}`, 20, 3600))) return { error: "Muitas transferências em pouco tempo. Tente de novo em uma hora." };
   const token = randomBytes(24).toString("hex");
   const [tr] = await db.insert(ticketTransfers).values({ ticketId: t.id, fromUserId: user.id, toEmail: parsed.data.email.toLowerCase(), token, status: "pending" }).returning({ id: ticketTransfers.id });
   await db.update(tickets).set({ status: "transferred", secret: randomBytes(16).toString("hex") }).where(eq(tickets.id, t.id));
