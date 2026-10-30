@@ -139,3 +139,24 @@ Equipe → "Abrir app da portaria" → app do evento ("0 de 0 entraram"); sem c�
 | Criar conta de produtor | NÃO TESTADO (regra: no máximo 3 contas novas; usei a conta existente) | — |
 | Criar evento + configurar lote + publicar | 9 Continuar + ~8 ações + 2 imagens | exigência de 2 artes (DM-2); etapas cortadas no topo (corrigido) |
 | Achar as vendas | 0 (Início do painel: receita, vendidos, pedidos, ticket médio) | nomes de evento espremidos no desktop (corrigido) |
+
+### U-27 · Teclado na tela cheia de compra · P2 · VALIDADO
+- `role=dialog aria-modal` mas o Tab saía para a página e o rodapé por trás; ao fechar com Esc, o foco caía no rodapé. Agora o Tab circula dentro da tela e o foco volta ao "Comprar ingressos". "Voltar ao topo" sem contorno de foco e deixava o foco no rodapé (corrigido). Painel de acessibilidade: Alt+A abre com foco em "Fechar", Esc fecha e devolve o foco (ok; é painel não modal). Commit "Teclado: tela cheia…".
+
+### U-28 · Sessão expirada no meio do checkout · P1 · VALIDADO
+- Apagando os cookies e tocando "Gerar código Pix": a tela voltava a "Seus dados" ainda dizendo "Comprando como <e-mail>", sem formulário de login (a pessoa ficava presa). Agora aparece "Entre para continuar" (Já tenho conta / Criar conta) com o aviso "Entre na sua conta para finalizar a compra." e os dados preenchidos ficam. M: `bad-03-sessao.png` (antes).
+
+### Condições ruins (U-29) · resultados
+| Condição | Resultado | Status |
+|---|---|---|
+| Sem internet ao ir de Dados para Pagamento | etapa é local, segue normalmente; o servidor só é chamado no Pix/cartão | VALIDADO |
+| 3 toques seguidos em "Ir para pagamento" | uma transição só, sem pedido duplicado | VALIDADO |
+| Sessão expirada no meio | U-28 | VALIDADO |
+| Rede 3G simulada (400 kbps, 400 ms) | título e botão de compra visíveis em 2,0 s (home) e 2,7 s (evento); carga total 31 s (home) e 11 s (evento) em modo dev | VALIDADO (medido) |
+| Imagem do evento sumida | `BrokenImages` (U-11) | VALIDADO |
+| Página aberta muito tempo (reserva de 15 min) | cronômetro "Reservados por" no checkout; com o pedido aberto, a volta ao evento oferece trocar (U-17) | VALIDADO |
+| Busca sem resultado / com erro de digitação | U-26 | VALIDADO |
+| Girar a tela / zoom 200% | NÃO TESTADO nesta rodada | NÃO TESTADO |
+
+### Pós-compra (celular 390) · VALIDADO
+Meus ingressos: ingresso em destaque com QR, código, titular, "Baixar PDF" (baixa `ingresso-TW-….pdf`), Transferir (modal com foco no e-mail, Esc fecha), Revender (preço máximo = o que pagou, mostra quanto recebe com a taxa de 5%), Adicionar à agenda. Página do ingresso `/ingressos/[código]` com as mesmas ações.
