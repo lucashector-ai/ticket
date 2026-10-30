@@ -126,7 +126,7 @@ export function ExplorarView({ events, cities, categories, initial, initialResul
 
   /* derivados */
   const chips = useMemo(() => chipDefs(filters), [filters]);
-  const cityOpts = useMemo(() => [{ value: "all", label: "Todas as cidades" }, ...cities.map((c) => ({ value: c.slug, label: c.name }))], [cities]);
+  const cityOpts = useMemo(() => [{ value: "all", label: "Todas" }, ...cities.map((c) => ({ value: c.slug, label: c.name }))], [cities]);
   const cityName = cities.find((c) => c.slug === filters.city || c.name === filters.city)?.name;
   const count = results.length;
   const countWord = count === 1 ? "evento" : "eventos";

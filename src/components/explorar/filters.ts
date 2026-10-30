@@ -21,7 +21,7 @@ export type Filters = {
 export const DEFAULT_FILTERS: Filters = { q: "", city: "all", cat: "all", date: "any", sort: "data", max: null };
 
 export const DATE_OPTS: { value: DateKey; label: string }[] = [
-  { value: "any", label: "Qualquer data" },
+  { value: "any", label: "Todas" },
   { value: "hoje", label: "Hoje" },
   { value: "semana", label: "Esta semana" },
   { value: "fds", label: "Este fim de semana" },
@@ -33,7 +33,7 @@ export const SORT_OPTS: { value: SortKey; label: string }[] = [
   { value: "preco", label: "Menor preço" },
 ];
 export const PRICE_OPTS: { value: number | null; label: string }[] = [
-  { value: null, label: "Qualquer preço" },
+  { value: null, label: "Todos" },
   { value: 40, label: "Até R$ 40" },
   { value: 60, label: "Até R$ 60" },
   { value: 100, label: "Até R$ 100" },

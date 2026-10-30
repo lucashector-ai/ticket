@@ -73,7 +73,7 @@ export function HelpSearch({ docs, initialQ = "", variant = "hero", children }: 
         enterKeyHint="search"
         autoComplete="off"
         spellCheck={false}
-        placeholder={hero ? "Busque por reembolso, transferência, Pix..." : "Busque sua dúvida"}
+        placeholder="Busque sua dúvida"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Escape") setQ(""); }}
