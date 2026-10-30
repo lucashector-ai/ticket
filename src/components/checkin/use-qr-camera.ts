@@ -1,11 +1,10 @@
 "use client";
 
-import jsQR from "jsqr";
 import { useEffect, useRef, type RefObject } from "react";
 
 /**
  * Câmera traseira + jsQR (funciona no iPhone e no Android): lê um quadro a cada ~200ms e chama `onRead`
- * com o texto do QR. O mesmo QR só é lido de novo depois de 4s; `busy` pausa a leitura enquanto mostra um resultado.
+ * com o texto do QR. O jsQR (~250 KB) só é baixado quando a câmera abre, junto com o pedido de permissão. O mesmo QR só é lido de novo depois de 4s; `busy` pausa a leitura enquanto mostra um resultado.
  */
 /** `restart`: mudar o número reabre a câmera (depois de negar a permissão, por exemplo). */
 export function useQrCamera(on: boolean, onRead: (text: string) => unknown, busy: RefObject<boolean>, onError: () => void, restart = 0) {
@@ -18,7 +17,11 @@ export function useQrCamera(on: boolean, onRead: (text: string) => unknown, busy
     let stream: MediaStream | null = null, timer = 0, stop = false;
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } }, audio: false });
+        const [media, { default: jsQR }] = await Promise.all([
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } }, audio: false }),
+          import("jsqr"),
+        ]);
+        stream = media;
         if (stop) { stream.getTracks().forEach((t) => t.stop()); return; }
         const v = video.current!;
         v.srcObject = stream;
