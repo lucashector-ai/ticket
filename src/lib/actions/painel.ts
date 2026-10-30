@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
@@ -11,7 +11,7 @@ import { checkinTicket, type CheckinResult } from "@/lib/checkin";
 import { organizerFor } from "@/lib/criar/save";
 import { getPainelScope, type PainelRole } from "@/lib/data/painel";
 import { isProducer } from "@/lib/data/producer";
-import { mailPortariaAccess, mailSecurityNotice, mailTeamInvite } from "@/lib/notify";
+import { mailPortariaAccess, mailSecurityNotice, mailTeamInvite, userContact } from "@/lib/notify";
 import { destLabel } from "@/lib/bank";
 import { logSecurity } from "@/lib/mfa";
 import { newAccessCode } from "@/lib/portaria";
@@ -177,7 +177,21 @@ export async function setMemberRole(memberId: string, role: string): Promise<R> 
 export async function removeMember(memberId: string): Promise<R> {
   const s = await scope("owner");
   if (!s?.org) return { ok: false, error: "Sem permissão." };
-  await db.delete(organizerMembers).where(and(eq(organizerMembers.id, memberId), eq(organizerMembers.organizerId, s.org.id)));
+  const [gone] = await db.delete(organizerMembers).where(and(eq(organizerMembers.id, memberId), eq(organizerMembers.organizerId, s.org.id)))
+    .returning({ userId: organizerMembers.userId, email: organizerMembers.email });
+  // quem saiu da equipe perde o acesso pessoal de portaria que o painel criou para ele ("Abrir app da portaria",
+  // rótulo = nome ou e-mail da pessoa): o aparelho fica com um cookie de 30 dias e cada leitura confere se o
+  // acesso ainda está ligado. Os acessos que ele criou para outras pessoas da portaria continuam.
+  const evIds = s.events.filter((e) => e.organizerId === s.org!.id).map((e) => e.id);
+  if (gone?.userId && evIds.length) {
+    const c = await userContact(gone.userId);
+    const labels = [...new Set([c?.name.trim(), c?.email, gone.email].filter((v): v is string => !!v).map((v) => v.slice(0, 60)))];
+    await db.update(schema.checkinLinks).set({ revokedAt: new Date() })
+      .where(and(
+        eq(schema.checkinLinks.createdByUserId, gone.userId), inArray(schema.checkinLinks.eventId, evIds),
+        inArray(schema.checkinLinks.label, labels), isNull(schema.checkinLinks.email), isNull(schema.checkinLinks.revokedAt),
+      ));
+  }
   revalidatePath("/painel/equipe");
   return { ok: true };
 }
