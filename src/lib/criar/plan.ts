@@ -9,7 +9,7 @@ export const KIND_COLOR: Record<Exclude<AreaKind, "setor">, string> = { palco: "
 /** Cor do tabuleiro (fundo) do mapa 3D quando o produtor não escolhe outra. */
 export const DEFAULT_FLOOR = "#F1E5CA";
 /** Paleta sugerida no editor (tons de massinha); qualquer cor pode ser escolhida. */
-export const MAP_SWATCHES = ["#FF6A4D", "#FF8AD8", "#D7F264", "#8FB8FF", "#8CC79E", "#BFD8EE", "#FFC764", "#B79CFF", "#E9DCC0", "#3A3A3C"];
+export const MAP_SWATCHES = ["#FF6A4D", "#FF8AD8", "#F0FC4D", "#8FB8FF", "#8CC79E", "#BFD8EE", "#FFC764", "#B79CFF", "#E9DCC0", "#3A3A3C"];
 export const isHex = (v: unknown): v is string => typeof v === "string" && /^#[0-9A-Fa-f]{6}$/.test(v);
 
 /** x/y: canto de cima à esquerda, a partir do fundo do local (y = 0 é a parede do fundo).

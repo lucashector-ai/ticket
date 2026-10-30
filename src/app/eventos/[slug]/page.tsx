@@ -45,7 +45,7 @@ async function viewerBought(userId: string, typeIds: string[]): Promise<Bought> 
 }
 
 /* Paleta do design (mesma do seed) usada nos gradientes das faixas do player mock. */
-const PAL = ["#1E1E22", "#D3F55B", "#E9E7E0", "#2C55F5", "#FF4FD8", "#C4532B"];
+const PAL = ["#1E1E22", "#EDFF3C", "#E9E7E0", "#2C55F5", "#FF4FD8", "#C4532B"];
 
 type Offer = { id: string; ticketTypeId: string; priceCents: number; sellerUserId: string };
 function toData(e: EventDetail, access: boolean, held: Map<string, number>, offers: Offer[], viewerId: string | null, bought: Bought): EventoData {

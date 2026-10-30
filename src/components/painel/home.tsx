@@ -67,7 +67,7 @@ export function PainelHome(p: HomeProps) {
             <span className="kp-l">{k.label}</span>
             <b className="kp-v">{k.value}</b>
             <div className="kp-f">{k.text && <span className={k.cls}>{k.text}</span>}<span className="kp-n">{k.note}</span></div>
-            <svg className="spk" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true"><path d={k.area} fill="#D3F55B" opacity=".35" /><path d={k.line} fill="none" stroke="#111111" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" /></svg>
+            <svg className="spk" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true"><path d={k.area} fill="#EDFF3C" opacity=".35" /><path d={k.line} fill="none" stroke="#111111" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" /></svg>
           </div>
         ))}
       </div>

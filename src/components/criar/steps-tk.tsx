@@ -13,7 +13,7 @@ import { brMoney, MO, parseIso, shortMoney, Spark, uploadImage, WD, type Ctx } f
 import { Ico, StepHead, Toggle } from "./steps";
 
 /* =========================== 5. MAPA =========================== */
-const DEFAULT_SECTORS: [string, string][] = [["Pista", "#7DA2FF"], ["Pista Premium", "#D3F55B"], ["Camarote", "#FF8AD8"]];
+const DEFAULT_SECTORS: [string, string][] = [["Pista", "#7DA2FF"], ["Pista Premium", "#EDFF3C"], ["Camarote", "#FF8AD8"]];
 
 export function MapaStep({ c }: { c: Ctx }) {
   const { d, upd } = c;
@@ -160,11 +160,11 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
   const toSingle = () => upd((o) => {
     if (o.sectors.length <= 1) return { ...o, sectors: o.sectors.map((k) => ({ ...k, name: "Ingressos", open: true })) };
     const all = o.sectors.flatMap((k) => k.types.map((t) => ({ ...t, name: `${k.name} · ${t.name}` })));
-    return { ...o, sectors: [{ id: "k1", name: "Ingressos", color: "#D3F55B", open: true, types: all }] };
+    return { ...o, sectors: [{ id: "k1", name: "Ingressos", color: "#EDFF3C", open: true, types: all }] };
   }, "tk");
   const toSectors = () => upd((o) => (o.sectors.length > 1 ? o : {
     ...o, sectors: [{ ...o.sectors[0], name: o.sectors[0].name === "Ingressos" ? "Pista" : o.sectors[0].name, open: true },
-      { id: c.nid("k"), name: "Pista Premium", color: "#D3F55B", open: false, types: [{ id: c.nid("t"), kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "", limit: "6" }] }],
+      { id: c.nid("k"), name: "Pista Premium", color: "#EDFF3C", open: false, types: [{ id: c.nid("t"), kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "", limit: "6" }] }],
   }), "tk");
   const addSector = (n: string) => upd((o) => ({
     ...o, sectors: [...o.sectors.map((z) => ({ ...z, open: false })), {
@@ -452,7 +452,7 @@ export function RevisarStep({ c, x }: { c: Ctx; x: Derived }) {
       <div className="cv-b">
         <div className="cv-score">
           <div className="scr">
-            <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27" fill="none" stroke="#2A2A2A" strokeWidth="7" /><circle cx="32" cy="32" r="27" fill="none" stroke="#D3F55B" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${((170 * score) / 100).toFixed(1)} 170`} transform="rotate(-90 32 32)" /></svg>
+            <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27" fill="none" stroke="#2A2A2A" strokeWidth="7" /><circle cx="32" cy="32" r="27" fill="none" stroke="#EDFF3C" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${((170 * score) / 100).toFixed(1)} 170`} transform="rotate(-90 32 32)" /></svg>
             <span>{score}</span>
           </div>
           <div><b>{score === 100 ? "Página completa" : "Quase lá"}</b><span className="s">{score === 100 ? "Tudo preenchido. Páginas completas vendem mais." : "Itens com ! impedem a publicação ou ajudam a vender. Toque para ajustar."}</span></div>
@@ -460,7 +460,7 @@ export function RevisarStep({ c, x }: { c: Ctx; x: Derived }) {
         <div className="cv-rv">
           {rows.map(([st, t, v, ok], i) => (
             <button key={t} className="rvi" type="button" onClick={() => go(st)} style={{ animationDelay: `${i * 45}ms` }}>
-              {ok ? <span className="ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D3F55B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span> : <span className="no">!</span>}
+              {ok ? <span className="ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EDFF3C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span> : <span className="no">!</span>}
               <span className="tx"><b>{t}</b><span className="s">{v}</span></span><em>Editar</em>
             </button>
           ))}

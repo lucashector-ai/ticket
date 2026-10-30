@@ -86,7 +86,7 @@ const SUG: Record<string, string[]> = {
   Gastronomia: ["Mesa Longa", "Jantar a Seis Mãos", "Feira de Sabores", "Noite do Vinho"], Outros: ["Encontro Anual", "Edição Especial", "Noite Única", "Experiência 01"],
 };
 const AGE_SUB: Record<string, string> = { Livre: "Todas as idades", "12+": "A partir de 12", "14+": "A partir de 14", "16+": "A partir de 16", "18+": "Só maiores" };
-const AV_BG = ["#D3F55B", "#7DA2FF", "#FF8AD8", "#FFB547", "#7DF9FF", "#C9B6FF"];
+const AV_BG = ["#EDFF3C", "#7DA2FF", "#FF8AD8", "#FFB547", "#7DF9FF", "#C9B6FF"];
 
 export function InfoStep({ c, x }: { c: Ctx; x: Derived }) {
   const { d, set, upd } = c;
@@ -428,7 +428,7 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
             <div className="cv-map">
               <div className="gr" /><div className="rd" /><div className="rd2" /><div className="pk" />
               <span className="ring" />
-              <svg className="mp" width="44" height="54" viewBox="0 0 44 54" aria-hidden="true"><path d="M22 54S2 34 2 21a20 20 0 0 1 40 0c0 13-20 33-20 33z" fill="#111" /><circle cx="22" cy="21" r="8" fill="#D3F55B" /></svg>
+              <svg className="mp" width="44" height="54" viewBox="0 0 44 54" aria-hidden="true"><path d="M22 54S2 34 2 21a20 20 0 0 1 40 0c0 13-20 33-20 33z" fill="#111" /><circle cx="22" cy="21" r="8" fill="#EDFF3C" /></svg>
               <div className="cv-mcard"><span className="tx"><b>{d.venue.name}</b><span className="s">{d.venue.place?.addr || d.venue.city || "Falta a cidade"}</span></span><button className="chg" type="button" onClick={() => { setQ(""); setEditing(true); }}>Trocar</button></div>
             </div>
             <label className="cv-fl cv-nm"><span>Nome do local</span><input autoComplete="off" className="cv-in" value={d.venue.name} onChange={(e) => setVenue(e.target.value, d.venue.city)} /></label>

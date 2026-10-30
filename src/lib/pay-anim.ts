@@ -62,7 +62,7 @@ export async function playPaymentFlood({ origin, summary, onCovered, revealRoot 
     s.style.setProperty("--a", `${a}deg`);
     big.appendChild(s);
   }
-  big.insertAdjacentHTML("beforeend", CHECK(64, "#D3F55B", 2.6));
+  big.insertAdjacentHTML("beforeend", CHECK(64, "#EDFF3C", 2.6));
   inner.appendChild(big);
   inner.appendChild(el("h2", "tw-flood-title", "Pagamento aprovado"));
   if (summary) inner.appendChild(el("p", "tw-flood-sub", summary));
@@ -87,4 +87,4 @@ export async function playPaymentFlood({ origin, summary, onCovered, revealRoot 
 }
 
 /** Ícones do botão nos estados "processando" e "aprovado" (markup estático, sem dados do usuário). */
-export const MINI_CHECK = CHECK(12, "#D3F55B", 3.4);
+export const MINI_CHECK = CHECK(12, "#EDFF3C", 3.4);

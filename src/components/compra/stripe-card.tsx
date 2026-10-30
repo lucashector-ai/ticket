@@ -50,7 +50,7 @@ const APPEARANCE: Appearance = {
     ".Error": { fontSize: "13px", color: "#D93036", marginTop: "6px" },
     ".Tab": { backgroundColor: "#F7F7F2", border: "0", boxShadow: "none" },
     ".Tab--selected": { backgroundColor: "#FFFFFF", boxShadow: "inset 0 0 0 2px #111111", color: "#111111" },
-    ".Tab--selected:focus": { boxShadow: "inset 0 0 0 2px #111111, 0 0 0 3px #D3F55B" },
+    ".Tab--selected:focus": { boxShadow: "inset 0 0 0 2px #111111, 0 0 0 3px #EDFF3C" },
   },
 };
 

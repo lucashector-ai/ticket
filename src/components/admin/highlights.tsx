@@ -13,7 +13,7 @@ const SAMPLE = `<!doctype html>
   html,body{margin:0;height:100%;background:#111;color:#fff;font-family:Inter,system-ui,sans-serif}
   .b{height:100%;display:grid;place-items:center;text-align:center;background:linear-gradient(120deg,#111,#2b2b2b)}
   h1{margin:0;font-size:8vw;letter-spacing:-.04em}
-  p{margin:1vw 0 0;font-size:2vw;color:#D3F55B}
+  p{margin:1vw 0 0;font-size:2vw;color:#EDFF3C}
 </style></head>
 <body><div class="b"><div><h1>Nome do evento</h1><p>Sáb, 31 out · São Paulo</p></div></div></body></html>`;
 

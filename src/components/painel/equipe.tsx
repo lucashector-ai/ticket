@@ -56,14 +56,14 @@ export function PainelEquipe(p: EquipeProps) {
             <section className="cx">
               <div className="card-h"><div><h2 className="card-t">Equipe</h2><span className="card-s">A pessoa entra na Tickets Win com o e-mail convidado e o painel aparece para ela.</span></div></div>
               <div className="mbr">
-                <span className="pp-av" style={{ background: "#D3F55B" }}>★</span>
+                <span className="pp-av" style={{ background: "#EDFF3C" }}>★</span>
                 <span className="pp-i"><b className="pp-n">{p.owner.name}</b><span className="pp-e">{p.owner.email || "Dono da conta"}</span></span>
                 <span className="st on">Dono</span>
                 <span />
               </div>
               {p.members.map((m) => (
                 <div className="mbr" key={m.id}>
-                  <span className="pp-av" style={{ background: m.active ? "#EEFBC4" : "#F0F0EB" }}>{m.email[0]?.toUpperCase()}</span>
+                  <span className="pp-av" style={{ background: m.active ? "#F8FFC2" : "#F0F0EB" }}>{m.email[0]?.toUpperCase()}</span>
                   <span className="pp-i"><b className="pp-n">{m.email}</b><span className="pp-e">{m.active ? "Ativo" : "Convite pendente: ainda não entrou com este e-mail"}</span></span>
                   {owner
                     ? <select value={m.role} disabled={busy} onChange={(e) => run(() => setMemberRole(m.id, e.target.value), "Função atualizada.")} aria-label={`Função de ${m.email}`}><option value="admin">Admin</option><option value="portaria">Portaria</option></select>

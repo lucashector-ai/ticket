@@ -5,7 +5,7 @@ import type { PaidOrder, PainelEvent } from "@/lib/data/painel";
 /* Montagem dos dados do painel (tudo serializável para os componentes de cliente). */
 
 export const DAY = 86_400_000;
-export const AV_BG = ["#D3F55B", "#F2DCE8", "#DCE7FF", "#FFE7C2", "#E8E3FF", "#D9F3EC"];
+export const AV_BG = ["#EDFF3C", "#F2DCE8", "#DCE7FF", "#FFE7C2", "#E8E3FF", "#D9F3EC"];
 export const avBg = (s: string) => AV_BG[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % AV_BG.length];
 
 export function ago(d: Date, now = Date.now()) {

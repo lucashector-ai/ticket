@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ slug: string }> };
 
-const DEFAULT_PALETTE = { bg: "#1E1E22", fg: "#D3F55B", accent: "#D3F55B" };
+const DEFAULT_PALETTE = { bg: "#1E1E22", fg: "#EDFF3C", accent: "#EDFF3C" };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;

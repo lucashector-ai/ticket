@@ -249,7 +249,7 @@ export function ProdutoresLanding() {
             <div className="pdl-sub">por ingresso pago vendido. Você escolhe se repassa ao comprador.</div>
             <ul>
               {PRICE_LIST.map((t, i) => (
-                <li key={t} style={d(i)}><i><Check color="#D3F55B" size={12} w={3} /></i>{t}</li>
+                <li key={t} style={d(i)}><i><Check color="#EDFF3C" size={12} w={3} /></i>{t}</li>
               ))}
             </ul>
             <Link className="pdl-btn l" href="/criar-evento">Começar agora <Arrow /></Link>

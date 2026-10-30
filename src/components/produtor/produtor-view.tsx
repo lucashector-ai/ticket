@@ -126,7 +126,7 @@ export function ProdutorView(p: ProdutorProps) {
                 <h1 className="pf-n" id="pf-n">{o.name}</h1>
                 {o.verified && (
                   <span className="pf-ver">
-                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.4 2.2 3.2-.4.9 3.1 2.9 1.5-1 3.1 1 3.1-2.9 1.5-.9 3.1-3.2-.4L12 22l-2.4-2.2-3.2.4-.9-3.1-2.9-1.5 1-3.1-1-3.1 2.9-1.5.9-3.1 3.2.4z" fill="#111111" /><path d="M8.5 12.2l2.3 2.3 4.7-4.8" fill="none" stroke="#D3F55B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.4 2.2 3.2-.4.9 3.1 2.9 1.5-1 3.1 1 3.1-2.9 1.5-.9 3.1-3.2-.4L12 22l-2.4-2.2-3.2.4-.9-3.1-2.9-1.5 1-3.1-1-3.1 2.9-1.5.9-3.1 3.2.4z" fill="#111111" /><path d="M8.5 12.2l2.3 2.3 4.7-4.8" fill="none" stroke="#EDFF3C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     Produtor verificado
                   </span>
                 )}
@@ -385,7 +385,7 @@ function Reviews({ p }: { p: ProdutorProps }) {
         {list.map((r) => (
           <article className="rvw" key={r.id}>
             <div className="rvw-h">
-              <span className="rvw-av" style={{ background: "#F2FBD6" }} aria-hidden="true">{r.initials}</span>
+              <span className="rvw-av" style={{ background: "#FAFED4" }} aria-hidden="true">{r.initials}</span>
               <div className="rvw-id"><b className="rvw-n">{r.name}</b><span className="rvw-m">{r.event} · {r.when}</span></div>
               <span className="rvw-s" aria-label={`${r.rating} estrelas`}>{[1, 2, 3, 4, 5].map((k) => <Star key={k} cls={k <= r.rating ? "sf" : "se"} />)}</span>
             </div>

@@ -239,7 +239,7 @@ export function BuySheet({ e, t, s, onMap }: { e: EventoData; t: Tickets; s: Buy
           <>
             {(multiDay || hasSectors || t.sector) && (
               <div className="bs-ctx">
-                <i style={t.sector ? { background: sectors.find((g) => g.name === t.sector)?.color ?? "#D3F55B" } : undefined} aria-hidden="true" />
+                <i style={t.sector ? { background: sectors.find((g) => g.name === t.sector)?.color ?? "#EDFF3C" } : undefined} aria-hidden="true" />
                 <div><b>{t.sector ?? "Ingressos"}</b><span>{when}</span></div>
                 {(multiDay || hasSectors) && <button type="button" onClick={() => s.backTo(hasSectors ? "setor" : "data")}>Trocar</button>}
               </div>

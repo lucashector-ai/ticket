@@ -77,7 +77,7 @@ export const EVENT_TYPES: { cat: string; sub: string; icon: string }[] = [
   { cat: "Outros", sub: "Algo diferente", icon: "M12 5v14M5 12h14" },
 ];
 export const ROLES = ["Headliner", "Convidado", "Abertura"] as const;
-export const PALETTE = ["#7DA2FF", "#D3F55B", "#FF8AD8", "#FFB547", "#7DF9FF", "#C9B6FF"];
+export const PALETTE = ["#7DA2FF", "#EDFF3C", "#FF8AD8", "#FFB547", "#7DF9FF", "#C9B6FF"];
 export const MEIA_DESC = "Estudantes, PcD, jovens de baixa renda e maiores de 60. Documento na entrada.";
 /** Texto que vinha pronto no antigo campo "Política de cancelamento". Hoje o campo é "Observações (opcional)"
  *  e começa vazio (DM-3); quem ainda tem este texto salvo é tratado como sem observação. */
@@ -109,7 +109,7 @@ export function emptyDraft(): Draft {
     mode: "unica", tmode: "simples", title: "", cat: "", catOther: "", age: "18+", desc: "",
     lineup: [], media: {}, coupons: [], venue: { name: "", city: "" }, sessions: [],
     autoMeia: true, fee: true, transfer: true, resale: true,
-    sectors: [{ id: "k1", name: "Ingressos", color: "#D3F55B", open: true, types: [{ id: "t1", kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "", limit: "6" }] }],
+    sectors: [{ id: "k1", name: "Ingressos", color: "#EDFF3C", open: true, types: [{ id: "t1", kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "", limit: "6" }] }],
     map: "empty", prompt: "", sketchUrl: "", plan: null, vis: "publico", saleStart: "", presaleStart: "", minors: false, teaser: { ...DEFAULT_TEASER }, refund: "",
   };
 }

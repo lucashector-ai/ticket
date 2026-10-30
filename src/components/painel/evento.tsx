@@ -294,7 +294,7 @@ function Checkin({ p }: { p: EventoPainelProps }) {
         <section className="cx ci-big">
           <span className="ci-k">Entrada no evento</span>
           <div className="ci-ring">
-            <svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="84" fill="none" stroke="#EDEDEA" strokeWidth="16" />{pct > 0 && <circle cx="100" cy="100" r="84" fill="none" stroke="#D3F55B" strokeWidth="16" strokeLinecap="round" strokeDasharray={`${((pct / 100) * 528).toFixed(1)} 528`} transform="rotate(-90 100 100)" />}</svg>
+            <svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="84" fill="none" stroke="#EDEDEA" strokeWidth="16" />{pct > 0 && <circle cx="100" cy="100" r="84" fill="none" stroke="#EDFF3C" strokeWidth="16" strokeLinecap="round" strokeDasharray={`${((pct / 100) * 528).toFixed(1)} 528`} transform="rotate(-90 100 100)" />}</svg>
             <div className="ci-c"><b className="ci-v">{n(c.inside)}</b><span className="ci-s">de {n(c.total)}</span></div>
           </div>
           <div className="ci-row"><div><b className="cr-v">{pct}%</b><span className="cr-k">entraram</span></div><div><b className="cr-v">{n(c.total - c.inside)}</b><span className="cr-k">faltam</span></div><div><b className="cr-v">{c.perMin}</b><span className="cr-k">por minuto</span></div></div>

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 const ZONES = [
   { k: "palco", label: "Palco", color: "#F2F2EE", style: { left: 120, top: 14, width: 100, height: 30, z: 26 } },
-  { k: "pista", label: "Pista", color: "#D3F55B", style: { left: 70, top: 64, width: 200, height: 96, z: 6 } },
+  { k: "pista", label: "Pista", color: "#EDFF3C", style: { left: 70, top: 64, width: 200, height: 96, z: 6 } },
   { k: "cam", label: "Camarotes", color: "#FF5B1F", style: { left: 16, top: 64, width: 42, height: 140, z: 18 } },
   { k: "cam", label: "Camarotes", color: "#FF5B1F", style: { left: 282, top: 64, width: 42, height: 140, z: 18 } },
   { k: "bar", label: "Bar", color: "#7DF9FF", style: { left: 110, top: 172, width: 120, height: 34, z: 12 } },

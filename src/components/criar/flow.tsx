@@ -185,7 +185,7 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
       {confetti && (
         <div className="cv-cf" aria-hidden="true">
           {Array.from({ length: 56 }, (_, c) => (
-            <i key={c} style={{ left: `${(c * 37) % 100}%`, background: ["#D3F55B", "#111111", "#FF5B1F", "#2C55F5", "#FF4FD8"][c % 5], animationDelay: `${(c * 53) % 700}ms`, ["--dx" as string]: `${((c * 71) % 160) - 80}px`, ["--r" as string]: `${((c * 97) % 720) - 360}deg` }} />
+            <i key={c} style={{ left: `${(c * 37) % 100}%`, background: ["#EDFF3C", "#111111", "#FF5B1F", "#2C55F5", "#FF4FD8"][c % 5], animationDelay: `${(c * 53) % 700}ms`, ["--dx" as string]: `${((c * 71) % 160) - 80}px`, ["--r" as string]: `${((c * 97) % 720) - 360}deg` }} />
           ))}
         </div>
       )}
