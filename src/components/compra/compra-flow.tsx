@@ -14,7 +14,7 @@ import type { SavedCard } from "@/lib/payments/cards";
 import { StripeCard, type BillingAddress, type StripeCardApi } from "./stripe-card";
 import { CardBrand, expLabel } from "./card-brand";
 import { QueueGate } from "@/components/queue-gate";
-import { installmentOptions, money, priceOrder } from "@/lib/pricing";
+import { installmentOptions, MAX_INSTALLMENTS, money, priceOrder } from "@/lib/pricing";
 import { InstSelect } from "./inst-select";
 import { InlineAuth } from "./inline-auth";
 import { cardBrand, expOk, fmtCard, fmtCep, fmtCpf, fmtExp, isEmail, isFullName, mmss, onlyDigits, printedNameOk } from "./format";
@@ -646,6 +646,14 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       {queueEventId && step !== "done" && <QueueGate eventId={queueEventId} title={event.title} />}
       {step !== "done" && (
         <div className="ck-top">
+          {/* celular e tablet: voltar redondo (volta uma etapa) e o título com a etapa */}
+          <button className="ck-bk" type="button" onClick={prev} disabled={step === "proc" || payPhase !== "idle"} aria-label={step === "dados" ? `Voltar${lock?.kind === "grupo" ? " ao grupo" : lock ? " ao evento" : " aos ingressos"}` : step === "pix" ? "Voltar e escolher outra forma de pagamento" : "Voltar para seus dados"}>
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4" /></svg>
+          </button>
+          <span className="ck-ttl">
+            <b>Checkout</b>
+            <small>Etapa {idx + 1} de 3 · {steps[idx]?.label}</small>
+          </span>
           <Link className="ck-back" href={choiceUrl}>
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4" /></svg>
             Voltar<span className="ck-back-x">{lock?.kind === "grupo" ? " ao grupo" : lock ? " ao evento" : " aos ingressos"}</span>
@@ -706,7 +714,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       )}
 
       {step !== "done" && (
-        <div className="ck-g">
+        <div className={`ck-g is-${step}`}>
           <section className="ck-main">
             {step === "dados" && (
               <div className="pane">
@@ -832,27 +840,29 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
             {/* com a Stripe, o cartão continua montado (escondido) durante a confirmação: o 3D Secure usa o mesmo Stripe.js */}
             {(step === "pagamento" || (live && step === "proc" && pay === "card")) && (
               <div className="pane" hidden={step !== "pagamento"}>
-                <h1 className="ck-h">Pagamento</h1>
+                <h1 className="ck-h" id="pm-h">Pagamento</h1>
                 <p className="ck-p">Escolha como prefere pagar. Os ingressos chegam no seu e-mail assim que o pagamento é aprovado.</p>
                 {/* a forma escolhida ocupa o espaço; a outra vira uma caixa pequena em cima (as duas são opções do mesmo grupo) */}
-                <div className="pm2" role="radiogroup" aria-label="Forma de pagamento">
-                  {(pay === "pix" ? ["card", "pix"] as const : ["pix", "card"] as const).map((m) => {
+                {/* lista fixa (Pix, depois cartão): a forma escolhida fica em destaque e a outra, compacta */}
+                <div className="pm2" role="radiogroup" aria-labelledby="pm-h" onKeyDown={(e) => {
+                  if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+                  e.preventDefault();
+                  const m = pay === "pix" ? "card" : "pix";
+                  setPay(m); setTried(false); setPayErr(null);
+                  requestAnimationFrame(() => (e.currentTarget.querySelector(`[data-pm="${m}"]`) as HTMLElement | null)?.focus());
+                }}>
+                  {(["pix", "card"] as const).map((m) => {
                     const on = pay === m;
                     const pick = () => { if (on) return; setPay(m); setTried(false); setPayErr(null); };
                     const ic = m === "pix"
                       ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M12 2.8l4.2 4.2-4.2 4.2L7.8 7z" /><path d="M12 12.8l4.2 4.2-4.2 4.2-4.2-4.2z" /><path d="M2.8 12l4.2-4.2 4.2 4.2-4.2 4.2z" /><path d="M12.8 12l4.2-4.2 4.2 4.2-4.2 4.2z" /></svg>
                       : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3" /><path d="M2.5 10h19M6.5 15h4" /></svg>;
-                    return on ? (
-                      <button key={m} className="pmc" type="button" role="radio" aria-checked="true" onClick={pick}>
+                    return (
+                      <button key={m} data-pm={m} className={on ? "pmc" : "pma"} type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} onClick={pick}>
                         <span className="pm-ic" aria-hidden="true">{ic}</span>
-                        <span className="pm-i"><b className="pm-t">{m === "pix" ? "Pix" : "Cartão de crédito"}</b><span className="pm-s">{m === "pix" ? "Aprovação na hora" : "Em até 6x"}</span></span>
-                        {m === "pix" && <span className="pm-tag">Recomendado</span>}
-                      </button>
-                    ) : (
-                      <button key={m} className="pma" type="button" role="radio" aria-checked="false" onClick={pick}>
-                        <span className="pm-ic" aria-hidden="true">{ic}</span>
-                        <span className="pma-t">{m === "pix" ? <><b>Prefere Pix?</b> Aprovação na hora</> : <><b>Prefere cartão?</b> Em até 6x</>}</span>
-                        <svg className="pma-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
+                        <span className="pm-i"><b className="pm-t">{m === "pix" ? "Pix" : "Cartão de crédito"}</b><span className="pm-s">{m === "pix" ? "Aprovação na hora" : `Em até ${MAX_INSTALLMENTS}x`}</span></span>
+                        {m === "pix" && on && <span className="pm-tag">Recomendado</span>}
+                        <span className="pm-r" aria-hidden="true" />
                       </button>
                     );
                   })}
@@ -1016,6 +1026,10 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                         : " Os dados do cartão não ficam salvos na Tickets Win."}</span>
                   </p>
                 ) : <p className="ck-test">Ambiente de teste: nenhuma cobrança real é feita e os dados do cartão não saem do seu navegador.</p>}
+                <p className="pay-sec">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                  <span><b>Pagamento seguro</b> · conexão criptografada</span>
+                </p>
               </div>
             )}
 
@@ -1104,10 +1118,10 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 ))}
               </ul>
               <div className="sm-rows">
-                <Row k="Subtotal" v={money(price.subtotal)} />
+                {(lines.length > 1 || price.meia > 0 || price.discount > 0) && <Row k="Subtotal" v={money(price.subtotal)} />}
                 {price.meia > 0 && <Row k="Meia-entrada" v={`− ${money(price.meia)}`} ok />}
                 {price.discount > 0 && <Row k={`Cupom ${coupon?.code ?? ""}`} v={`− ${money(price.discount)}`} ok />}
-                <Row k="Taxa de serviço" v={free ? "Sem taxa" : event.feeRate ? money(price.fee) : "Inclusa no preço"} />
+                <Row k={event.feeRate && !free ? `Taxa de serviço (${pct(event.feeRate)})` : "Taxa de serviço"} v={free ? "Sem taxa" : event.feeRate ? money(price.fee) : "Inclusa no preço"} />
                 {price.interest > 0 && <Row k="Juros do parcelamento" v={money(price.interest)} />}
               </div>
               <div className="sm-tot">
@@ -1115,14 +1129,16 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 <b className="sm-tv">{totalLabel}</b>
               </div>
               {pay === "card" && step === "pagamento" && (
-                <span className="sm-inst">{price.installments}x de {money(Math.round(price.total / price.installments))}{price.installments <= 3 ? " sem juros" : ""}</span>
+                <span className="sm-inst">{price.installments === 1 ? "À vista no cartão" : `${price.installments}x de ${money(Math.round(price.total / price.installments))}${price.installments <= 3 ? " sem juros" : " com juros"}`}</span>
               )}
               {(step === "dados" || step === "pagamento") && (
                 <div className={kb ? "ck-cta kb" : "ck-cta"}>
-                <span className="ck-cta-t" aria-hidden="true">
-                  <small>Total</small><b>{totalLabel}</b>
-                  {step === "pagamento" && pay === "card" && <small>{price.installments === 1 ? "à vista no cartão" : `${price.installments}x de ${money(Math.round(price.total / price.installments))}${price.installments <= 3 ? " sem juros" : " com juros"}`}</small>}
-                </span>
+                {!(step === "pagamento" && pay === "card" && price.installments === 1) && (
+                  <span className="ck-cta-t" aria-hidden="true">
+                    <small>{step === "pagamento" && pay === "card" ? `${price.installments}x de ${money(Math.round(price.total / price.installments))}${price.installments <= 3 ? " sem juros" : " com juros"}` : "Total"}</small>
+                    <b>{totalLabel}</b>
+                  </span>
+                )}
                 <button
                   ref={ctaRef}
                   className={`go2 block tw-pay-btn${payPhase === "paying" ? " is-paying" : payPhase === "approved" ? " is-paying is-approved" : ""}`}
@@ -1198,6 +1214,9 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     </main>
   );
 }
+
+/** 0,0799 → "7,99%" */
+const pct = (r: number) => `${(Math.round(r * 10000) / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 
 function Row({ k, v, ok }: { k: string; v: string; ok?: boolean }) {
   return (

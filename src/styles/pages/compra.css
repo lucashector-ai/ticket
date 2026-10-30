@@ -530,6 +530,83 @@
 }
 /* a aba de acessibilidade sobe acima da barra de pagar; o fim do rodapé não fica atrás dela */
 @media (max-width:1024px){
-  body:has(.pg-compra .ck-cta) .a11y-tab{bottom:calc(84px + env(safe-area-inset-bottom))}
-  body:has(.pg-compra .ck-cta) .ftr{padding-bottom:120px}
+  body:has(.pg-compra .ck-cta) .a11y-tab{bottom:calc(116px + env(safe-area-inset-bottom))}
+  body:has(.pg-compra .ck-cta) .ftr{padding-bottom:132px}
+}
+
+/* Rodada 5 (pedido do dono, referência do celular): formas de pagamento em lista com rádio, resumo em cima no
+   pagamento, topo com voltar redondo e "Checkout", botão preto fixo de largura total. Cálculo e lógica intocados. */
+.pg-compra {
+  .ck-bk,.ck-ttl,.pay-sec{display:none}
+  /* formas de pagamento: ordem fixa (Pix, cartão); a escolhida em destaque, a outra compacta */
+  .pm2{gap:8px}
+  .pmc,.pma{gap:12px}
+  .pm-i{flex:1;min-width:0}
+  .pmc{padding:14px 16px;cursor:pointer}
+  .pmc .pm-r,.pma .pm-r{flex:none}
+  .pmc .pm-r{box-shadow:0 0 0 6px #111 inset}
+  .pmc .pm-tag{margin-left:0}
+  .pma{min-height:52px;padding:6px 16px 6px 6px;cursor:pointer}
+  .pma .pm-i{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:8px}
+  .pma .pm-t{font-size:15px}
+  .pma .pm-s{margin:0;font-size:13px}
+  .pma:hover .pm-r{box-shadow:0 0 0 2px #111 inset}
+
+  @media (max-width:1024px){
+    /* foco na compra: sem o cabeçalho do site; o topo vira voltar + título */
+    &:has(.ck-top) .hdr{display:none}
+    .ck{padding-top:calc(12px + env(safe-area-inset-top))}
+    .ck-top{gap:12px;margin-bottom:20px}
+    .ck-top .ck-back{display:none}
+    .ck-bk{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;background:#F4F4F1;color:#111;transition:background .2s,transform .2s}
+    .ck-bk:hover{background:#EAEAE4}
+    .ck-bk:active{transform:scale(.94)}
+    .ck-bk:disabled{opacity:.4}
+    .ck-bk:focus-visible{outline:2px solid #111;outline-offset:2px}
+    .ck-ttl{display:flex;flex-direction:column;min-width:0;margin-right:auto}
+    .ck-ttl b{font:600 21px/1.15 'Inter Tight',sans-serif;letter-spacing:-.02em}
+    .ck-ttl small{display:none;margin-top:2px;font-size:12.5px;color:#6E6E73;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* pagamento: resumo do pedido primeiro, como na referência */
+    .ck-g{row-gap:24px}
+    .ck-g.is-pagamento .ck-side{order:-1}
+    .ck-g.is-pagamento .ck-side .back2,.ck-g.is-pagamento .ck-side .sm-sec{display:none}
+    .ck-g.is-pagamento .ck-h{font-size:20px;line-height:1.2}
+    .ck-g.is-pagamento .ck-h+.ck-p{margin:4px 0 14px;font-size:14px;line-height:1.5}
+    .ck-g.is-pagamento .pm2{margin-top:0}
+    .pay-sec{display:flex;align-items:center;justify-content:center;gap:8px;margin:20px 0 0;font-size:13px;color:#6E6E73}
+    .pay-sec b{font-weight:600;color:#111}
+
+    /* resumo em cartão compacto */
+    .sm{padding:16px;border-radius:22px;box-shadow:0 0 0 1px #EAEAE6 inset}
+    .sm-ev{grid-template-columns:56px minmax(0,1fr);gap:12px;padding-bottom:14px}
+    .sm-art{border-radius:10px}
+    .sm-t{font-size:16px;line-height:1.25}
+    .sm-d{font-size:13px;margin-top:2px}
+    .sm-l{margin-top:14px;gap:8px}
+    .sm-li{font-size:14px}
+    .sm-rows{margin-top:12px;padding-top:12px;gap:6px}
+    .sm-r{font-size:13.5px}
+    .sm-tot{margin-top:12px;padding-top:12px}
+    .sm-tv{font-size:22px}
+    .sm-inst{font-size:12.5px}
+
+    /* barra fixa: total em cima (quando o botão não traz o valor) e o botão preto de largura total */
+    .ck-cta{left:0;right:0;width:auto;transform:none;bottom:0;flex-direction:column;align-items:stretch;gap:8px;padding:10px max(16px,calc((100vw - 560px) / 2)) calc(10px + env(safe-area-inset-bottom));border-radius:0;background:#FFFFFF;color:#111;box-shadow:0 -1px 0 #EDEDEA,0 -14px 30px -20px rgba(17,17,17,.3)}
+    .ck-cta-t{flex-direction:row;align-items:baseline;justify-content:space-between;gap:12px;padding:0 4px}
+    .ck-cta-t small{font-size:13px;color:#6E6E73}
+    .ck-cta-t b{font-size:17px;color:#111}
+    .ck-cta .go2.block{width:100%;max-width:none;height:54px;padding:0 20px;background:#111;color:#fff;font-size:15.5px}
+    .ck-cta .go2.block:hover{background:#000}
+    .ck-cta.kb{transform:translateY(24px)}
+  }
+  @media (max-width:640px){
+    .ck-top{gap:12px;margin-bottom:18px}
+    .ck-ttl small{display:block}
+    .ck-h{font-size:26px;line-height:1.15}
+    .ck-g.is-pagamento .ck-side{margin:0 -2px}
+  }
+  @media (max-width:360px){
+    .ck-cta{padding-left:12px;padding-right:12px}
+  }
 }
