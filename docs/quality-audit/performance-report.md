@@ -17,6 +17,8 @@
 | TTFB `/eventos/qa-romano-checkout` (dev) | 1,19 s | 1,10 s | 52b6384 |
 | TTFB `/eventos/halloween-…` (dev) | 1,31 s | 1,19 s | 52b6384 |
 | Dependências de produção | jspdf + html-to-image sem uso | removidas | bb0f74f |
+| JS da rota `/portaria` | 234 KB | 107 KB | 5943600 (leitor de QR sob demanda) |
+| JS da rota `/painel/portaria/[id]` | 229 KB | 102 KB | idem |
 
 O cliente do Neon Auth (~250 KB) entrava no carregamento inicial dessas telas só por causa do botão do Google e da confirmação do código; agora é importado no clique (`src/lib/auth/client-lazy.ts`).
 
@@ -38,6 +40,6 @@ O cliente do Neon Auth (~250 KB) entrava no carregamento inicial dessas telas s�
 - **Painel financeiro / extrato do banco:** `listOrders` traz todos os pedidos pagos dos eventos do produtor, sem paginação. Para produtores grandes (dezenas de milhares de pedidos) vai pesar; recomendação: agregar no SQL (soma por evento/dia) em vez de trazer as linhas. Não mexi (mudança grande em cálculo financeiro, merece teste próprio).
 
 ## Próximas oportunidades
-1. `/criar-evento` (286 KB) e `/portaria` (234 KB, leitor de QR `jsqr`): carregar o leitor de QR só quando a câmera abre.
+1. `/criar-evento` (286 KB): ver o que dá para carregar só na etapa que usa (mapa, IA). O leitor de QR da portaria já foi feito.
 2. Agregar o financeiro no banco (acima).
 3. Medir LCP/INP/CLS no navegador em produção (ou num preview autorizado) com o build minificado.
