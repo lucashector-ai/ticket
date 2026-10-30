@@ -30,6 +30,7 @@ Detalhes, reprodução e evidências em `security-audit.md`.
 | S-20 | P3 | Prévia OG mostrava arte de rascunho | VALIDADO |
 | S-21 | P3 | CSV do painel sem neutralizar fórmulas | VALIDADO |
 | S-22 | P3 | Assinador do QR exposto como ação de servidor; ação morta | VALIDADO |
+| S-23 | P3 | "Esqueci a senha" permitia encher a caixa de entrada de outra pessoa | CORRIGIDO, NÃO VALIDADO |
 | S-09 | P1 | Grupo contorna o limite por pessoa | ABERTO (D-01) |
 | S-10 | P2 | Conta de saque troca sem app autenticador | ABERTO (D-04) |
 | S-17 | P1 | SDK do Neon Auth com better-auth 1.7.6 | ABERTO (D-06) |

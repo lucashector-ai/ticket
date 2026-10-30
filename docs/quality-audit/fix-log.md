@@ -39,6 +39,7 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 06:05 | c0c7d61 | `qrPayload` fora de "use server"; `checkin-link.ts` (morto) removido (S-22) | 45 testes; Meus ingressos/ingresso com QR; PDF 200 | VALIDADO |
 | 30/10 06:00 | 0e456dd | E2E do checkout versionado (`pnpm test:e2e`) | 4/4 passos ok | VALIDADO |
 | 30/10 06:25 | f3f288f · dcf63b1 | Limites revistos para CGNAT: pedidos contam só quando criados; só cupom errado conta (20/10 min por IP); "me avise" 40/h | Playwright: cupom válido 25× sem bloqueio, errados bloqueados; testes do placeOrder | VALIDADO |
+| 30/10 06:30 | 3271b9e | "Esqueci a senha"/ativação: teto de 6 por hora por e-mail (S-23) | tsc/eslint; sem teste (login compartilhado com a produção) | CORRIGIDO, NÃO VALIDADO |
 
 ## Marcos
 

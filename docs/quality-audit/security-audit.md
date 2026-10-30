@@ -30,6 +30,7 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 | S-20 | P3 | Exposição de dados | Prévia OG servia a arte de evento em rascunho | VALIDADO (publicado 200, rascunho 404) | 9175056 |
 | S-21 | P3 | Injeção em CSV | Exportações de compradores, participantes e lançamento sem neutralizar fórmulas | VALIDADO (teste + download) | ce0d18c |
 | S-22 | P3 | Superfície de ataque | Assinador do QR exportado de arquivo "use server" (endpoint público); ação de check-in por link sem uso | VALIDADO (QR, PDF e testes) | c0c7d61 |
+| S-23 | P3 | Abuso de e-mail | "Esqueci a senha"/ativação: um e-mail a cada 30 s para a mesma pessoa (~120/h) | CORRIGIDO, NÃO VALIDADO (regra: sem teste de limite no login) | 3271b9e |
 
 ## Detalhes
 
@@ -74,6 +75,7 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 
 ### Outros pontos de atenção (não corrigidos, baixo risco)
 - Fila virtual por cookie: um robô com muitos cookies aumenta a chance de ser liberado (normal em fila virtual; o limite por pessoa e a reserva continuam valendo).
+- Transferência comum (não o envio da compra): quem tem o link do e-mail aceita com qualquer conta; o envio da compra exige a conta do e-mail. Avaliar exigir o mesmo e-mail também na transferência comum (decisão de produto).
 - Página do artista é compartilhada: qualquer produtor com evento daquele artista edita a biografia e o Spotify (escolha de produto).
 - Clique rastreado do e-mail (`/e/c/…`) redireciona para links escritos pelo produtor (aprovado); possível vetor de phishing a partir do domínio. Recomendação: mostrar aviso de saída para domínios externos.
 - Alterar a quantidade de um lote no mesmo instante de uma venda pode deixar `sold > quantity` por um momento (sem venda acima: a baixa do estoque é condicional).
