@@ -460,6 +460,25 @@ export const mailTeamInvite = safe("team", async (email: string, role: string, o
   });
 });
 
+/** Acesso de portaria de um evento: link único e secreto que abre o app da portaria já conectado. */
+export async function mailPortariaAccess(x: { email: string; name: string; eventTitle: string; when: string; orgName: string; token: string; code: string }): Promise<boolean> {
+  if (!emailEnabled()) return false;
+  return sendTx(x.email, `Seu acesso à portaria: ${x.eventTitle}`, {
+    preheader: `Abra no celular para fazer o check-in de ${x.eventTitle}.`,
+    eyebrow: "Check-in do evento", title: "Seu acesso à portaria",
+    paragraphs: [
+      `${x.name ? `Oi, ${x.name.split(" ")[0]}! ` : ""}${x.orgName} liberou você para fazer o check-in na entrada de ${x.eventTitle}${x.when ? ` (${x.when})` : ""}.`,
+      "Abra o botão abaixo no celular: o app da portaria já entra conectado ao evento e a câmera lê o QR code dos ingressos. Dá para adicionar à tela de início, como um aplicativo.",
+    ],
+    blocks: [
+      { kind: "code", code: x.code, note: "Se preferir, abra ticketswin.com.br/portaria e digite este código." },
+      { kind: "note", text: "Este link é só seu e pessoal: não encaminhe. Quem organiza o evento vê quando ele é usado e pode desligá-lo a qualquer momento." },
+    ],
+    cta: { label: "Abrir o app da portaria", url: `/portaria/entrar/${x.token}` },
+    reason: `Você recebeu este e-mail porque ${x.orgName} criou um acesso de portaria para ${x.email} na Tickets Win.`,
+  }).catch(() => false);
+}
+
 /** Ingresso de lista (lista free): o próprio ingresso no e-mail (QR em PNG), com o evento e o botão para abrir. Um lote por chamada. */
 export const mailGuestInvites = safe("guest-list", async (ids: string[]) => {
   if (!ids.length) return;

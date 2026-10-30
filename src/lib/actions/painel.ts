@@ -10,7 +10,7 @@ import { getSessionUser } from "@/lib/auth/server";
 import { checkinTicket, type CheckinResult } from "@/lib/checkin";
 import { organizerFor } from "@/lib/criar/save";
 import { getPainelScope, type PainelRole } from "@/lib/data/painel";
-import { mailSecurityNotice, mailTeamInvite } from "@/lib/notify";
+import { mailPortariaAccess, mailSecurityNotice, mailTeamInvite } from "@/lib/notify";
 import { destLabel } from "@/lib/bank";
 import { logSecurity } from "@/lib/mfa";
 import { newAccessCode } from "@/lib/portaria";
@@ -38,23 +38,56 @@ export async function scanTicket(eventId: string, input: string): Promise<Omit<C
 
 /* ---------- check-in pelo celular: links externos ---------- */
 
-export async function createCheckinLink(eventId: string, label: string): Promise<{ ok: true; id: string; token: string; code: string } | { ok: false; error: string }> {
+type LinkOut = { ok: true; id: string; token: string; code: string; email: string | null; sent: boolean } | { ok: false; error: string };
+
+/** Manda o link do acesso por e-mail e registra o envio. */
+async function deliver(link: { id: string; token: string; code: string | null; label: string; eventId: string }, email: string, orgName: string) {
+  const ev = await db.query.events.findFirst({ where: eq(schema.events.id, link.eventId), columns: { title: true, dateLabel: true } });
+  const ok = await mailPortariaAccess({ email, name: link.label, eventTitle: ev?.title ?? "o evento", when: ev?.dateLabel ?? "", orgName, token: link.token, code: link.code ?? "" });
+  if (ok) await db.update(schema.checkinLinks).set({ email, sentAt: new Date() }).where(eq(schema.checkinLinks.id, link.id));
+  return ok;
+}
+
+/**
+ * Convite para a portaria de um evento: cria um acesso único e secreto (link + código) para uma pessoa.
+ * `send`: manda por e-mail; sem ele, a tela mostra o QR code para a pessoa abrir na hora.
+ */
+export async function createCheckinLink(eventId: string, label: string, email?: string, send = false): Promise<LinkOut> {
   const s = await scope("admin");
   if (!s || !s.events.some((e) => e.id === eventId)) return { ok: false, error: "Sem permissão para este evento." };
   const name = label.trim().slice(0, 60) || "Portaria";
+  const mail = (email ?? "").trim().toLowerCase();
+  if (mail && !z.email().safeParse(mail).success) return { ok: false, error: "Confira o e-mail." };
+  if (send && !mail) return { ok: false, error: "Digite o e-mail para enviar o acesso." };
   const open = await db.select({ id: schema.checkinLinks.id }).from(schema.checkinLinks)
     .where(and(eq(schema.checkinLinks.eventId, eventId), isNull(schema.checkinLinks.revokedAt)));
-  if (open.length >= 20) return { ok: false, error: "Este evento já tem 20 links ativos. Desligue algum antes de criar outro." };
+  if (open.length >= 30) return { ok: false, error: "Este evento já tem 30 acessos ativos. Desligue algum antes de criar outro." };
   const token = randomBytes(18).toString("base64url");
   // código curto para digitar no app da portaria (único; tenta de novo no raro caso de colisão)
   for (let i = 0; i < 5; i++) {
     const code = newAccessCode();
-    const [row] = await db.insert(schema.checkinLinks).values({ eventId, token, code, label: name, createdByUserId: s.user.id }).onConflictDoNothing().returning({ id: schema.checkinLinks.id });
+    const [row] = await db.insert(schema.checkinLinks).values({ eventId, token, code, label: name, email: mail || null, createdByUserId: s.user.id }).onConflictDoNothing().returning({ id: schema.checkinLinks.id });
     if (!row) continue;
+    const sent = send ? await deliver({ id: row.id, token, code, label: name, eventId }, mail, s.org?.name ?? "A produção") : false;
     revalidatePath(`/painel/evento/${eventId}`);
-    return { ok: true, id: row.id, token, code };
+    revalidatePath("/painel/equipe");
+    return { ok: true, id: row.id, token, code, email: mail || null, sent };
   }
   return { ok: false, error: "Não foi possível criar o acesso. Tente de novo." };
+}
+
+/** Envia (ou reenvia) um acesso já criado por e-mail. */
+export async function sendCheckinLink(id: string, email: string): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+  const s = await scope("admin");
+  if (!s) return { ok: false, error: "Sem permissão." };
+  const mail = email.trim().toLowerCase();
+  if (!z.email().safeParse(mail).success) return { ok: false, error: "Confira o e-mail." };
+  const link = await db.query.checkinLinks.findFirst({ where: and(eq(schema.checkinLinks.id, id), isNull(schema.checkinLinks.revokedAt)), columns: { id: true, token: true, code: true, label: true, eventId: true } });
+  if (!link || !s.events.some((e) => e.id === link.eventId)) return { ok: false, error: "Acesso não encontrado." };
+  if (!(await deliver(link, mail, s.org?.name ?? "A produção"))) return { ok: false, error: "Não foi possível enviar o e-mail agora. Tente de novo." };
+  revalidatePath(`/painel/evento/${link.eventId}`);
+  revalidatePath("/painel/equipe");
+  return { ok: true, email: mail };
 }
 
 export async function revokeCheckinLink(id: string): Promise<R> {

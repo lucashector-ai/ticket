@@ -35,6 +35,11 @@ export const portariaCookie = (linkId: string) => ({
 });
 export async function setPortariaCookie(linkId: string) {
   (await cookies()).set(portariaCookie(linkId));
+  await markOpened(linkId);
+}
+/** Rastreio: a primeira vez que o acesso foi aberto num aparelho. */
+export async function markOpened(linkId: string) {
+  await db.update(schema.checkinLinks).set({ openedAt: new Date() }).where(and(eq(schema.checkinLinks.id, linkId), isNull(schema.checkinLinks.openedAt))).catch(() => null);
 }
 export async function clearPortariaCookie() {
   (await cookies()).delete(PORTARIA_COOKIE);

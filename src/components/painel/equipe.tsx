@@ -20,7 +20,6 @@ export function PainelEquipe(p: EquipeProps) {
   const { flash } = useToast();
   const [busy, start] = useTransition();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"admin" | "portaria">("portaria");
   const owner = p.role === "owner";
   const run = (fn: () => Promise<{ ok: true } | { ok: false; error: string }>, ok: string) => start(async () => {
     const r = await fn();
@@ -37,7 +36,7 @@ export function PainelEquipe(p: EquipeProps) {
           <section className="cx">
             <div className="card-h"><div><h2 className="card-t">Check-in</h2><span className="card-s">{p.role === "portaria"
               ? "Toque em “Abrir app da portaria” no celular: o seu acesso ao evento é criado na hora e a câmera já abre para ler os QR codes. Dá para instalar na tela de início, como um app."
-              : "Cada evento tem o app da portaria: crie um acesso para cada portão ou pessoa (ou convide a pessoa com a função Portaria e ela entra sozinha)."}</span></div></div>
+              : "Convide a portaria por evento: cada pessoa ganha um acesso único ao app da portaria, pelo QR code na tela ou por e-mail, e você acompanha quando ela abriu e quantas entradas validou."}</span></div></div>
             {p.events.length ? p.events.map((e) => (
               <div className="ptr-ev" key={e.id}>
                 <div className="ptr">
@@ -80,11 +79,10 @@ export function PainelEquipe(p: EquipeProps) {
         <aside className="side2">
           {owner && (
             <section className="cx">
-              <div className="card-h"><h2 className="card-t">Convidar pessoa</h2></div>
+              <div className="card-h"><div><h2 className="card-t">Convidar admin</h2><span className="card-s">Admin vê vendas, participantes, financeiro e marketing. A portaria é convidada por evento, em “Convidar para a portaria” (QR code ou e-mail).</span></div></div>
               <div className="frm">
                 <label className="fld"><span>E-mail</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@exemplo.com" /></label>
-                <label className="fld"><span>Função</span><select value={role} onChange={(e) => setRole(e.target.value as "admin" | "portaria")}><option value="portaria">Portaria</option><option value="admin">Admin</option></select></label>
-                <button className="b2 dark block" type="button" disabled={busy || !email.includes("@")} onClick={() => run(async () => { const r = await inviteMember(email, role); if (r.ok) setEmail(""); return r; }, "Convite criado.")}>Convidar</button>
+                <button className="b2 dark block" type="button" disabled={busy || !email.includes("@")} onClick={() => run(async () => { const r = await inviteMember(email, "admin"); if (r.ok) setEmail(""); return r; }, "Convite enviado.")}>Convidar admin</button>
               </div>
             </section>
           )}
@@ -93,7 +91,7 @@ export function PainelEquipe(p: EquipeProps) {
             <div className="roles">
               <div><b>Dono:</b> tudo, inclusive equipe, conta de repasse e configurações.</div>
               <div><b>Admin:</b> vê vendas, participantes, financeiro e marketing; cria cupons.</div>
-              <div><b>Portaria:</b> só o check-in dos eventos, pelo app da portaria (o acesso sai pronto no painel dela).</div>
+              <div><b>Portaria:</b> só o check-in de um evento, pelo app da portaria, com um acesso só dela (QR code ou e-mail).</div>
             </div>
           </section>
         </aside>

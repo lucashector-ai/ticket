@@ -27,7 +27,7 @@ export default async function PainelEquipePage() {
       const days = Math.ceil((e.startAt.getTime() - now) / DAY);
       return {
         id: e.id, title: e.title, flyerId: e.flyerId, when: whenLabel(e), where: whereLabel(e), soon: days <= 1,
-        links: links.filter((l) => l.eventId === e.id).map((l) => ({ id: l.id, label: l.label, token: l.token, code: l.code ?? "", scans: l.scans, used: l.lastUsedAt ? ago(l.lastUsedAt, now) : null })),
+        links: links.filter((l) => l.eventId === e.id).map((l) => ({ id: l.id, label: l.label, token: l.token, code: l.code ?? "", email: l.email ?? null, sent: l.sentAt ? ago(l.sentAt, now) : null, opened: l.openedAt ? ago(l.openedAt, now) : null, scans: l.scans, used: l.lastUsedAt ? ago(l.lastUsedAt, now) : null })),
       };
     }),
   };

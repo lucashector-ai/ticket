@@ -895,6 +895,11 @@ export const checkinLinks = pgTable(
     /** código curto que a equipe digita no app da portaria (/portaria), ex.: "K7PX-3MQ9" */
     code: varchar("code", { length: 12 }),
     label: varchar("label", { length: 60 }).notNull(),
+    /** e-mail da pessoa da portaria (quando o acesso foi enviado por e-mail) */
+    email: varchar("email", { length: 254 }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    /** primeira vez que o link foi aberto num celular (rastreio: a pessoa recebeu e está usando) */
+    openedAt: timestamp("opened_at", { withTimezone: true }),
     createdByUserId: text("created_by_user_id"),
     scans: integer("scans").notNull().default(0),
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),

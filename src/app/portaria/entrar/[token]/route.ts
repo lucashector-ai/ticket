@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { activeAccess, portariaCookie } from "@/lib/portaria";
+import { activeAccess, markOpened, portariaCookie } from "@/lib/portaria";
 
 /** Link (ou QR) do acesso de portaria: conecta este aparelho ao evento e abre o app. */
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -8,6 +8,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   const url = new URL("/portaria", req.url);
   if (!link) url.searchParams.set("erro", "link");
   const res = NextResponse.redirect(url, 303);
-  if (link) res.cookies.set(portariaCookie(link.id));
+  if (link) {
+    res.cookies.set(portariaCookie(link.id));
+    await markOpened(link.id);
+  }
   return res;
 }

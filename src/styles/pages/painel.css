@@ -388,7 +388,7 @@
   .ptr-ev + .ptr-ev{margin-top:10px}
   .ptr-a{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
   .ptr-acc > .cx{margin:0 0 6px;padding:18px 20px;border-radius:20px;background:#F7F7F3;box-shadow:none}
-  .ptr-acc .cl-new input{background:#fff}
+  .ptr-acc .cl-new input{background:#fff;box-shadow:inset 0 0 0 1px #E6E6E0}
   @media (max-width:640px){.ptr{grid-template-columns:54px minmax(0,1fr)}.ptr-a{grid-column:1/-1;justify-content:stretch}.ptr-a > *{flex:1}}
   .ptr:first-of-type{border-top:0}
   .roles{display:grid;gap:8px;margin-top:4px}
@@ -494,7 +494,8 @@
   .cl-h{display:flex;gap:14px;align-items:flex-start}
   .cl-h .card-s{display:block;margin-top:4px;line-height:1.5}
   .cl-ic{flex:none;width:42px;height:42px;border-radius:12px;background:#111;color:#D3F55B;display:grid;place-items:center}
-  .cl-new{display:flex;gap:8px}
+  .cl-new{display:flex;flex-wrap:wrap;gap:8px}
+  .cl-new input{flex:1 1 200px}
   .cl-new input{flex:1;min-width:0;height:42px;padding:0 14px;border:0;border-radius:12px;background:#F4F4F1;font:inherit;font-size:14px;outline:none;box-shadow:inset 0 0 0 1.5px transparent}
   .cl-new input:focus{background:#fff;box-shadow:inset 0 0 0 1.5px #111}
   .cl-list{display:flex;flex-direction:column;border-radius:16px;background:#F7F7F2;padding:4px 12px}
@@ -502,6 +503,7 @@
   .cl-row:first-child{border-top:0}
   .cl-top{display:flex;align-items:center;gap:6px}
   .cl-dot{flex:none;width:8px;height:8px;border-radius:50%;background:#7FB800;margin-right:4px;box-shadow:0 0 0 4px rgba(127,184,0,.14)}
+  .cl-dot.off{background:#C9C9C2;box-shadow:0 0 0 4px rgba(17,17,17,.05)}
   .cl-i{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
   .cl-i b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cl-i span{font-size:12.5px;color:#6E6E73}
@@ -510,7 +512,7 @@
   .cl-b:hover,.cl-b.on{background:#EAEAE4}
   .cl-b.danger{color:#B42318}
   .cl-qr{display:flex;align-items:center;gap:16px;margin-top:10px;padding:14px;border-radius:14px;background:#fff}
-  .cl-qr-c{flex:none;width:112px;height:112px;display:block}
+  .cl-qr-c{flex:none;width:150px;height:150px;display:block}
   .cl-qr-c svg{width:100%;height:100%;display:block}
   .cl-qr-i{display:flex;flex-direction:column;gap:4px;min-width:0}
   .cl-qr-i b{font-size:14px}
