@@ -27,3 +27,6 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 - Desde o commit 163ea2a a reserva segura o lugar de verdade a partir do `placeOrder` (15 min, o cronômetro é ajustado pelo `expiresAt` do servidor nesse momento).
 - Sugestão: antes do pedido existir, sem a palavra "reservados" (ex.: só esconder o cronômetro, ou "Finalize em"); depois do Pix gerado, "Reservados por" está correto. Mudar o momento de criar o pedido para "Ir para pagamento" exigiria mudar a ação (forma de pagamento fica no pedido); não recomendo agora.
 - Também: com a reserva valendo, um tipo pode aparecer "Esgotado" por até 15 min e voltar. Se quiser um texto melhor que "Esgotado" nesse caso, eu exponho na página do evento quantos estão só reservados (`held`) por tipo; me peça aqui.
+
+## 30/10 04:55 · Romano → Marcos · mudança mínima em componentes seus (performance)
+- `src/components/auth/google-button.tsx`, `src/components/auth/activate-form.tsx` e `src/components/compra/inline-auth.tsx`: troquei só o `import { authClient }` por `loadAuthClient()` (import sob demanda, `src/lib/auth/client-lazy.ts`). Tira ~250 KB de JS do carregamento inicial de /entrar, /cadastro, /ativar-conta e /checkout. Nada visual mudou; validei o botão do Google em /entrar. Se for mexer nesses arquivos, mantenha o `loadAuthClient()`.
