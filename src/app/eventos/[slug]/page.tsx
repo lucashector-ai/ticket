@@ -7,6 +7,7 @@ import { EventoView } from "@/components/evento/evento-view";
 import type { EventoData, LineupItem, OrganizerInfo, SessionItem, TierItem } from "@/components/evento/types";
 import { getEventBySlug, listSimilarEvents, type EventDetail } from "@/lib/data/events";
 import { isFollowing } from "@/lib/data/user";
+import { canEditEvent } from "@/lib/data/org-access";
 import { getSessionUser } from "@/lib/auth/server";
 import { dateFull, hourLabel, initials, parts, timeLabel } from "@/lib/format";
 import { salesStartNote, tierStatus } from "@/lib/tickets/status";
@@ -150,8 +151,8 @@ export default async function EventoPage({ params, searchParams }: Params) {
   const sp = await searchParams;
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k]) ?? "";
   const [ev, user] = await Promise.all([getEventBySlug(slug), getSessionUser()]);
-  // rascunho: só quem criou vê (prévia)
-  if (!ev || (ev.status === "draft" && ev.createdByUserId !== user?.id)) notFound();
+  // rascunho: só quem pode editar vê a prévia (quem criou, o dono e os admins da produtora)
+  if (!ev || (ev.status === "draft" && !(user && (ev.createdByUserId === user.id || (await canEditEvent(user.id, ev)))))) notFound();
   // tudo o que depende só do evento e de quem vê sai numa rodada só (antes eram três, uma depois da outra)
   const [similar, following, access, offers, held, bought] = await Promise.all([
     listSimilarEvents(ev.id, ev.primaryCategoryLabel),

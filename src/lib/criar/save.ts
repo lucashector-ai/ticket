@@ -9,6 +9,7 @@ import { mailEventPublished } from "@/lib/notify";
 import { linkArtistSpotify } from "@/lib/spotify-artists";
 import { AREA_KINDS, KIND_COLOR, MAX_AREAS, normalizePlan } from "@/lib/criar/plan";
 import { meiaPriceError } from "@/lib/criar/meia";
+import { activeAccess, canEditEvent, PORTARIA_ONLY } from "@/lib/data/org-access";
 import {
   CATEGORY_KINDS, effTypes, eventSlug, limitOf, MAX_LIMIT, num, parseBrDateTime, parseCity, spDate, toCents,
   type DbMap, type Draft, type VenuePlace,
@@ -233,11 +234,11 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   }
   if (new Set(couponRows.map((c) => c.code)).size !== couponRows.length) return fail("Há dois cupons com o mesmo código.", 5);
 
-  /* ---- evento existente: só o criador edita ---- */
+  /* ---- evento existente: o dono e os admins da produtora do evento editam (a portaria não) ---- */
   let existing: (typeof events.$inferSelect & { sessions: (typeof eventSessions.$inferSelect)[]; ticketTypes: (typeof ticketTypes.$inferSelect)[] }) | null = null;
   if (input.eventId) {
     const found = await db.query.events.findFirst({ where: eq(events.id, input.eventId), with: { sessions: true, ticketTypes: true } });
-    if (!found || found.createdByUserId !== user.id) return fail("Você não pode editar este evento.");
+    if (!found || !(await canEditEvent(user.id, found))) return fail("Você não pode editar este evento.");
     // cancelado no painel (Cancelamentos e reembolsos): não volta a ser publicado por uma edição
     if (found.status === "cancelled") return fail("Este evento foi cancelado e não pode mais ser editado.");
     existing = found;
@@ -272,7 +273,14 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   if (taken) return fail(`O código ${taken.code} já é usado por outro cupom. Escolha outro.`, 5);
 
   /* ---- gravação ---- */
-  const organizer = await organizerFor(user);
+  // evento novo vai para a produtora ativa (dona ou admin da equipe); a edição não muda produtora nem criador
+  let organizerId: string;
+  if (existing?.organizerId) organizerId = existing.organizerId;
+  else {
+    const ctx = await activeAccess(user.id);
+    if (ctx?.role === "portaria") return fail(PORTARIA_ONLY);
+    organizerId = ctx ? ctx.org.id : (await organizerFor(user)).id;
+  }
   const venueIds = new Map<string, string>();
   const citySet = new Set<string>();
   for (const s of sessRows) {
@@ -312,12 +320,12 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     halfPriceInfo: hasMeia ? "Estudantes, PcD, jovens de baixa renda e maiores de 60, com documento." : null,
     venueId: first ? venueOf(first) : null, venueNameOverride: tour && citySet.size > 1 ? `Turnê · ${citySet.size} cidades` : null,
     addressLabel: tour && citySet.size > 1 ? [...citySet].join(", ") : first?.city ? `${first.city.name} – ${first.city.uf}` : null,
-    organizerId: organizer.id, primaryCategoryLabel: catLabel, kinds,
+    organizerId, primaryCategoryLabel: catLabel, kinds,
     minPriceCents: prices.length ? Math.min(...prices) : 0, maxPerOrder: orderCap,
     format: d.mode, ticketMode: d.tmode, absorbFee: !d.fee, transferEnabled: d.transfer, resaleEnabled: d.resale,
     media: { home: d.media.home, strip: d.media.strip, share: d.media.share },
     venueMap: venueMapOf(d),
-    createdByUserId: user.id,
+    createdByUserId: existing?.createdByUserId ?? user.id,
   };
 
   /*

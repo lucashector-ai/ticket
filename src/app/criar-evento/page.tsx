@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { activateHref, emailConfirmed } from "@/lib/auth/verified";
+import { activeAccess, canEditEvent } from "@/lib/data/org-access";
 import { CriarFlow } from "@/components/criar/flow";
 import { brDateTime, emptyDraft, isDefaultRefund, STEP_LABELS, type DbMap, type Draft } from "@/lib/criar/model";
 import { ProducerApply } from "@/components/produtor/inscricao";
@@ -30,6 +31,8 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
     // virar produtor começa com o e-mail confirmado (a inscrição seria recusada no envio); quem já é produtor segue
     if (status !== "producer" && !(await emailConfirmed(user))) redirect(activateHref("/criar-evento"));
     if (status === "approved") redirect("/produtores/cadastro");
+    // na equipe só como portaria: criar evento é com o dono ou um admin da produtora
+    if (status === "producer" && (await activeAccess(user.id))?.role === "portaria") redirect("/painel");
     if (status !== "producer") {
       const profile = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, user.id), columns: { name: true, phone: true } });
       const parts = (profile?.name || user.name || "").trim().split(/\s+/);
@@ -51,8 +54,9 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
   let live: { status: "published" | "draft"; unlisted: boolean } | null = null;
   if (editId) {
     if (!/^[0-9a-f-]{36}$/.test(editId)) notFound();
-    const ev = await db.query.events.findFirst({ where: eq(schema.events.id, editId), columns: { id: true, slug: true, status: true, unlisted: true, createdByUserId: true, draft: true, transferEnabled: true, resaleEnabled: true, salesOpenAt: true, presaleAt: true, launchPage: true } });
-    if (!ev || ev.createdByUserId !== user.id) notFound();
+    const ev = await db.query.events.findFirst({ where: eq(schema.events.id, editId), columns: { id: true, slug: true, status: true, unlisted: true, createdByUserId: true, organizerId: true, draft: true, transferEnabled: true, resaleEnabled: true, salesOpenAt: true, presaleAt: true, launchPage: true } });
+    // o dono e os admins da produtora do evento editam (a portaria não)
+    if (!ev || !(await canEditEvent(user.id, ev))) notFound();
     const saved = ev.draft as { form?: Draft; dbMap?: DbMap } | null;
     // transferência, revenda, abertura e pré-venda também mudam pelo painel: vale o que está no evento
     const base = emptyDraft();
@@ -71,8 +75,8 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
   // evento novo: começa com os padrões das Configurações do painel
   let defaults: Partial<Draft> = {};
   if (!editId) {
-    const org = await db.query.organizers.findFirst({ where: eq(schema.organizers.ownerUserId, user.id), columns: { defaults: true } });
-    const d = org?.defaults;
+    // da produtora ativa (onde o evento vai ser criado)
+    const d = (await activeAccess(user.id))?.org.defaults;
     if (d) defaults = { fee: d.buyerPaysFee ?? true, autoMeia: d.autoMeia ?? true, ...(d.age ? { age: d.age } : {}), ...(d.refund && !isDefaultRefund(d.refund) ? { refund: d.refund } : {}) };
   }
   // ?etapa=vendas abre direto numa etapa (atalho do painel)

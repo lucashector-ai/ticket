@@ -76,7 +76,7 @@ export async function loadEvents(ids: string[]): Promise<Record<string, EvInfo>>
 /** Eventos futuros e publicados do produtor (para o bloco Agenda), do mais próximo ao mais distante. */
 export async function upcomingIds(s: Sender, now = new Date()) {
   const rows = await db.select({ id: events.id }).from(events)
-    .where(and(s.orgId ? or(eq(events.organizerId, s.orgId), eq(events.createdByUserId, s.userId)) : eq(events.createdByUserId, s.userId), eq(events.status, "published"), eq(events.unlisted, false), gt(sql`coalesce(${events.endAt}, ${events.startAt})`, now)))
+    .where(and(s.orgId ? or(eq(events.organizerId, s.orgId), and(isNull(events.organizerId), eq(events.createdByUserId, s.userId))) : eq(events.createdByUserId, s.userId), eq(events.status, "published"), eq(events.unlisted, false), gt(sql`coalesce(${events.endAt}, ${events.startAt})`, now)))
     .orderBy(events.startAt).limit(12);
   return rows.map((r) => r.id);
 }

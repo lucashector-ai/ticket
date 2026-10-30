@@ -3,8 +3,9 @@ import { cache } from "react";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
+import { chosenOrgId, orgAccessList, pickActive, type PainelRole } from "@/lib/data/org-access";
 
-const { organizers, organizerMembers, events, orders, orderItems, ticketTypes, tickets, coupons } = schema;
+const { organizerMembers, events, orders, orderItems, ticketTypes, tickets, coupons } = schema;
 
 /* Dinheiro do produtor: o que entrou pelos ingressos (sem a taxa do comprador). Se ele
    absorve a taxa, a plataforma desconta 7,99% disso; senão o comprador já pagou a taxa à parte. */
@@ -19,30 +20,31 @@ export type PaidOrder = {
   test: boolean;
 };
 
-export type PainelRole = "owner" | "admin" | "portaria";
+export type { PainelRole };
 
 /**
- * Produtor do usuário (dono ou membro da equipe), o papel dele e os eventos. Aceita convites pendentes do e-mail da conta,
- * só com o e-mail confirmado: a conta com senha funciona antes da confirmação, e qualquer um poderia criar uma conta com o
- * e-mail de um convite ainda não aceito e entrar na equipe.
+ * Produtora ativa do usuário (dona ou da equipe, ver org-access.ts), o papel dele nela e os eventos dela. Aceita
+ * convites pendentes do e-mail da conta, só com o e-mail confirmado: a conta com senha funciona antes da confirmação,
+ * e qualquer um poderia criar uma conta com o e-mail de um convite ainda não aceito e entrar na equipe.
+ * Os eventos são os da produtora ativa (de quem quer que tenha criado: dono ou admin); conta sem produtora vê os
+ * eventos que criou. Uma produtora nunca vê os eventos de outra, mesmo do mesmo dono.
  */
 export const getPainelScope = cache(async (user: { id: string; email?: string | null; emailVerified?: boolean | null }) => {
   if (user.email && user.emailVerified) {
     await db.update(organizerMembers).set({ userId: user.id, acceptedAt: new Date() })
       .where(and(sql`lower(${organizerMembers.email}) = lower(${user.email})`, isNull(organizerMembers.userId)));
   }
-  let role: PainelRole = "owner";
-  let org = (await db.query.organizers.findFirst({ where: eq(organizers.ownerUserId, user.id) })) ?? null;
-  if (!org) {
-    const m = await db.query.organizerMembers.findFirst({ where: eq(organizerMembers.userId, user.id), with: { organizer: true } });
-    if (m) { org = m.organizer; role = m.role === "admin" ? "admin" : "portaria"; }
-  }
+  const [list, chosen] = await Promise.all([orgAccessList(user.id), chosenOrgId()]);
+  const active = pickActive(list, chosen);
+  const org = active?.org ?? null;
+  const role: PainelRole = active?.role ?? "owner";
   const evs = await db.query.events.findMany({
-    where: !org ? eq(events.createdByUserId, user.id) : role === "owner" ? or(eq(events.organizerId, org.id), eq(events.createdByUserId, user.id)) : eq(events.organizerId, org.id),
+    // evento antigo sem produtora: aparece para quem criou, na produtora dele
+    where: !org ? eq(events.createdByUserId, user.id) : role === "owner" ? or(eq(events.organizerId, org.id), and(isNull(events.organizerId), eq(events.createdByUserId, user.id))) : eq(events.organizerId, org.id),
     with: { venue: { with: { city: true } }, ticketTypes: true },
     orderBy: [desc(events.startAt)],
   });
-  return { org, role, events: evs };
+  return { org, role, events: evs, orgs: list };
 });
 export type PainelEvent = Awaited<ReturnType<typeof getPainelScope>>["events"][number];
 

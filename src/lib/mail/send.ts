@@ -36,7 +36,7 @@ const varsFor = (r: Recipient): Vars => ({ nome: r.name, primeiro_nome: firstNam
 export async function senderScope(c: Pick<Campaign, "organizerId" | "userId">) {
   const s: Sender = { orgId: c.organizerId, userId: c.userId };
   const org = c.organizerId ? await db.query.organizers.findFirst({ where: eq(organizers.id, c.organizerId) }) : null;
-  const evs = await db.select({ id: events.id }).from(events).where(c.organizerId ? sql`${events.organizerId} = ${c.organizerId} or ${events.createdByUserId} = ${c.userId}` : eq(events.createdByUserId, c.userId));
+  const evs = await db.select({ id: events.id }).from(events).where(c.organizerId ? sql`${events.organizerId} = ${c.organizerId} or (${events.organizerId} is null and ${events.createdByUserId} = ${c.userId})` : eq(events.createdByUserId, c.userId));
   return { s, org, ownIds: evs.map((e) => e.id) };
 }
 

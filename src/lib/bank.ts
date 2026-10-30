@@ -1,6 +1,6 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
 import type { OrganizerPayout } from "@/db/schema";
@@ -76,7 +76,11 @@ export async function walletFor(userId: string) {
     if (r.at > g.at) g.at = r.at;
     rgroups.set(k, g);
   }
-  const payouts = await db.query.payoutRequests.findMany({ where: eq(schema.payoutRequests.userId, userId), orderBy: [desc(schema.payoutRequests.createdAt)], limit: 200 });
+  // saques desta produtora (cada produtora da conta tem o próprio saldo); conta sem produtora: os dela sem produtora
+  const payouts = await db.query.payoutRequests.findMany({
+    where: scope.org ? eq(schema.payoutRequests.organizerId, scope.org.id) : and(eq(schema.payoutRequests.userId, userId), isNull(schema.payoutRequests.organizerId)),
+    orderBy: [desc(schema.payoutRequests.createdAt)], limit: 200,
+  });
 
   const entries: BankEntry[] = [
     ...[...groups.values()].map((g): BankEntry => {
@@ -122,10 +126,11 @@ export type Wallet = NonNullable<Awaited<ReturnType<typeof walletFor>>>;
  * saque ou um reembolso novo. O saque grava só se a marca ainda for a mesma do saldo conferido (ver requestPayout).
  */
 export const balanceStampSql = (userId: string, orgId: string | null) => sql`concat_ws('|',
-  (select count(*) || ':' || coalesce(sum(amount_cents), 0) from ${schema.payoutRequests} where user_id = ${userId} and status in ('requested', 'processing', 'paid')),
+  (select count(*) || ':' || coalesce(sum(amount_cents), 0) from ${schema.payoutRequests}
+    where ${orgId ? sql`organizer_id = ${orgId}` : sql`user_id = ${userId} and organizer_id is null`} and status in ('requested', 'processing', 'paid')),
   (select count(*) || ':' || coalesce(sum(producer_cents), 0) from ${schema.orderRefunds} r
     where r.status in ('pending', 'succeeded') and not r.test and r.producer_cents > 0
-      and r.event_id in (select id from ${schema.events} where created_by_user_id = ${userId}${orgId ? sql` or organizer_id = ${orgId}` : sql``})))`;
+      and r.event_id in (select id from ${schema.events} where ${orgId ? sql`organizer_id = ${orgId} or (organizer_id is null and created_by_user_id = ${userId})` : sql`created_by_user_id = ${userId}`})))`;
 
 export async function balanceStamp(userId: string, orgId: string | null) {
   const r = await db.execute<{ s: string }>(sql`select ${balanceStampSql(userId, orgId)} as s`);
