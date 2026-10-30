@@ -39,7 +39,8 @@ export function TransferModal({ title, ticketId, cur, qty, onClose, onDone }: Pr
         <input type="hidden" name="ticketId" value={ticketId} />
         <label className="fld">
           <span className="fld-l">E-mail de quem vai receber</span>
-          <input className="fld-i" type="email" name="email" placeholder="nome@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" autoFocus />
+          <input className="fld-i" type="email" name="email" placeholder="nome@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" autoFocus aria-describedby="tr-only" />
+          <span className="fld-h" id="tr-only">Só a conta com este e-mail recebe o ingresso. Use o e-mail que a pessoa usa (ou vai usar) na Tickets Win.</span>
         </label>
         {state?.error && <p className="fld-err" role="alert">{state.error}</p>}
         <button className="go-b" type="submit" disabled={pending}>{pending ? "Enviando…" : "Enviar ingresso"}</button>

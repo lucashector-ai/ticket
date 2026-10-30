@@ -40,7 +40,9 @@ export default async function TransferenciaPage({ params }: { params: Promise<{ 
   const next = `/transferencia/${token}`;
   const mine = tr.status === "accepted" && !!user && tr.toUserId === user.id;
   const same = !!user?.email && user.email.trim().toLowerCase() === tr.toEmail.trim().toLowerCase();
-  const to = same ? tr.toEmail : hideEmail(tr.toEmail);
+  // quem enviou vê o e-mail inteiro (foi ele quem digitou)
+  const sender = !!user && tr.fromUserId === user.id;
+  const to = same || sender ? tr.toEmail : hideEmail(tr.toEmail);
   const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
 
   return (
@@ -59,10 +61,10 @@ export default async function TransferenciaPage({ params }: { params: Promise<{ 
           {gift ? (
             <div className="gp-st">
               <b>{t.ticketType.name}{t.halfPrice ? " · meia-entrada" : ""}{t.holderName ? ` · ${t.holderName}` : ""}</b>
-              <span>{from?.name || "Quem comprou"} comprou este ingresso para <strong>{to}</strong>. Entre ou crie sua conta com esse e-mail e receba: o ingresso vai para a sua conta com um QR code novo, só seu.{t.halfPrice ? " Leve o documento da meia-entrada." : ""}</span>
+              <span>{from?.name || "Quem comprou"} comprou este ingresso para <strong>{to}</strong>.{sender ? "" : " Só a conta com este e-mail recebe o ingresso: entre (ou crie a conta) com ele e receba. Você recebe um QR code novo, só seu."}{t.halfPrice ? " Leve o documento da meia-entrada." : ""}</span>
             </div>
           ) : (
-            <div className="gp-st"><b>{t.ticketType.name}{t.halfPrice ? " · meia-entrada" : ""}</b><span>Enviado para <strong>{to}</strong>. Entre ou crie sua conta com esse e-mail e aceite: o ingresso vai para a sua conta com um QR code novo, só seu.</span></div>
+            <div className="gp-st"><b>{t.ticketType.name}{t.halfPrice ? " · meia-entrada" : ""}</b><span>Enviado para <strong>{to}</strong>.{sender ? "" : " Só a conta com este e-mail recebe o ingresso: entre (ou crie a conta) com ele e aceite. Você recebe um QR code novo, só seu."}</span></div>
           )}
           {tr.status === "cancelled" || tr.status === "expired" ? (
             <div className="gp-st off"><b>{gift ? "Envio cancelado" : "Transferência cancelada"}</b><span>Quem enviou desfez {gift ? "o envio" : "a transferência"}. Este link não vale mais.</span></div>
@@ -73,6 +75,9 @@ export default async function TransferenciaPage({ params }: { params: Promise<{ 
           ) : null}
           {mine ? (
             <div className="gp-foot"><Link href={`/ingressos/${t.code}`}>Abrir o ingresso</Link></div>
+          ) : tr.status === "pending" && sender ? (
+            // quem enviou abriu o próprio link: não é "outra conta", é o envio aguardando
+            <div className="gp-st"><b>Você enviou este ingresso</b><span>Ele fica aguardando até a pessoa aceitar com a conta desse e-mail. Para desfazer, cancele em Meus ingressos.</span></div>
           ) : tr.status === "pending" && (user ? (
             <AcceptTransfer token={token} email={user.email ?? ""} expected={to} other={!same} gift={gift} />
           ) : (

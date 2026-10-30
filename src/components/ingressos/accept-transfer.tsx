@@ -40,7 +40,7 @@ export function AcceptTransfer({ token, email, expected, other, gift = false }: 
       <>
         <div className="gp-st off">
           <b>Este ingresso é de outra conta</b>
-          <span>Este ingresso foi enviado para <strong>{expected}</strong>. Entre com esse e-mail para receber. Você está logado como <strong>{email}</strong>.</span>
+          <span>Só a conta de <strong>{expected}</strong> recebe este ingresso, e você está em <strong>{email}</strong>. Se esse outro e-mail é seu, troque de conta. Se não, peça a quem enviou para transferir para o seu e-mail.</span>
         </div>
         <div className="gp-foot">
           <SignOutButton className="gp-pay" onConfirm={() => signOutTo(next)} title="Trocar de conta?" text={`Você sai de ${email} e volta para esta página para entrar com ${expected}.`}>

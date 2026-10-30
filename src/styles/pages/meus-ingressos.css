@@ -569,6 +569,9 @@
   .fld-l{font-size:13px;font-weight:600}
   .fld-i{height:52px;padding:0 16px;border-radius:14px;border:0;background:#F4F4F1;font:inherit;font-size:15px;outline:none}
   .fld-i:focus{box-shadow:0 0 0 2px #111 inset}
+  .fld-h{font-size:12.5px;line-height:1.45;color:#55555A}
+  /* o .fld global é o campo da barra de busca da home (fundo e anel no foco): no modal, só o campo tem foco */
+  .mo-f .fld,.mo-f .fld:hover,.mo-f .fld:focus-within,.mo-f .fld:has(:focus-visible){padding:0;background:none;box-shadow:none;cursor:default}
   .go-b{height:54px;border-radius:999px;background:#111;color:#FFFFFF;font-size:15px;font-weight:600}
   @media (max-width:1100px){.tkb{grid-template-columns:200px minmax(0,1fr) 260px;-webkit-mask:none;mask:none}
 .tkb-t{font-size:34px}
