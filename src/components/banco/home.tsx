@@ -94,6 +94,8 @@ export function BancoHome({ base, name, email, configUrl, wallet, rules }: Props
           <div className="bk-chips">
             {[0.25, 0.5, 1].map((f) => <button key={f} type="button" className={amount === Math.floor(w.available * f) ? "on" : undefined} onClick={() => setAmount(Math.floor(w.available * f))}>{f === 1 ? "Tudo" : `${f * 100}%`}</button>)}
           </div>
+          {/* abaixo do mínimo o código e o botão travam: diz o motivo */}
+          {amount < rules.min && <p className="bk-note" role="status"><b>O saque mínimo é {brl(rules.min)}.</b></p>}
           <p className="bk-note">Vai para <b>{w.destination}</b>. Cai em até 2 dias úteis. Você pode cancelar enquanto o pedido estiver em análise.</p>
           <p className="bk-k bk-k2">Confirme com o código do app autenticador</p>
           <CodeBoxes value={code} onChange={setCode} onDone={(v) => void withdraw(v)} disabled={busy || amount < rules.min} autoFocus={false} />
