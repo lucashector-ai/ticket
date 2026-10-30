@@ -1,8 +1,8 @@
 /* Animação de pagamento aprovado (feita no Claude Design): botão processando → aprovado,
    cortina lima que cobre a tela, celebração e entrada da tela de confirmação. Usada em lib/pay-anim.ts. */
 :root{
-  --tw-lime:#D3F55B;
-  --tw-lime-2:#B9E23A;
+  --tw-lime:#EDFF3C;
+  --tw-lime-2:#CAE100;
   --tw-ink:#111111;
   --tw-ease:cubic-bezier(.22,1,.36,1);
   --tw-spring:cubic-bezier(.34,1.56,.64,1);
@@ -14,7 +14,7 @@
 .tw-pay-btn>*{position:relative;z-index:1}
 .tw-pay-btn.is-paying,.tw-pay-btn.is-paying:disabled{background:var(--tw-lime) !important;color:var(--tw-ink) !important;opacity:1 !important;cursor:default;pointer-events:none;transform:scale(1.02)}
 .tw-pay-btn.is-paying::before{content:'';position:absolute;left:0;top:0;bottom:0;width:0;background:var(--tw-lime-2);animation:twPayFill 1.5s cubic-bezier(.65,0,.35,1) .15s forwards}
-.tw-pay-btn.is-approved{transform:scale(1.04);box-shadow:0 0 0 8px rgba(211,245,91,.35)}
+.tw-pay-btn.is-approved{transform:scale(1.04);box-shadow:0 0 0 8px rgba(237,255,60,.35)}
 .tw-pay-btn .tw-arrow{transition:opacity .2s}
 .tw-pay-btn.is-paying .tw-arrow{display:none}
 @keyframes twPayFill{to{width:100%}}
@@ -45,7 +45,7 @@
 .tw-spark{position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:3px;background:var(--tw-ink);opacity:0;animation:twSpark .9s var(--tw-ease) .45s both}
 @keyframes twSpark{0%{opacity:1;transform:rotate(var(--a)) translateY(0) scale(1)}100%{opacity:0;transform:rotate(var(--a)) translateY(-120px) scale(.4)}}
 .tw-flood-title{margin:40px 0 0;font:600 clamp(40px,6vw,64px)/1 'Inter Tight',Inter,sans-serif;letter-spacing:-.045em;animation:twUp .7s var(--tw-ease) .5s both}
-.tw-flood-sub{margin:16px 0 0;font:500 17px Inter,sans-serif;color:#3D5200;animation:twUp .7s var(--tw-ease) .62s both}
+.tw-flood-sub{margin:16px 0 0;font:500 17px Inter,sans-serif;color:#445000;animation:twUp .7s var(--tw-ease) .62s both}
 .tw-flood-pill{display:inline-flex;align-items:center;gap:10px;margin-top:30px;height:40px;padding:0 18px;border-radius:999px;background:var(--tw-ink);color:var(--tw-lime);font:600 14px Inter,sans-serif;animation:twUp .7s var(--tw-ease) .75s both}
 .tw-flood-pill i{width:6px;height:6px;border-radius:50%;background:var(--tw-lime);animation:twDot 1s ease-in-out infinite}
 .tw-flood-pill i:nth-child(2){animation-delay:.15s}

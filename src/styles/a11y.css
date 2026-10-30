@@ -2,8 +2,8 @@
 .a11y-root{position:relative;z-index:2147483000;font-family:Inter,system-ui,sans-serif}
 .a11y-tab{position:fixed;left:max(20px,env(safe-area-inset-left));bottom:max(20px,env(safe-area-inset-bottom));z-index:2147483000;display:flex;align-items:center;height:56px;padding:0;border-radius:999px;background:#111;color:#fff;box-shadow:0 14px 34px -14px rgba(17,17,17,.55),0 0 0 4px rgba(255,255,255,.9);cursor:pointer;transition:transform .25s cubic-bezier(.22,1,.36,1),opacity .2s}
 .a11y-tab:hover{transform:translateY(-2px)}
-.a11y-tab:focus-visible{outline:3px solid #D3F55B;outline-offset:4px}
-.a11y-tab .a11y-ic{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:#111;color:#D3F55B;flex:none}
+.a11y-tab:focus-visible{outline:3px solid #EDFF3C;outline-offset:4px}
+.a11y-tab .a11y-ic{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:#111;color:#EDFF3C;flex:none}
 .a11y-tab .a11y-lbl{max-width:0;overflow:hidden;font-size:14px;font-weight:600;white-space:nowrap;opacity:0;transition:max-width .35s cubic-bezier(.22,1,.36,1),opacity .25s,padding .35s}
 .a11y-tab:hover .a11y-lbl,.a11y-tab:focus-visible .a11y-lbl{max-width:240px;opacity:1;padding-right:20px}
 .a11y-tab kbd{margin-left:6px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.14);font:600 11px Inter,system-ui,sans-serif}
@@ -19,7 +19,7 @@
 .a11y-opt{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;min-height:82px;padding:12px;border-radius:16px;background:#F5F5F1;border:1.5px solid transparent;color:#111;text-align:left;font-size:13.5px;font-weight:600;line-height:1.25;cursor:pointer;transition:background .2s,border-color .2s}
 .a11y-opt:hover{background:#EDEDE7}
 .a11y-opt:focus-visible{outline:3px solid #111;outline-offset:2px}
-.a11y-opt.on{background:#F1FBD3;border-color:#111}
+.a11y-opt.on{background:#F9FFD1;border-color:#111}
 .a11y-wide .a11y-opt{flex-direction:row;align-items:center;min-height:56px}
 .a11y-steps{display:flex;gap:4px;margin-left:auto}
 .a11y-steps em{width:22px;height:6px;border-radius:999px;background:#DADAD4}
@@ -29,7 +29,7 @@
 .a11y-ft button{color:#111;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .a11y-ft button:disabled{opacity:.4;cursor:default;text-decoration:none}
 .a11y-ft a{color:#6E6E73;text-decoration:underline;text-underline-offset:3px}
-.a11y-guide-bar{position:fixed;left:0;right:0;top:0;z-index:2147482999;height:44px;pointer-events:none;border-top:2px solid #111;border-bottom:2px solid #111;background:rgba(211,245,91,.18);box-shadow:0 0 0 100vmax rgba(17,17,17,.28)}
+.a11y-guide-bar{position:fixed;left:0;right:0;top:0;z-index:2147482999;height:44px;pointer-events:none;border-top:2px solid #111;border-bottom:2px solid #111;background:rgba(237,255,60,.18);box-shadow:0 0 0 100vmax rgba(17,17,17,.28)}
 @keyframes a11yIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
 /* Aba presa na borda esquerda, em todas as larguras (fica na margem em vez de cobrir listas, botões e o menu do painel) */
 @media all{
@@ -56,7 +56,7 @@ html.a11y-contrast,html.a11y-gray{filter:var(--a11y-c,) var(--a11y-g,)}
 html.a11y-contrast{--a11y-c:contrast(1.35)}
 html.a11y-gray{--a11y-g:grayscale(1)}
 html.a11y-links a:not(.a11y-root a){text-decoration:underline !important;text-underline-offset:3px !important;text-decoration-thickness:2px !important}
-html.a11y-links :focus-visible{outline:3px solid #111 !important;outline-offset:2px !important;box-shadow:0 0 0 6px #D3F55B !important}
+html.a11y-links :focus-visible{outline:3px solid #111 !important;outline-offset:2px !important;box-shadow:0 0 0 6px #EDFF3C !important}
 html.a11y-font body,html.a11y-font body :not(svg):not(svg *):not(code):not(kbd){font-family:'Atkinson Hyperlegible',Verdana,Tahoma,sans-serif !important}
 html.a11y-space body :is(p,li,dd,dt,label,small,blockquote,td,th){letter-spacing:.05em !important;word-spacing:.12em !important;line-height:1.75 !important}
 html.a11y-still *,html.a11y-still *::before,html.a11y-still *::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}
