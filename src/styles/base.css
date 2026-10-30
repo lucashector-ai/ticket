@@ -651,7 +651,7 @@ a.open{position:absolute;inset:0;z-index:2;border-radius:24px}
 .m-tot b{display:block;font-family:'Inter Tight',sans-serif;font-size:28px;letter-spacing:-.035em;font-weight:600}
 .btn-p[disabled]{opacity:.3;cursor:not-allowed}
 .m-note{font-size:12.5px;color:#6E6E73;margin:14px 0 0;line-height:1.5}
-.toast{position:fixed;left:50%;bottom:28px;z-index:120;display:flex;align-items:center;gap:12px;padding:12px 20px 12px 14px;background:#111;color:#fff;border-radius:999px;font-size:14px;font-weight:500;transform:translateX(-50%);animation:toastIn .5s var(--ease) both;box-shadow:0 20px 40px -18px rgba(17,17,17,.5)}
+.toast{position:fixed;left:50%;bottom:28px;z-index:120;display:flex;align-items:center;gap:12px;width:max-content;max-width:min(560px,calc(100vw - 80px));padding:12px 20px 12px 14px;background:#111;color:#fff;border-radius:22px;line-height:1.4;font-size:14px;font-weight:500;transform:translateX(-50%);animation:toastIn .5s var(--ease) both;box-shadow:0 20px 40px -18px rgba(17,17,17,.5)}
 @supports (animation-timeline: view()){
   .rv{animation:rv linear both;animation-timeline:view();animation-range:entry 0% entry 35%}
 }

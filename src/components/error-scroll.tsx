@@ -24,10 +24,13 @@ export function ErrorScroll() {
       const el = list.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))[0];
       const r = el.getBoundingClientRect();
       const margin = 90; // header fixo e barra do navegador
-      if (r.top >= margin && r.bottom <= window.innerHeight - 20) return;
+      // campo com erro: já deixa pronto para corrigir (sem abrir o teclado em mensagens), e o leitor de tela
+      // lê o campo e o erro. Não tira o foco de quem está digitando em outro campo.
+      const typing = document.activeElement?.matches("input:not([type=checkbox]):not([type=radio]), textarea, select");
+      const focusField = (delay: number) => { if (!typing && el.matches("input, select, textarea")) setTimeout(() => el.focus({ preventScroll: true }), delay); };
+      if (r.top >= margin && r.bottom <= window.innerHeight - 20) { focusField(0); return; }
       el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
-      // campo com erro: já deixa pronto para corrigir (sem abrir o teclado em mensagens)
-      if (el.matches("input, select, textarea")) setTimeout(() => el.focus({ preventScroll: true }), 350);
+      focusField(350);
     };
     // só o que acabou de virar erro (mensagem nova ou campo marcado agora), logo depois de um toque/envio
     const obs = new MutationObserver((recs) => {

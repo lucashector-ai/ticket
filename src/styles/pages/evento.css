@@ -107,7 +107,6 @@
   .card:hover .cgo{width:140px}
   .card:hover .cgo em{opacity:1;transition:opacity .2s .12s}
   .mbar{display:none}
-  .toast{position:fixed;left:50%;bottom:28px;z-index:120;display:flex;align-items:center;gap:10px;padding:12px 20px 12px 14px;background:#111;color:#fff;border-radius:999px;font-size:14px;font-weight:500;transform:translateX(-50%);animation:toastIn .5s var(--ease) both}
   @media (max-width:1180px){.hs{display:none}
 }
   @media (max-width:1024px){.top{grid-template-columns:minmax(0,1fr);gap:32px}
