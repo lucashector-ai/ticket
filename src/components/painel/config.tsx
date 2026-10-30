@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { saveSettings } from "@/lib/actions/painel";
 import { slugify } from "@/lib/format";
@@ -24,10 +24,19 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
   const set = (p: Partial<Form>) => { setF((o) => ({ ...o, ...p })); setDirty(true); };
   const pay = (p: Partial<Form["payout"]>) => set({ payout: { ...f.payout, ...p } });
   const def = (p: Partial<Form["defaults"]>) => set({ defaults: { ...f.defaults, ...p } });
+  /* trocar a conta de recebimento com o app autenticador ligado: o servidor pede o código do app (D-04) */
+  const [needCode, setNeedCode] = useState(false);
+  const [code, setCode] = useState("");
+  const codeRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (needCode) codeRef.current?.focus(); }, [needCode]);
   const save = () => start(async () => {
-    const r = await saveSettings(f);
-    if (!r.ok) { flash(r.error); return; }
-    setDirty(false); flash("Configurações salvas."); router.refresh();
+    const r = await saveSettings({ ...f, code: needCode ? code : undefined });
+    if (!r.ok) {
+      flash(r.error);
+      if ("needsCode" in r) { setNeedCode(true); setCode(""); }
+      return;
+    }
+    setDirty(false); setNeedCode(false); setCode(""); flash("Configurações salvas."); router.refresh();
   });
   const host = useOrigin().replace(/^https?:\/\//, "");
 
@@ -66,6 +75,13 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
                 <label className="fld"><span>CPF ou CNPJ do titular</span><input autoComplete="off" value={f.payout.doc} maxLength={20} inputMode="numeric" onChange={(e) => pay({ doc: e.target.value })} /></label>
               </div>
               <label className="fld"><span>Chave Pix (opcional)</span><input autoComplete="off" value={f.payout.pixKey} maxLength={140} onChange={(e) => pay({ pixKey: e.target.value })} placeholder="E-mail, celular, CPF/CNPJ ou chave aleatória" /></label>
+              {needCode && (
+                <label className="fld"><span>Código do app autenticador</span>
+                  <input ref={codeRef} autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} placeholder="000000"
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} onKeyDown={(e) => { if (e.key === "Enter" && code.length === 6) save(); }} />
+                  <small>Para trocar a conta que recebe os saques, confirme com o código de 6 dígitos do app autenticador e toque em Salvar.</small>
+                </label>
+              )}
             </div>
           </section>
         </div>
