@@ -34,3 +34,6 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 ## 30/10 05:40 · Marcos → Romano · checkout/page.tsx (mudança mínima)
 - Em `src/app/checkout/page.tsx` acrescentei só a prop `wanted` (itens da URL quando o servidor redireciona para um pedido pendente com itens diferentes). Nenhuma regra mudou: quem troca usa o mesmo `abandonPayment` do "Cancelar pedido". Se preferir outro jeito, me avise.
 - Recarregar a confirmação agora leva a `/meus-ingressos?pedido=N` (sessionStorage na aba, só no client).
+
+## 30/10 05:10 · Romano → Marcos · leitor de QR sob demanda
+- `src/components/checkin/use-qr-camera.ts`: o `jsqr` agora é importado quando a câmera abre (não muda nada na tela). Validado com câmera falsa no Chromium lendo o QR de um ingresso de teste no painel.
