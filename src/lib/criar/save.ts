@@ -8,6 +8,7 @@ import { SERVICE_FEE_RATE } from "@/lib/pricing";
 import { mailEventPublished } from "@/lib/notify";
 import { linkArtistSpotify } from "@/lib/spotify-artists";
 import { AREA_KINDS, KIND_COLOR, MAX_AREAS, normalizePlan } from "@/lib/criar/plan";
+import { meiaPriceError } from "@/lib/criar/meia";
 import {
   CATEGORY_KINDS, effTypes, eventSlug, limitOf, MAX_LIMIT, num, parseBrDateTime, parseCity, spDate, toCents,
   type DbMap, type Draft, type VenuePlace,
@@ -33,7 +34,7 @@ const draftSchema = z.object({
   autoMeia: z.boolean(), fee: z.boolean(), transfer: z.boolean().default(true), resale: z.boolean().default(true),
   sectors: z.array(z.object({
     id, name: str(80), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/), open: z.boolean(),
-    types: z.array(z.object({ id, kind: z.enum(["inteira", "meia", "social", "outro"]), name: str(120), price: str(12), qty: str(9), desc: str(600), free: z.boolean().optional(), limit: z.string().max(3).optional() })).max(20),
+    types: z.array(z.object({ id, kind: z.enum(["inteira", "meia", "social", "outro"]), name: str(120), price: str(12), qty: str(9), desc: str(600), free: z.boolean().optional(), limit: z.string().max(3).optional(), meia: z.string().max(12).optional() })).max(20),
   })).min(1).max(20),
   map: z.enum(["empty", "sketch", "done"]), prompt: str(1000), sketchUrl: z.union([z.literal(""), media.unwrap()]).default(""),
   plan: z.object({
@@ -204,6 +205,9 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
       if (!t.free && toCents(t.price) <= 0) return fail(`Defina o preço de ${t.name} ou marque como grátis.`, 5);
       if (num(t.qty) <= 0) return fail(`Defina a quantidade de ${t.name}.`, 5);
     }
+    // meia-entrada (D-09): preço ajustável pelo produtor, nunca acima da inteira
+    const meiaErr = meiaPriceError(d);
+    if (meiaErr) return fail(meiaErr, 5);
   }
   const salesStart = parseBrDateTime(d.saleStart);
   if (d.saleStart.trim() && !salesStart) return fail("Escolha o dia e o horário em que as vendas abrem.", 7);

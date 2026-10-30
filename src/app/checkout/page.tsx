@@ -8,7 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CompraFlow, type CompraEvent, type CompraSession } from "@/components/compra/compra-flow";
 import { dateNice, hourLabel, parts } from "@/lib/format";
-import { SERVICE_FEE_RATE } from "@/lib/pricing";
+import { meiaBoxOk, SERVICE_FEE_RATE } from "@/lib/pricing";
 import { turnstileSiteKey } from "@/lib/turnstile";
 import { appleSignInEnabled } from "@/lib/auth/apple";
 import { tierStatus } from "@/lib/tickets/status";
@@ -124,7 +124,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         id: t.id, name: t.sector ? `${t.sector} · ${t.name}` : t.name, type: t.name, note: t.note ?? "", desc: t.description,
         priceCents: r ? r.unitPriceCents : special ? special.priceCents : t.priceCents,
         open: special || r ? true : tierStatus(t) === "open" && left > 0, sold: special || r ? false : t.status === "sold_out" || left <= 0,
-        sector: t.sector, sectorColor: t.sectorColor, sessionId: special ? null : t.sessionId, meiaOk: special ? false : (!t.kind || t.kind === "inteira") && t.priceCents > 0,
+        sector: t.sector, sectorColor: t.sectorColor, sessionId: special ? null : t.sessionId, meiaOk: special ? false : meiaBoxOk(t, e.ticketTypes),
         limit: special ? 1 : Math.max(r?.quantity ?? 0, Math.min(t.maxPerOrder, e.maxPerOrder)),
       };
     }),

@@ -8,7 +8,7 @@ import { cpfValid } from "@/lib/cpf";
 import { normalizePhone, phoneValid } from "@/lib/phone";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
-import { priceOrder, SERVICE_FEE_RATE } from "@/lib/pricing";
+import { meiaBoxOk, priceOrder, SERVICE_FEE_RATE } from "@/lib/pricing";
 import { tierStatus } from "@/lib/tickets/status";
 import { canBuy } from "@/lib/launch";
 import { promoterForOrder } from "@/lib/promoters";
@@ -162,14 +162,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       if (it.quantity > left) return { ok: false, error: `Restam só ${Math.max(0, left)} ingressos em ${tt.name}.` };
       const forType = holders.filter((h) => h.ticketTypeId === tt.id).length;
       if (forType !== it.quantity) return { ok: false, error: "Informe o titular de cada ingresso." };
-      lines.push({ ticketTypeId: tt.id, priceCents: tt.priceCents, quantity: it.quantity, sector: tt.sector, meiaOk: (!tt.kind || tt.kind === "inteira") && tt.priceCents > 0 });
+      lines.push({ ticketTypeId: tt.id, priceCents: tt.priceCents, quantity: it.quantity, sector: tt.sector, meiaOk: meiaBoxOk(tt, ev.ticketTypes) });
     }
   }
   const own = [buyer.email, user.email ?? ""].map((e) => e.trim().toLowerCase()).filter(Boolean);
   const limits = new Map(ev.ticketTypes.map((t) => [t.id, { name: t.name, max: special ? 1 : Math.min(t.maxPerOrder, ev.maxPerOrder) }]));
   const holderErr = checkHolders(holders, own, limits);
   if (holderErr) return { ok: false, error: holderErr };
-  // meia só onde o checkout oferece (tipos de inteira); meia/social já têm preço próprio
+  // meia só onde o checkout oferece a caixa (Inteira sem tipo Meia no mesmo setor e data, D-09); meia/social já têm preço próprio
   const meiaOk = new Map(lines.map((l) => [l.ticketTypeId, l.meiaOk]));
   const cleanHolders = holders.map((h) => ({
     ticketTypeId: h.ticketTypeId, name: h.name.trim(), meia: h.meia && meiaOk.get(h.ticketTypeId) !== false,

@@ -10,6 +10,20 @@ export type PricingHolder = { ticketTypeId: string; meia: boolean };
 /** `amountPerTicket`: o desconto em R$ vale por ingresso; `sector`: só para ingressos desse setor. */
 export type PricingCoupon = { percentOff: number; amountOffCents: number; amountPerTicket?: boolean; sector?: string | null } | null;
 
+/** O que a regra da caixa "Meia-entrada" precisa de cada tipo do evento. */
+export type MeiaTypeLike = { kind: string | null; priceCents: number; sector: string | null; sessionId: string | null };
+
+/**
+ * Caixa "Meia-entrada" no titular do checkout (D-09): só em Inteira paga (ou tipo antigo, sem `kind`) e só onde o
+ * mesmo setor e a mesma data não têm um tipo Meia próprio. Onde há tipo Meia, a meia é vendida só por ele, com o
+ * preço e a cota que o produtor definiu (pela caixa, a cota do tipo Meia era contornada). Preço da caixa: metade
+ * da inteira (Lei 12.933), calculado em priceOrder. Usada no checkout (tela) e no placeOrder (servidor).
+ */
+export function meiaBoxOk(t: MeiaTypeLike, all: readonly MeiaTypeLike[]) {
+  if (t.priceCents <= 0 || (t.kind && t.kind !== "inteira")) return false;
+  return !all.some((u) => u.kind === "meia" && (u.sessionId ?? null) === (t.sessionId ?? null) && (u.sector ?? null) === (t.sector ?? null));
+}
+
 export function installmentRate(n: number) {
   return n <= INTEREST_FREE_INSTALLMENTS ? 0 : 0.0299 * n;
 }

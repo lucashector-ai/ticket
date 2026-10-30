@@ -87,4 +87,28 @@ describe.skipIf(!TEST_DB || !!process.env.STRIPE_SECRET_KEY)("placeOrder: reserv
     session.user = null;
     expect(r.ok).toBe(false);
   });
+  it("D-09: meia pela caixa só onde o setor/data não tem tipo Meia; o preço é recalculado no servidor", async () => {
+    const { db, schema } = D;
+    const { eq } = await import("drizzle-orm");
+    const { ev, tt: inteira } = await event(10);
+    // setor sem tipo Meia (evento antigo ou sem meia automática): a caixa vale e a meia é metade da inteira
+    const u = person(); session.user = u;
+    const one = { ...input(ev.slug, inteira.id, 1, u) };
+    one.holders = [{ ...one.holders[0], meia: true }];
+    const a = await C.placeOrder(one);
+    expect(a.ok).toBe(true);
+    if (a.ok) expect(a.totalCents).toBe(2_500 + Math.round(2_500 * 0.0799));
+    // o produtor passa a ter um tipo Meia no mesmo setor e data (preço editado: R$ 20): a caixa deixa de valer
+    await db.insert(schema.ticketTypes).values({ eventId: ev.id, name: "Meia-entrada", kind: "meia", priceCents: 2_000, quantity: 4 });
+    await db.update(schema.ticketTypes).set({ kind: "inteira" }).where(eq(schema.ticketTypes.id, inteira.id));
+    const b = await C.placeOrder(one);
+    session.user = null;
+    expect(b.ok).toBe(true);
+    if (!b.ok) return;
+    // cobra a inteira cheia (a meia=true do navegador é ignorada) e o titular não fica marcado como meia
+    expect(b.totalCents).toBe(5_000 + Math.round(5_000 * 0.0799));
+    const o = await db.query.orders.findFirst({ where: eq(schema.orders.id, b.orderId) });
+    expect(o?.meiaCents).toBe(0);
+    expect(o?.holders?.[0]?.meia).toBe(false);
+  });
 });

@@ -72,7 +72,7 @@ export const ARTICLES: HelpArticle[] = [
       ol(
         "Na página do evento, escolha a data (se houver mais de uma), o setor e a quantidade de cada tipo de ingresso. Toque em **Continuar para pagamento**.",
         "**Resumo:** confira os ingressos, aplique um cupom se tiver e veja o valor com a taxa de serviço já separada.",
-        "**Dados:** informe nome completo, e-mail, celular com DDD e **CPF (obrigatório)** de quem está comprando, e o nome e sobrenome de quem vai usar cada ingresso. Se alguém tiver direito à meia-entrada, marque aqui.",
+        "**Dados:** informe nome completo, e-mail, celular com DDD e **CPF (obrigatório)** de quem está comprando, e o nome e sobrenome de quem vai usar cada ingresso. Se alguém tiver direito à meia-entrada e o evento não tiver um tipo Meia-entrada, marque aqui.",
         "**Pagamento:** escolha Pix ou cartão de crédito (em até 6x) e pague ali mesmo, sem sair do checkout.",
         "Pronto: o pedido aparece como confirmado, os ingressos vão para [Meus ingressos](/meus-ingressos) e você recebe um e-mail com o resumo.",
       ),
@@ -576,16 +576,16 @@ export const ARTICLES: HelpArticle[] = [
   {
     slug: "comprar-meia-entrada", cat: "meia-entrada",
     title: "Como comprar meia-entrada e o que levar",
-    summary: "Marque meia-entrada no titular, na etapa de dados. Na portaria, apresente o documento que comprova o direito.",
+    summary: "Escolha o tipo Meia-entrada na página do evento ou, se ele não existir, marque meia no titular. Na portaria, apresente o documento.",
     keywords: "como comprar meia documento comprovante carteira estudante portaria diferenca",
     body: [
-      p("Em eventos com ingresso de inteira, a meia é escolhida **por titular**:"),
+      p("Quando o evento tem um tipo **Meia-entrada**, é só escolher esse tipo na página do evento, com a quantidade de cada um. O preço e a quantidade de meias são definidos pelo produtor."),
+      p("Quando o evento não tem esse tipo, a meia é escolhida **por titular** no ingresso de inteira:"),
       ol(
         "Na etapa **Dados** do checkout, informe o nome do titular.",
         "Marque a opção **Meia-entrada** nesse titular. O preço daquele ingresso cai para a metade, e a taxa de serviço também.",
         "Termine a compra normalmente. O ingresso fica marcado como meia.",
       ),
-      p("Alguns eventos já trazem a meia como um tipo de ingresso separado. Nesse caso é só escolher esse tipo na página do evento."),
       h("O que levar"),
       ul(
         "Estudante: CIE válida (física ou digital).",
@@ -604,7 +604,7 @@ export const ARTICLES: HelpArticle[] = [
     body: [
       p("Na página do evento cada tipo mostra uma descrição feita pelo produtor. Os mais comuns:"),
       ul(
-        "**Inteira:** o preço cheio. Em geral permite marcar meia-entrada no checkout.",
+        "**Inteira:** o preço cheio. Quando o evento não tem um tipo Meia-entrada no mesmo setor e data, permite marcar meia no checkout.",
         "**Meia-entrada:** metade da inteira, para quem tem direito por lei.",
         "**Meia social (ou ingresso solidário):** um preço com desconto em troca de uma doação, como 1 kg de alimento não perecível. Leve a doação na entrada.",
         "**Gratuito:** sem preço e sem taxa.",
@@ -893,7 +893,7 @@ export const ARTICLES: HelpArticle[] = [
         "**Tipos dentro de cada setor:** inteira, meia-entrada (50% por lei), meia social, gratuito ou um tipo seu.",
         "**Preço, quantidade e limite por pessoa** de cada tipo. O limite por pessoa vai até 20.",
       ),
-      p("Com **meia-entrada automática** ligada, o comprador pode marcar meia em cada ingresso de inteira, pagando 50%. Use lotes diferentes (1º lote, 2º lote...) como tipos separados, cada um com preço e quantidade."),
+      p("Com **meia-entrada automática** ligada, cada Inteira ganha um tipo **Meia-entrada** com 40% da quantidade. O preço sugerido é a metade da inteira, como prevê a Lei 12.933/2013; você pode ajustar, sem passar do valor da inteira. A meia é vendida só por esse tipo. Sem tipo Meia no setor, o comprador marca meia no ingresso de inteira e paga 50%. Use lotes diferentes (1º lote, 2º lote...) como tipos separados, cada um com preço e quantidade."),
       p("Os compradores veem cada lote como disponível, em breve ou esgotado. Para ajustar depois da publicação, use **Gerenciar lotes e cupons**, no painel do evento."),
     ],
     related: ["mapa-3d", "taxa-para-produtores"],

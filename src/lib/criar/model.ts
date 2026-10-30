@@ -12,8 +12,11 @@ export type MediaKey = "poster" | "banner" | "home" | "strip" | "share";
 export type VenuePlace = { id: string; addr: string; hood: string | null; lat: number; lng: number };
 /** `end`: horário de término (vazio = 6 h depois do início; antes do início = passa da meia-noite). */
 export type DraftSession = { id: string; date: string; doors: string; time: string; end?: string; cap: string; venue: string; city: string; place?: VenuePlace };
-/** `free`: ingresso gratuito (sem preço nem taxa); `limit`: máximo que cada pessoa pode levar desse tipo. */
-export type DraftType = { id: string; kind: TypeKind; name: string; price: string; qty: string; desc: string; free?: boolean; limit?: string };
+/**
+ * `free`: ingresso gratuito (sem preço nem taxa); `limit`: máximo que cada pessoa pode levar desse tipo.
+ * `meia` (só na Inteira): preço da meia automática que o produtor ajustou; vazio = metade da inteira (D-09).
+ */
+export type DraftType = { id: string; kind: TypeKind; name: string; price: string; qty: string; desc: string; free?: boolean; limit?: string; meia?: string };
 export type DraftSector = { id: string; name: string; color: string; open: boolean; types: DraftType[] };
 /** `spotifyId`/`image`: artista escolhido na busca do Spotify. */
 export type DraftArtist = { id: string; name: string; role: string; time: string; end: string; days: string[] | null; spotifyId?: string; image?: string | null };
@@ -123,6 +126,9 @@ export const toCents = (v: string) => Math.round(num(v) * 100);
 
 export type EffType = DraftType & { auto: boolean };
 
+/** Metade da inteira, em reais com vírgula ("80" → "40", "45" → "22,5"): a sugestão da meia (Lei 12.933). */
+export const meiaSug = (inteira: string) => String(Math.round((num(inteira) / 2) * 100) / 100).replace(".", ",");
+
 /** Tipos do setor como o comprador vê (com a meia-entrada automática), na ordem meia, social, inteira, outro. */
 export function effTypes(k: DraftSector, autoMeia: boolean): EffType[] {
   const out: EffType[] = k.types.map((t) => ({ ...t, auto: false }));
@@ -132,7 +138,7 @@ export function effTypes(k: DraftSector, autoMeia: boolean): EffType[] {
       if (t.kind !== "inteira" || t.free) continue;
       out.push({
         id: `${t.id}-m`, kind: "meia", name: k.types.filter((u) => u.kind === "inteira").length > 1 ? `Meia · ${t.name}` : "Meia-entrada",
-        price: String(Math.round((num(t.price) / 2) * 100) / 100).replace(".", ","), qty: String(Math.round(num(t.qty) * 0.4)),
+        price: num(t.meia) > 0 ? t.meia! : meiaSug(t.price), qty: String(Math.round(num(t.qty) * 0.4)),
         desc: MEIA_DESC, limit: t.limit, auto: true,
       });
     }
