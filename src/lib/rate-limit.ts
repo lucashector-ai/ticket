@@ -21,3 +21,20 @@ export async function allowHit(key: string, max: number, ttlSec: number): Promis
   } catch { /* sem KV: segue */ }
   return true;
 }
+
+/** Já passou de `max` tentativas em `key`? (só lê; conte com `addHit`) */
+export async function limitReached(key: string, max: number): Promise<boolean> {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    return Number((await env.KV.get(key)) ?? 0) >= max;
+  } catch { return false; }
+}
+
+/** Conta uma tentativa em `key` (janela de `ttlSec`). */
+export async function addHit(key: string, ttlSec: number): Promise<void> {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    const n = Number((await env.KV.get(key)) ?? 0);
+    await env.KV.put(key, String(n + 1), { expirationTtl: Math.max(60, ttlSec) });
+  } catch { /* sem KV: segue */ }
+}

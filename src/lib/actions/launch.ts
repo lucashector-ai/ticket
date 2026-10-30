@@ -19,8 +19,8 @@ type R = { ok: true; message?: string } | { ok: false; error: string };
 
 /* ---------- comprador: "me avise" e cadastro da pré-venda ---------- */
 
-/** cadastros ("me avise" / pré-venda) por IP a cada hora */
-const SIGNUPS_PER_HOUR = 15;
+/** cadastros ("me avise" / pré-venda) por IP a cada hora (folgado: muita gente divide o mesmo IP no celular) */
+const SIGNUPS_PER_HOUR = 40;
 
 export async function signupLaunch(eventSlug: string, kind: "abertura" | "presale", rawEmail: string): Promise<R> {
   const email = String(rawEmail ?? "").trim().toLowerCase();
