@@ -92,6 +92,27 @@ describe.skipIf(!TEST_DB)("conta sem e-mail ativado (banco de teste)", () => {
     expect(r.ok).toBe(true);
   });
 
+  it("D-08 (decidido: manter): produtor antigo sem e-mail confirmado segue produtor, cria evento e atualiza a página do produtor", async () => {
+    const { db, schema } = D;
+    const { eq } = await import("drizzle-orm");
+    const { producerStatus } = await import("@/lib/producer-apply");
+    const C = await import("@/lib/actions/criar");
+    const O = await import("@/lib/actions/onboarding");
+    const { emptyDraft } = await import("@/lib/criar/model");
+    const old = userOf("produtor-antigo", false);
+    const [org] = await db.insert(schema.organizers).values({ slug: qaId("org-antigo"), name: "Produtora Antiga QA", ownerUserId: old.id, onboarding: { city: "x" } as never }).returning();
+    orgs.push(org.id);
+    expect((await producerStatus(old)).status).toBe("producer");
+    session.user = old;
+    const ev = await C.saveEvent({ draft: { ...emptyDraft(), title: "QA D-08 produtor antigo", vis: "rascunho" }, eventId: null, dbMap: {} as never });
+    // atualizar a página do produtor (onboarding de novo) também segue liberado para quem já é produtor
+    const ob = await O.finishOnboarding({ name: `Produtora Antiga ${old.id.slice(-8)}`, city: "São Paulo", uf: "SP", instagram: "", tagline: "" });
+    session.user = null;
+    if (ev.ok) await db.delete(schema.events).where(eq(schema.events.id, ev.eventId));
+    expect(ev).toMatchObject({ ok: true });
+    expect(ob).toMatchObject({ ok: true });
+  });
+
   it("a sessão desatualizada não prende quem acabou de ativar: confere no banco do login", async () => {
     const { db } = D;
     const { sql } = await import("drizzle-orm");
