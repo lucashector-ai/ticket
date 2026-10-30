@@ -79,3 +79,7 @@ export function normalize(s: string) {
 export function slugify(s: string) {
   return normalize(s).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
+/** E-mail com só a primeira letra à mostra: "maria@gmail.com" → "m•••@gmail.com" (link de transferência aberto por outra conta). */
+export function hideEmail(e: string) {
+  return e.trim().toLowerCase().replace(/^([^@])[^@]*(@.+)$/, "$1•••$2");
+}

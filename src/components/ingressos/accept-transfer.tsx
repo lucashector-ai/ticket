@@ -10,19 +10,20 @@ type Props = {
   token: string;
   /** e-mail da conta logada */
   email: string;
-  /** e-mail para onde o ingresso foi enviado */
+  /** e-mail para onde o ingresso foi enviado (só a primeira letra quando é outra conta) */
   expected: string;
-  /** ingresso de outra pessoa enviado na compra: só a conta desse e-mail recebe */
+  /** a conta logada não é a do e-mail de destino: só a conta desse e-mail recebe (D-11) */
+  other: boolean;
+  /** ingresso de outra pessoa enviado na compra */
   gift?: boolean;
 };
 
 /** Botão "Aceitar ingresso" da página de transferência. */
-export function AcceptTransfer({ token, email, expected, gift = false }: Props) {
+export function AcceptTransfer({ token, email, expected, other, gift = false }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const next = `/transferencia/${token}`;
-  const other = !!email && email.toLowerCase() !== expected.toLowerCase();
   const go = async () => {
     setBusy(true);
     setErr(null);
@@ -34,12 +35,12 @@ export function AcceptTransfer({ token, email, expected, gift = false }: Props) 
     setBusy(false);
   };
 
-  if (gift && other) {
+  if (other) {
     return (
       <>
         <div className="gp-st off">
           <b>Este ingresso é de outra conta</b>
-          <span>Você está logado como <strong>{email}</strong>, mas o ingresso foi enviado para <strong>{expected}</strong>. Saia e entre (ou crie a conta) com esse e-mail para receber.</span>
+          <span>Este ingresso foi enviado para <strong>{expected}</strong>. Entre com esse e-mail para receber. Você está logado como <strong>{email}</strong>.</span>
         </div>
         <div className="gp-foot">
           <SignOutButton className="gp-pay" onConfirm={() => signOutTo(next)} title="Trocar de conta?" text={`Você sai de ${email} e volta para esta página para entrar com ${expected}.`}>
@@ -51,7 +52,6 @@ export function AcceptTransfer({ token, email, expected, gift = false }: Props) 
   }
   return (
     <>
-      {other && <p className="gp-st"><span>Você está logado como <b>{email}</b>. O ingresso vai para esta conta.</span></p>}
       {err && <p className="gp-err" role="alert">{err}</p>}
       <div className="gp-foot">
         <button className="gp-pay" type="button" onClick={() => void go()} disabled={busy}>{busy ? (gift ? "Recebendo…" : "Aceitando…") : gift ? "Receber meu ingresso" : "Aceitar ingresso"}</button>

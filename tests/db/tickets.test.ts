@@ -95,6 +95,42 @@ describe.skipIf(!TEST_DB)("ingresso: troca de dono e portaria (banco de teste)",
     expect(after?.code).toBe(r.firstCode);
   });
 
+  it("transferência comum (D-11): link aberto em outra conta é recusado; só a conta do e-mail de destino, ativada, recebe", async () => {
+    const { buyer: from, tks } = await paidOrder([{ name: "Quem Transfere", me: true, email: null }]);
+    const t = tks[0];
+    const to = `${qaId("recebe-dest")}@example.com`;
+    session.user = { id: from, email: `${from}@example.com`, name: "Quem Transfere", emailVerified: true };
+    const fd = new FormData();
+    fd.set("ticketId", t.id);
+    fd.set("email", to);
+    expect(await T.transferTicket(null, fd)).toMatchObject({ ok: true });
+    const { db, schema } = D;
+    const tr = await db.query.ticketTransfers.findFirst({ where: (await eq())(schema.ticketTransfers.ticketId, t.id) });
+    expect(tr?.kind).toBe("transfer");
+
+    // outra conta com o link encaminhado: recusa, mostra o e-mail só com a primeira letra e o ingresso não sai do lugar
+    session.user = { id: qaId("recebe-outra"), email: `${qaId("outra")}@example.com`, name: "Outra Pessoa", emailVerified: true };
+    const wrong = await T.acceptTransfer(tr!.token);
+    expect(wrong).toMatchObject({ ok: false, other: true });
+    if (!wrong.ok) expect(wrong.error).toBe(`Este ingresso foi enviado para q•••@example.com. Entre com esse e-mail para receber.`);
+    // conta criada com o e-mail de destino, mas sem ativar (não comprovou a caixa de entrada): pede a ativação
+    session.user = { id: qaId("recebe-sem-ativar"), email: to.toUpperCase(), name: "Sem Ativar", emailVerified: false };
+    expect(await T.acceptTransfer(tr!.token)).toMatchObject({ ok: false, verify: true });
+    let row = await db.query.tickets.findFirst({ where: (await eq())(schema.tickets.id, t.id) });
+    expect(row?.holderUserId).toBe(from);
+    expect(row?.status).toBe("transferred");
+
+    // a conta certa recebe
+    const dest = qaId("recebe-certa");
+    session.user = { id: dest, email: to, name: "Quem Recebe", emailVerified: true };
+    const ok = await T.acceptTransfer(tr!.token);
+    session.user = null;
+    expect(ok.ok).toBe(true);
+    row = await db.query.tickets.findFirst({ where: (await eq())(schema.tickets.id, t.id) });
+    expect(row?.holderUserId).toBe(dest);
+    expect(row?.status).toBe("valid");
+  });
+
   it("portaria: QR adulterado, outro evento, e dois operadores no mesmo ingresso", async () => {
     const { ev, tks } = await paidOrder([{ name: "Titular", me: true, email: null }]);
     const t = tks[0];

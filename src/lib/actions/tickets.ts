@@ -7,6 +7,8 @@ import { after } from "next/server";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
+import { emailConfirmed } from "@/lib/auth/verified";
+import { hideEmail } from "@/lib/format";
 import { mailTransferAccepted, mailTransferCancelled, mailTransferSent } from "@/lib/notify";
 import { deadlineLabel, deadlineOpen } from "@/lib/refund-policy";
 import { ticketCode } from "@/lib/tickets/code";
@@ -55,14 +57,15 @@ export async function cancelTransfer(ticketId: string): Promise<{ ok: true } | {
   return { ok: true };
 }
 
-export type AcceptResult = { ok: true; code: string } | { ok: false; error: string; login?: boolean; verify?: boolean };
+/** `other`: a conta logada não é a do e-mail para onde o ingresso foi enviado. */
+export type AcceptResult = { ok: true; code: string } | { ok: false; error: string; login?: boolean; verify?: boolean; other?: boolean };
 
 /**
- * Quem recebeu aceita pelo link do e-mail: o ingresso vai para a conta logada, com QR e código novos (o link vale
- * uma vez; quem enviou conhecia o código antigo e não entra mais com ele).
- * Ingresso de outra pessoa enviado na compra (kind "gift"): só a conta do e-mail informado no pedido pode receber
- * (o link só chega nesse e-mail, então quem o abre comprovou a caixa de entrada); o titular continua o nome
- * informado na compra.
+ * Quem recebeu aceita pelo link do e-mail: o ingresso vai para a conta com QR e código novos (o link vale uma vez;
+ * quem enviou conhecia o código antigo e não entra mais com ele).
+ * Só a conta do e-mail para onde o ingresso foi enviado recebe, com o e-mail confirmado (D-11): vale para a
+ * transferência (Meus ingressos → Transferir) e para o ingresso de outra pessoa enviado na compra (kind "gift").
+ * No envio da compra o titular continua o nome informado no pedido; na transferência passa a ser quem recebeu.
  */
 export async function acceptTransfer(token: string): Promise<AcceptResult> {
   const user = await getSessionUser();
@@ -76,11 +79,13 @@ export async function acceptTransfer(token: string): Promise<AcceptResult> {
   }
   if (tr.fromUserId === user.id) return { ok: false, error: "Você enviou este ingresso. Entre com a conta de quem vai receber." };
   const gift = tr.kind === "gift";
-  if (gift) {
-    if ((user.email ?? "").trim().toLowerCase() !== tr.toEmail.toLowerCase()) return { ok: false, error: `Este ingresso foi enviado para ${tr.toEmail}. Entre com a conta desse e-mail para receber.` };
-    // passa pelo cadastro normal: a conta precisa estar ativada (código do e-mail) antes de receber
-    if (!user.emailVerified) return { ok: false, error: "Ative sua conta com o código que enviamos por e-mail para receber o ingresso.", verify: true };
+  // o ingresso é de quem tem o e-mail para onde ele foi enviado (D-11), no envio da compra e na transferência:
+  // link encaminhado ou aberto em outra conta não leva o ingresso
+  if ((user.email ?? "").trim().toLowerCase() !== tr.toEmail.trim().toLowerCase()) {
+    return { ok: false, error: `Este ingresso foi enviado para ${hideEmail(tr.toEmail)}. Entre com esse e-mail para receber.`, other: true };
   }
+  // conta criada com o e-mail de outra pessoa não comprova a caixa de entrada: precisa do código da ativação
+  if (!(await emailConfirmed(user))) return { ok: false, error: "Ative sua conta com o código que enviamos por e-mail para receber o ingresso.", verify: true };
   const [claimed] = await db.update(ticketTransfers).set({ status: "accepted", toUserId: user.id, acceptedAt: new Date() })
     .where(and(eq(ticketTransfers.id, tr.id), eq(ticketTransfers.status, "pending"))).returning({ id: ticketTransfers.id });
   if (!claimed) return { ok: false, error: "Esta transferência não está mais disponível." };

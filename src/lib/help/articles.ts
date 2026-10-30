@@ -417,7 +417,7 @@ export const ARTICLES: HelpArticle[] = [
       ol(
         "Abra o ingresso em [Meus ingressos](/meus-ingressos) e toque em **Transferir**.",
         "Digite o e-mail de quem vai receber e confirme.",
-        "A pessoa recebe um e-mail com um link. Ela entra na conta dela (ou cria uma) e aceita. O ingresso vai para a conta dela com um QR code novo e o nome dela como titular.",
+        "A pessoa recebe um e-mail com um link. Ela entra (ou cria a conta) com **esse mesmo e-mail** e aceita. O ingresso vai para a conta dela com um QR code novo e o nome dela como titular.",
       ),
       warn("Assim que você confirma, o QR code do seu ingresso deixa de valer. Mande só para alguém de confiança e confira o e-mail antes."),
       h("Quando não dá para transferir"),
@@ -438,7 +438,7 @@ export const ARTICLES: HelpArticle[] = [
       h("Recebi um ingresso"),
       ol(
         "Abra o e-mail da Tickets Win e toque no link para aceitar.",
-        "Entre na sua conta ou crie uma. O ingresso vai para a conta que estiver aberta nessa hora.",
+        "Entre na sua conta ou crie uma **com o e-mail que recebeu o link**. Só a conta desse e-mail pode receber o ingresso: se o link for aberto em outra conta, ele não é aceito.",
         "Pronto: ele aparece em [Meus ingressos](/meus-ingressos) com um QR code novo.",
       ),
       h("Mandei e quero desfazer"),

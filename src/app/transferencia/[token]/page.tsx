@@ -8,6 +8,7 @@ import { AcceptTransfer } from "@/components/ingressos/accept-transfer";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getSessionUser } from "@/lib/auth/server";
+import { hideEmail } from "@/lib/format";
 import { userContact } from "@/lib/notify";
 import { eventLabels, forSession } from "@/lib/tickets/labels";
 
@@ -16,8 +17,9 @@ export const metadata: Metadata = { title: "Ingresso recebido", robots: { index:
 
 /**
  * Link do e-mail de transferência: mostra o ingresso e aceita na conta logada.
- * Também recebe o ingresso de outra pessoa enviado na compra (kind "gift"): aí só a conta do e-mail informado
- * no pedido pode receber (entrar ou criar conta volta para cá pelo ?next=).
+ * Também recebe o ingresso de outra pessoa enviado na compra (kind "gift"). Nos dois casos só a conta do e-mail
+ * para onde o ingresso foi enviado recebe (D-11; entrar ou criar conta volta para cá pelo ?next=). Para quem não
+ * está nessa conta, o e-mail aparece só com a primeira letra.
  */
 export default async function TransferenciaPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -37,6 +39,8 @@ export default async function TransferenciaPage({ params }: { params: Promise<{ 
   const L = eventLabels(forSession(t.event, t.ticketType.session));
   const next = `/transferencia/${token}`;
   const mine = tr.status === "accepted" && !!user && tr.toUserId === user.id;
+  const same = !!user?.email && user.email.trim().toLowerCase() === tr.toEmail.trim().toLowerCase();
+  const to = same ? tr.toEmail : hideEmail(tr.toEmail);
   const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
 
   return (
@@ -55,10 +59,10 @@ export default async function TransferenciaPage({ params }: { params: Promise<{ 
           {gift ? (
             <div className="gp-st">
               <b>{t.ticketType.name}{t.halfPrice ? " · meia-entrada" : ""}{t.holderName ? ` · ${t.holderName}` : ""}</b>
-              <span>{from?.name || "Quem comprou"} comprou este ingresso para <strong>{tr.toEmail}</strong>. Entre ou crie sua conta com esse e-mail e receba: o ingresso vai para a sua conta com um QR code novo, só seu.{t.halfPrice ? " Leve o documento da meia-entrada." : ""}</span>
+              <span>{from?.name || "Quem comprou"} comprou este ingresso para <strong>{to}</strong>. Entre ou crie sua conta com esse e-mail e receba: o ingresso vai para a sua conta com um QR code novo, só seu.{t.halfPrice ? " Leve o documento da meia-entrada." : ""}</span>
             </div>
           ) : (
-            <div className="gp-st"><b>{t.ticketType.name}{t.halfPrice ? " · meia-entrada" : ""}</b><span>Enviado para {tr.toEmail}. Ao aceitar, o ingresso vai para a sua conta com um QR code novo, só seu.</span></div>
+            <div className="gp-st"><b>{t.ticketType.name}{t.halfPrice ? " · meia-entrada" : ""}</b><span>Enviado para <strong>{to}</strong>. Entre ou crie sua conta com esse e-mail e aceite: o ingresso vai para a sua conta com um QR code novo, só seu.</span></div>
           )}
           {tr.status === "cancelled" || tr.status === "expired" ? (
             <div className="gp-st off"><b>{gift ? "Envio cancelado" : "Transferência cancelada"}</b><span>Quem enviou desfez {gift ? "o envio" : "a transferência"}. Este link não vale mais.</span></div>
@@ -70,11 +74,11 @@ export default async function TransferenciaPage({ params }: { params: Promise<{ 
           {mine ? (
             <div className="gp-foot"><Link href={`/ingressos/${t.code}`}>Abrir o ingresso</Link></div>
           ) : tr.status === "pending" && (user ? (
-            <AcceptTransfer token={token} email={user.email ?? ""} expected={tr.toEmail} gift={gift} />
+            <AcceptTransfer token={token} email={user.email ?? ""} expected={to} other={!same} gift={gift} />
           ) : (
             <div className="gp-foot">
               <Link className="gp-pay" href={`/entrar?next=${encodeURIComponent(next)}`}>{gift ? "Entrar para receber" : "Entrar para aceitar"}</Link>
-              <Link href={`/cadastro?next=${encodeURIComponent(next)}${gift ? `&email=${encodeURIComponent(tr.toEmail)}` : ""}`}>Criar conta grátis</Link>
+              <Link href={`/cadastro?next=${encodeURIComponent(next)}&email=${encodeURIComponent(tr.toEmail)}`}>Criar conta grátis</Link>
             </div>
           ))}
         </section>

@@ -392,7 +392,7 @@ export const mailTransferSent = safe("transfer", async (transferId: string, rese
       preheader: "Aceite para o ingresso ir para a sua conta.",
       eyebrow: "Ingresso recebido", title: `${first} te enviou um ingresso`,
       paragraphs: [`${fromName} transferiu um ingresso de ${x.e.title} para este e-mail. Aceite para ele aparecer em Meus ingressos com um QR code novo, só seu.`],
-      blocks: [eventBlock(x.e), ticket, { kind: "note", text: "Se você ainda não tem conta, crie com este mesmo e-mail. É grátis." }],
+      blocks: [eventBlock(x.e), ticket, { kind: "note", text: `Use a conta do e-mail ${x.tr.toEmail}: é só ela que pode receber este ingresso. Se você ainda não tem conta, crie com este mesmo e-mail. É grátis.` }],
       cta: { label: "Aceitar ingresso", url: `/transferencia/${x.tr.token}` },
       reason: `Você recebeu este e-mail porque ${fromName} transferiu um ingresso para ${x.tr.toEmail} na Tickets Win.`,
     }, siteBase()),
