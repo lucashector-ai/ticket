@@ -231,3 +231,18 @@ Firefox e WebKit liberados. No WebKit a sessão é injetada pela rota do Playwri
 | Seletor de produtoras, Nova produtora (2 criadas, limite 3), troca e volta, produtora à vista | Chromium 1280, WebKit 390; topo 320/390/768/1280 × 3 | VALIDADO |
 | Admin convidado: convite → aceitar → painel da dona → criar evento → editar evento da dona; sem Configurações/convite | Chromium 390/1280, Firefox 1280, WebKit 390 | VALIDADO (depois de 3c4cfb9) |
 | D-08: produtora com e-mail não confirmado cria e publica | Chromium/Firefox/WebKit | VALIDADO |
+
+## Rodada 5 (Marcos, 30/10) · celular a partir da referência do dono
+| Jornada | Motores × larguras | Resultado |
+|---|---|---|
+| Card da home com o toque preso (hover) na pílula do preço | 3 motores × 320/390/430 (home e Explorar) | VALIDADO (antes vazava 140 px) |
+| Home no celular: pílula de cidade → folha → escolher e voltar a "Todas"; chips de categoria; "Ver tudo" | 3 motores × 320/375/390/430 | VALIDADO |
+| Menu: pelo topo e pela busca grudada; Esc, toque fora, foco devolvido; com e sem conta | 3 motores × 320/375/390/430; sem conta WebKit 390 | VALIDADO |
+| Barra de abas: Explorar, Ingressos (sem conta → login com a aba marcada), Perfil; presença por página (home, Explorar, Meus ingressos, Conta, Meus eventos, produtor, artista) e ausência (evento, tela cheia, checkout, painel) | Chromium/Firefox/WebKit 390; Chromium/WebKit 768 (sem barra) | VALIDADO |
+| Checkout Dados → Pagamento → "Pedido confirmado" no cartão de teste | Chromium 390, WebKit 390, Firefox 430 (5x) | VALIDADO (#48252, #48254, #48256) |
+| Checkout Dados → Pagamento → Pix de teste → "Pedido confirmado" | Firefox 390, WebKit 320 | VALIDADO (#48253, #48255) |
+| Checkout sem rolagem lateral e com a barra no lugar | 320/375/390/430/768/1280 | VALIDADO |
+| Limite por pessoa no checkout (9º ingresso do mesmo tipo) | Firefox 390 | VALIDADO (mensagem certa) |
+| axe: home, menu aberto, folha de cidade, Dados, Pagamento (Pix e cartão) | Chromium 390 | VALIDADO (só a arte do cartaz no resumo) |
+| Compra de evento já encerrado pelo link do checkout | Firefox 430 | FALHOU → handoff ao Romano (U-73) |
+| Payment Element real e teclado de verdade sobre a barra | — | BLOQUEADO (sem chave no local; Playwright não abre teclado) |

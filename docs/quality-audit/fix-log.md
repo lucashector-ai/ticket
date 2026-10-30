@@ -136,6 +136,10 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 rodada 3 | 33a229d | E-mails do produtor sem nome de fornecedor; nome da campanha com reticências | Firefox/WebKit 390 e 1280 | VALIDADO |
 | 30/10 rodada 3 | de26b76 | Banco: diz o saque mínimo | tsc/eslint | CORRIGIDO, NÃO VALIDADO |
 | 30/10 rodada 3 | 1c1f6b1 | Página do evento: trilha legível sobre cartaz claro (topo mais escuro) | contraste medido no print, 390/1280, 3 cartazes | VALIDADO |
+| 30/10 rodada 5 | 02f085b | Card de evento: pílula preta não abre mais no toque nem ≤ 640 px (vazava 140 px por cima do card ao lado, sem texto) | hover forçado nos cards da home e do Explorar, 320/390/430 × 3 motores | VALIDADO |
+| 30/10 rodada 5 | 3111151 | Celular: barra de abas, menu lateral, cidade em pílula com folha, menu dentro da busca grudada, "Ver tudo" e chips de categoria | 320/375/390/430 × 3 motores (home, cidade, chips, menu do topo e da busca, Esc/foco, Explorar), 768 × 2; axe sem violações (home, menu, cidade) | VALIDADO |
+| 30/10 rodada 5 | 17bc373 | Checkout no celular no formato da referência: voltar redondo + "Checkout", resumo em cima no pagamento, Pix/Cartão em lista com rádio, "Em até {MAX_INSTALLMENTS}x", botão preto fixo de largura total | pedidos de teste #48252 (cartão, Chromium 390), #48253 (Pix, Firefox 390), #48254 (cartão, WebKit 390), #48255 (Pix, WebKit 320), #48256 (cartão 5x, Firefox 430); 375/768/1280 sem rolagem lateral | VALIDADO |
+| 30/10 rodada 5 | b71b1b8 | Barra de abas: aba de destino marcada durante o login (Ingressos sem conta) | WebKit 390 sem login | VALIDADO |
 
 ### Dados de teste criados pelo Marcos (banco de teste)
 - 2 eventos publicados "QA Marcos · Show de teste (não comprar)" (`/eventos/qa-marcos-show-de-teste-nao-comprar` e `…-2`), conta de teste existente, Casa Tangente, 7/11. Apagar depois.
@@ -146,6 +150,7 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 - **Conta nova (rodada 2):** `teste+marcos-produtor@example.com` (login do Neon Auth, compartilhado com a produção; e-mail **não ativado**) com 1 inscrição de produtor "em análise" (São Paulo – SP, Show) no banco de teste. Apagar a conta e a inscrição depois.
 
 - **Rodada 3 (banco de teste, conta de teste e `teste+marcos-produtor@example.com`; nenhuma conta nova):** eventos "QA Marcos · Festival firefox/webkit … (não comprar)" (criados pela interface: `qa-marcos-festival-firefox-nao-comprar`, `…-firefox-1280-…`, `…-webkit-390-…` e 5 tentativas `…-webkit-1280-…` a `…-5`). Pedidos Pix de teste: #50121–#50128 (compras nos 3 motores), #50895 (revenda comprada pela segunda conta; o ingresso foi depois transferido para a conta de teste, hoje TW-R3KC-FJJN), #50896/#50897 (grupo `b87mzyatph`, completo), #50898–#50900 (cancelamento e reembolso: #50898 e #49261/#49262 cancelados pelo comprador, #50899 reembolsado pelo produtor, #50900 com 1 ingresso enviado a `teste+qa-convidado1@example.com`, sem conta). Revenda: 1 anúncio vendido, 1 retirado. 4 cadastros "me avise"/pré-venda `teste+marcos-lanc-*@example.com` no `qa-marcos-show-de-teste-nao-comprar` (lançamento voltou ao padrão: sem data, fila automática 300; a fila simulada foi apagada). 1 rascunho de e-mail "Divulgar o evento · QA Marcos · Só cartaz" (não enviado). 1 código de ativação pedido para a conta de teste.
+- **Rodada 5 (banco de teste novo, contas de teste do dono; nenhuma conta nova):** pedidos de teste #48252–#48255 (Luz de Chão, comprador) e #48256 (Calourada Sem Fim, cartão 5x: evento já encerrado, ver handoff). O comprador chegou ao limite de 8 ingressos do 1º lote de Luz de Chão (a mensagem do limite apareceu certa). CPF/celular de teste gravados no perfil do comprador pelo checkout.
 
 ## Marca
 
