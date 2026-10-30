@@ -1,7 +1,7 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
-import { and, eq, inArray, lt } from "drizzle-orm";
+import { randomBytes, randomUUID } from "node:crypto";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
@@ -13,8 +13,10 @@ import { mailTransferAccepted, mailTransferCancelled, mailTransferSent } from "@
 import { deadlineLabel, deadlineOpen } from "@/lib/refund-policy";
 import { ticketCode } from "@/lib/tickets/code";
 import { allowHit } from "@/lib/rate-limit";
+import { abortOf, ensure, runBatch } from "@/lib/payments/tx";
+import { trailInsert } from "@/lib/tickets/trail";
 
-const { tickets, ticketTransfers } = schema;
+const { tickets, ticketTransfers, ticketEvents } = schema;
 
 /** Transfere um ingresso para outro e-mail. O QR antigo é cancelado na hora (segredo rotacionado);
  *  o ingresso vai para a conta de quem recebe quando a pessoa aceita pelo link do e-mail. */
@@ -35,8 +37,22 @@ export async function transferTicket(_prev: { ok?: boolean; error?: string } | n
   // cada transferência manda um e-mail: transferir e cancelar em sequência viraria disparo de e-mails
   if (!(await allowHit(`transfer:${user.id}`, 20, 3600))) return { error: "Muitas transferências em pouco tempo. Tente de novo em uma hora." };
   const token = randomBytes(24).toString("hex");
-  const [tr] = await db.insert(ticketTransfers).values({ ticketId: t.id, fromUserId: user.id, toEmail: parsed.data.email.toLowerCase(), token, status: "pending" }).returning({ id: ticketTransfers.id });
-  await db.update(tickets).set({ status: "transferred", secret: randomBytes(16).toString("hex") }).where(eq(tickets.id, t.id));
+  const tr = { id: randomUUID() };
+  const toEmail = parsed.data.email.toLowerCase();
+  // numa transação: o ingresso trava (só se ainda for desta conta e válido: dois envios ao mesmo tempo não abrem
+  // dois links), o link nasce e o rastro registra o envio (D-12)
+  try {
+    await runBatch([
+      ensure(sql`(select count(*) from u) = 1`, "ticket", sql`with u as (
+        update ${tickets} set status = 'transferred', secret = ${randomBytes(16).toString("hex")}, updated_at = now()
+        where id = ${t.id} and holder_user_id = ${user.id} and status = 'valid' returning 1)`),
+      db.insert(ticketTransfers).values({ id: tr.id, ticketId: t.id, fromUserId: user.id, toEmail, token, status: "pending" }),
+      trailInsert([{ ticketId: t.id, kind: "transferencia_enviada", code: t.code, fromUserId: user.id, toEmail, holderName: t.holderName, refId: tr.id }]),
+    ]);
+  } catch (e) {
+    if (abortOf(e) === "ticket") return { error: "Este ingresso não pode ser transferido." };
+    throw e;
+  }
   after(() => mailTransferSent(tr.id));
   revalidatePath("/meus-ingressos");
   return { ok: true };
@@ -48,10 +64,22 @@ export async function cancelTransfer(ticketId: string): Promise<{ ok: true } | {
   if (!user) return { ok: false, error: "Faça login de novo." };
   const t = await db.query.tickets.findFirst({ where: and(eq(tickets.id, ticketId), eq(tickets.holderUserId, user.id), eq(tickets.status, "transferred")), columns: { id: true } });
   if (!t) return { ok: false, error: "Esta transferência não pode mais ser cancelada." };
-  const [tr] = await db.update(ticketTransfers).set({ status: "cancelled" })
-    .where(and(eq(ticketTransfers.ticketId, t.id), eq(ticketTransfers.fromUserId, user.id), eq(ticketTransfers.status, "pending"))).returning({ id: ticketTransfers.id });
+  // um comando só (uma transação): o link deixa de valer, o ingresso volta com QR novo e o rastro registra (D-12)
+  const r = await db.execute<{ id: string }>(sql`
+    with tr as (
+      update ${ticketTransfers} set status = 'cancelled', updated_at = now()
+      where ticket_id = ${t.id} and from_user_id = ${user.id} and status = 'pending' returning id, ticket_id, to_email
+    ), tk as (
+      update ${tickets} set status = 'valid', secret = ${randomBytes(16).toString("hex")}, updated_at = now()
+      where id in (select ticket_id from tr) and status = 'transferred' returning id, code, holder_name
+    ), ev as (
+      insert into ${ticketEvents} (ticket_id, kind, code, from_user_id, to_email, holder_name, ref_id)
+      select tk.id, 'transferencia_cancelada', tk.code, ${user.id}, tr.to_email, tk.holder_name, tr.id from tr join tk on tk.id = tr.ticket_id
+      returning 1
+    )
+    select id from tr`);
+  const tr = r.rows[0];
   if (!tr) return { ok: false, error: "A pessoa já aceitou o ingresso." };
-  await db.update(tickets).set({ status: "valid", secret: randomBytes(16).toString("hex") }).where(eq(tickets.id, t.id));
   after(() => mailTransferCancelled(tr.id));
   revalidatePath("/meus-ingressos");
   return { ok: true };
@@ -86,15 +114,33 @@ export async function acceptTransfer(token: string): Promise<AcceptResult> {
   }
   // conta criada com o e-mail de outra pessoa não comprova a caixa de entrada: precisa do código da ativação
   if (!(await emailConfirmed(user))) return { ok: false, error: "Ative sua conta com o código que enviamos por e-mail para receber o ingresso.", verify: true };
-  const [claimed] = await db.update(ticketTransfers).set({ status: "accepted", toUserId: user.id, acceptedAt: new Date() })
-    .where(and(eq(ticketTransfers.id, tr.id), eq(ticketTransfers.status, "pending"))).returning({ id: ticketTransfers.id });
-  if (!claimed) return { ok: false, error: "Esta transferência não está mais disponível." };
-  const [t] = await db.update(tickets)
-    .set({ holderUserId: user.id, ...(gift ? {} : { holderName: user.name || null }), status: "valid", code: ticketCode(), secret: randomBytes(16).toString("hex") })
-    .where(and(eq(tickets.id, tr.ticketId), eq(tickets.holderUserId, tr.fromUserId), eq(tickets.status, "transferred")))
-    .returning({ code: tickets.code });
+  // um comando só (uma transação): o ingresso muda de dono com código e QR novos, o link vira "aceito" e o rastro
+  // registra de quem para quem, com o código anterior (lido antes da troca, no mesmo comando). Dois aceites ao mesmo
+  // tempo: o segundo não acha mais o ingresso "transferred" e não muda nada.
+  const code = ticketCode();
+  const r = await db.execute<{ code: string }>(sql`
+    with tk as (
+      update ${tickets} set holder_user_id = ${user.id}, holder_name = ${gift ? sql`holder_name` : sql`${user.name || null}`},
+        status = 'valid', code = ${code}, secret = ${randomBytes(16).toString("hex")}, updated_at = now()
+      where id = ${tr.ticketId} and holder_user_id = ${tr.fromUserId} and status = 'transferred'
+        and exists (select 1 from ${ticketTransfers} where id = ${tr.id} and status = 'pending')
+      returning id, code, holder_name
+    ), c as (
+      update ${ticketTransfers} set status = 'accepted', to_user_id = ${user.id}, accepted_at = now(), updated_at = now()
+      where id = ${tr.id} and status = 'pending' and exists (select 1 from tk) returning 1
+    ), ev as (
+      insert into ${ticketEvents} (ticket_id, kind, code, prev_code, from_user_id, to_user_id, to_email, holder_name, ref_id)
+      select tk.id, ${gift ? "presente_aceito" : "transferencia_aceita"}, tk.code, (select code from ${tickets} where id = ${tr.ticketId}),
+        ${tr.fromUserId}, ${user.id}, ${tr.toEmail}, tk.holder_name, ${tr.id}
+      from tk returning 1
+    )
+    select code from tk`);
+  const t = r.rows[0];
   if (!t) {
-    await db.update(ticketTransfers).set({ status: "cancelled" }).where(eq(ticketTransfers.id, tr.id));
+    const now = await db.query.ticketTransfers.findFirst({ where: eq(ticketTransfers.id, tr.id), columns: { status: true } });
+    if (now?.status !== "pending") return { ok: false, error: "Esta transferência não está mais disponível." };
+    // o ingresso não está mais esperando este envio (reembolsado, cancelado): o link deixa de valer
+    await db.update(ticketTransfers).set({ status: "cancelled" }).where(and(eq(ticketTransfers.id, tr.id), eq(ticketTransfers.status, "pending")));
     return { ok: false, error: "Este ingresso não pode mais ser transferido." };
   }
   await db.insert(schema.userProfiles).values({ userId: user.id, name: user.name ?? null, email: user.email }).onConflictDoNothing();
@@ -108,12 +154,19 @@ export async function resendTransfer(transferId: string): Promise<{ ok: true } |
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Faça login de novo." };
   if (!z.string().uuid().safeParse(transferId).success) return { ok: false, error: "Envio não encontrado." };
-  const [tr] = await db.update(ticketTransfers).set({ updatedAt: new Date() })
-    .where(and(
-      eq(ticketTransfers.id, transferId), eq(ticketTransfers.fromUserId, user.id), eq(ticketTransfers.status, "pending"),
-      lt(ticketTransfers.updatedAt, new Date(Date.now() - 60_000)),
-    ))
-    .returning({ id: ticketTransfers.id });
+  // o reenvio também entra no rastro (D-12), no mesmo comando
+  const r = await db.execute<{ id: string }>(sql`
+    with tr as (
+      update ${ticketTransfers} set updated_at = now()
+      where id = ${transferId} and from_user_id = ${user.id} and status = 'pending' and updated_at < ${new Date(Date.now() - 60_000)}
+      returning id, ticket_id, to_email, kind
+    ), ev as (
+      insert into ${ticketEvents} (ticket_id, kind, code, from_user_id, to_email, holder_name, ref_id, note)
+      select tr.ticket_id, 'transferencia_reenviada', t.code, ${user.id}, tr.to_email, t.holder_name, tr.id, case when tr.kind = 'gift' then 'Envio da compra' end
+      from tr join ${tickets} t on t.id = tr.ticket_id returning 1
+    )
+    select id from tr`);
+  const tr = r.rows[0];
   if (!tr) {
     const cur = await db.query.ticketTransfers.findFirst({ where: and(eq(ticketTransfers.id, transferId), eq(ticketTransfers.fromUserId, user.id)), columns: { status: true } });
     if (!cur) return { ok: false, error: "Envio não encontrado." };

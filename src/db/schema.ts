@@ -615,6 +615,45 @@ export const ticketTransfers = pgTable(
   ],
 );
 
+/**
+ * Rastro de cada ingresso (D-12), gravado na mesma transação de cada operação: emissão, envio por e-mail na compra,
+ * transferência (enviada, reenviada, aceita, cancelada), revenda vendida, reembolso/cancelamento e check-in (e
+ * check-in recusado). Só a central da Tickets Win lê (src/lib/admin-trail.ts); produtor e comprador não veem.
+ * `code`: código do ingresso depois do evento; `prev_code`: o anterior, quando o evento troca o código (S-01).
+ * Ingressos de antes desta tabela: o rastro é montado na consulta a partir de pedidos, transferências, revenda,
+ * reembolsos e check-in (sem migração).
+ */
+export const ticketEvents = pgTable(
+  "ticket_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticketId: uuid("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
+    /** emitido | presente | presente_aceito | transferencia_enviada | transferencia_reenviada | transferencia_aceita |
+     *  transferencia_cancelada | revenda_vendida | reembolso | cancelado | checkin | checkin_recusado */
+    kind: varchar("kind", { length: 32 }).notNull(),
+    code: varchar("code", { length: 24 }),
+    prevCode: varchar("prev_code", { length: 24 }),
+    /** quem fez / de quem saiu o ingresso e para quem foi (contas), e o e-mail de destino nos envios */
+    fromUserId: text("from_user_id"),
+    toUserId: text("to_user_id"),
+    toEmail: varchar("to_email", { length: 254 }),
+    /** titular (nome no ingresso) naquele momento */
+    holderName: varchar("holder_name", { length: 160 }),
+    orderId: uuid("order_id"),
+    /** transferência, anúncio de revenda ou linha de reembolso ligada ao evento */
+    refId: uuid("ref_id"),
+    amountCents: integer("amount_cents"),
+    /** operador da portaria, motivo da recusa, tipo de reembolso */
+    note: varchar("note", { length: 200 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("ticket_events_ticket_idx").on(t.ticketId, t.createdAt), index("ticket_events_code_idx").on(t.code),
+    index("ticket_events_prev_code_idx").on(t.prevCode), index("ticket_events_to_email_idx").on(t.toEmail),
+    index("ticket_events_from_idx").on(t.fromUserId), index("ticket_events_to_idx").on(t.toUserId),
+  ],
+);
+
 /* ---------- social ---------- */
 export const favorites = pgTable(
   "favorites",
@@ -1069,6 +1108,7 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
 }));
 export const ticketsRelations = relations(tickets, ({ one }) => ({
   order: one(orders, { fields: [tickets.orderId], references: [orders.id] }),
+  orderItem: one(orderItems, { fields: [tickets.orderItemId], references: [orderItems.id] }),
   event: one(events, { fields: [tickets.eventId], references: [events.id] }),
   ticketType: one(ticketTypes, { fields: [tickets.ticketTypeId], references: [ticketTypes.id] }),
 }));

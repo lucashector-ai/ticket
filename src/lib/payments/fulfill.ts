@@ -13,6 +13,7 @@ import { refundOrder } from "@/lib/payments/refund";
 import { ticketCode } from "@/lib/tickets/code";
 import { overLimit, type Bought } from "@/lib/tickets/limits";
 import { abortOf as abortTx, ensure as ensureTx, lockKeys, runBatch } from "@/lib/payments/tx";
+import { trailInsert } from "@/lib/tickets/trail";
 
 /*
  * Emissão dos ingressos de um pedido pago: a MESMA rotina para o webhook da Stripe, para a conferência
@@ -253,6 +254,17 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
   for (const id of typeIds) steps.push(db.update(ticketTypes).set({ sold: sql`${ticketTypes.sold} + ${qty.get(id)}` }).where(eq(ticketTypes.id, id)));
   steps.push(db.insert(tickets).values(rows));
   if (gifts.length) steps.push(db.insert(ticketTransfers).values(gifts));
+  // rastro (D-12): a emissão de cada ingresso (comprador e titular, valor do ingresso) e o envio por e-mail dos que
+  // são de outra pessoa, na mesma transação
+  const unit = new Map(order.items.map((i) => [i.id, i.unitPriceCents]));
+  const codeOf = new Map<string, string>(rows.map((t) => [t.id, t.code]));
+  steps.push(trailInsert([
+    ...rows.map((t) => {
+      const p = unit.get(t.orderItemId) ?? 0;
+      return { ticketId: t.id, kind: "emitido" as const, code: t.code, fromUserId: order.userId, toUserId: order.userId, holderName: t.holderName, orderId: order.id, amountCents: p - (t.halfPrice ? Math.round(p / 2) : 0) };
+    }),
+    ...gifts.map((g) => ({ ticketId: g.ticketId, kind: "presente" as const, code: codeOf.get(g.ticketId) ?? null, fromUserId: order.userId, toEmail: g.toEmail, holderName: giftTo.get(g.ticketId)?.name ?? null, orderId: order.id, refId: g.id })),
+  ]));
   if (order.couponId) steps.push(db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId)));
   // depois da baixa: vendidos + vagas seguradas por grupos cabem na lotação (a parte de grupo segurada entra direto)
   if (!held) {
@@ -330,6 +342,12 @@ async function fulfillResale(order: OrderRow & { items: ItemRow[] }, pay: { ref:
     db.update(ticketTransfers).set({ status: "cancelled" }).where(and(eq(ticketTransfers.ticketId, l.ticketId), eq(ticketTransfers.status, "pending"))),
   ];
   if (gifts.length) steps.push(db.insert(ticketTransfers).values(gifts));
+  // rastro (D-12): vendedor → comprador, código antigo → novo, valor do anúncio (e o envio por e-mail, se for presente)
+  const holderName = order.holders?.[0]?.name ?? order.buyerName ?? null;
+  steps.push(trailInsert([
+    { ticketId: l.ticketId, kind: "revenda_vendida", prevCode: l.ticket.code, code: t.code, fromUserId: l.sellerUserId, toUserId: userId, holderName, orderId: order.id, refId: l.id, amountCents: l.priceCents },
+    ...gifts.map((g) => ({ ticketId: g.ticketId, kind: "presente" as const, code: t.code, fromUserId: userId, toEmail: g.toEmail, holderName, orderId: order.id, refId: g.id })),
+  ]));
   try {
     await runBatch(steps);
   } catch (e) {

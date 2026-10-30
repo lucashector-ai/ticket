@@ -6,6 +6,7 @@ import { qrPayload } from "@/lib/tickets/qr";
 import { getTicketByCode } from "@/lib/data/ingressos";
 import { checkinGuest, guestKind, guestTokenFrom } from "@/lib/guest-list";
 import { sessionRefusal } from "@/lib/checkin-day";
+import { trailInsert, trailNote } from "@/lib/tickets/trail";
 
 const PAYLOAD_RE = /^ONDE\|((?:TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4})\|([A-Za-z0-9_-]{16})$/;
 const CODE_RE = /^(?:TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
@@ -42,33 +43,42 @@ export async function checkinTicket(input: string, eventIds: Set<string> | null,
 
   const ticket = await getTicketByCode(code);
   if (!ticket) return { ok: false, status: 404, error: "Ingresso não encontrado." };
-  if (m && !same(await qrPayload(ticket.code, ticket.secret), raw)) return { ok: false, status: 404, error: "QR code inválido ou de um ingresso transferido." };
-  if (eventIds && !eventIds.has(ticket.eventId)) return { ok: false, status: 403, error: `Este ingresso é de outro evento (${ticket.event.title}).` };
 
   const info = { code: ticket.code, holderName: ticket.holderName, event: ticket.event.title, ticketType: ticket.ticketType.name, sector: ticket.ticketType.sector };
-  if (ticket.status === "used") return { ok: false, status: 409, error: "Ingresso já utilizado.", checkedInAt: ticket.checkedInAt, ticket: info };
+  // recusa de um ingresso que existe também entra no rastro (D-12): mostra à central tentativas com QR velho,
+  // ingresso de outro dia ou já usado (fora da transação: nada mudou no ingresso)
+  const refused = async (r: CheckinResult): Promise<CheckinResult> => {
+    await trailInsert([{ ticketId: ticket.id, kind: "checkin_recusado", code: ticket.code, holderName: ticket.holderName, note: trailNote(`${r.error ?? "Recusado"} · ${by}`) }]).catch((e) => console.error("checkin: rastro", e));
+    return r;
+  };
+  if (m && !same(await qrPayload(ticket.code, ticket.secret), raw)) return refused({ ok: false, status: 404, error: "QR code inválido ou de um ingresso transferido." });
+  if (eventIds && !eventIds.has(ticket.eventId)) return refused({ ok: false, status: 403, error: `Este ingresso é de outro evento (${ticket.event.title}).` });
+  if (ticket.status === "used") return refused({ ok: false, status: 409, error: "Ingresso já utilizado.", checkedInAt: ticket.checkedInAt, ticket: info });
   if (ticket.status !== "valid") {
     const why = ticket.status === "transferred" ? "transferido" : ticket.status === "refunded" ? "reembolsado" : "cancelado";
-    return { ok: false, status: 409, error: `Ingresso ${why}.`, ticket: info };
+    return refused({ ok: false, status: 409, error: `Ingresso ${why}.`, ticket: info });
   }
   // evento de várias datas: o ingresso é de uma data (a sessão do tipo) e só entra nela
   if (ticket.ticketType.sessionId) {
     const sessions = await db.select({ id: schema.eventSessions.id, startAt: schema.eventSessions.startAt, doorsAt: schema.eventSessions.doorsAt, sortOrder: schema.eventSessions.sortOrder })
       .from(schema.eventSessions).where(eq(schema.eventSessions.eventId, ticket.eventId));
     const wrong = sessionRefusal(ticket.ticketType.sessionId, sessions, new Date());
-    if (wrong) return { ok: false, status: 409, error: wrong, ticket: info };
+    if (wrong) return refused({ ok: false, status: 409, error: wrong, ticket: info });
   }
   // só marca se ainda estiver válido: duas leituras ao mesmo tempo não passam as duas
-  // e, no mesmo comando, entrou no evento: sai da revenda (uma ida ao banco a menos em cada leitura da fila)
+  // e, no mesmo comando, entrou no evento: sai da revenda (uma ida ao banco a menos em cada leitura da fila) e o
+  // rastro registra a entrada e quem liberou (D-12)
   const now = new Date();
   const done = await db.execute<{ n: number }>(sql`
     with u as (
-      update ${schema.tickets} set status = 'used', checked_in_at = ${now}, updated_at = now() where id = ${ticket.id} and status = 'valid' returning id
+      update ${schema.tickets} set status = 'used', checked_in_at = ${now}, updated_at = now() where id = ${ticket.id} and status = 'valid' returning id, code, holder_name
     ), r as (
       update ${schema.resaleListings} set status = 'cancelled', updated_at = now() where ticket_id in (select id from u) and status in ('active', 'reserved') returning 1
+    ), ev as (
+      insert into ${schema.ticketEvents} (ticket_id, kind, code, holder_name, note, created_at) select id, 'checkin', code, holder_name, ${trailNote(by)}, ${now} from u returning 1
     )
     select (select count(*) from u)::int as n`);
-  if (!done.rows[0]?.n) return { ok: false, status: 409, error: "Ingresso já utilizado.", ticket: info };
+  if (!done.rows[0]?.n) return refused({ ok: false, status: 409, error: "Ingresso já utilizado.", ticket: info });
   return { ok: true, status: 200, checkedInAt: now, ticket: info };
 }
 

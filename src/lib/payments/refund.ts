@@ -10,8 +10,15 @@ import { SERVICE_FEE_RATE } from "@/lib/pricing";
 import { isTestPayment, stripe, stripeEnabled } from "@/lib/payments/stripe";
 import { mailTicketsRefunded } from "@/lib/refund-mail";
 import { abortOf, ensure, runBatch } from "@/lib/payments/tx";
+import { trailNote } from "@/lib/tickets/trail";
 
-const { orders, tickets, ticketTypes, resaleListings, ticketTransfers, orderRefunds } = schema;
+const { orders, tickets, ticketTypes, resaleListings, ticketTransfers, orderRefunds, ticketEvents } = schema;
+
+/** Origem do reembolso no rastro do ingresso (D-12, só a central vê). */
+const REFUND_KIND_LABEL: Record<RefundKind, string> = {
+  order: "Pedido reembolsado pelo produtor", tickets: "Ingressos reembolsados pelo produtor", event: "Cancelamento do evento",
+  request: "Pedido de reembolso aprovado", buyer: "Cancelado pelo comprador", stripe: "Estorno externo", auto: "Estorno automático",
+};
 
 /*
  * Reembolsos: uma rotina só para o produtor (pedido inteiro ou ingressos escolhidos), o comprador (política
@@ -245,7 +252,7 @@ export async function refundTickets(inp: RefundInput): Promise<RefundOutcome> {
   }
 
   try {
-    await applyRefund(L, plan, rowId, stripeRefundId);
+    await applyRefund(L, plan, rowId, stripeRefundId, { refId: rowId, actor: inp.actor.userId, note: trailNote(`${REFUND_KIND_LABEL[inp.kind]} · ${inp.actor.name ?? "—"}`) });
   } catch (e) {
     // nada foi gravado (a transação vale inteira ou nada): a linha segue "pending" e é retomada depois de
     // STALE_MS; o estorno já feito é achado pela linha (metadata.refundRowId) e não sai duas vezes
@@ -265,9 +272,14 @@ const REFUNDABLE_SQL = sql.join(REFUNDABLE.map((x) => sql`${x}`), sql`, `);
 /**
  * Ingressos que deixam de valer, transferências e anúncios de revenda deles cancelados e lugares de volta para a
  * venda, num comando só. Ingresso comprado na revenda não devolve o lugar (ele já tinha sido vendido antes).
+ * O rastro de cada ingresso (D-12) entra no mesmo comando: reembolso/cancelamento, a linha do reembolso e quem fez.
  */
-const releaseTickets = (where: SQL, status: "refunded" | "cancelled", resale: boolean) => db.execute(sql`
-  with gone as (update ${tickets} set status = ${status}, updated_at = now() where ${where} returning id, ticket_type_id),
+const releaseTickets = (where: SQL, status: "refunded" | "cancelled", resale: boolean, ev: { refId: string; actor: string | null; note: string | null }) => db.execute(sql`
+  with gone as (update ${tickets} set status = ${status}, updated_at = now() where ${where} returning id, ticket_type_id, code, holder_user_id, holder_name, order_id),
+  ev as (
+    insert into ${ticketEvents} (ticket_id, kind, code, from_user_id, holder_name, order_id, ref_id, note)
+    select id, ${status === "refunded" ? "reembolso" : "cancelado"}, code, ${ev.actor}, holder_name, order_id, ${ev.refId}, ${ev.note} from gone returning 1
+  ),
   tr as (update ${ticketTransfers} set status = 'cancelled', updated_at = now() where ticket_id in (select id from gone) and status = 'pending' returning 1),
   rl as (update ${resaleListings} set status = 'cancelled', updated_at = now() where ticket_id in (select id from gone) and status in ('active', 'reserved') returning 1),
   per as (select ticket_type_id, count(*)::int n from gone where not ${resale}::boolean group by ticket_type_id),
@@ -281,7 +293,7 @@ const releaseTickets = (where: SQL, status: "refunded" | "cancelled", resale: bo
  * "pending" para sempre: ou tudo vale, ou nada (a linha volta a ser retomada depois de STALE_MS).
  * Devolve false se outra tentativa já tinha concluído esta linha.
  */
-async function applyRefund(L: NonNullable<Loaded>, plan: RefundPlan, rowId: string, stripeRefundId: string | null): Promise<boolean> {
+async function applyRefund(L: NonNullable<Loaded>, plan: RefundPlan, rowId: string, stripeRefundId: string | null, trail: { refId: string; actor: string | null; note: string | null }): Promise<boolean> {
   const { o } = L;
   const ids = plan.ticketIds;
   const close = plan.free ? "cancelled" : "refunded";
@@ -292,7 +304,7 @@ async function applyRefund(L: NonNullable<Loaded>, plan: RefundPlan, rowId: stri
   ];
   // os ingressos do cálculo continuam reembolsáveis (senão a linha não conclui e é conferida de novo na retomada)
   if (ids.length) steps.push(ensure(sql`(select count(*) from ${tickets} where id = any(${uuidArray(ids)}) and status in (${REFUNDABLE_SQL})) = ${ids.length}`, "refund_changed"));
-  if (ids.length) steps.push(releaseTickets(sql`id = any(${uuidArray(ids)}) and status in (${REFUNDABLE_SQL})`, plan.free ? "cancelled" : "refunded", !!o.resaleListingId));
+  if (ids.length) steps.push(releaseTickets(sql`id = any(${uuidArray(ids)}) and status in (${REFUNDABLE_SQL})`, plan.free ? "cancelled" : "refunded", !!o.resaleListingId, trail));
   // refunded_cents = soma dos reembolsos concluídos; sem ingresso válido e sem nada a devolver, o pedido fecha
   steps.push(db.execute(sql`
     update ${orders} set
@@ -357,7 +369,7 @@ export async function refundOrder(orderId: string, opts: { amountCents?: number;
     }
   }
   if (row) await db.update(orderRefunds).set({ status: "succeeded", stripeRefundId: refundId, error: null }).where(eq(orderRefunds.id, row.id));
-  if (full) await markOrderRefunded(o.id);
+  if (full) await markOrderRefunded(o.id, REFUND_KIND_LABEL.auto);
   await db.update(orders).set({ refundedCents: amount }).where(eq(orders.id, o.id));
   if (opts.email) {
     const text = opts.email;
@@ -371,12 +383,16 @@ export async function refundOrder(orderId: string, opts: { amountCents?: number;
  * (o QR deixa de valer e o envio pendente é cancelado), anúncios de revenda deles saem do ar e os lugares
  * voltam para a venda.
  */
-export async function markOrderRefunded(orderId: string) {
+export async function markOrderRefunded(orderId: string, note = "Reembolso total do pedido") {
   // um comando só: o pedido vira reembolsado junto com os ingressos e os lugares (antes, uma queda depois do
   // primeiro passo deixava o pedido reembolsado com ingressos válidos, e a nova tentativa parava logo no começo)
   const r = await db.execute<{ flipped: number }>(sql`
     with o as (update ${orders} set status = 'refunded', updated_at = now() where id = ${orderId} and status <> 'refunded' returning id, resale_listing_id),
-    gone as (update ${tickets} t set status = 'refunded', updated_at = now() from o where t.order_id = o.id and t.status in ('valid', 'transferred') returning t.id, t.ticket_type_id),
+    gone as (update ${tickets} t set status = 'refunded', updated_at = now() from o where t.order_id = o.id and t.status in ('valid', 'transferred') returning t.id, t.ticket_type_id, t.code, t.holder_name, t.order_id),
+    ev as (
+      insert into ${ticketEvents} (ticket_id, kind, code, holder_name, order_id, note)
+      select id, 'reembolso', code, holder_name, order_id, ${trailNote(note)} from gone returning 1
+    ),
     tr as (update ${ticketTransfers} set status = 'cancelled', updated_at = now() where ticket_id in (select id from gone) and status = 'pending' returning 1),
     rl as (update ${resaleListings} set status = 'cancelled', updated_at = now() where ticket_id in (select id from gone) and status in ('active', 'reserved') returning 1),
     per as (select ticket_type_id, count(*)::int n from gone where not exists (select 1 from o where resale_listing_id is not null) group by ticket_type_id),
@@ -406,7 +422,7 @@ export async function syncStripeRefund(orderId: string, ch: { id: string; amount
       actorName: "Tickets Win (estorno externo)", reason: "Estorno feito fora do painel do produtor.",
     }).onConflictDoNothing();
   }
-  if (ch.fully) await markOrderRefunded(o.id);
+  if (ch.fully) await markOrderRefunded(o.id, REFUND_KIND_LABEL.stripe);
   const [t] = await db.select({ sum: sql<number>`coalesce(sum(${orderRefunds.amountCents}), 0)::int` }).from(orderRefunds)
     .where(and(eq(orderRefunds.orderId, o.id), eq(orderRefunds.status, "succeeded")));
   await db.update(orders).set({ refundedCents: t?.sum ?? 0 }).where(eq(orders.id, o.id));
