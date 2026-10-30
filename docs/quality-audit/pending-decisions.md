@@ -2,7 +2,40 @@
 
 Cada item: o que é, por que precisa da decisão, opções e a recomendação. Nada aqui foi aplicado sem estar marcado.
 
-## Schema para a produção (aplicar ANTES de publicar o código desta rodada)
+## Rodada 4 · schema para a produção (aplicar ANTES de publicar a rodada 4)
+
+D-12 (rastro de cada ingresso, só a central vê). Tabela nova, sem mexer em nenhuma linha existente; o código grava nela dentro das mesmas transações de emissão, envio por e-mail, transferência, revenda, reembolso/cancelamento e check-in. Já criada e testada no branch de **teste** (`teste-r4`). Idempotente (pode rodar mais de uma vez). Ingressos antigos não precisam de migração: a central monta o rastro deles a partir dos dados que já existem.
+
+```sql
+-- D-12: rastro dos ingressos (central /tw-central › Ingressos)
+CREATE TABLE IF NOT EXISTS ticket_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticket_id uuid NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+  kind varchar(32) NOT NULL,
+  code varchar(24),
+  prev_code varchar(24),
+  from_user_id text,
+  to_user_id text,
+  to_email varchar(254),
+  holder_name varchar(160),
+  order_id uuid,
+  ref_id uuid,
+  amount_cents integer,
+  note varchar(200),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ticket_events_ticket_idx ON ticket_events (ticket_id, created_at);
+CREATE INDEX IF NOT EXISTS ticket_events_code_idx ON ticket_events (code);
+CREATE INDEX IF NOT EXISTS ticket_events_prev_code_idx ON ticket_events (prev_code);
+CREATE INDEX IF NOT EXISTS ticket_events_to_email_idx ON ticket_events (to_email);
+CREATE INDEX IF NOT EXISTS ticket_events_from_idx ON ticket_events (from_user_id);
+CREATE INDEX IF NOT EXISTS ticket_events_to_idx ON ticket_events (to_user_id);
+```
+
+Importante: **o código da rodada 4 não funciona sem esta tabela** (a emissão, a transferência e o check-in gravam nela na mesma transação; sem a tabela, essas operações falham). Por isso o SQL vai antes do código.
+Reversão (só se o código da rodada 4 for desfeito): `DROP TABLE IF EXISTS ticket_events;` (apaga só o rastro).
+
+## Schema para a produção (aplicar ANTES de publicar o código das rodadas 2 e 3, já aplicado)
 
 A produção recebe o schema antes do código (decisão do dono). Já aplicado e testado no branch de **teste**. É idempotente (pode rodar mais de uma vez) e não mexe em nenhuma linha existente: os pedidos antigos ficam com `NULL` (= "de antes da caixa", seguem recebendo campanhas como antes).
 
@@ -98,6 +131,7 @@ Reversão: `DROP INDEX IF EXISTS order_refunds_one_pending_idx;`
 - **O que não mudou e precisa de decisão:** quem **já é produtor** continua usando o painel e criando eventos mesmo sem o e-mail confirmado. A conta de teste da auditoria (produtora com 5 eventos) está assim, então pode haver produtores reais nessa situação. Travar o painel deles agora pararia vendas de quem já opera.
 - **Opções:** (a) manter (só contas novas precisam ativar para virar produtor); (b) aviso no painel "Confirme seu e-mail" sem travar; (c) exigir a ativação para saque e troca da conta de recebimento (o resto do painel segue); (d) exigir para todo o painel a partir de uma data avisada.
 - **Recomendação:** (b) + (c). Antes, contar na produção (consulta só de leitura): `select count(*) from organizers o join neon_auth."user" u on u.id::text = o.owner_user_id where not u."emailVerified";`
+- **Rodada 4 (30/10): DECIDIDO (a), mantido.** Dono: "deixa esses produtores normal". Quem já é produtor segue com painel, criar evento, página do produtor e saques sem confirmar o e-mail; a ativação vale só para quem ainda não é produtor (inscrição, cadastro do aprovado, `/criar-evento`). Nada mudou no comportamento; teste de regressão novo em `tests/db/activation.test.ts` (produtor antigo sem e-mail confirmado cria evento e atualiza a página). Commit eaca993. **VALIDADO (integração).**
 - **Observação técnica:** o `neon_auth` do branch de teste é uma cópia parcial (15 contas para 30 perfis); a checagem de ativação usa a sessão e, quando ela diz "não", confere no `neon_auth."user"` da produção (o mesmo que a central já lê).
 
 ## D-09 · Meia-entrada por dois caminhos no mesmo evento (achado do Marcos, Romano, P2, regra comercial)
@@ -111,6 +145,8 @@ Reversão: `DROP INDEX IF EXISTS order_refunds_one_pending_idx;`
 - **Recomendação:** (a). É a que preserva a cota que o produtor configurou, não mexe em evento antigo e é a menor mudança. Depois de aprovada: ajuste em `meiaOk` (checkout e `placeOrder`), teste de regressão "Inteira com tipo Meia no mesmo setor não aceita meia=true" e revisão do texto da Ajuda ("Se alguém tiver direito à meia-entrada, marque aqui").
 - **Pergunta jurídica junto:** a cota de 40% é por evento (lei) e hoje o sistema aplica por setor (40% de cada Inteira). Se a interpretação do jurídico for "40% do total do evento", a regra do criador também muda.
 - **Status:** aguardando decisão do dono. Nada alterado.
+- **Rodada 4 (30/10): DECIDIDO e APLICADO.** Dono: "seria legal a pessoa poder editar o valor". (1) No criar evento › Ingressos (e na edição), o preço da meia automática é editável; sugerido = metade da inteira, com o aviso da Lei 12.933/2013 (tela do Marcos, 78894f4; campo `meia` da Inteira no rascunho, vazio = metade). O servidor confere ao publicar: a meia nunca passa do preço da inteira (`src/lib/criar/meia.ts`). (2) Caminho duplo acabou: onde o setor/data tem tipo Meia, o checkout **não** oferece a caixa "Meia-entrada" na Inteira e o `placeOrder` ignora `meia=true` (cobra a inteira); onde não tem (eventos antigos, tipos sem `kind`, sem meia automática), a caixa continua com **metade** do preço. Regra única `meiaBoxOk` em `src/lib/pricing.ts`. Pedidos já feitos não mudam (o valor pago está no pedido). Commit 27c2900. Testes: `tests/unit/meia.test.ts`, `tests/db/place-order.test.ts` (falha com a regra antiga). **VALIDADO (unitário + integração).**
+- **Observação:** a caixa não tem valor configurável (não existe campo para isso na criação); quem quiser outro valor de meia usa o tipo Meia, que tem preço próprio. A pergunta jurídica dos 40% (por evento × por setor) continua aberta.
 
 ## D-10 · Política de segurança de conteúdo (CSP) dos scripts: só avisar ou bloquear (Romano, P2 de segurança, rodada 3)
 - **O que foi feito (aplicado, modo "só avisar"):** toda página recebe uma CSP com **nonce novo por pedido** e `'strict-dynamic'` (`src/lib/csp.ts`, `src/proxy.ts`): só rodam os scripts do próprio Next (que recebem o nonce sozinho), o que eles carregam (Turnstile, cartão, VLibras) e o único script escrito na página (loader do evento, liberado pelo hash, `src/lib/inline-scripts.ts`). Script injetado por XSS (sem nonce) e atributos `onerror=` não rodam. Também: `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'self'`, terceiros listados por diretiva. Estilos ficam com `'unsafe-inline'` (o React escreve muitos `style=`; risco baixo perto do de script). Violações vão para `/api/csp-report`, que registra no log do Worker só diretiva, origem bloqueada e o primeiro trecho do caminho (sem código de ingresso, token ou parâmetro). A 404 passou a ser gerada a cada pedido (sem isso, a página estática não teria o nonce).
@@ -125,6 +161,7 @@ Reversão: `DROP INDEX IF EXISTS order_refunds_one_pending_idx;`
 - **Opções:** (a) exigir o mesmo e-mail também na transferência comum (igual ao presente; quem recebe sem conta cria a conta com esse e-mail); (b) manter e mudar o texto ("Quem abrir o link com uma conta Tickets Win recebe o ingresso"); (c) manter.
 - **Recomendação:** (a). É a mesma regra que já existe no presente (menos surpresa, menos golpe de "me encaminha o link"). Mudança pequena em `acceptTransfer` + teste; o Marcos revisa o texto de erro ("Este ingresso foi enviado para outro e-mail. Entre com a conta de <e-mail parcial>.").
 - **Status:** aguardando decisão. Nada alterado.
+- **Rodada 4 (30/10): DECIDIDO (a) e APLICADO.** Dono: "o ingresso é de quem tem o e-mail cadastrado no ingresso". A transferência comum vale só para a conta do e-mail de destino, com o e-mail confirmado (como o envio da compra). Outra conta: "Este ingresso foi enviado para m•••@gmail.com. Entre com esse e-mail para receber." A página do link mostra o e-mail só com a primeira letra para quem não é o destino. Commit 3f526a8 (textos da tela revistos pelo Marcos). Teste: `tests/db/tickets.test.ts` (outra conta recusada, mesmo e-mail sem ativar pede ativação, conta certa recebe; falha sem a correção). **VALIDADO (integração).**
 
 ## D-12 · Quem vendeu na revenda ou transferiu perde o rastro do ingresso (H-R3-1 do Marcos, P2)
 - **Hoje:** depois da S-01 o código do ingresso muda na revenda e na transferência; o link antigo `/ingressos/<código antigo>` dá 404 e nada aparece em Meus ingressos ou na Conta. O e-mail "Seu ingresso foi vendido" leva para Meus ingressos, onde ele não está mais.
@@ -132,3 +169,5 @@ Reversão: `DROP INDEX IF EXISTS order_refunds_one_pending_idx;`
 - **O que precisa no servidor:** a revenda e a transferência já ficam registradas (`resale_listings`, `ticket_transfers`); falta guardar o código anterior (ou só listar por quem vendeu/enviou, sem reabrir o link antigo) e uma consulta "meus vendidos e enviados". O link antigo **não deve voltar a mostrar o QR** (é exatamente o que a S-01 fechou).
 - **Recomendação:** listar por quem vendeu/enviou (sem schema novo) numa seção de Meus ingressos e fazer o link antigo mostrar "Este ingresso foi vendido/transferido" sem QR para quem era o dono. Próxima rodada, com o Marcos.
 - **Status:** aguardando decisão. Nada alterado.
+- **Rodada 4 (30/10): DECIDIDO e APLICADO (rastro só para a equipe).** Dono: registrar o histórico de cada ingresso e mostrar só na central. Tabela nova `ticket_events` (SQL no topo deste arquivo), gravada **na mesma transação** de: emissão (comprador, titular, valor, pedido), envio por e-mail na compra (para quem), transferência enviada/reenviada/cancelada/aceita (de quem → para quem, código anterior → novo), revenda vendida (vendedor → comprador, valor, códigos), reembolso/cancelamento (origem e quem fez) e check-in (operador), mais check-in recusado (motivo). Leitura: `adminTicketTrail(q)` em `src/lib/admin-trail.ts` (busca por código atual ou anterior, com ou sem hífen, e-mail ou número do pedido; titular atual e anteriores; passos em ordem). Ingressos antigos: montados na consulta a partir de pedidos, transferências, anúncios, reembolsos e check-in, marcados "reconstruído", sem migração. Tela: aba "Ingressos" da central (Marcos). Nada aparece para produtor ou comprador. Teste: `tests/db/trail.test.ts` (4 cenários, incluindo "emissão que falha não deixa rastro" e ingresso antigo). **VALIDADO (integração); tela: ver `ux-audit.md`.**
+- **Fica para depois (não pedido):** a parte da proposta original para o comprador ("Vendidos e enviados" em Meus ingressos).
