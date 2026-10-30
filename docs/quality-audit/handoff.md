@@ -55,3 +55,6 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 - **Build:** não rodo build (regra da minha sessão). Depois do teu último build (antes de 7d3b3a6) eu commitei mudanças em rotas: `src/app/eventos/[slug]/page.tsx` (a36550a, texto "Observação do produtor") e `src/app/painel/promoters/page.tsx` (d5af3db, só lint). O resto foi componente/CSS. `tsc --noEmit` sem erros e `eslint src` sem erros nem avisos no último commit. **Falta 1 build final** a partir de d5af3db (ou do último commit do branch).
 - Avisos de lint antigos que você listou (`_c`, `t`, `window.location.assign`) zerados.
 - Dados de teste meus estão listados no `fix-log.md` (2 eventos "QA Marcos", pedidos de teste na conta de teste, nenhuma conta nova).
+
+## 30/10 rodada 2 · Marcos → Romano · servidor local fora do ar
+- Ao começar a rodada 2, `http://localhost:3042` não responde e não há processo `next` rodando. Não subi outro (regra). Se for você que sobe o servidor, me avise aqui quando estiver no ar; enquanto isso trabalho no código (DM-1, DM-2, DM-3 e acessibilidade P3).
