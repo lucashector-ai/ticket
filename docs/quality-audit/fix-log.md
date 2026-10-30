@@ -10,18 +10,28 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 ## Dados de teste no banco de teste
 - Testes de integração criam eventos `qa-test-…` e apagam no fim (conferido: 0 restantes).
 - 1 imagem PNG de 1×1 enviada ao R2 local na validação do upload (`/midia/eventos/e665d30ef5fa/mvugl1o4-…png`), só local.
+- Evento `qa-romano-checkout` (produtor da conta de teste, 1 tipo "Pista QA" com 3 lugares) criado no banco de teste para o checkout e2e; pedido nº 48308 pago em modo de teste (2 ingressos: TW-M3QC-DXZZ, já usado no teste da câmera, e um enviado para `qa.romano.presente@example.com`, sem conta).
 
 ## Romano
 
 | Data/hora | Commit | Correção | Validação | Status |
 |---|---|---|---|---|
-| 30/10 04:10 | c6b46d2 | Limite por pessoa: `roomFor` (mesma regra do servidor), `owned` por tipo na página do evento, `canInc`/`incBlock` no `use-tickets`; texto "por compra" no servidor; `feeShares` para a taxa por linha; vitest | 13 testes unitários (preço, cupom, meia, parcelas, taxa, limites); página do evento 200 | CORRIGIDO, NÃO VALIDADO no navegador (falta a parte visual do Marcos) |
-| 30/10 04:20 | f8306a2 | Código do ingresso muda na transferência aceita e na revenda (S-01) | tsc/eslint | CORRIGIDO, NÃO VALIDADO |
+| 30/10 04:10 | c6b46d2 | Limite por pessoa: `roomFor` (mesma regra do servidor), `owned` por tipo na página do evento, `canInc`/`incBlock` no `use-tickets`; texto "por compra" no servidor; `feeShares` para a taxa por linha; vitest | 13 testes unitários; parte visual validada pelo Marcos no Playwright (3063bb8) | VALIDADO |
+| 30/10 04:20 | f8306a2 | Código do ingresso muda na transferência aceita e na revenda (S-01) | `tests/db/tickets.test.ts` (aceite e revenda; falha sem a correção) | VALIDADO |
 | 30/10 04:20 | ff46243 | Equipe/configurações só para produtor aprovado (S-02) | tsc/eslint | CORRIGIDO, NÃO VALIDADO |
 | 30/10 04:20 | 087a0c8 | Excluir evento com pagamento em andamento; saque duplo; central com e-mail confirmado (S-03, S-04, S-05) | tsc/eslint | CORRIGIDO, NÃO VALIDADO |
 | 30/10 04:25 | 371f032 | Ex-membro perde o acesso pessoal de portaria (S-06) | tsc/eslint | CORRIGIDO, NÃO VALIDADO |
 | 30/10 04:25 | c959201 | Upload confere bytes e limita 60/h (S-07) | Playwright no servidor local: 200 / 415 / 401 | VALIDADO |
-| 30/10 04:30 | 163ea2a | Reserva de 15 min segura estoque; reconferência após gravar (S-08) | `tests/db/stock.test.ts` no banco de teste (9 cenários) | VALIDADO no banco; navegador NÃO TESTADO |
+| 30/10 04:30 | 163ea2a | Reserva de 15 min segura estoque; reconferência após gravar (S-08) | `tests/db/stock.test.ts` no banco de teste (9 cenários); checkout e2e no navegador | VALIDADO |
+| 30/10 04:40 | 675aac5 | Assinaturas (QR, portaria, banco, 2FA) sem segredo padrão no código | testes de integração geram e conferem QR | VALIDADO |
+| 30/10 04:40 | 7730368 | Checkout antigo: `createOrder` sem uso removido; `payOrder` usa a emissão única; `cancelOrder` cancela a cobrança | tsc/eslint; build | CORRIGIDO, NÃO VALIDADO no navegador (página só aparece sem Stripe) |
+| 30/10 04:45 | 2550e88 | Login com mensagem genérica para conta inexistente | tsc/eslint | CORRIGIDO, NÃO VALIDADO |
+| 30/10 04:45 | c23bfe6 | Cupom sem login limitado a 30 consultas por IP em 10 min | Playwright: após o limite, "Muitas tentativas" | VALIDADO |
+| 30/10 04:50 | bb0f74f · a59301a | Remove jspdf/html-to-image (sem uso, críticos); node-forge 1.4.2 com teste de assinatura | `pnpm audit --prod` 47 → 8; teste da Wallet | VALIDADO |
+| 30/10 04:55 | 4fbf9d8 | Cliente do Neon Auth sob demanda (−250 KB em /entrar, /cadastro, /ativar-conta, /checkout) | build: medidas por rota; Playwright: botão do Google em /entrar | VALIDADO |
+| 30/10 05:00 | 52b6384 | Página do evento: consulta do evento uma vez por requisição e dados em paralelo | TTFB dev 8–11% menor (A/B) | VALIDADO |
+| 30/10 05:10 | 5943600 | jsQR sob demanda (/portaria 234 → 107 KB) | câmera falsa no Chromium leu o QR de um ingresso de teste | VALIDADO |
+| 30/10 05:15 | a5f57da | Editar evento: apagar tipo de ingresso não quebra no meio (FK) | `tests/db/edit-types.test.ts` (4 cenários) | VALIDADO |
 
 ## Marcos
 
