@@ -9,6 +9,8 @@ export type TicketCardData = {
 type EventLike = Parameters<typeof eventLabels>[0] & { title: string; flyerId: string; ageRating?: string | null; organizer?: { name: string } | null };
 type TicketLike = { code: string; holderName: string | null; halfPrice: boolean; status: string; ticketType: { name: string; sector: string | null; kind?: string | null }; order?: { number: number | null } | null };
 
+const STD_KINDS = new Set(["inteira", "meia", "social"]);
+
 /** "23h59 · até 8h" → "23:59"; sem horário, "—". */
 function gatesOf(doors: string) {
   const m = doors.match(/(\d{1,2})\s*(?:h|:)\s*(\d{2})?/);
@@ -23,7 +25,9 @@ export function ticketCard(t: TicketLike, e: EventLike): TicketCardData {
     dateLine: [L.dateFull, L.doors].filter(Boolean).join(" · "),
     placeLine: [L.venue, L.addr].filter(Boolean).join(" · "),
     gates: gatesOf(L.doors),
-    sector: t.ticketType.sector || t.ticketType.name.split(/\s+[—–-]\s+/)[0] || t.ticketType.name,
+    // sem setor: Inteira/Meia/Social do criador são "Geral" (o tipo já vai na coluna Tipo); tipos antigos e
+    // próprios ("Pista — 1º lote", "VIP") seguem pelo nome
+    sector: t.ticketType.sector || (t.ticketType.kind && STD_KINDS.has(t.ticketType.kind) ? "Geral" : t.ticketType.name.split(/\s+[—–-]\s+/)[0] || t.ticketType.name),
     // meia marcada no checkout ou tipo próprio de meia/social (o titular apresenta o documento na entrada)
     type: t.halfPrice || t.ticketType.kind === "meia" ? "Meia" : t.ticketType.kind === "social" ? "Social" : "Inteira",
     holder: t.holderName ?? "",
