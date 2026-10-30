@@ -55,12 +55,12 @@ E2E versionado: `tests/e2e/checkout.e2e.mjs` (`pnpm test:e2e`, com `E2E_EMAIL`, 
 |---|---|
 | Checkout completo no modo de teste (evento QA, 2 ingressos, 1 "Sou eu" + 1 enviado por e-mail, Pix de teste, confirmação) | VALIDADO: pedido pago, total R$ 107,99 (100 + 7,99), 2 vendidos, 1 envio pendente |
 | Upload de imagem: PNG real / HTML com nome .png / sem login | VALIDADO: 200 / 415 / 401 |
-| Cupom sem login: limite de 30 consultas por IP em 10 min | VALIDADO |
+| Cupom sem login: só cupom errado conta (20 por IP em 10 min); cupom válido nunca bloqueia | VALIDADO |
 | Cronômetro "Reservados por" antes de existir pedido | FALHOU (texto): repassado ao Marcos (handoff 04:45) |
 | Duas abas com o mesmo evento | VALIDADO: a segunda aba retoma o mesmo pedido; nada vendido acima |
 | Portaria pelo painel com câmera (câmera falsa mostrando o QR de um ingresso de teste) | VALIDADO: lido e marcado como usado |
 | Login com e-mail inexistente (1 tentativa) | VALIDADO: "E-mail ou senha incorretos." |
-| "Me avise" sem login: 15 cadastros por IP por hora | VALIDADO |
+| "Me avise" sem login: limite por IP por hora (validado com 15; depois ajustado para 40 por causa de CGNAT) | VALIDADO |
 | Prévia OG de rascunho | VALIDADO: 404 (publicado 200) |
 | Exportar compradores (CSV) | VALIDADO: arquivo com colunas corretas |
 | App da portaria sem internet, código digitado | VALIDADO: "NÃO LIBERADO · Sem conexão." e o ingresso continua válido no banco (falha fechada) |
