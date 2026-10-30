@@ -81,3 +81,10 @@ Reversão (só se o código desta rodada for desfeito): `ALTER TABLE orders DROP
 - **Opções:** (a) trocar o campo livre por "Observações (opcional)" sem texto padrão; (b) remover o campo; (c) manter.
 - **Recomendação:** (a).
 - **Status (rodada 2): APLICADO (a), VALIDADO.** "Observações (opcional)" sem texto padrão no criador e "Observações padrão (opcional)" em Configurações; o antigo texto pronto salvo é tratado como vazio; a página do evento mantém "Observação do produtor". Regra de cancelamento intacta. Commits 96c2556, e1a2a6d (U-35).
+
+## D-08 · Produtores antigos sem e-mail confirmado (Romano, P2, rodada 3)
+- **O que mudou (aplicado):** conta sem e-mail ativado não envia inscrição de produtor nem monta a página do produtor depois da aprovação (achado do Marcos: a conta nova entrava com senha e mandava a inscrição). Comprar continua liberado sem ativar (regra atual do checkout em linha). Teste: `tests/db/activation.test.ts`.
+- **O que não mudou e precisa de decisão:** quem **já é produtor** continua usando o painel e criando eventos mesmo sem o e-mail confirmado. A conta de teste da auditoria (produtora com 5 eventos) está assim, então pode haver produtores reais nessa situação. Travar o painel deles agora pararia vendas de quem já opera.
+- **Opções:** (a) manter (só contas novas precisam ativar para virar produtor); (b) aviso no painel "Confirme seu e-mail" sem travar; (c) exigir a ativação para saque e troca da conta de recebimento (o resto do painel segue); (d) exigir para todo o painel a partir de uma data avisada.
+- **Recomendação:** (b) + (c). Antes, contar na produção (consulta só de leitura): `select count(*) from organizers o join neon_auth."user" u on u.id::text = o.owner_user_id where not u."emailVerified";`
+- **Observação técnica:** o `neon_auth` do branch de teste é uma cópia parcial (15 contas para 30 perfis); a checagem de ativação usa a sessão e, quando ela diz "não", confere no `neon_auth."user"` da produção (o mesmo que a central já lê).

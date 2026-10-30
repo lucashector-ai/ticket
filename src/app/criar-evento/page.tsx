@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
+import { activateHref, emailConfirmed } from "@/lib/auth/verified";
 import { CriarFlow } from "@/components/criar/flow";
 import { brDateTime, emptyDraft, isDefaultRefund, STEP_LABELS, type DbMap, type Draft } from "@/lib/criar/model";
 import { ProducerApply } from "@/components/produtor/inscricao";
@@ -26,6 +27,8 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
   // criar evento é só para produtor aprovado: antes disso, a inscrição (ou o status dela)
   if (!editId) {
     const { status, app } = await producerStatus(user);
+    // virar produtor começa com o e-mail confirmado (a inscrição seria recusada no envio); quem já é produtor segue
+    if (status !== "producer" && !(await emailConfirmed(user))) redirect(activateHref("/criar-evento"));
     if (status === "approved") redirect("/produtores/cadastro");
     if (status !== "producer") {
       const profile = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, user.id), columns: { name: true, phone: true } });

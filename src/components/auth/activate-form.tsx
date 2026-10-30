@@ -13,7 +13,7 @@ import { ResendButton } from "@/components/auth/resend";
  * Segunda etapa do cadastro (e o botão do e-mail de ativação): digita o código de 6 números.
  * `known`: e-mail da conta logada (não precisa digitar). `next`: para onde vai depois de ativar.
  */
-export function ActivateForm({ initialEmail, known, verified, next }: { initialEmail: string; known: boolean; verified: boolean; next: string }) {
+export function ActivateForm({ initialEmail, known, verified, next, why = null }: { initialEmail: string; known: boolean; verified: boolean; next: string; why?: string | null }) {
   const { flash } = useToast();
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
@@ -77,6 +77,7 @@ export function ActivateForm({ initialEmail, known, verified, next }: { initialE
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M4 7l8 6 8-6" /></svg>
       </span>
       <h1 className="lx-t">Ative sua conta</h1>
+      {why && <p className="lx-s">{why} Se o código do cadastro venceu, peça outro aqui embaixo.</p>}
       <p className="lx-s">{known
         ? <>Falta só confirmar seu e-mail. Digite o código de 6 números que enviamos para <b>{email}</b>.</>
         : "Digite seu e-mail e o código de 6 números que enviamos."}</p>

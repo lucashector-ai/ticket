@@ -3,6 +3,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
+import { ACTIVATE_PRODUCER, emailConfirmed } from "@/lib/auth/verified";
 import { initials, slugify } from "@/lib/format";
 import { isProducer } from "@/lib/data/producer";
 import { producerStatus } from "@/lib/producer-apply";
@@ -38,6 +39,8 @@ export async function finishOnboarding(input: { name: string; city: string; uf: 
   if (!user) return { ok: false, error: "Entre na sua conta." };
   const st = await producerStatus(user);
   if (st.status !== "approved" && st.status !== "producer") return { ok: false, error: "Sua conta de produtor ainda não foi aprovada." };
+  // virar produtor exige o e-mail confirmado (quem já era produtor antes desta regra continua liberado)
+  if (st.status === "approved" && !(await emailConfirmed(user))) return { ok: false, error: ACTIVATE_PRODUCER };
   const name = input.name.trim().replace(/\s+/g, " ").slice(0, 80);
   if (name.length < 2) return { ok: false, error: "Digite o nome do organizador." };
   const check = await checkOrganizerName(name);

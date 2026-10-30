@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ProducerOnboarding } from "@/components/produtor/onboarding";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
+import { activateHref, emailConfirmed } from "@/lib/auth/verified";
 import { producerStatus, UFS } from "@/lib/producer-apply";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export default async function ProdutorCadastroPage() {
   if (own?.onboarding?.doneAt) redirect("/painel");
   const { status, app } = await producerStatus(user);
   if (status !== "approved" && status !== "producer") redirect("/criar-evento");
+  if (status === "approved" && !(await emailConfirmed(user))) redirect(activateHref("/produtores/cadastro"));
   const first = (app?.firstName || user.name || user.email?.split("@")[0] || "").trim().split(/\s+/)[0] ?? "";
   return (
     <ProducerOnboarding

@@ -77,8 +77,10 @@ export function ProducerApply(p: Props) {
       return;
     }
     setBusy(true); setErr(null);
-    const r = await submitApplication(f as AppInput).catch(() => ({ ok: false, error: "Não foi possível enviar agora. Tente de novo." }));
+    const r: { ok: boolean; error?: string; verify?: boolean } = await submitApplication(f as AppInput).catch(() => ({ ok: false, error: "Não foi possível enviar agora. Tente de novo." }));
     setBusy(false);
+    // e-mail ainda não confirmado: vai para a ativação e volta para cá
+    if (r.verify) { router.push(`/ativar-conta?next=${encodeURIComponent("/criar-evento")}`); return; }
     if (!r.ok) { setErr(r.error ?? "Confira os campos."); return; }
     setDone(true);
     window.scrollTo({ top: 0, behavior: "smooth" });

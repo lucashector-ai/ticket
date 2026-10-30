@@ -5,6 +5,7 @@ import { z } from "zod";
 import { normalizePhone, phoneValid } from "@/lib/phone";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
+import { ACTIVATE_PRODUCER, emailConfirmed } from "@/lib/auth/verified";
 import { mailApplicationReceived } from "@/lib/notify";
 import { CATEGORIES, producerStatus, SOURCES, UFS } from "@/lib/producer-apply";
 
@@ -25,9 +26,10 @@ const appSchema = z.object({
 export type AppInput = z.input<typeof appSchema>;
 
 /** Envia a inscrição de produtor; a equipe recebe por e-mail e aprova na central. */
-export async function submitApplication(input: AppInput): Promise<{ ok: boolean; error?: string }> {
+export async function submitApplication(input: AppInput): Promise<{ ok: boolean; error?: string; verify?: boolean }> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Entre na sua conta para se inscrever." };
+  if (!(await emailConfirmed(user))) return { ok: false, error: ACTIVATE_PRODUCER, verify: true };
   const st = await producerStatus(user);
   if (st.status === "producer" || st.status === "approved") return { ok: false, error: "Sua conta de produtor já está liberada." };
   if (st.status === "pending") return { ok: false, error: "Sua inscrição já está em análise. Respondemos no mesmo dia útil." };
