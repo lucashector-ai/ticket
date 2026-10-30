@@ -3,6 +3,7 @@ import { cache } from "react";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
+import { emailConfirmed } from "@/lib/auth/verified";
 import { chosenOrgId, MAX_ORGS_PER_ACCOUNT, orgAccessList, pickActive, type PainelRole } from "@/lib/data/org-access";
 
 const { organizerMembers, events, orders, orderItems, ticketTypes, tickets, coupons } = schema;
@@ -30,7 +31,8 @@ export type { PainelRole };
  * eventos que criou. Uma produtora nunca vê os eventos de outra, mesmo do mesmo dono.
  */
 export const getPainelScope = cache(async (user: { id: string; email?: string | null; emailVerified?: boolean | null }) => {
-  if (user.email && user.emailVerified) {
+  // e-mail confirmado pela sessão ou, se ela ainda não sabe (acabou de ativar), pelo banco do login
+  if (user.email && (await emailConfirmed(user))) {
     await db.update(organizerMembers).set({ userId: user.id, acceptedAt: new Date() })
       .where(and(sql`lower(${organizerMembers.email}) = lower(${user.email})`, isNull(organizerMembers.userId)));
   }
