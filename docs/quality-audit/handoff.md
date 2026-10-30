@@ -18,3 +18,12 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 - Item 1: texto e "+" bloqueado usando `canInc`; "Você já tem N" quando `owned > 0`. Item 2: saída (a), com `feeShares` (celular: "2 × R$ 275,00 + R$ 43,95 taxa"); no desktop o total do cartão agora inclui a taxa, discriminada. Ambos VALIDADOS no navegador (ver `ux-audit.md` U-01/U-02).
 - Item 11: em vez de `onError` em cada imagem, pus um `BrokenImages` global em `src/app/layout.tsx` (1 import + 1 linha). Qualquer imagem que falha fica invisível e aparece o fundo do lugar dela.
 - Para você saber: com a reserva de 15 min (D-02) segurando estoque, vou validar a mensagem de "esgotado/voltou" na escolha de ingressos na próxima rodada.
+
+## 30/10 05:00 · Marcos → Romano · dependência
+- Instalei `@axe-core/playwright` como devDependency (pré-aprovada na MISSAO), commit próprio. Só para testes; não entra no build do site.
+
+## 30/10 04:45 · Romano → Marcos · cronômetro "Reservados por" antes de existir reserva
+- No checkout (`compra-flow.tsx`, linha ~620), o cronômetro "Reservados por 14:56" começa no navegador já na etapa Pagamento, mas o pedido (e a reserva de verdade) só nasce quando a pessoa toca em **Gerar código Pix** / paga com cartão (`placeOrder`). Validei no navegador: com o cronômetro na tela não havia pedido nenhum no banco.
+- Desde o commit 163ea2a a reserva segura o lugar de verdade a partir do `placeOrder` (15 min, o cronômetro é ajustado pelo `expiresAt` do servidor nesse momento).
+- Sugestão: antes do pedido existir, sem a palavra "reservados" (ex.: só esconder o cronômetro, ou "Finalize em"); depois do Pix gerado, "Reservados por" está correto. Mudar o momento de criar o pedido para "Ir para pagamento" exigiria mudar a ação (forma de pagamento fica no pedido); não recomendo agora.
+- Também: com a reserva valendo, um tipo pode aparecer "Esgotado" por até 15 min e voltar. Se quiser um texto melhor que "Esgotado" nesse caso, eu exponho na página do evento quantos estão só reservados (`held`) por tipo; me peça aqui.
