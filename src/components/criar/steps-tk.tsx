@@ -185,7 +185,7 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
       <div className="cv-acc">
         <button className="h" type="button" onClick={() => setRules((v) => !v)} aria-expanded={rules}>
           <span className="tx"><b>Regras da venda</b>
-            <span className="cv-rch">{OPT.map(([k, t]) => <i key={k} className={d[k] ? "on" : ""}>{{ autoMeia: "Meia automática", fee: d.fee ? "Taxa paga pelo comprador" : "Taxa paga por você", transfer: "Transferência", resale: "Revenda oficial" }[k]}{k !== "fee" && !d[k] ? " desligada" : ""}</i>)}</span>
+            <span className="cv-rch">{OPT.map(([k]) => <i key={k} className={d[k] ? "on" : ""}>{{ autoMeia: "Meia automática", fee: d.fee ? "Taxa paga pelo comprador" : "Taxa paga por você", transfer: "Transferência", resale: "Revenda oficial" }[k]}{k !== "fee" && !d[k] ? " desligada" : ""}</i>)}</span>
           </span>
           <span className={rules ? "cv-chev o" : "cv-chev"} aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4" /></svg></span>
         </button>

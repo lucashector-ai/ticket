@@ -40,7 +40,7 @@ export default async function PainelPromotersRoute({ searchParams }: Props) {
     eventId: ev?.id ?? "",
     kpis: { revenue: brl(sum.rev), tickets: sum.tickets, orders: sum.orders, commission: brl(sum.com), clicks: sum.clicks, conv: sum.clicks ? `${Math.round((sum.orders / sum.clicks) * 100)}%` : "—", active: rows.filter((r) => r.active).length },
     list: {
-      rows: rows.map(({ cents: _c, ...r }) => r),
+      rows: rows.map((r) => { const { cents, ...rest } = r; void cents; return rest; }),
       events: pub.filter((e) => !ended(e, now)).map((e) => ({ id: e.id, title: e.title })),
       totals: { orders: sum.orders, revenue: brl(sum.rev), commission: brl(sum.com) },
     },

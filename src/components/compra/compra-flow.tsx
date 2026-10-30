@@ -381,7 +381,10 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const pickCard = (id: string) => { setCardSel(id); setCardInst(null); setPayErr(null); setTried(false); };
   const bad = (ok: boolean) => (tried && !ok ? "in2 bad" : "in2");
   /* no Pix (que tem o próprio prazo) e durante a confirmação a reserva não corta a tela */
-  const expired = left <= 0 && step !== "done" && step !== "pix" && step !== "proc";
+  // só existe reserva de verdade depois que o pedido nasce (Gerar Pix / pagar) ou numa vaga de grupo/revenda;
+  // antes disso não mostramos cronômetro nem "reserva acabou" (seria urgência falsa)
+  const held = !!pendingId || !!lock;
+  const expired = held && left <= 0 && step !== "done" && step !== "pix" && step !== "proc";
 
   const go = (s: CompraStep) => { setStep(s); setTried(false); setSlow(false); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
@@ -594,7 +597,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     if (!id || busy) return;
     setBusy(true);
     const r = await abandonPayment(id);
-    if (r.paid) { window.location.assign(`/meus-ingressos?pedido=${r.paid}`); return; }
+    if (r.paid) { window.location.replace(`/meus-ingressos?pedido=${r.paid}`); return; }
     if (r.paying) { setBusy(false); flash("O pagamento deste pedido já está sendo confirmado. Confira em Meus ingressos em instantes."); return; }
     setPending(null);
     setOrder(null);
@@ -639,7 +642,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               </li>
             ))}
           </ol>
-          {step !== "pix" && !expired && (
+          {held && step !== "pix" && !expired && (
             <span className={left < 120 ? "tmr low" : "tmr"}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
               Reservados por <b className="tm-v">{mmss(left)}</b>
