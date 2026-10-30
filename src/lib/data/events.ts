@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 
@@ -59,7 +60,8 @@ export async function listCities() {
 
 export type EventDetail = NonNullable<Awaited<ReturnType<typeof getEventBySlug>>>;
 
-export async function getEventBySlug(slug: string) {
+/** Uma consulta por requisição: os metadados (generateMetadata) e a página usam o mesmo resultado. */
+export const getEventBySlug = cache(async (slug: string) => {
   const e = await db.query.events.findFirst({
     where: eq(events.slug, slug),
     with: {
@@ -72,7 +74,7 @@ export async function getEventBySlug(slug: string) {
     },
   });
   return e ?? null;
-}
+});
 
 /** Eventos parecidos: mesma categoria principal primeiro, depois os demais ao vivo. */
 export async function listSimilarEvents(eventId: string, categoryLabel: string | null, limit = 4): Promise<EventCard[]> {

@@ -152,12 +152,11 @@ export default async function EventoPage({ params, searchParams }: Params) {
   const [ev, user] = await Promise.all([getEventBySlug(slug), getSessionUser()]);
   // rascunho: só quem criou vê (prévia)
   if (!ev || (ev.status === "draft" && ev.createdByUserId !== user?.id)) notFound();
-  const [similar, following] = await Promise.all([
+  // tudo o que depende só do evento e de quem vê sai numa rodada só (antes eram três, uma depois da outra)
+  const [similar, following, access, offers, held, bought] = await Promise.all([
     listSimilarEvents(ev.id, ev.primaryCategoryLabel),
     ev.organizerId ? isFollowing(user?.id, "organizer", ev.organizerId) : Promise.resolve(false),
-  ]);
-  const access = salePhase(ev) === "presale" && !!(await presaleAccess(ev.id));
-  const [offers, held, bought] = await Promise.all([
+    salePhase(ev) === "presale" ? presaleAccess(ev.id).then((a) => !!a) : Promise.resolve(false),
     db.select({ id: schema.resaleListings.id, ticketTypeId: schema.resaleListings.ticketTypeId, priceCents: schema.resaleListings.priceCents, sellerUserId: schema.resaleListings.sellerUserId })
       .from(schema.resaleListings)
       .where(and(eq(schema.resaleListings.eventId, ev.id), or(eq(schema.resaleListings.status, "active"), and(eq(schema.resaleListings.status, "reserved"), lt(schema.resaleListings.reservedUntil, new Date())))))
