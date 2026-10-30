@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { authClient } from "@/lib/auth/client";
+import { loadAuthClient } from "@/lib/auth/client-lazy";
 import { resendActivation } from "@/lib/actions/auth";
 import { useToast } from "@/components/toast";
 import { FieldError, FormError, fieldCls, isEmail } from "@/components/auth/fields";
@@ -42,7 +42,7 @@ export function ActivateForm({ initialEmail, known, verified, next }: { initialE
     if (v.length !== 6) return;
     setBusy(true); setErr(null);
     try {
-      const res = await authClient.emailOtp.verifyEmail({ email: email.trim(), otp: v });
+      const res = await (await loadAuthClient()).emailOtp.verifyEmail({ email: email.trim(), otp: v });
       if (res?.error) { setErr("Código incorreto ou expirado. Confira ou peça outro."); setCode(""); }
       else {
         flash("Conta ativada!");

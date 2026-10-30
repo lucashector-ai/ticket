@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { authClient } from "@/lib/auth/client";
+import { loadAuthClient } from "@/lib/auth/client-lazy";
 import { signInInline, signUpInline } from "@/lib/actions/auth";
 import { PhoneField } from "@/components/phone-field";
 import { viaVerify } from "@/components/auth/google-button";
@@ -39,7 +39,7 @@ export function InlineAuth({ onDone, returnUrl, highlight, human, apple = false 
 
   async function google() {
     setBusy(true);
-    await authClient.signIn.social({ provider: "google", callbackURL: viaVerify(returnUrl) });
+    await (await loadAuthClient()).signIn.social({ provider: "google", callbackURL: viaVerify(returnUrl) });
   }
 
   return (

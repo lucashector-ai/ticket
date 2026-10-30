@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { authClient } from "@/lib/auth/client";
+import { loadAuthClient } from "@/lib/auth/client-lazy";
 import { useToast } from "@/components/toast";
 
 /** Volta do Google passando por /verificacao: pede o código da segunda etapa (se houver) e depois vai para `next`. */
@@ -15,7 +15,7 @@ export function GoogleButton({ label, next }: { label: string; next: string }) {
     if (busy) return;
     setBusy(true);
     try {
-      const res = await authClient.signIn.social({ provider: "google", callbackURL: viaVerify(next) });
+      const res = await (await loadAuthClient()).signIn.social({ provider: "google", callbackURL: viaVerify(next) });
       if (res?.error) {
         flash(res.error.message || "Não foi possível entrar com o Google.");
         setBusy(false);
