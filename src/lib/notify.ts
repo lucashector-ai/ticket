@@ -9,6 +9,7 @@ import { eventLabels } from "@/lib/tickets/labels";
 import { companionsLabel, guestQrPngPath } from "@/lib/guest-list";
 import { createResetLink } from "@/lib/password-link";
 import { formatPhone } from "@/lib/phone";
+import { wideArt } from "@/lib/event-art";
 
 /*
  * Todos os e-mails transacionais da Tickets Win: conta (código, boas-vindas, senha), compra,
@@ -38,8 +39,8 @@ export async function userContact(userId: string): Promise<{ email: string; name
 
 type EvRow = typeof events.$inferSelect & { venue: (typeof schema.venues.$inferSelect & { city: typeof schema.cities.$inferSelect }) | null };
 const eventWith = { venue: { with: { city: true } } } as const;
-const banner = (e: { bannerId: string | null; media: { share?: string; home?: string } | null }) =>
-  (e.bannerId?.startsWith("/midia/") ? e.bannerId : null) ?? (e.media?.share?.startsWith("/") ? e.media.share : null);
+/** Arte horizontal do cartão do evento (só cartaz: o banner montado com ele, DM-2). */
+const banner = (e: EvRow) => wideArt(e);
 
 function eventBlock(e: EvRow): TxBlock {
   const L = eventLabels(e);

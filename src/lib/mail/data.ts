@@ -5,6 +5,7 @@ import { brl, dateFull, dateNice } from "@/lib/format";
 import { eventLabels } from "@/lib/tickets/labels";
 import type { Audience, Block, Design } from "./design";
 import type { EvInfo, OrgInfo } from "./render";
+import { wideArt } from "@/lib/event-art";
 
 const { events, orders, follows, eventSignups, userProfiles, emailUnsubscribes } = schema;
 
@@ -59,7 +60,7 @@ export async function loadEvents(ids: string[]): Promise<Record<string, EvInfo>>
       whenShort: e.dateLabel ?? dateNice(e.startAt), when: e.dateFullLabel ?? dateFull(e.startAt),
       venue: L.venue, city: [e.venue?.city.name, e.venue?.city.uf].filter(Boolean).join(" – "), address: addr,
       mapsUrl: q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : "",
-      banner: uploaded(e.bannerId) ?? rel(e.media?.share ?? null), flyer: uploaded(e.flyerId) ?? rel(e.media?.home ?? null),
+      banner: wideArt(e) ?? rel(e.media?.share ?? null), flyer: uploaded(e.flyerId) ?? rel(e.media?.home ?? null),
       accent: e.accentColor && /^#[0-9a-f]{6}$/i.test(e.accentColor) ? e.accentColor : "#111111",
       minPrice: min === null ? null : min === 0 ? "Grátis" : brl(min),
       lineup: e.eventArtists.slice(0, 12).map((x) => ({ name: x.artist.name, img: rel(x.artist.imageUrl), role: x.role ?? "" })),

@@ -5,6 +5,7 @@ import { qrPayload } from "@/lib/tickets/qr";
 import { dateFull, dateNice } from "@/lib/format";
 import type { getTicketByCode } from "@/lib/data/ingressos";
 import { eventLabels } from "@/lib/tickets/labels";
+import { wideArt } from "@/lib/event-art";
 
 type Ticket = NonNullable<Awaited<ReturnType<typeof getTicketByCode>>>;
 
@@ -15,7 +16,9 @@ export async function passData(t: Ticket, site: string) {
   const sess = t.ticketType.sessionId ? await db.query.eventSessions.findFirst({ where: eq(schema.eventSessions.id, t.ticketType.sessionId) }) : null;
   const start = sess?.startAt ?? t.event.startAt;
   const end = sess ? new Date(start.getTime() + 6 * 3600_000) : t.event.endAt ?? new Date(start.getTime() + 6 * 3600_000);
-  const art = t.event.bannerId && /^\/midia\//.test(t.event.bannerId) ? `${site}${t.event.bannerId}` : null;
+  // faixa 3:1 do passe: recorte do banner ou, só com cartaz, o banner montado com ele (DM-2)
+  const wide = wideArt(t.event, "carteira");
+  const art = wide ? `${site}${wide}` : null;
   /* quando o passe fica "relevante" (tela de bloqueio, toque duplo): cada data em que o ingresso vale,
      de 3h antes até o fim. Ingresso sem data própria num evento de várias datas vale em todas. */
   const sessions = sess ? [sess] : await db.query.eventSessions.findMany({ where: eq(schema.eventSessions.eventId, t.event.id), orderBy: (x, { asc }) => [asc(x.startAt)] });
