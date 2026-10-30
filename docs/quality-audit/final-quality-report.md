@@ -169,6 +169,7 @@ Detalhes em `performance-report.md`. Rodada 2: financeiro e extrato do Banco dei
 | Rodada 4: unitários + integração no banco de teste (suíte inteira, `pnpm test` sobre o commit c934fec), com equipe, produtoras, banco e cota de meia | 147 (42 arquivos) | 147 | 0 | 0 |
 | Rodada 5: suíte inteira (`pnpm test` sobre o commit edf6763), com fim das vendas (U-73) | 158 (44 arquivos) | 158 | 0 | 0 |
 | Rodada 5: navegador (Chromium 1366 e 390): Calourada encerrada (página e link direto do checkout) e evento de várias datas ainda à venda | 3 | 3 | 0 | 0 |
+| Rodada 5: build (`opennextjs-cloudflare build`, cópia `ticket-build`, commit ce4d1d8 com tudo do Marcos até 936aba3) | 1 | 1 | 0 | 0 |
 | Rodada 4: banner em HTML com a CSP bloqueando (home, 1280 e 390) | 3 navegadores | 3 | 0 | 0 |
 | Rodada 4: build (`opennextjs-cloudflare build`, cópia `ticket-build`; final no commit c934fec, com tudo do Marcos e do banner) | 3 (6de7863, 6044d2c, c934fec) | 3 | 0 | 0 |
 | Rodada 4: navegador (Chromium 390 e 1280): caixa de meia no checkout com e sem tipo Meia; link de transferência aberto por outra conta | 2 × 2 | 4 | 0 | aceite positivo pela tela: coberto na integração (conta de destino precisa de e-mail confirmado) |
