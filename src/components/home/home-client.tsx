@@ -15,6 +15,7 @@ import { HomeCard, SkeletonCard } from "./home-card";
 import { Newsletter } from "./newsletter";
 import { SpotifyStrip, type HomeSpotify } from "./spotify-strip";
 import { HeroStage } from "./hero-stage";
+import { HtmlArtFrame } from "@/components/art/html-art-frame";
 import type { CityOpt, HeroItem, HomeCategory, HomeEvent, HomeFreeSlide } from "./types";
 import { BrandMark, BrandWord } from "@/components/brand-logo";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -436,14 +437,11 @@ function EventSlide({ b, on }: { b: HomeEvent; on: boolean }) {
 function HeroArt({ b, fit, active }: { b: HomeEvent; fit: "fill" | "card"; active: boolean }) {
   if (!b.bannerHtml) return <BannerArt id={b.bannerId} fit={fit} poster={b.bannerId === b.flyerId} />;
   return (
-    <iframe
+    <HtmlArtFrame
       className="bn-html"
       title={`Banner de ${b.title}`}
-      srcDoc={active ? b.bannerHtml : undefined}
-      sandbox="allow-scripts"
-      referrerPolicy="no-referrer"
-      tabIndex={-1}
-      aria-hidden="true"
+      html={b.bannerHtml}
+      active={active}
       style={{ position: fit === "fill" ? "absolute" : "relative", inset: 0, display: "block", width: "100%", height: fit === "fill" ? "100%" : undefined, aspectRatio: fit === "card" ? "16 / 9" : undefined, border: 0, pointerEvents: "none", background: "#111111" }}
     />
   );

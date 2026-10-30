@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { HtmlArtFrame } from "@/components/art/html-art-frame";
 
 /**
  * Arte de palco fixo (HTML ou imagem feitos num tamanho de projeto, ex.: 1440 × 800) dentro de um espaço de outro
@@ -13,7 +14,8 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
  *   palco é fundo; se precisasse cortar mais, encolhe e sobra cor nas laterais. Assim o texto nunca é cortado;
  * - `--bnf-top`/`--bnf-bot` (px): faixas cobertas por cima (cabeçalho, busca); a arte centraliza no meio do resto.
  *
- * O HTML roda num iframe isolado (sandbox sem allow-same-origin: sem cookies, sem a conta, sem navegar o site) e
+ * O HTML roda num iframe isolado, no palco com CSP própria (HtmlArtFrame: sandbox sem allow-same-origin, sem cookies,
+ * sem a conta, sem navegar o site; a CSP da página não barra o script da arte) e
  * sem receber cliques: o link fica por fora, no carrossel. `active`: só o slide visível carrega o HTML (e a
  * animação recomeça quando ele volta). Movimento reduzido: vale o que a própria arte fizer com
  * prefers-reduced-motion (o iframe herda a preferência); não forçamos nada dentro dela.
@@ -57,16 +59,7 @@ export function HeroStage({ html, image, w, h, bg, active, title, className, sty
         style={{ width: w, height: h, transform: fit ? `translate(${fit.x}px, ${fit.y}px) scale(${fit.s})` : undefined, visibility: fit ? undefined : "hidden" }}
       >
         {html ? (
-          <iframe
-            title={title}
-            srcDoc={active ? html : undefined}
-            sandbox="allow-scripts"
-            referrerPolicy="no-referrer"
-            tabIndex={-1}
-            width={w}
-            height={h}
-            style={{ display: "block", width: w, height: h, border: 0, pointerEvents: "none", background: bg }}
-          />
+          <HtmlArtFrame html={html} active={active} title={title} width={w} height={h} style={{ display: "block", width: w, height: h, border: 0, pointerEvents: "none", background: bg }} />
         ) : image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={image} alt="" width={w} height={h} decoding="async" style={{ display: "block", width: w, height: h }} />

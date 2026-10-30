@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { BannerArt } from "@/components/art/banner";
 import { HeroStage } from "@/components/home/hero-stage";
+import { HtmlArtFrame } from "@/components/art/html-art-frame";
 import { deleteHeroSlide, saveHeroSlide, setFeaturedList, setHeroArt, setHeroOrder } from "@/lib/actions/admin";
 import type { AdminHeroSlide, AdminHighlightEvent } from "@/lib/admin";
 
@@ -322,7 +323,7 @@ function ListCard({ title, sub, max, initial, byId, events, save, withArt }: {
 function Preview({ e, html, art }: { e: Ev; html?: string | null; art?: string | null }) {
   const h = html !== undefined ? html : e.heroHtml;
   const a = art !== undefined ? art : e.heroArt;
-  if (h) return <iframe title={`Prévia de ${e.title}`} srcDoc={h} sandbox="allow-scripts" className="hl-frame" />;
+  if (h) return <HtmlArtFrame title={`Prévia de ${e.title}`} html={h} className="hl-frame" />;
   return <BannerArt id={a ?? e.bannerId ?? e.flyerId} fit="ratio" poster={!a && (e.bannerId ?? e.flyerId) === e.flyerId} />;
 }
 
