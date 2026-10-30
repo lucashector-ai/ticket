@@ -84,6 +84,8 @@ export type ResumeData = {
   items: { ticketTypeId: string; quantity: number; unitPriceCents: number }[];
   holders: { ticketTypeId: string; name: string; meia: boolean; me: boolean; email: string }[];
   buyer: { name: string; email: string; phone: string; cpf: string };
+  /** a caixa "Quero receber novidades do produtor" estava marcada */
+  producerOptIn: boolean;
   coupon: ResumeCoupon | null;
   /** Pix já gerado (o mesmo QR / copia e cola); null no cartão ou se não deu para recuperar */
   pix: ResumePix | null;
@@ -117,6 +119,7 @@ export async function resumeView(order: OrderRow): Promise<ResumeData> {
       name: order.buyerName ?? "", email: order.buyerEmail ?? "", phone: order.buyerPhone ?? "",
       cpf: digits.length === 11 ? `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}` : digits,
     },
+    producerOptIn: !!order.producerOptIn,
     coupon: coupon ? { code: coupon.code, percentOff: coupon.percentOff ?? 0, amountOffCents: coupon.amountOffCents ?? 0, amountPerTicket: coupon.amountPerTicket, sector: coupon.sector } : null,
     pix,
   };

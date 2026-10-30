@@ -422,6 +422,7 @@
   .cd-save.on .ck-box{box-shadow:none}
   .cd-save .ck-t{display:flex;flex-direction:column;gap:2px;font-weight:500;color:#111}
   .cd-save .ck-sub{font-size:13px;font-weight:400}
+  .ck-optin{margin-top:24px}
   .cd-tot{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:2px 16px;margin-top:16px;padding:16px 18px;border-radius:18px;background:#111;color:#FFFFFF}
   .cd-tot-k{font-size:14px;color:rgba(255,255,255,.72)}
   .cd-tot-v{grid-row:span 2;align-self:center;font:600 26px 'Inter Tight',sans-serif;letter-spacing:-.03em;font-variant-numeric:tabular-nums}

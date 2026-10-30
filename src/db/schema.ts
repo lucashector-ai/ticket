@@ -538,6 +538,11 @@ export const orders = pgTable(
     stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 64 }),
     /** quanto já voltou para quem pagou (soma dos order_refunds concluídos); o pedido segue "paid" no reembolso parcial */
     refundedCents: integer("refunded_cents").notNull().default(0),
+    /**
+     * caixa "Quero receber novidades do produtor por e-mail" no checkout (desmarcada por padrão). null = pedido de
+     * antes da caixa existir: segue recebendo as campanhas como antes, com o "sair" em um clique (decisão D-03)
+     */
+    producerOptIn: boolean("producer_opt_in"),
     ...timestamps,
   },
   (t) => [

@@ -43,6 +43,8 @@ export type CompraEvent = {
   sessions: CompraSession[];
   /** 0 quando o produtor absorve a taxa de serviço */
   feeRate: number;
+  /** nome do produtor, para a caixa "Quero receber novidades" (null: evento sem página de produtor) */
+  producer: string | null;
 };
 type Coupon = { code: string; percentOff: number; amountOffCents: number; amountPerTicket: boolean; sector: string | null };
 const couponOf = (r: Coupon) => ({ code: r.code, percentOff: r.percentOff, amountOffCents: r.amountOffCents, amountPerTicket: r.amountPerTicket, sector: r.sector });
@@ -62,13 +64,14 @@ const low = (v: string) => v.trim().toLowerCase();
  * "Impressão digital" do pedido: se nada mudou desde que o pedido pendente foi criado (itens, titulares, comprador,
  * cupom, forma de pagamento, parcelas e total), ele é reaproveitado; senão o servidor cria outro e libera o antigo.
  */
-type Fp = { method: string; inst: number; total: number; items: string[]; holders: string[]; buyer: string; coupon: string };
+type Fp = { method: string; inst: number; total: number; items: string[]; holders: string[]; buyer: string; coupon: string; optIn: boolean };
 const fpKey = (f: Fp) => JSON.stringify({ ...f, inst: f.method === "card" ? f.inst : 1, items: [...f.items].sort(), holders: [...f.holders].sort() });
 const holderFp = (h: { ticketTypeId: string; name: string; meia: boolean; me: boolean; email: string }) => `${h.ticketTypeId}|${h.name.trim()}|${h.meia}|${h.me}|${h.me ? "" : low(h.email)}`;
 const buyerFp = (b: { name: string; email: string; cpf: string }) => `${b.name.trim()}|${low(b.email)}|${onlyDigits(b.cpf)}`;
 const resumeKey = (r: ResumeData) => fpKey({
   method: r.method, inst: r.installments, total: r.totalCents,
   items: r.items.map((i) => `${i.ticketTypeId}:${i.quantity}`), holders: r.holders.map(holderFp), buyer: buyerFp(r.buyer), coupon: r.coupon?.code ?? "",
+  optIn: r.producerOptIn,
 });
 type Pending = { orderId: string; key: string };
 
@@ -136,6 +139,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const [email, setEmail] = useState(resume?.buyer.email || user?.email || "");
   const [phone, setPhone] = useState(resume?.buyer.phone || profile?.phone || "");
   const [cpf, setCpf] = useState(resume?.buyer.cpf ? fmtCpf(resume.buyer.cpf) : profile?.cpf ? fmtCpf(profile.cpf) : "");
+  /** "Quero receber novidades do produtor": desmarcada por padrão; só quem marca recebe as campanhas dele (D-03) */
+  const [optIn, setOptIn] = useState(!!resume?.producerOptIn);
   /* titulares do pedido retomado, na mesma ordem em que o checkout monta os ingressos */
   const [hold, setHold] = useState<Record<string, Hold>>(() => {
     const o: Record<string, Hold> = {};
@@ -326,7 +331,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     method, inst, total: price.total,
     items: lines.map((l) => `${l.ticketTypeId}:${l.quantity}`),
     holders: holders.map((h) => holderFp({ ticketTypeId: h.tier.id, name: holdName(h), meia: isMeia(h), me: hdOf(h).me, email: holdEmail(h) })),
-    buyer: buyerFp({ name, email, cpf }), coupon: lock ? "" : coupon?.code ?? "",
+    buyer: buyerFp({ name, email, cpf }), coupon: lock ? "" : coupon?.code ?? "", optIn,
   });
   /* etapa do cartão: cartão salvo escolhido ou cartão novo (com titular, se for de outra pessoa) */
   const usingSaved = live && cardSel !== "new" && !!saved?.some((c) => c.id === cardSel && !c.expired);
@@ -462,6 +467,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       holders: holders.map((h) => ({ ticketTypeId: h.tier.id, name: holdName(h), meia: isMeia(h), me: hdOf(h).me, email: hdOf(h).me ? null : holdEmail(h) })),
       method,
       installments: method === "card" ? inst : 1,
+      producerOptIn: optIn,
     });
     setBusy(false);
     if (!r.ok) {
@@ -798,6 +804,15 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                     );
                   })}
                 </div>
+                <button className={optIn ? "ckb cd-save ck-optin on" : "ckb cd-save ck-optin"} type="button" role="checkbox" aria-checked={optIn} onClick={() => setOptIn((v) => !v)}>
+                  <span className="ck-box" aria-hidden="true">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                  </span>
+                  <span className="ck-t">
+                    {event.producer ? `Quero receber novidades de ${event.producer} por e-mail` : "Quero receber novidades do produtor deste evento por e-mail"}
+                    <span className="ck-sub">Lançamentos e avisos dos próximos eventos. Dá para sair a qualquer momento.</span>
+                  </span>
+                </button>
               </div>
             )}
 

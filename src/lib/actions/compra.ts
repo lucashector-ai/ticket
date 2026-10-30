@@ -50,6 +50,8 @@ const placeSchema = z.object({
   /** parte de uma compra em grupo / anúncio da revenda (1 ingresso, preço travado) */
   groupShareId: z.string().uuid().optional().nullable(),
   resaleListingId: z.string().uuid().optional().nullable(),
+  /** caixa "Quero receber novidades do produtor por e-mail" (desmarcada por padrão) */
+  producerOptIn: z.boolean().optional(),
 });
 export type PlaceOrderInput = z.infer<typeof placeSchema>;
 
@@ -120,7 +122,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     const missing = Array.from(new Set(parsed.error.issues.map((i) => i.message)));
     return { ok: false, error: `Falta preencher: ${missing.join(", ")}.` };
   }
-  const { eventSlug, items, buyer, holders, method, installments, groupShareId, resaleListingId } = parsed.data;
+  const { eventSlug, items, buyer, holders, method, installments, groupShareId, resaleListingId, producerOptIn } = parsed.data;
   let { coupon } = parsed.data;
 
   const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), with: { ticketTypes: true } });
@@ -197,7 +199,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     subtotalCents: p.subtotal, meiaCents: p.meia, discountCents: p.discount, feeCents: p.fee,
     interestCents: p.interest, installments: p.installments, totalCents: p.total,
     couponId: couponRow?.id ?? null, paymentMethod: free ? "free" : method,
-    buyerName: buyer.name.trim(), buyerEmail: buyer.email.trim().toLowerCase(), buyerPhone: buyer.phone, buyerCpf: digits(buyer.cpf),
+    buyerName: buyer.name.trim(), buyerEmail: buyer.email.trim().toLowerCase(), buyerPhone: buyer.phone, buyerCpf: digits(buyer.cpf), producerOptIn: !!producerOptIn,
     holders: cleanHolders,
     expiresAt: new Date(Date.now() + 15 * 60_000),
     presaleSignupId,

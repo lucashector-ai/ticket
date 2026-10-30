@@ -127,6 +127,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
     }),
     sessions: special ? [] : sessions,
     feeRate: e.absorbFee ? 0 : SERVICE_FEE_RATE,
+    producer: e.organizer?.name ?? null,
   };
   // pagamento de verdade: a chave publicável vai como prop (lida em runtime, sem NEXT_PUBLIC_)
   const stripeKey = stripePublishableKey();

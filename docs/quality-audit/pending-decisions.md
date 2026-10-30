@@ -2,6 +2,17 @@
 
 Cada item: o que é, por que precisa da decisão, opções e a recomendação. Nada aqui foi aplicado sem estar marcado.
 
+## Schema para a produção (aplicar ANTES de publicar o código desta rodada)
+
+A produção recebe o schema antes do código (decisão do dono). Já aplicado e testado no branch de **teste**. É idempotente (pode rodar mais de uma vez) e não mexe em nenhuma linha existente: os pedidos antigos ficam com `NULL` (= "de antes da caixa", seguem recebendo campanhas como antes).
+
+```sql
+-- D-03: caixa "Quero receber novidades de <produtor> por e-mail" no checkout
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS producer_opt_in boolean;
+```
+
+Reversão (só se o código desta rodada for desfeito): `ALTER TABLE orders DROP COLUMN IF EXISTS producer_opt_in;`
+
 ## D-01 · Compra em grupo contorna o limite por pessoa (Romano, P1)
 - **Hoje:** partes de compra em grupo não contam para o limite por pessoa (regra escrita na Ajuda). Mas nada impede a mesma conta de pagar **todas** as partes do grupo, nem de abrir vários grupos. Com isso o limite por pessoa (anticambista) deixa de valer: um grupo de 8, pago inteiro pela mesma pessoa, repetido.
 - **Opções:** (a) cada conta paga no máximo **uma** parte por grupo (mantém o espírito "cada amigo paga a sua"); (b) partes pagas contam para o limite de quem pagou (muda o texto da Ajuda); (c) no máximo 1 grupo aberto por pessoa por evento; (d) manter.

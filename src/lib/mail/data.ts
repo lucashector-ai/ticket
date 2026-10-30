@@ -118,8 +118,9 @@ export async function resolveAudience(a: Audience, s: Sender, ownEventIds: strin
 
   const buyerIds = a.buyers === "all" ? [...own] : a.buyers === "events" ? a.buyerEvents.filter((id) => own.has(id)) : [];
   if (buyerIds.length) {
+    // só quem marcou "quero receber novidades" no checkout; pedidos de antes da caixa (null) seguem como antes (D-03)
     const rows = await db.selectDistinct({ email: orders.buyerEmail, name: orders.buyerName }).from(orders)
-      .where(and(inArray(orders.eventId, buyerIds), eq(orders.status, "paid")));
+      .where(and(inArray(orders.eventId, buyerIds), eq(orders.status, "paid"), sql`coalesce(${orders.producerOptIn}, true)`));
     for (const r of rows) add(r.email, r.name);
   }
   if (a.followers && s.orgId) {
