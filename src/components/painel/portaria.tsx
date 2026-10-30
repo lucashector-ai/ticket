@@ -26,12 +26,13 @@ export function Portaria({ eventId, title, sub, total, inside: inside0 }: { even
   const check = useCallback(async (text: string, typed = false) => {
     if (busy.current) return;
     busy.current = true;
-    const r = await scanTicket(eventId, text).catch(() => ({ ok: false, error: "Sem conexão. Tente de novo.", ticket: undefined, auth: true }));
+    const r = await scanTicket(eventId, text).catch(() => ({ ok: false, error: "Sem conexão. Tente de novo.", checkedInAt: null, ticket: undefined, auth: true }));
     const t = r.ticket;
     const shot: Shot = {
       id: ++seq.current, ok: r.ok,
-      title: r.ok ? (t?.holderName || "Entrada liberada") : (r.error ?? "Não foi possível validar"),
-      sub: t ? [t.sector, t.ticketType, t.code].filter(Boolean).join(" · ") : "",
+      // já usado: o horário da entrada e o nome, como no app da portaria
+      title: r.ok ? (t?.holderName || "Entrada liberada") : r.checkedInAt ? `Já entrou às ${new Date(r.checkedInAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })}` : (r.error ?? "Não foi possível validar"),
+      sub: t ? [!r.ok && r.checkedInAt ? t.holderName : null, t.sector, t.ticketType, t.code].filter(Boolean).join(" · ") : "",
       at: hm(),
     };
     if (r.ok) setInside((n) => n + 1);
