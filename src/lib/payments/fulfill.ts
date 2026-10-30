@@ -1,12 +1,13 @@
 import "server-only";
 import { after } from "next/server";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import QRCode from "qrcode";
-import { and, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
+import type { BatchItem } from "drizzle-orm/batch";
 import { db, schema } from "@/db";
 import { qrPayload } from "@/lib/tickets/qr";
 import { heldSql } from "@/lib/holds";
-import { settleShare, shareStillHeld } from "@/lib/special";
+import { ONE_SHARE, paidShareInGroup, shareStillHeld } from "@/lib/special";
 import { mailGroupSharePaid, mailOrderConfirmed, mailResaleSold, mailTransferSent } from "@/lib/notify";
 import { refundOrder } from "@/lib/payments/refund";
 import { ticketCode } from "@/lib/tickets/code";
@@ -18,12 +19,13 @@ import { overLimit, type Bought } from "@/lib/tickets/limits";
  *
  * Idempotente e segura com chamadas simultâneas (webhook + navegador): quem conseguir "pegar" o pedido
  * (paid_at gravado num pedido ainda não pago) faz o trabalho; os outros recebem `busy` e conferem de novo.
+ * A gravação é uma transação só (ver `ensure` abaixo): uma queda no meio não deixa nada pela metade.
  *
  * `charged`: o dinheiro já saiu da conta de quem comprou (Stripe confirmou). Nesse caso a reserva vencida
  * não impede a emissão (se ainda houver lugar), e qualquer motivo para não emitir gera estorno automático.
  */
 
-const { orders, orderItems, tickets, ticketTypes, coupons, eventSignups, groupShares, resaleListings, ticketTransfers } = schema;
+const { orders, orderItems, tickets, ticketTypes, coupons, eventSignups, groupShares, groupOrders, resaleListings, ticketTransfers } = schema;
 
 type Method = "pix" | "card" | "free";
 /** `sentTo`: ingressos de outras pessoas, enviados por e-mail (cada uma aceita com a própria conta). */
@@ -85,20 +87,70 @@ export async function paidView(orderId: string): Promise<FulfillOk | null> {
   };
 }
 
+/*
+ * A emissão grava tudo numa transação só (db.batch: o driver HTTP do Neon manda os comandos juntos e o banco
+ * desfaz todos se um falhar). Não existe "meio caminho": ou o pedido fica pago com os ingressos, o estoque
+ * baixado, o cupom contado e a parte do grupo quitada, ou nada disso acontece. Se o Worker cair no meio, a
+ * nova tentativa começa do zero, sem baixar o estoque de novo.
+ *
+ * Conferências que dependem do que foi gravado (estoque, limite por pessoa, link de pré-venda, parte do
+ * grupo) viram comandos `ensure` dentro da transação: quando não passam, provocam um erro proposital
+ * (TW_ABORT:<motivo>) que desfaz tudo e diz o motivo.
+ */
+const ABORT = "TW_ABORT:";
+type Abort = "order" | "presale" | "share" | "share_one" | "stock" | "limit" | "listing" | "ticket";
+
+/** Aborta a transação quando `ok` é falso. `clock_timestamp()` impede o Postgres de avaliar o erro antes da hora. */
+const ensure = (ok: SQL, why: Abort, withClause?: SQL) =>
+  db.execute(sql`${withClause ?? sql``} select case when ${ok} then 0 else (${`${ABORT}${why}:`} || clock_timestamp()::text)::int end`);
+
+function abortOf(e: unknown): Abort | null {
+  let x: unknown = e;
+  for (let i = 0; x && i < 4; i++) {
+    const m = /TW_ABORT:(\w+):/.exec(String((x as { message?: unknown }).message ?? ""));
+    if (m) return m[1] as Abort;
+    x = (x as { cause?: unknown }).cause;
+  }
+  return null;
+}
+
+/**
+ * Trava por pessoa (conta e CPF) até o fim da transação: duas confirmações da mesma pessoa, mesmo por contas
+ * diferentes com o mesmo CPF, passam uma de cada vez pela conferência do limite. Ordem fixa (evita impasse).
+ */
+const lockPeople = (keys: string[]) => db.execute(sql`
+  select pg_advisory_xact_lock(k) from (
+    select distinct hashtextextended(x, 0) as k from unnest(array[${sql.join(keys.map((k) => sql`${k}`), sql`, `)}]::text[]) as x
+  ) s order by k`);
+
+/** Marca o pedido como pago se ainda não estiver: a mesma confirmação em duas tentativas só vale uma vez. */
+const markPaid = (orderId: string, ref: string, allowed: readonly string[]) => ensure(sql`(select count(*) from u) = 1`, "order", sql`
+  with u as (
+    update ${orders} set status = 'paid', payment_ref = ${ref}, updated_at = now()
+    where id = ${orderId} and status in (${sql.join(allowed.map((a) => sql`${a}`), sql`, `)}) returning 1
+  )`);
+
+const runBatch = (list: BatchItem<"pg">[]) => db.batch(list as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
+
+/** Se a transação falhou sem motivo nosso (rede, banco), solta a trava do pedido e repassa o erro. */
+async function unknownFailure(orderId: string, e: unknown): Promise<FulfillResult> {
+  // a transação inteira valeu ou não valeu: se valeu, o pedido já está pago
+  const view = await paidView(orderId).catch(() => null);
+  if (view) return view;
+  // nada foi gravado: a próxima tentativa (webhook, conferência do checkout) pode começar já
+  await db.update(orders).set({ paidAt: null }).where(and(eq(orders.id, orderId), ne(orders.status, "paid"))).catch(() => {});
+  throw e;
+}
+
 /**
  * Ingressos de outras pessoas (titular com e-mail no checkout): o ingresso nasce na conta de quem comprou,
  * travado (status transferred) e com um link de entrega (ticket_transfers kind "gift") para o e-mail do titular.
  * Quando a pessoa entra com esse e-mail e aceita, ele vai para a conta dela com um QR novo. Não depende de o
  * produtor permitir transferências: faz parte da compra.
  */
-async function startGifts(fromUserId: string, list: { ticketId: string; email: string }[]): Promise<string[]> {
-  if (!list.length) return [];
-  const trs = await db.insert(ticketTransfers).values(list.map((g) => ({
-    ticketId: g.ticketId, fromUserId, toEmail: g.email, token: randomBytes(24).toString("hex"), status: "pending" as const, kind: "gift",
-  }))).returning({ id: ticketTransfers.id });
-  await db.update(tickets).set({ status: "transferred" }).where(inArray(tickets.id, list.map((g) => g.ticketId)));
-  return trs.map((t) => t.id);
-}
+const giftRows = (fromUserId: string, list: { ticketId: string; email: string }[]) => list.map((g) => ({
+  id: randomUUID(), ticketId: g.ticketId, fromUserId, toEmail: g.email, token: randomBytes(24).toString("hex"), status: "pending" as const, kind: "gift",
+}));
 
 /**
  * Confirma o pedido e emite os ingressos nominais.
@@ -130,10 +182,8 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
     return view ?? { ok: false, busy: true, error: "Confirmando o pagamento…" };
   }
 
-  const undo: (() => Promise<unknown>)[] = [];
-  /** Não deu para emitir: desfaz o que já foi feito; se houve cobrança, estorna e avisa por e-mail. */
+  /** Não deu para emitir (nada foi gravado): se houve cobrança, estorna e avisa por e-mail. */
   const fail = async (why: string): Promise<FulfillResult> => {
-    for (const u of undo.reverse()) await u().catch((e) => console.error("fulfill undo", order.id, e));
     if (pay.charged) {
       const r = await refundOrder(order.id, { email: `Não conseguimos concluir o seu pedido: ${why.replace(/\.$/, "")}.` });
       if (!r.ok) {
@@ -143,104 +193,172 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
       }
       return { ok: false, refunded: true, error: `${why} O valor pago foi estornado automaticamente.` };
     }
-    await db.update(orders).set({ status: "cancelled", paidAt: null }).where(eq(orders.id, order.id));
+    await db.update(orders).set({ status: "cancelled", paidAt: null }).where(and(eq(orders.id, order.id), ne(orders.status, "paid")));
     return { ok: false, error: `${why} Nada foi cobrado.` };
   };
 
   // evento cancelado pelo produtor enquanto a pessoa pagava (ex.: Pix pago depois): não emite, estorna
   const evState = await db.query.events.findFirst({ where: eq(schema.events.id, order.eventId), columns: { status: true } });
   if (evState?.status === "cancelled") return fail("O evento foi cancelado pelo produtor.");
-  if (!order.groupShareId && !order.resaleListingId) {
-    // limite por pessoa de novo na confirmação: outro pedido pode ter sido pago no meio do caminho
-    const types = await db.query.ticketTypes.findMany({ where: inArray(ticketTypes.id, order.items.map((i) => i.ticketTypeId)), columns: { id: true, name: true, maxPerOrder: true } });
-    const limitErr = overLimit(order.items, types, await boughtByType(order.userId, order.buyerCpf, types.map((t) => t.id), order.id));
+  if (order.resaleListingId) return fulfillResale(order, pay, allowed, fail);
+  const normal = !order.groupShareId;
+  const cpf = order.buyerCpf && order.buyerCpf.length === 11 ? order.buyerCpf : null;
+  const typeIds = [...new Set(order.items.map((i) => i.ticketTypeId))].sort();
+  /** Mensagem do limite por pessoa (o que a pessoa já tem, nesta conta e no CPF). */
+  const limitMsg = async () => {
+    const types = await db.query.ticketTypes.findMany({ where: inArray(ticketTypes.id, typeIds), columns: { id: true, name: true, maxPerOrder: true } });
+    return overLimit(order.items, types, await boughtByType(order.userId, order.buyerCpf, typeIds, order.id));
+  };
+  // conferências antes da transação, para responder com a mensagem certa sem gravar nada
+  if (normal) {
+    const limitErr = await limitMsg();
     if (limitErr) return fail(limitErr);
   }
-  // link da pré-venda vale para uma compra só
-  if (order.presaleSignupId) {
-    const used = await db.update(eventSignups).set({ usedAt: new Date() })
-      .where(and(eq(eventSignups.id, order.presaleSignupId), sql`${eventSignups.usedAt} is null`)).returning({ id: eventSignups.id });
-    if (!used.length) return fail("Este link de pré-venda já foi usado em outra compra.");
-    const signupId = order.presaleSignupId;
-    undo.push(() => db.update(eventSignups).set({ usedAt: null }).where(eq(eventSignups.id, signupId)));
-  }
-  if (order.resaleListingId) return fulfillResale(order, pay, fail);
+  let held = false;
   if (order.groupShareId) {
-    const sh = await db.query.groupShares.findFirst({ where: eq(groupShares.id, order.groupShareId), columns: { paidAt: true, userId: true } });
+    const sh = await db.query.groupShares.findFirst({ where: eq(groupShares.id, order.groupShareId), columns: { paidAt: true, userId: true, groupId: true } });
     if (!sh || sh.paidAt || sh.userId !== order.userId) return fail("Esta parte do grupo já foi paga ou passou para outra pessoa.");
+    if (await paidShareInGroup(sh.groupId, order.userId)) return fail(ONE_SHARE);
+    // parte de grupo com a vaga ainda segurada: entra direto; senão disputa o estoque como qualquer compra
+    held = await shareStillHeld(order.groupShareId);
   }
-  // parte de grupo com a vaga ainda segurada: entra direto; senão disputa o estoque (descontando as vagas seguradas)
-  const held = order.groupShareId ? await shareStillHeld(order.groupShareId) : false;
-  for (const it of order.items) {
-    const res = await db.update(ticketTypes)
-      .set({ sold: sql`${ticketTypes.sold} + ${it.quantity}` })
-      .where(and(eq(ticketTypes.id, it.ticketTypeId), held ? sql`true` : sql`${ticketTypes.sold} + ${it.quantity} + ${heldSql(ticketTypes.id, order.groupShareId)} <= ${ticketTypes.quantity}`))
-      .returning({ id: ticketTypes.id });
-    if (!res.length) return fail(pay.charged && order.expiresAt && order.expiresAt < new Date()
-      ? "A reserva venceu antes da confirmação do pagamento e os ingressos esgotaram."
-      : "Os ingressos esgotaram enquanto você pagava.");
-    undo.push(() => db.update(ticketTypes).set({ sold: sql`greatest(${ticketTypes.sold} - ${it.quantity}, 0)` }).where(eq(ticketTypes.id, it.ticketTypeId)));
-  }
+
   const holderQueue = [...(order.holders ?? [])];
   const giftTo = new Map<string, { name: string; email: string }>();
   const rows = order.items.flatMap((it) => Array.from({ length: it.quantity }, () => {
     const idx = holderQueue.findIndex((h) => h.ticketTypeId === it.ticketTypeId);
     const h = idx >= 0 ? holderQueue.splice(idx, 1)[0] : null;
-    const code = ticketCode();
-    if (h && !h.me && h.email) giftTo.set(code, { name: h.name, email: h.email });
+    const id = randomUUID();
+    if (h && !h.me && h.email) giftTo.set(id, { name: h.name, email: h.email });
     return {
-      code, orderId: order.id, orderItemId: it.id, eventId: order.eventId, ticketTypeId: it.ticketTypeId,
+      id, code: ticketCode(), orderId: order.id, orderItemId: it.id, eventId: order.eventId, ticketTypeId: it.ticketTypeId,
       holderUserId: order.userId, holderName: h?.name ?? order.buyerName ?? null, halfPrice: !!h?.meia,
-      secret: randomBytes(16).toString("hex"),
+      secret: randomBytes(16).toString("hex"), status: giftTo.has(id) ? ("transferred" as const) : ("valid" as const),
     };
   }));
-  const inserted = await db.insert(tickets).values(rows).returning({ id: tickets.id, code: tickets.code, secret: tickets.secret });
-  const gifts = await startGifts(order.userId, inserted.filter((t) => giftTo.has(t.code)).map((t) => ({ ticketId: t.id, email: giftTo.get(t.code)!.email })));
-  if (order.couponId) await db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId));
-  await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: pay.ref }).where(eq(orders.id, order.id));
-  if (order.groupShareId) await settleShare(order.groupShareId, order.id);
+  const gifts = giftRows(order.userId, rows.filter((t) => giftTo.has(t.id)).map((t) => ({ ticketId: t.id, email: giftTo.get(t.id)!.email })));
   const shareId = order.groupShareId;
+
+  const steps: BatchItem<"pg">[] = [];
+  // limite por pessoa (compra normal) e "uma parte por conta" (grupo): a mesma pessoa, uma confirmação por vez
+  steps.push(lockPeople([`u:${order.userId}`, ...(normal && cpf ? [`c:${cpf}`] : [])]));
+  steps.push(markPaid(order.id, pay.ref, allowed));
+  // link da pré-venda vale para uma compra só
+  if (order.presaleSignupId) {
+    steps.push(ensure(sql`(select count(*) from u) = 1`, "presale", sql`
+      with u as (update ${eventSignups} set used_at = now() where id = ${order.presaleSignupId} and used_at is null returning 1)`));
+  }
+  if (shareId) {
+    steps.push(ensure(sql`not exists (
+      select 1 from ${groupShares} a join ${groupShares} b on b.group_id = a.group_id
+      where a.id = ${shareId} and b.id <> a.id and b.user_id = ${order.userId} and b.paid_at is not null)`, "share_one"));
+    steps.push(ensure(sql`(select count(*) from u) = 1`, "share", sql`
+      with u as (
+        update ${groupShares} set paid_at = now(), order_id = ${order.id}
+        where id = ${shareId} and paid_at is null and user_id = ${order.userId} returning 1
+      )`));
+    // todos pagaram: o grupo fecha
+    steps.push(db.update(groupOrders).set({ status: "done" }).where(and(
+      sql`${groupOrders.id} = (select group_id from ${groupShares} where id = ${shareId})`,
+      sql`not exists (select 1 from ${groupShares} where group_id = ${groupOrders.id} and paid_at is null)`,
+    )));
+  }
+  // baixa do estoque (ordem fixa por tipo: duas compras com os mesmos tipos não se travam uma à outra)
+  const qty = new Map<string, number>();
+  for (const it of order.items) qty.set(it.ticketTypeId, (qty.get(it.ticketTypeId) ?? 0) + it.quantity);
+  for (const id of typeIds) steps.push(db.update(ticketTypes).set({ sold: sql`${ticketTypes.sold} + ${qty.get(id)}` }).where(eq(ticketTypes.id, id)));
+  steps.push(db.insert(tickets).values(rows));
+  if (gifts.length) steps.push(db.insert(ticketTransfers).values(gifts));
+  if (order.couponId) steps.push(db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId)));
+  // depois da baixa: vendidos + vagas seguradas por grupos cabem na lotação (a parte de grupo segurada entra direto)
+  if (!held) {
+    steps.push(ensure(sql`not exists (
+      select 1 from ${ticketTypes} where ${ticketTypes.id} in (${sql.join(typeIds.map((id) => sql`${id}`), sql`, `)})
+      and ${ticketTypes.sold} + ${heldSql(ticketTypes.id)} > ${ticketTypes.quantity})`, "stock"));
+  }
+  // limite por pessoa com este pedido já pago (conta e CPF), conferido com a trava acima
+  if (normal) {
+    steps.push(ensure(sql`not exists (
+      select 1 from ${orderItems} oi join ${orders} o on o.id = oi.order_id join ${ticketTypes} t on t.id = oi.ticket_type_id
+      where o.status = 'paid' and ${cpf ? sql`(o.user_id = ${order.userId} or o.buyer_cpf = ${cpf})` : sql`o.user_id = ${order.userId}`}
+        and o.group_share_id is null and o.resale_listing_id is null
+        and oi.ticket_type_id in (${sql.join(typeIds.map((id) => sql`${id}`), sql`, `)})
+      group by oi.ticket_type_id, t.max_per_order having sum(oi.quantity) > t.max_per_order)`, "limit"));
+  }
+
+  try {
+    await runBatch(steps);
+  } catch (e) {
+    const why = abortOf(e);
+    if (!why) return unknownFailure(order.id, e);
+    // outra tentativa já confirmou este pedido
+    if (why === "order") return (await paidView(order.id)) ?? { ok: false, busy: true, error: "Confirmando o pagamento…" };
+    if (why === "presale") return fail("Este link de pré-venda já foi usado em outra compra.");
+    if (why === "share") return fail("Esta parte do grupo já foi paga ou passou para outra pessoa.");
+    if (why === "share_one") return fail(ONE_SHARE);
+    if (why === "limit") return fail((await limitMsg()) ?? "Você chegou ao limite de ingressos por pessoa deste evento.");
+    return fail(pay.charged && order.expiresAt && order.expiresAt < new Date()
+      ? "A reserva venceu antes da confirmação do pagamento e os ingressos esgotaram."
+      : "Os ingressos esgotaram enquanto você pagava.");
+  }
+
   after(async () => {
     await mailOrderConfirmed(order.id);
-    for (const id of gifts) await mailTransferSent(id);
+    for (const g of gifts) await mailTransferSent(g.id);
     if (shareId) await mailGroupSharePaid(shareId);
   });
-  const first = inserted.find((t) => !giftTo.has(t.code)) ?? null;
+  const first = rows.find((t) => !giftTo.has(t.id)) ?? null;
   return {
     ok: true, number: order.number ?? 0, totalCents: order.totalCents, method: methodOf(order), installments: order.installments,
-    ticketCount: inserted.length, firstCode: first?.code ?? inserted[0].code, ticketQrSvg: first ? await qrSvg(first.code, first.secret) : "", email: order.buyerEmail ?? "",
+    ticketCount: rows.length, firstCode: first?.code ?? rows[0].code, ticketQrSvg: first ? await qrSvg(first.code, first.secret) : "", email: order.buyerEmail ?? "",
     sentTo: [...giftTo.values()],
   };
 }
 
 /** Revenda: o ingresso do vendedor passa para o comprador com QR e código novos (os antigos deixam de valer). */
-async function fulfillResale(order: OrderRow & { items: ItemRow[] }, pay: { ref: string; charged: boolean }, fail: (why: string) => Promise<FulfillResult>): Promise<FulfillResult> {
+async function fulfillResale(order: OrderRow & { items: ItemRow[] }, pay: { ref: string; charged: boolean }, allowed: readonly string[], fail: (why: string) => Promise<FulfillResult>): Promise<FulfillResult> {
   const userId = order.userId;
   const l = await db.query.resaleListings.findFirst({ where: eq(resaleListings.id, order.resaleListingId!), with: { ticket: true, event: { columns: { title: true, slug: true } } } });
   const gone = "Este ingresso não está mais à venda.";
   if (!l || l.status === "sold" || l.status === "cancelled" || l.ticket.status !== "valid" || l.ticket.holderUserId !== l.sellerUserId) return fail(gone);
   if (l.status === "reserved" && l.reservedBy !== userId && l.reservedUntil && l.reservedUntil > new Date()) return fail(gone);
-  const sold = await db.update(resaleListings).set({ status: "sold", buyerUserId: userId, orderId: order.id, soldAt: new Date() })
-    .where(and(eq(resaleListings.id, l.id), sql`${resaleListings.status} in ('active', 'reserved')`)).returning({ id: resaleListings.id });
-  if (!sold.length) return fail(gone);
-  const holder = order.holders?.[0]?.name ?? order.buyerName ?? null;
-  const [t] = await db.update(tickets)
-    .set({ holderUserId: userId, holderName: holder, code: ticketCode(), secret: randomBytes(16).toString("hex"), orderId: order.id, orderItemId: order.items[0]?.id ?? null })
-    .where(and(eq(tickets.id, l.ticketId), eq(tickets.holderUserId, l.sellerUserId), eq(tickets.status, "valid")))
-    .returning({ id: tickets.id, code: tickets.code, secret: tickets.secret });
-  if (!t) {
-    await db.update(resaleListings).set({ status: "cancelled" }).where(eq(resaleListings.id, l.id));
-    return fail(gone);
-  }
-  await db.update(ticketTransfers).set({ status: "cancelled" }).where(and(eq(ticketTransfers.ticketId, l.ticketId), eq(ticketTransfers.status, "pending")));
   // comprou para outra pessoa: vai por e-mail, como na compra normal
   const h = order.holders?.[0];
   const gift = h && !h.me && h.email ? { name: h.name, email: h.email } : null;
-  const gifts = gift ? await startGifts(userId, [{ ticketId: t.id, email: gift.email }]) : [];
-  await db.update(orders).set({ status: "paid", paidAt: new Date(), paymentRef: pay.ref }).where(eq(orders.id, order.id));
+  const t = { code: ticketCode(), secret: randomBytes(16).toString("hex") };
+  const gifts = gift ? giftRows(userId, [{ ticketId: l.ticketId, email: gift.email }]) : [];
+  const steps: BatchItem<"pg">[] = [
+    markPaid(order.id, pay.ref, allowed),
+    ensure(sql`(select count(*) from u) = 1`, "listing", sql`
+      with u as (
+        update ${resaleListings} set status = 'sold', buyer_user_id = ${userId}, order_id = ${order.id}, sold_at = now()
+        where id = ${l.id} and (status = 'active' or (status = 'reserved' and (reserved_by = ${userId} or reserved_until is null or reserved_until <= now())))
+        returning 1
+      )`),
+    ensure(sql`(select count(*) from u) = 1`, "ticket", sql`
+      with u as (
+        update ${tickets} set holder_user_id = ${userId}, holder_name = ${order.holders?.[0]?.name ?? order.buyerName ?? null},
+          code = ${t.code}, secret = ${t.secret}, order_id = ${order.id}, order_item_id = ${order.items[0]?.id ?? null},
+          status = ${gift ? "transferred" : "valid"}, updated_at = now()
+        where id = ${l.ticketId} and holder_user_id = ${l.sellerUserId} and status = 'valid' returning 1
+      )`),
+    // transferências que o vendedor tinha aberto para este ingresso deixam de valer
+    db.update(ticketTransfers).set({ status: "cancelled" }).where(and(eq(ticketTransfers.ticketId, l.ticketId), eq(ticketTransfers.status, "pending"))),
+  ];
+  if (gifts.length) steps.push(db.insert(ticketTransfers).values(gifts));
+  try {
+    await runBatch(steps);
+  } catch (e) {
+    const why = abortOf(e);
+    if (!why) return unknownFailure(order.id, e);
+    if (why === "order") return (await paidView(order.id)) ?? { ok: false, busy: true, error: "Confirmando o pagamento…" };
+    // o ingresso mudou de dono ou de situação: o anúncio não vale mais
+    if (why === "ticket") await db.update(resaleListings).set({ status: "cancelled" }).where(and(eq(resaleListings.id, l.id), ne(resaleListings.status, "sold")));
+    return fail(gone);
+  }
   after(async () => {
     await mailOrderConfirmed(order.id);
-    for (const id of gifts) await mailTransferSent(id);
+    for (const g of gifts) await mailTransferSent(g.id);
     await mailResaleSold(l.sellerUserId, l.event.title, l.priceCents);
   });
   return {
