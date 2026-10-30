@@ -45,6 +45,7 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/db/tickets.test.ts | Portaria: QR adulterado, outro evento, dois operadores no mesmo QR, já usado | recusa / uma entrada só | VALIDADO |
 | tests/db/fulfill-atomic.test.ts | Queda no meio da emissão (gravação dos ingressos falha) e nova tentativa | nada pela metade; nova tentativa baixa o estoque uma vez (falhava: estoque 3 com 1 ingresso) | VALIDADO (rodada 2) |
 | tests/db/fulfill-atomic.test.ts | Mesmo CPF em duas contas confirmando juntas (3 rodadas); mesma conta com dois pedidos juntos | só um passa (falhava: os dois passavam) | VALIDADO (rodada 2) |
+| tests/db/fulfill-atomic.test.ts | 30 confirmações ao mesmo tempo, dois tipos em ordens diferentes (estoque 7 e 5) | 5 emitidos, sem impasse de trava, vendidos = ingressos | VALIDADO (rodada 2, 3 execuções) |
 | tests/db/grupo.test.ts | D-01: mesma conta paga duas partes ao mesmo tempo; segura outra parte depois de pagar uma; dois grupos ao mesmo tempo / depois de cancelar | uma parte só; recusado; um grupo aberto, outro depois de cancelar (falham sem a correção) | VALIDADO (rodada 2) |
 | tests/db/payout-destination.test.ts | D-04: trocar a conta de recebimento com app: sem código, errado, de recuperação, certo; sem app | recusa ×3 / troca / troca (falha sem a correção) | VALIDADO (rodada 2) |
 | tests/db/optin.test.ts | D-03: pedido guarda a caixa; campanha vai para quem marcou e para os pedidos antigos, não para quem não marcou | conforme | VALIDADO (rodada 2) |
@@ -53,7 +54,7 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/unit/password-throttle.test.ts | S-23: "esqueci a senha" (login simulado): 30 s, 6 por hora, maiúsculas, outro e-mail, depois de 1 h | conforme (falha sem 3271b9e) | VALIDADO (rodada 2) |
 | tests/unit/admin-guard.test.ts | S-05: central com e-mail confirmado, domínio, ADMIN_EMAILS fora do domínio, `secure` só com app | conforme | VALIDADO (rodada 2) |
 
-Última execução completa: 30/10 rodada 2, **70 testes, 70 aprovados, 0 reprovados** (23 arquivos: 27 unitários + 43 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 85e8bff).
+Última execução completa: 30/10 rodada 2, **71 testes, 71 aprovados, 0 reprovados** (23 arquivos: 27 unitários + 44 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 85e8bff).
 
 ### No navegador (Playwright, servidor local, conta de teste)
 
