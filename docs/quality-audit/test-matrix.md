@@ -65,7 +65,14 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/unit/format.test.ts | Data por extenso no meio da frase (H-R3-4) | "até quinta, 5 de novembro de 2026" | VALIDADO (rodada 3) |
 | tests/load/*.load.ts (`pnpm test:load`) | Carga 10 → 50 → 100: abertura de vendas e portaria com dois operadores | sem venda acima, ingressos = pagos, cada QR entra uma vez (números no `performance-report.md`) | VALIDADO (rodada 3, antes e depois) |
 
-Última execução completa: 30/10 rodada 3, **103 testes, 103 aprovados, 0 reprovados** (32 arquivos, com `TEST_DATABASE_URL`; perfis `qa-test-…` apagados no fim pela limpeza global). Rodada 2: 71 testes, 71 aprovados (23 arquivos: 27 unitários + 44 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 99aed9b); e2e da câmera repetido depois das mudanças de portaria do Marcos (13/13).
+| tests/unit/meia.test.ts | D-09: caixa só em Inteira sem tipo Meia no mesmo setor/data; meia automática com preço do produtor (vazio = metade); meia acima da inteira recusada | conforme | VALIDADO (rodada 4) |
+| tests/unit/ticket-card.test.ts | PDF sem setores: setor "Geral" para Inteira/Meia/Social | conforme | VALIDADO (rodada 4) |
+| tests/db/place-order.test.ts | D-09: com tipo Meia no setor, `meia=true` na Inteira é ignorado no servidor (cobra a inteira); sem tipo Meia, cobra metade | R$ 54,00 × R$ 27,00 (com taxa) | VALIDADO (rodada 4; falha com a regra antiga) |
+| tests/db/tickets.test.ts | D-11: link de transferência aberto em outra conta recusado (e-mail mascarado); mesmo e-mail sem ativar pede ativação; conta certa recebe | conforme | VALIDADO (rodada 4; falha sem a correção) |
+| tests/db/activation.test.ts | D-08: produtor antigo sem e-mail confirmado cria evento e atualiza a página | permitido | VALIDADO (rodada 4) |
+| tests/db/trail.test.ts | D-12: jornada inteira registrada (emissão, presente, transferência enviada/cancelada/aceita, revenda, check-in recusado e aceito, reembolso) e achada pelo código original, e-mail e nº do pedido; emissão que falha não deixa rastro; ingresso antigo reconstruído; busca | conforme | VALIDADO (rodada 4) |
+Última execução completa: 30/10 rodada 4, **127 testes, 127 aprovados, 0 reprovados** (36 arquivos, com `TEST_DATABASE_URL` do branch `teste-r4`).
+Anterior: 30/10 rodada 3, **103 testes, 103 aprovados, 0 reprovados** (32 arquivos, com `TEST_DATABASE_URL`; perfis `qa-test-…` apagados no fim pela limpeza global). Rodada 2: 71 testes, 71 aprovados (23 arquivos: 27 unitários + 44 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 99aed9b); e2e da câmera repetido depois das mudanças de portaria do Marcos (13/13).
 
 ### No navegador (Playwright, servidor local, conta de teste)
 

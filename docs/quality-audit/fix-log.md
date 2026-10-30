@@ -81,7 +81,7 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 
 **Achado de ferramenta (P3):** `eslint` ficou 16 min a 100% de CPU em `src/lib/admin-trail.ts` porque uma função auxiliar se chamava `use` (a regra do React Compiler do `eslint-config-next` trata `use` como hook e entra em laço). Renomeada; vale para código novo: não chamar funções de `use`.
 
-**Dados criados no banco de teste (`teste-r4`):** organizador "Agente Teste Produções" (`agente-teste-producoes-r4`, dono `teste+agente1030@example.com`, e-mail da conta continua não confirmado) e o perfil dessa conta; evento `qa-romano-r4-meia` ("QA Romano · Meia D-09 (não comprar)", Pista Inteira/Meia e Camarote Inteira); pedido de teste `TEST-r4-d11` de uma conta fictícia `qa-romano-r4-remetente` com o ingresso `TW-R4QA-D11X` transferido (pendente) para `marcia.qa.r4@example.com`; tabela `ticket_events`. Nenhuma conta nova.
+**Dados criados no banco de teste (`teste-r4`):** organizador "Agente Teste Produções" (`agente-teste-producoes-r4`, dono `teste+agente1030@example.com`, e-mail da conta continua não confirmado) e o perfil dessa conta; evento `qa-romano-r4-meia` ("QA Romano · Meia D-09 (não comprar)", Pista Inteira/Meia e Camarote Inteira); pedido de teste `TEST-r4-d11` de uma conta fictícia `qa-romano-r4-remetente` com o ingresso `TW-R4QA-D11X` transferido (pendente) para `marcia.qa.r4@example.com`; tabela `ticket_events`. Nenhuma conta nova criada pelo Romano. A pedido do Marcos, a conta dele `teste+marcos-r4@example.com` (criada depois da cópia) ganhou uma linha **só no `neon_auth."user"` do branch de teste**, com o e-mail confirmado, para validar o aceite positivo da D-11 (não afeta o login da produção); apagar junto com o branch.
 
 ## Marcos
 

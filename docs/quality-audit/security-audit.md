@@ -106,6 +106,20 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 - **Antes:** sem `Content-Security-Policy` de scripts (só os cabeçalhos de segurança básicos no `next.config.ts`).
 - **Agora:** nonce por pedido + `'strict-dynamic'` (`src/lib/csp.ts`, `src/proxy.ts`), hash para o único script escrito na página, `object-src 'none'`, `base-uri`/`form-action`/`frame-ancestors 'self'`, terceiros por diretiva, avisos em `/api/csp-report` (log resumido, sem dado pessoal). Publicado em **Report-Only**; `CSP_MODE=enforce` liga o bloqueio. Evidência e recomendação em `pending-decisions.md` D-10.
 
+### S-32 · Link de transferência aceito por qualquer conta (P2) · rodada 4 (D-11)
+- **Reprodução:** A transfere para `b@…`; o e-mail é encaminhado (ou lido por outra pessoa); C, logado na conta dele, abre o link e aceita: o ingresso vai para C com código novo e o QR de B nunca existe.
+- **Causa:** `acceptTransfer` conferia o e-mail de destino só no envio da compra (`kind = gift`).
+- **Correção:** a conta precisa ter o e-mail de destino **e** o e-mail confirmado (senão alguém cria uma conta com o e-mail da vítima sem confirmar e aceita). Recusa: "Este ingresso foi enviado para m•••@gmail.com. Entre com esse e-mail para receber." (3f526a8).
+- **Teste:** `tests/db/tickets.test.ts` (falha sem a correção). **VALIDADO** (integração + Chromium 390/1280).
+
+### S-33 · Transferir, cancelar e aceitar em comandos soltos (P3) · rodada 4
+- **Antes:** `transferTicket` gravava o link e depois travava o ingresso (dois envios ao mesmo tempo abriam dois links pendentes); `acceptTransfer` marcava o link como aceito e depois mudava o dono (uma queda no meio deixava o link "aceito" com o ingresso parado).
+- **Correção (ea4ab2f, junto com o rastro D-12):** cada operação é uma transação (lote com `ensure` ou CTE num comando só), com o registro do rastro dentro. Aceites simultâneos: o segundo não acha mais o ingresso "transferred" e não muda nada. **VALIDADO** (`tests/db/trail.test.ts`, `tests/db/tickets.test.ts`).
+
+### D-12 · Rastro dos ingressos: superfície nova (rodada 4)
+- Dados pessoais (e-mails, nomes, contas de quem comprou, recebeu e revendeu) ficam numa tabela lida só por `adminTicketTrail` (`src/lib/admin-trail.ts`, `server-only`), chamada só pela central (e-mail de admin do domínio, confirmado, com app autenticador). Nenhuma rota de API, ação de servidor ou tela de produtor/comprador lê `ticket_events`. Busca parametrizada (sem SQL montado com texto do usuário); entrada aceita só código, e-mail ou número do pedido, no máximo 20 ingressos por busca.
+- LGPD: é registro de operação para suporte e fraude (base: execução do contrato e legítimo interesse/prevenção a fraude); prazo de guarda a definir junto com a retenção de CPF/telefone (D-03, pendente jurídico). O rastro some com o ingresso (apagar o pedido apaga em cascata).
+
 ### Outros pontos de atenção (não corrigidos, baixo risco)
 - Fila virtual por cookie: um robô com muitos cookies aumenta a chance de ser liberado (normal em fila virtual; o limite por pessoa e a reserva continuam valendo).
 - Transferência comum (não o envio da compra): quem tem o link do e-mail aceita com qualquer conta; o envio da compra exige a conta do e-mail. Avaliar exigir o mesmo e-mail também na transferência comum (decisão de produto).
