@@ -207,14 +207,26 @@ function Chart({ c }: { c: EventoPainelProps["chart"] }) {
   const b = bars[sel];
   const total = vals.reduce((s, v) => s + v, 0);
   const tipX = ((b.x + BW / 2) / 720) * 100;
+  const valText = (i: number) => mode === "receita" ? brl(vals[i]) : `${n(vals[i])} ${vals[i] === 1 ? "ingresso" : "ingressos"}`;
+  // teclado: setas andam um dia, Page Up/Down uma semana, Home/End vão ao primeiro e ao último dia (hoje)
+  const onKey = (ev: React.KeyboardEvent) => {
+    const last = vals.length - 1;
+    const to = { ArrowLeft: sel - 1, ArrowDown: sel - 1, ArrowRight: sel + 1, ArrowUp: sel + 1, PageDown: sel - 7, PageUp: sel + 7, Home: 0, End: last }[ev.key];
+    if (to === undefined) return;
+    ev.preventDefault();
+    setSel(Math.min(last, Math.max(0, to)));
+  };
   return (
     <section className="cx">
       <div className="card-h">
         <div><h2 className="card-t">Vendas por dia</h2><span className="card-s">Últimos 30 dias · {mode === "receita" ? `${brl(total)} líquidos` : `${n(total)} ingressos`}</span></div>
         <div className="seg2 sm">{(["receita", "ingressos"] as const).map((m) => <button key={m} className={mode === m ? "sg on" : "sg"} type="button" onClick={() => setMode(m)}>{m === "receita" ? "Receita" : "Ingressos"}</button>)}</div>
       </div>
-      <div className="chart">
-        <svg viewBox="0 0 720 220" className="ch-svg" role="img" aria-label="Gráfico de vendas por dia nos últimos 30 dias">
+      <div className="chart" tabIndex={0} role="slider" onKeyDown={onKey}
+        aria-label={`Vendas por dia (${mode === "receita" ? "receita" : "ingressos"}). Use as setas para escolher o dia`}
+        aria-valuemin={0} aria-valuemax={vals.length - 1} aria-valuenow={sel}
+        aria-valuetext={`${c.labels[sel]}${sel === vals.length - 1 ? ", hoje" : ""}: ${valText(sel)}`}>
+        <svg viewBox="0 0 720 220" className="ch-svg" aria-hidden="true">
           <g className="ch-grid">{grid.map((g) => <line key={g.y} x1="40" x2="716" y1={g.y} y2={g.y} />)}</g>
           {bars.map((r, i) => <rect key={i} className={i === sel ? "bx on" : "bx"} x={r.x.toFixed(1)} y={r.y.toFixed(1)} width={BW} height={r.h.toFixed(1)} rx="4" onClick={() => setSel(i)} />)}
         </svg>
@@ -222,7 +234,7 @@ function Chart({ c }: { c: EventoPainelProps["chart"] }) {
         {[0, 7, 14, 21, vals.length - 1].map((i) => <span key={i} className="ch-xl" style={{ left: `${((X0 + i * SL + SL / 2) / 720) * 100}%` }}>{c.labels[i]}</span>)}
         {/* nas pontas o balão encosta na borda do gráfico em vez de sair da tela (barra de hoje, no celular) */}
         <div className={tipX > 80 ? "tip tip-r" : tipX < 20 ? "tip tip-l" : "tip"} style={{ left: `${tipX}%`, top: `${(b.y / 220) * 100}%` }}>
-          <b className="tp-v">{mode === "receita" ? brl(vals[sel]) : `${n(vals[sel])} ${vals[sel] === 1 ? "ingresso" : "ingressos"}`}</b>
+          <b className="tp-v">{valText(sel)}</b>
           <span className="tp-s">{c.labels[sel]}{sel === vals.length - 1 ? " · hoje" : ""}</span>
         </div>
       </div>
