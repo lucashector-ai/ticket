@@ -103,6 +103,7 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 rodada 3 | a2df9f7 · b75d11f | Checkout da revenda/grupo e página da transferência com a data do ingresso | Chromium 390; `curl` da página da transferência | VALIDADO |
 | 30/10 rodada 3 | 33a229d | E-mails do produtor sem nome de fornecedor; nome da campanha com reticências | Firefox/WebKit 390 e 1280 | VALIDADO |
 | 30/10 rodada 3 | de26b76 | Banco: diz o saque mínimo | tsc/eslint | CORRIGIDO, NÃO VALIDADO |
+| 30/10 rodada 3 | 1c1f6b1 | Página do evento: trilha legível sobre cartaz claro (topo mais escuro) | contraste medido no print, 390/1280, 3 cartazes | VALIDADO |
 
 ### Dados de teste criados pelo Marcos (banco de teste)
 - 2 eventos publicados "QA Marcos · Show de teste (não comprar)" (`/eventos/qa-marcos-show-de-teste-nao-comprar` e `…-2`), conta de teste existente, Casa Tangente, 7/11. Apagar depois.

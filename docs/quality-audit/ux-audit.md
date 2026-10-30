@@ -253,3 +253,80 @@ Prints desta parte em `scratchpad/marcos/r2/` (indicados como "R2:").
 | Inscrição de produtor | 10 campos obrigatórios | um erro por envio (U-41, corrigido); depois: 1 envio vazio mostra tudo |
 | Aprovação | — | BLOQUEADO (central só para @ticketswin.com.br) |
 
+
+## Parte 4 · Rodada 3 (30/10): Firefox e WebKit, logado com a marca nova, jornadas que faltavam
+Prints em `scratchpad/marcos/r3/` (indicados como "R3:"). Firefox e WebKit liberados nesta rodada. No WebKit a sessão é injetada pela rota do Playwright (o cookie `__Secure-` não é guardado em `http://localhost`; em produção é https e não afeta). Segunda conta usada como compradora/destinatária: `teste+marcos-produtor@example.com` (da rodada 2, sem conta nova).
+
+### Jornadas nos três motores (390 e 1280)
+| Jornada | Chromium | Firefox | WebKit | Status |
+|---|---|---|---|---|
+| Compra em tela cheia (data → setor → ingressos) e checkout com Pix de teste até "Pedido confirmado" | 390, 1280 | 390, 1280 | 390, 1280 | VALIDADO (R3: `buy/`) |
+| Meus ingressos e página do ingresso: QR, Baixar PDF (`ingresso-TW-….pdf`) | 390 | 390 | 390 | VALIDADO (R3: `buy/`, `tk-*.png`); carteira: BLOQUEADO (sem certificados no local, botões não aparecem) |
+| Criar evento até publicar (festival com 2 datas × 2 setores, só cartaz) | rodada 2 | 390, 1280 | 390, 1280 | VALIDADO (R3: `cr/`) |
+| Painel (início, evento, financeiro, equipe), Conta, comprovante, checkout, criar evento: logo e cor novas | 390, 1280 | 390, 1280 | 390, 1280 | VALIDADO: 60 telas sem rolagem lateral e sem lima como texto em fundo claro (R3: `reg/`) |
+| Portaria com câmera falsa (app e painel): válido, já usado, outro evento, código digitado | 390 | 390 | 390 | VALIDADO (R3: `cam/`) |
+| Pré-venda, contagem e "Me avise" (visitante) | 390, 1280 | 390, 1280 | 390 | VALIDADO depois de U-56 |
+| Link da pré-venda (`/pv/…`) → escolher ingressos | 390 | 390 | 390 | VALIDADO ("Pré-venda liberada para você · uma compra com este link") |
+| Fila virtual (10 comprando + 2 esperando, simulados no banco de teste) | 320, 390, 1280 | 320, 390, 1280 | 320, 390, 1280 | FALHOU → U-55 → VALIDADO |
+| Revenda de ponta a ponta (anunciar, comprar com outra conta no Pix de teste, QR novo, tirar da revenda) | 390 | — | — | VALIDADO com pendência do vendedor (H-R3-1) |
+| Transferência (enviar, "é o seu próprio e-mail", aceitar com outra conta, QR novo) | 390 | — | — | VALIDADO com pendências (H-R3-1, H-R3-2) |
+| Compra em grupo pelo convite (líder paga a parte dele, convidado paga a outra, "Grupo completo!") | 390 | — | — | VALIDADO (pedidos #50896, #50897; R3: `grp/m-grp.png`) |
+| Cancelamento pelo comprador (pedido inteiro; pedido com ingresso enviado e não aceito) | 390 | 390 | 390 | VALIDADO (R3: `canc/m-canc.png`) |
+| Reembolso pelo produtor (buscar pedido, detalhe, confirmar com o que sai do saldo) | — | — | 390 | VALIDADO (R3: `canc/m-prod.png`) |
+| E-mail marketing: montar campanha do evento só de cartaz, sem enviar | 1280 | 390, 1280 | 390, 1280 | VALIDADO depois de U-60 |
+| Página do produtor (própria e de outro) e do artista | 390, 1280 | 390, 1280 | 390, 1280 | VALIDADO depois de U-57 |
+| Ativar conta vindo de Criar evento | 390, 1280 | — | 390, 1280 | FALHOU → U-54 → VALIDADO |
+
+### U-47 · Aviso de hidratação no /explorar (Firefox) · P3 · VALIDADO
+- `BrokenImages` mexia no `style` da `<img>` antes de um bloco em Suspense hidratar. Agora esconde pela folha de estilo (`img[src="…"]{visibility:hidden}`), sem tocar no elemento. Commit 3bf1ac1.
+
+### U-48 · Checkout: erro levava ao resumo, não ao campo · P2 · VALIDADO
+- **Antes:** "Ir para pagamento" com o titular vazio rolava até "Falta preencher…" no topo; a 390 os rótulos do titular quebravam linha. **Depois:** o foco vai ao campo vazio; o resumo fica perto do botão; num evento de várias datas o resumo e a confirmação mostram a data escolhida. Commit 6bcd126.
+
+### U-49 · Evento de várias datas: o ingresso mostrava o período todo · P2 · VALIDADO
+- Ingresso de sábado aparecia como "6 a 7 de novembro" em Meus ingressos, na página do ingresso, no PDF e no .ics (agenda com 2 dias). Agora a data, o horário e os portões são os da sessão do ingresso. Mudança mínima em arquivos do Romano, avisada no handoff. Commit 4003678. PDF com "Tipo: Meia" para ingresso do tipo Meia-entrada (07f95b3).
+
+### U-50 · Portaria sem internet com a cor antiga · P3 · VALIDADO
+- Botão "Tentar de novo" da página offline do app (`public/portaria/sw.js`) ainda no lima antigo. Commit 4e504d9.
+
+### U-51 · Link do evento no painel saía do cartão (390) · P3 · VALIDADO
+- Link longo do evento empurrava "Copiar link" para fora. Agora uma linha com reticências (o botão copia o link inteiro), nos três motores. R3: `reg/cmp390_painel_evento_….png`, `reg/lk-*.png`. Commit 346dbf5.
+
+### U-52 · App da portaria: próximo passo errado para código digitado · P3 · VALIDADO
+- "Ingresso não encontrado" (quase sempre código digitado) mandava "use Digitar código". Agora: QR inválido → "leia de novo, ou use Digitar código"; não encontrado → "Confira as letras e os números do código…". R3: `cam/webkit390-code-TW-AAAA-BBBB.png`. Commit df47d66.
+
+### U-53 · Telas logadas com a logo e a cor novas · VALIDADO
+- Painel (início, evento, financeiro, equipe), checkout, Meus ingressos, ingresso, comprovante, criar evento e Conta, nos três motores a 390 e 1280: logo inteira e alinhada, sem resto do lima antigo, nenhum texto lima em fundo claro (varredura de contraste < 3:1 em todo texto visível). Únicos alertas: falsos positivos (atalho "Alt+A" escondido, cor semitransparente) e o texto de exemplo "Nome do evento" na prévia vazia do criador (1,67:1, imita um campo vazio; aceito). R3: `reg/cmp390_*.png`, `reg/cmp1280_*.png`.
+
+### U-54 · Ativar conta vindo de "Criar evento" · P2 · VALIDADO
+- **Tela:** `/ativar-conta?next=/criar-evento` (regra nova do Romano). **Antes:** dois parágrafos repetindo "confirme seu e-mail", e "Se o código do cadastro venceu, peça outro aqui embaixo" com o botão travado em "Reenviar em 30s", embora nada tivesse sido enviado nessa visita (conta antiga, código vencido há dias). **Depois:** um parágrafo ("Para criar eventos, confirme seu e-mail primeiro. Digite o código de 6 números que enviamos para …") e "Não tem o código? Enviar um novo" liberado na hora; pedir de novo antes de 30 s responde "Aguarde um pouco antes de pedir outro código.". Depois de ativar: "Agora é só seguir com o seu evento." **Teste:** Chromium e WebKit, 390 e 1280; 1 código pedido de verdade. R3: `ativ/antes-chromium-390-prod.png` → `ativ/depois-*.png`. Commit 34d544c.
+
+### U-55 · Fila virtual: cartão cortado no celular e foco solto · P2 · VALIDADO
+- **Tela:** página do evento com a fila ligada. **Antes (390, todos os motores):** o nome do evento numa linha só alargava o cartão: metade direita fora da tela ("…ordem de", "comprar"); o diálogo modal deixava o Tab ir para a página de trás; "Não feche nem atualize esta página" é falso (o lugar fica guardado por 7 dias no aparelho, pela hora de chegada) e gera ansiedade. **Depois:** cartão inteiro de 320 a 1280, nome com reticências; foco no aviso e Tab preso nele; "Deixe esta página aberta: quando chegar a sua vez, ela libera sozinha. Recarregar não tira você do seu lugar." **Teste:** 10 pessoas "comprando" e 2 na fila inseridas no banco de teste (apagadas depois), 3 motores × 320/390/1280. R3: `lanc/fila-antes-chromium390.png` → `lanc/m-fila.png`. Commit 8591446.
+
+### U-56 · Contagem da abertura: "Me avise" vazio sem resposta e erro por cima do texto · P3 · VALIDADO
+- **Antes:** com o campo vazio, o botão ficava travado mas com a mesma cor de ativo (toque sem resposta); o erro do servidor ("Digite um e-mail válido.") aparecia por cima de "Um e-mail só, na hora em que abrir.", em vermelho claro sobre o fundo da arte. **Depois:** o envio vazio mostra o erro; o erro abre espaço e tem fundo próprio; campo com `aria-invalid` e ligado ao erro. Vale também para o cartão de lançamento da página. R3: `lanc/soon2-chromium390-2-vazio.png` → `lanc/m-err.png`. Commit 58d5854.
+
+### U-57 · Página do produtor: dica com contraste 2,8:1 · P3 · VALIDADO
+- "Adicione uma frase que resuma seus eventos" (só o dono vê) em `#9A9AA0`. Agora `#6E6E73` (5,1:1). Commit ea522cb.
+
+### U-58 · Revenda: botão travado sem motivo e "Você pagou" errado · P2 · VALIDADO
+- **Antes:** preço abaixo de R$ 5 ou acima do máximo só travava o botão, e mostrava "Você recebe R$ 4.750,00" para R$ 5.000 (não anunciável). Para quem comprou na revenda por R$ 60, o modal dizia "Você pagou R$ 80,00" (é o valor do tipo). **Depois:** "O preço mínimo na revenda é R$ 5,00." / "O preço máximo é R$ 80,00." no lugar do "Você recebe"; "Valor do ingresso R$ 80,00 · máximo permitido…". Regra (mínimo, máximo, 5%) não mudou. **Teste:** anúncio R$ 60 na conta de teste, compra pela segunda conta (pedido #50895, R$ 60 + 7,99% = R$ 64,79), QR novo; anúncio R$ 50 e "Tirar da revenda". Commit 2e4142a.
+
+### U-59 · Revenda, parte de grupo e transferência mostravam o período todo · P3 · VALIDADO
+- Checkout da revenda/grupo e a página "Ingresso enviado por…" diziam "6–7 Nov · 2 datas" para um ingresso de sábado. Agora "Sáb, 7 Nov · 21h". Commits a2df9f7, b75d11f.
+
+### U-60 · E-mails do produtor: fornecedor e detalhe técnico na tela · P3 · VALIDADO
+- "O envio ainda não está ligado (chave do Resend)" e "quando a chave do Resend for configurada no Cloudflare" viraram "O envio de e-mails está desligado no momento. Dá para montar e agendar: o agendado sai quando ele for ligado." Nome longo da campanha com reticências. Nenhum outro nome de fornecedor em texto de interface (busca em `src/components` e `src/app`). Campanha montada sem enviar; o "Salvando…" ao abrir é do modo estrito do React em desenvolvimento (2 gravações no 1º efeito), some em produção. Commit 33a229d.
+
+### U-61 · Banco: saque abaixo do mínimo sem explicação · P3 · CORRIGIDO, NÃO VALIDADO
+- Valor abaixo do mínimo travava o código e o botão sem dizer o mínimo. Agora "O saque mínimo é R$ …". Não testado no navegador (precisa de saldo e do app autenticador na conta de teste). Commit de26b76.
+
+### U-62 · Página do evento: trilha ilegível sobre cartaz claro · P2 · VALIDADO
+- **Antes:** "Voltar · Eventos / Show" em branco a 85% sobre o fundo desfocado do cartaz; com cartaz lima (a cor da marca) ou amarelo, ~2:1. **Depois:** sombra do topo um pouco mais forte (0,55 → 0 em 280 px) e trilha em branco puro: pior caso medido 4,96:1 (cartaz lima), 8:1 (Aurora). Identidade mantida. R3: `m-hero.png` (antes) → `m-hero3.png`. Commit 1c1f6b1.
+
+### Achados que dependem do servidor (handoff para o Romano)
+- **H-R3-1 · Quem vendeu ou transferiu perde o rastro (P2, confiança):** depois da venda na revenda, o ingresso some de Meus ingressos, de Minhas compras e de Conta; o link antigo `/ingressos/<código antigo>` dá o 404 genérico ("Essa página não está no mapa"), e o e-mail "Seu ingresso foi vendido" manda para "Ver meus ingressos". O mesmo acontece com quem transferiu, depois do aceite. Causa: o código do ingresso é trocado na mesma linha (correção S-01), então o código antigo não existe mais. Proposta: guardar o código antigo na venda/transferência e (1) mostrar no link antigo "Este ingresso foi vendido na revenda em DD/MM por R$ X. Você recebe R$ Y." / "Você transferiu este ingresso para …"; (2) uma seção "Vendidos e enviados" em Meus ingressos com valor, taxa e quando o dinheiro cai.
+- **H-R3-2 · Transferência aceita por qualquer conta com o link (P2, segurança/produto):** na transferência comum (não "presente"), `acceptTransfer` não confere se a conta que aceita é a do e-mail digitado; quem receber o link encaminhado fica com o ingresso. Na tela está escrito "Enviado para <e-mail>". Decidir se exige o mesmo e-mail (como no presente) ou se o texto deve dizer que o link vale para quem abrir.
+- **H-R3-3 · Arte do e-mail/carteira do evento só de cartaz não dá para validar no local:** o serviço de imagens local faz o recorte, mas ignora o desfoque e a sobreposição; `/api/arte/<slug>` devolve o cartaz recortado no meio (corta o topo e o rodapé do cartaz). Conferir numa prévia com o serviço de imagens de verdade antes de publicar. A prévia do e-mail marketing usa o cartaz inteiro (ok).
+- **H-R3-4 (P3):** "Você pode cancelar até Quinta, 5 de novembro" (dia da semana com maiúscula no meio da frase) vem do servidor.

@@ -159,3 +159,29 @@ Câmera da portaria: vídeo `.y4m` com o QR de verdade (tirado de `/ingressos/<c
 | Regressão: criar evento até a revisão | 768 | 1 | VALIDADO |
 | Regressão: varredura 25 rotas (públicas, compra, conta, painel, criador, portaria) | 320, 390, 768, 1280 (100 telas) + axe em 390/1280 | 1 | 1 elemento fora da tela (prévia do criador a 320), 2 avisos de nome/rolagem no criador e contraste do ingresso usado: corrigidos e revalidados; restam falsos positivos de contraste (título sobre fundo desfocado, arte decorativa, lote esgotado desabilitado) |
 
+
+### Rodada 3 (30/10, Marcos): Firefox e WebKit, telas logadas com a marca nova, jornadas que faltavam
+Firefox e WebKit liberados. No WebKit a sessão é injetada pela rota do Playwright (cookie `__Secure-` não é guardado em http://localhost). Segunda conta: `teste+marcos-produtor@example.com` (rodada 2). Detalhes e prints em `ux-audit.md`, Parte 4.
+
+| Jornada / cenário | Motores | Larguras | Execuções | Resultado |
+|---|---|---|---|---|
+| Compra em tela cheia + checkout Pix de teste + confirmação | Chromium, Firefox, WebKit | 390, 1280 | 6 | VALIDADO (U-48 corrigido no caminho) |
+| Ingresso: QR, Baixar PDF | Chromium, Firefox, WebKit | 390 | 3 | VALIDADO; carteira BLOQUEADO (sem certificados no local) |
+| Evento de várias datas: data do ingresso em Meus ingressos, ingresso, PDF, .ics | Firefox, WebKit | 390 | 2 | FALHOU → U-49 → VALIDADO |
+| Criar evento até publicar (2 datas × 2 setores, só cartaz) | Firefox, WebKit | 390, 1280 | 4 | VALIDADO |
+| Telas logadas com logo e cor novas (10 rotas) | Chromium, Firefox, WebKit | 390, 1280 | 60 telas | VALIDADO (U-51 corrigido) |
+| Portaria com câmera falsa (app e painel) e código digitado | Firefox, WebKit | 390 | 8 | VALIDADO (U-52 ajustado) |
+| Ativar conta vindo de Criar evento | Chromium, WebKit | 390, 1280 | 8 | FALHOU → U-54 → VALIDADO |
+| Pré-venda e contagem: visitante, "Me avise" vazio e válido | Chromium, Firefox, WebKit | 390, 1280 | 7 | FALHOU → U-56 → VALIDADO |
+| Link da pré-venda → escolher ingressos | Chromium, Firefox, WebKit | 390 | 3 | VALIDADO |
+| Painel → Lançamento: salvar abertura, pré-venda, fila; situação atualiza | Chromium | 1280 | 6 | VALIDADO (3–4 s no servidor de desenvolvimento) |
+| Fila virtual com 10 comprando + 2 na fila | Chromium, Firefox, WebKit | 320, 390, 1280 | 9 | FALHOU → U-55 → VALIDADO |
+| Revenda ponta a ponta (anunciar, faixa de preço, comprar com outra conta, QR novo, tirar) | Chromium | 390 | 1 + 1 | VALIDADO (U-58, U-59); vendedor sem registro (H-R3-1) |
+| Transferência ponta a ponta (próprio e-mail recusado, enviar, aceitar, QR novo) | Chromium | 390 | 1 | VALIDADO; pendências H-R3-1, H-R3-2 |
+| Compra em grupo pelo convite (2 contas, 2 Pix de teste, "Grupo completo!") | Chromium | 390 | 1 | VALIDADO |
+| Cancelamento pelo comprador (inteiro; com envio não aceito) | Chromium, Firefox, WebKit | 390 | 4 | VALIDADO |
+| Reembolso pelo produtor | WebKit | 390 | 1 | VALIDADO |
+| E-mail marketing: montar campanha sem enviar | Chromium, Firefox, WebKit | 390, 1280 | 5 | FALHOU (fornecedor no texto) → U-60 → VALIDADO |
+| Página do produtor e do artista | Chromium, Firefox, WebKit | 390, 1280 | 18 telas | VALIDADO (U-57) |
+| E-mail transacional e passe com evento só de cartaz | — | — | 1 (`/api/arte`) | BLOQUEADO no local (serviço de imagens sem desfoque/sobreposição; H-R3-3) |
+| Saque abaixo do mínimo (Banco) | — | — | 0 | CORRIGIDO, NÃO VALIDADO (U-61) |
