@@ -12,6 +12,7 @@ import { mailGroupSharePaid, mailOrderConfirmed, mailResaleSold, mailTransferSen
 import { refundOrder } from "@/lib/payments/refund";
 import { ticketCode } from "@/lib/tickets/code";
 import { overLimit, type Bought } from "@/lib/tickets/limits";
+import { abortOf as abortTx, ensure as ensureTx, lockKeys, runBatch } from "@/lib/payments/tx";
 
 /*
  * Emissão dos ingressos de um pedido pago: a MESMA rotina para o webhook da Stripe, para a conferência
@@ -97,31 +98,15 @@ export async function paidView(orderId: string): Promise<FulfillOk | null> {
  * grupo) viram comandos `ensure` dentro da transação: quando não passam, provocam um erro proposital
  * (TW_ABORT:<motivo>) que desfaz tudo e diz o motivo.
  */
-const ABORT = "TW_ABORT:";
 type Abort = "order" | "presale" | "share" | "share_one" | "stock" | "limit" | "listing" | "ticket";
-
-/** Aborta a transação quando `ok` é falso. `clock_timestamp()` impede o Postgres de avaliar o erro antes da hora. */
-const ensure = (ok: SQL, why: Abort, withClause?: SQL) =>
-  db.execute(sql`${withClause ?? sql``} select case when ${ok} then 0 else (${`${ABORT}${why}:`} || clock_timestamp()::text)::int end`);
-
-function abortOf(e: unknown): Abort | null {
-  let x: unknown = e;
-  for (let i = 0; x && i < 4; i++) {
-    const m = /TW_ABORT:(\w+):/.exec(String((x as { message?: unknown }).message ?? ""));
-    if (m) return m[1] as Abort;
-    x = (x as { cause?: unknown }).cause;
-  }
-  return null;
-}
+const ensure = (ok: SQL, why: Abort, withClause?: SQL) => ensureTx(ok, why, withClause);
+const abortOf = (e: unknown) => abortTx(e) as Abort | null;
 
 /**
  * Trava por pessoa (conta e CPF) até o fim da transação: duas confirmações da mesma pessoa, mesmo por contas
  * diferentes com o mesmo CPF, passam uma de cada vez pela conferência do limite. Ordem fixa (evita impasse).
  */
-const lockPeople = (keys: string[]) => db.execute(sql`
-  select pg_advisory_xact_lock(k) from (
-    select distinct hashtextextended(x, 0) as k from unnest(array[${sql.join(keys.map((k) => sql`${k}`), sql`, `)}]::text[]) as x
-  ) s order by k`);
+const lockPeople = lockKeys;
 
 /** Marca o pedido como pago se ainda não estiver: a mesma confirmação em duas tentativas só vale uma vez. */
 const markPaid = (orderId: string, ref: string, allowed: readonly string[]) => ensure(sql`(select count(*) from u) = 1`, "order", sql`
@@ -130,7 +115,6 @@ const markPaid = (orderId: string, ref: string, allowed: readonly string[]) => e
     where id = ${orderId} and status in (${sql.join(allowed.map((a) => sql`${a}`), sql`, `)}) returning 1
   )`);
 
-const runBatch = (list: BatchItem<"pg">[]) => db.batch(list as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
 
 /** Se a transação falhou sem motivo nosso (rede, banco), solta a trava do pedido e repassa o erro. */
 async function unknownFailure(orderId: string, e: unknown): Promise<FulfillResult> {

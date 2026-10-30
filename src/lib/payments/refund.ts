@@ -1,13 +1,15 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { after } from "next/server";
-import { and, asc, eq, inArray, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, lt, or, sql, type SQL } from "drizzle-orm";
+import type { BatchItem } from "drizzle-orm/batch";
 import { db, schema } from "@/db";
 import { mailOrderRefunded } from "@/lib/notify";
 import { platformFee, ticketRevenue } from "@/lib/data/painel";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
 import { isTestPayment, stripe, stripeEnabled } from "@/lib/payments/stripe";
 import { mailTicketsRefunded } from "@/lib/refund-mail";
+import { abortOf, ensure, runBatch } from "@/lib/payments/tx";
 
 const { orders, tickets, ticketTypes, resaleListings, ticketTransfers, orderRefunds } = schema;
 
@@ -169,8 +171,9 @@ export async function refundTickets(inp: RefundInput): Promise<RefundOutcome> {
   const o = L.o;
   if (o.status === "refunded") return { ok: true, already: true, amountCents: 0, producerCents: 0, feeCents: 0, tickets: 0, test: isTestPayment(o), free: o.totalCents === 0 };
   if (o.status !== "paid") return { ok: false, code: "invalid", error: "Este pedido não foi pago." };
-  const plan = planRefund(L, inp.ticketIds, { keepFee: inp.keepFee });
-  if ("error" in plan) return { ok: false, code: "invalid", error: plan.error };
+  const first = planRefund(L, inp.ticketIds, { keepFee: inp.keepFee });
+  if ("error" in first) return { ok: false, code: "invalid", error: first.error };
+  let plan: RefundPlan = first;
   if (plan.checkedIn && !inp.allowCheckedIn) {
     return { ok: false, code: "checked_in", error: plan.checkedIn === 1 ? "1 ingresso já entrou no evento. Confirme para reembolsar mesmo assim." : `${plan.checkedIn} ingressos já entraram no evento. Confirme para reembolsar mesmo assim.` };
   }
@@ -188,14 +191,30 @@ export async function refundTickets(inp: RefundInput): Promise<RefundOutcome> {
   else {
     const ex = await db.query.orderRefunds.findFirst({ where: eq(orderRefunds.idemKey, key) });
     if (ex?.status === "succeeded") return { ok: true, already: true, amountCents: ex.amountCents, producerCents: ex.producerCents, feeCents: ex.feeCents, tickets: ex.ticketIds?.length ?? 0, test: ex.test, free: plan.free };
+    // (outro reembolso do mesmo pedido em andamento: o índice de "um pendente por pedido" recusa, e vira "busy")
     const [re] = ex ? await db.update(orderRefunds)
       .set({ ...values, attempts: sql`${orderRefunds.attempts} + 1`, error: null })
       .where(and(eq(orderRefunds.id, ex.id), or(eq(orderRefunds.status, "failed"), lt(orderRefunds.updatedAt, new Date(Date.now() - STALE_MS)))))
-      .returning({ id: orderRefunds.id }) : [];
+      .returning({ id: orderRefunds.id }).catch(() => []) : [];
     if (!re) return { ok: false, code: "busy", error: "Este reembolso já está sendo processado. Atualize em alguns segundos." };
     rowId = re.id;
     retry = true;
   }
+
+  // com a linha "pending" (um reembolso por pedido de cada vez, pelo índice único), calcula de novo sem contar a própria
+  // linha: outro reembolso do mesmo pedido pode ter terminado entre o cálculo acima e a trava (sem isso, os dois
+  // chegavam à Stripe), e numa retomada a linha antiga não pode descontar dela mesma
+  const fresh = await loadOrder(o.id);
+  const again = fresh?.o.status === "paid" ? planRefund({ ...fresh, rows: fresh.rows.filter((r) => r.id !== rowId) }, inp.ticketIds, { keepFee: inp.keepFee }) : null;
+  if (!again || "error" in again || again.ticketIds.join() !== plan.ticketIds.join()) {
+    const error = "Este pedido mudou enquanto o reembolso era feito (outro reembolso terminou antes). Atualize a página e confira.";
+    await db.update(orderRefunds).set({ status: "failed", error }).where(eq(orderRefunds.id, rowId));
+    return { ok: false, code: "invalid", error };
+  }
+  if (again.amountCents !== plan.amountCents || again.feeCents !== plan.feeCents || again.producerCents !== plan.producerCents || again.keptFeeCents !== plan.keptFeeCents) {
+    await db.update(orderRefunds).set({ amountCents: again.amountCents, feeCents: again.feeCents, producerCents: again.producerCents, keptFeeCents: again.keptFeeCents }).where(eq(orderRefunds.id, rowId));
+  }
+  plan = again;
 
   let stripeRefundId: string | null = null;
   if (!plan.test && plan.amountCents > 0) {
@@ -225,7 +244,14 @@ export async function refundTickets(inp: RefundInput): Promise<RefundOutcome> {
     }
   }
 
-  await applyRefund(L, plan, rowId, stripeRefundId);
+  try {
+    await applyRefund(L, plan, rowId, stripeRefundId);
+  } catch (e) {
+    // nada foi gravado (a transação vale inteira ou nada): a linha segue "pending" e é retomada depois de
+    // STALE_MS; o estorno já feito é achado pela linha (metadata.refundRowId) e não sai duas vezes
+    console.error("refund apply", o.id, e);
+    return { ok: false, code: "busy", error: "Não conseguimos concluir o reembolso agora. Tente de novo em alguns minutos: nada será devolvido duas vezes." };
+  }
   if (inp.mail !== "none") {
     const note = inp.note?.trim() || null;
     after(() => mailTicketsRefunded(o.id, { amountCents: plan.amountCents, codes: plan.codes, note, kind: inp.kind, keptFeeCents: plan.keptFeeCents, free: plan.free }));
@@ -233,38 +259,55 @@ export async function refundTickets(inp: RefundInput): Promise<RefundOutcome> {
   return { ok: true, amountCents: plan.amountCents, producerCents: plan.producerCents, feeCents: plan.feeCents, tickets: plan.ticketIds.length, test: plan.test, free: plan.free };
 }
 
-/** Efeitos do reembolso concluído (idempotente: repetir não devolve o lugar duas vezes). */
-async function applyRefund(L: NonNullable<Loaded>, plan: RefundPlan, rowId: string, stripeRefundId: string | null) {
+const uuidArray = (ids: string[]) => sql`array[${sql.join(ids.map((id) => sql`${id}`), sql`, `)}]::uuid[]`;
+const REFUNDABLE_SQL = sql.join(REFUNDABLE.map((x) => sql`${x}`), sql`, `);
+
+/**
+ * Ingressos que deixam de valer, transferências e anúncios de revenda deles cancelados e lugares de volta para a
+ * venda, num comando só. Ingresso comprado na revenda não devolve o lugar (ele já tinha sido vendido antes).
+ */
+const releaseTickets = (where: SQL, status: "refunded" | "cancelled", resale: boolean) => db.execute(sql`
+  with gone as (update ${tickets} set status = ${status} where ${where} returning id, ticket_type_id),
+  tr as (update ${ticketTransfers} set status = 'cancelled' where ticket_id in (select id from gone) and status = 'pending' returning 1),
+  rl as (update ${resaleListings} set status = 'cancelled' where ticket_id in (select id from gone) and status in ('active', 'reserved') returning 1),
+  per as (select ticket_type_id, count(*)::int n from gone where not ${resale}::boolean group by ticket_type_id),
+  seats as (update ${ticketTypes} tt set sold = greatest(tt.sold - per.n, 0) from per where tt.id = per.ticket_type_id returning 1)
+  select (select count(*) from gone)::int as n`);
+
+/**
+ * Efeitos do reembolso concluído, numa transação só: a linha do reembolso vira "succeeded" (uma vez só: repetir não
+ * devolve o lugar duas vezes), ingressos deixam de valer, lugares voltam, o pedido soma o que já voltou e, sem nada
+ * mais a devolver, vira reembolsado. Uma queda no meio não deixa ingresso cancelado com o lugar preso nem a linha
+ * "pending" para sempre: ou tudo vale, ou nada (a linha volta a ser retomada depois de STALE_MS).
+ * Devolve false se outra tentativa já tinha concluído esta linha.
+ */
+async function applyRefund(L: NonNullable<Loaded>, plan: RefundPlan, rowId: string, stripeRefundId: string | null): Promise<boolean> {
   const { o } = L;
   const ids = plan.ticketIds;
-  if (ids.length) {
-    const gone = await db.update(tickets).set({ status: plan.free ? "cancelled" : "refunded" })
-      .where(and(inArray(tickets.id, ids), inArray(tickets.status, [...REFUNDABLE])))
-      .returning({ id: tickets.id, ticketTypeId: tickets.ticketTypeId });
-    await db.update(ticketTransfers).set({ status: "cancelled" }).where(and(inArray(ticketTransfers.ticketId, ids), eq(ticketTransfers.status, "pending")));
-    await db.update(resaleListings).set({ status: "cancelled" }).where(and(inArray(resaleListings.ticketId, ids), inArray(resaleListings.status, ["active", "reserved"])));
-    await returnSeats(gone, !!o.resaleListingId);
+  const close = plan.free ? "cancelled" : "refunded";
+  const steps: BatchItem<"pg">[] = [
+    ensure(sql`(select count(*) from u) = 1`, "refund_row", sql`with u as (
+      update ${orderRefunds} set status = 'succeeded', stripe_refund_id = ${stripeRefundId}, error = null, updated_at = now()
+      where id = ${rowId} and status = 'pending' returning 1)`),
+  ];
+  // os ingressos do cálculo continuam reembolsáveis (senão a linha não conclui e é conferida de novo na retomada)
+  if (ids.length) steps.push(ensure(sql`(select count(*) from ${tickets} where id = any(${uuidArray(ids)}) and status in (${REFUNDABLE_SQL})) = ${ids.length}`, "refund_changed"));
+  if (ids.length) steps.push(releaseTickets(sql`id = any(${uuidArray(ids)}) and status in (${REFUNDABLE_SQL})`, plan.free ? "cancelled" : "refunded", !!o.resaleListingId));
+  // refunded_cents = soma dos reembolsos concluídos; sem ingresso válido e sem nada a devolver, o pedido fecha
+  steps.push(db.execute(sql`
+    update ${orders} set
+      refunded_cents = (select coalesce(sum(amount_cents), 0)::int from ${orderRefunds} where order_id = ${o.id} and status = 'succeeded'),
+      status = case when ${plan.full}::boolean and not exists (select 1 from ${tickets} where order_id = ${o.id} and status in (${REFUNDABLE_SQL}))
+        then ${close} else status end,
+      updated_at = now()
+    where id = ${o.id} and status = 'paid'`));
+  try {
+    await runBatch(steps);
+    return true;
+  } catch (e) {
+    if (abortOf(e) === "refund_row") return false;
+    throw e;
   }
-  await db.update(orderRefunds).set({ status: "succeeded", stripeRefundId, error: null }).where(eq(orderRefunds.id, rowId));
-  await syncOrderTotals(o.id, plan.full, plan.free);
-}
-
-/** Lugares de volta para a venda. Ingresso comprado na revenda não volta (ele já tinha sido vendido antes). */
-async function returnSeats(gone: { ticketTypeId: string }[], resale: boolean) {
-  if (!gone.length || resale) return;
-  const byType = new Map<string, number>();
-  for (const t of gone) byType.set(t.ticketTypeId, (byType.get(t.ticketTypeId) ?? 0) + 1);
-  for (const [id, n] of byType) await db.update(ticketTypes).set({ sold: sql`greatest(${ticketTypes.sold} - ${n}, 0)` }).where(eq(ticketTypes.id, id));
-}
-
-/** refunded_cents = soma dos reembolsos concluídos; sem ingresso válido e sem nada a devolver, o pedido vira reembolsado. */
-async function syncOrderTotals(orderId: string, full: boolean, free: boolean) {
-  const [s] = await db.select({ sum: sql<number>`coalesce(sum(${orderRefunds.amountCents}), 0)::int` }).from(orderRefunds)
-    .where(and(eq(orderRefunds.orderId, orderId), eq(orderRefunds.status, "succeeded")));
-  const [left] = await db.select({ n: sql<number>`count(*)::int` }).from(tickets).where(and(eq(tickets.orderId, orderId), inArray(tickets.status, [...REFUNDABLE])));
-  const close = full && !left?.n;
-  await db.update(orders).set({ refundedCents: s?.sum ?? 0, ...(close ? { status: free ? "cancelled" : "refunded" } : {}) })
-    .where(and(eq(orders.id, orderId), eq(orders.status, "paid")));
 }
 
 export type RefundResult = { ok: true; refundedCents: number; full: boolean; stripeRefundId: string | null } | { ok: false; error: string };
@@ -329,20 +372,17 @@ export async function refundOrder(orderId: string, opts: { amountCents?: number;
  * voltam para a venda.
  */
 export async function markOrderRefunded(orderId: string) {
-  const [o] = await db.update(orders).set({ status: "refunded" })
-    .where(and(eq(orders.id, orderId), ne(orders.status, "refunded")))
-    .returning({ id: orders.id, resaleListingId: orders.resaleListingId });
-  if (!o) return false;
-  const gone = await db.update(tickets).set({ status: "refunded" })
-    .where(and(eq(tickets.orderId, orderId), inArray(tickets.status, ["valid", "transferred"])))
-    .returning({ id: tickets.id, ticketTypeId: tickets.ticketTypeId });
-  if (gone.length) {
-    const ids = gone.map((t) => t.id);
-    await db.update(ticketTransfers).set({ status: "cancelled" }).where(and(inArray(ticketTransfers.ticketId, ids), eq(ticketTransfers.status, "pending")));
-    await db.update(resaleListings).set({ status: "cancelled" }).where(and(inArray(resaleListings.ticketId, ids), inArray(resaleListings.status, ["active", "reserved"])));
-    await returnSeats(gone, !!o.resaleListingId);
-  }
-  return true;
+  // um comando só: o pedido vira reembolsado junto com os ingressos e os lugares (antes, uma queda depois do
+  // primeiro passo deixava o pedido reembolsado com ingressos válidos, e a nova tentativa parava logo no começo)
+  const r = await db.execute<{ flipped: number }>(sql`
+    with o as (update ${orders} set status = 'refunded', updated_at = now() where id = ${orderId} and status <> 'refunded' returning id, resale_listing_id),
+    gone as (update ${tickets} t set status = 'refunded' from o where t.order_id = o.id and t.status in ('valid', 'transferred') returning t.id, t.ticket_type_id),
+    tr as (update ${ticketTransfers} set status = 'cancelled' where ticket_id in (select id from gone) and status = 'pending' returning 1),
+    rl as (update ${resaleListings} set status = 'cancelled' where ticket_id in (select id from gone) and status in ('active', 'reserved') returning 1),
+    per as (select ticket_type_id, count(*)::int n from gone where not exists (select 1 from o where resale_listing_id is not null) group by ticket_type_id),
+    seats as (update ${ticketTypes} tt set sold = greatest(tt.sold - per.n, 0) from per where tt.id = per.ticket_type_id returning 1)
+    select (select count(*) from o)::int as flipped`);
+  return (r.rows[0]?.flipped ?? 0) > 0;
 }
 
 /**

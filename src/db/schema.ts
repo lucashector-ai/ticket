@@ -979,7 +979,12 @@ export const orderRefunds = pgTable(
     actorName: varchar("actor_name", { length: 160 }),
     ...timestamps,
   },
-  (t) => [uniqueIndex("order_refunds_idem_idx").on(t.idemKey), index("order_refunds_event_idx").on(t.eventId, t.createdAt), index("order_refunds_order_idx").on(t.orderId)],
+  (t) => [
+    uniqueIndex("order_refunds_idem_idx").on(t.idemKey), index("order_refunds_event_idx").on(t.eventId, t.createdAt), index("order_refunds_order_idx").on(t.orderId),
+    // um reembolso em andamento por pedido: dois reembolsos diferentes do mesmo pedido ao mesmo tempo (produtor e
+    // comprador, duas abas) não chegam os dois à Stripe; o segundo recebe "já está sendo processado"
+    uniqueIndex("order_refunds_one_pending_idx").on(t.orderId).where(sql`status = 'pending'`),
+  ],
 );
 
 /** Pedido de reembolso do comprador (evento adiado, ou cancelado e ainda não reembolsado): o produtor aprova ou recusa. */

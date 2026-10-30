@@ -13,6 +13,17 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS producer_opt_in boolean;
 
 Reversão (só se o código desta rodada for desfeito): `ALTER TABLE orders DROP COLUMN IF EXISTS producer_opt_in;`
 
+**Rodada 3 (aplicar antes de publicar a rodada 3):** um reembolso em andamento por pedido (dois reembolsos diferentes do mesmo pedido ao mesmo tempo não chegam os dois à Stripe). Já aplicado no branch de teste. Antes, conferir que não há pedido com duas linhas pendentes (a criação do índice falharia):
+
+```sql
+-- conferência (deve voltar vazio; linhas "pending" antigas podem ser marcadas 'failed' depois de conferidas na Stripe)
+SELECT order_id, count(*) FROM order_refunds WHERE status = 'pending' GROUP BY order_id HAVING count(*) > 1;
+-- índice
+CREATE UNIQUE INDEX IF NOT EXISTS order_refunds_one_pending_idx ON order_refunds (order_id) WHERE status = 'pending';
+```
+
+Reversão: `DROP INDEX IF EXISTS order_refunds_one_pending_idx;`
+
 ## D-01 · Compra em grupo contorna o limite por pessoa (Romano, P1)
 - **Hoje:** partes de compra em grupo não contam para o limite por pessoa (regra escrita na Ajuda). Mas nada impede a mesma conta de pagar **todas** as partes do grupo, nem de abrir vários grupos. Com isso o limite por pessoa (anticambista) deixa de valer: um grupo de 8, pago inteiro pela mesma pessoa, repetido.
 - **Opções:** (a) cada conta paga no máximo **uma** parte por grupo (mantém o espírito "cada amigo paga a sua"); (b) partes pagas contam para o limite de quem pagou (muda o texto da Ajuda); (c) no máximo 1 grupo aberto por pessoa por evento; (d) manter.

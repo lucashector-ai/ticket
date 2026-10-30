@@ -117,6 +117,21 @@ export async function walletFor(userId: string) {
 }
 export type Wallet = NonNullable<Awaited<ReturnType<typeof walletFor>>>;
 
+/**
+ * Marca do que tira dinheiro do saldo (saques ativos e reembolsos que descontam do produtor): muda quando entra um
+ * saque ou um reembolso novo. O saque grava só se a marca ainda for a mesma do saldo conferido (ver requestPayout).
+ */
+export const balanceStampSql = (userId: string, orgId: string | null) => sql`concat_ws('|',
+  (select count(*) || ':' || coalesce(sum(amount_cents), 0) from ${schema.payoutRequests} where user_id = ${userId} and status in ('requested', 'processing', 'paid')),
+  (select count(*) || ':' || coalesce(sum(producer_cents), 0) from ${schema.orderRefunds} r
+    where r.status in ('pending', 'succeeded') and not r.test and r.producer_cents > 0
+      and r.event_id in (select id from ${schema.events} where created_by_user_id = ${userId}${orgId ? sql` or organizer_id = ${orgId}` : sql``})))`;
+
+export async function balanceStamp(userId: string, orgId: string | null) {
+  const r = await db.execute<{ s: string }>(sql`select ${balanceStampSql(userId, orgId)} as s`);
+  return r.rows[0]?.s ?? "";
+}
+
 export function hasDestination(d: OrganizerPayout | null | undefined) {
   return !!(d?.pixKey?.trim() || (d?.bank && d.agency && d.account));
 }

@@ -1,12 +1,13 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import {
-  bankCredential, bankPendingUserId, bankSetup, bankUserId, checkBankPassword, clearBankSetup, closeBankSession, destLabel, hasDestination,
+  balanceStamp, balanceStampSql, bankCredential, bankPendingUserId, bankSetup, bankUserId, checkBankPassword, clearBankSetup, closeBankSession, destLabel, hasDestination,
   hashBankPassword, MIN_PAYOUT, openBankSession, ownerByEmail, setBankPending, setBankSetup, walletFor,
 } from "@/lib/bank";
 import { getPainelScope } from "@/lib/data/painel";
@@ -14,6 +15,7 @@ import { brl } from "@/lib/format";
 import { checkCode, checkSecondFactor, issueCode, logSecurity, maskEmail, mfaSettings } from "@/lib/mfa";
 import { mailPayoutRequested, mailSecurityNotice, userContact } from "@/lib/notify";
 import { HUMAN_ERROR, verifyHuman } from "@/lib/turnstile";
+import { abortOf, ensure, lockKeys, runBatch } from "@/lib/payments/tx";
 
 /*
  * Banco Tickets Win: só o dono dos eventos, só com app autenticador.
@@ -146,6 +148,10 @@ export async function requestPayout(amountCents: number, code: string): Promise<
   if (!userId) return { ok: false, error: "Sua sessão do banco expirou. Entre de novo." };
   const amount = Math.round(Number(amountCents));
   if (!Number.isFinite(amount) || amount < MIN_PAYOUT) return { ok: false, error: `O saque mínimo é ${brl(MIN_PAYOUT)}.` };
+  // marca dos saques e reembolsos ANTES de ler o saldo: se algo entrar no meio, a gravação abaixo recusa
+  const scope = await getPainelScope({ id: userId });
+  const orgId = scope.org?.id ?? null;
+  const stamp = await balanceStamp(userId, orgId);
   const w = await walletFor(userId);
   if (!w) return { ok: false, error: "Só o dono dos eventos pode sacar." };
   if (!hasDestination(w.destination)) return { ok: false, error: "Cadastre a conta para receber em Painel → Configurações → Conta de repasse." };
@@ -154,14 +160,21 @@ export async function requestPayout(amountCents: number, code: string): Promise<
   const ok = await checkSecondFactor(userId, "bank", code);
   if (!ok.ok) return ok;
   if (ok.how !== "totp") return { ok: false, error: NEED_APP };
-  const [row] = await db.insert(schema.payoutRequests).values({ userId, organizerId: w.org?.id ?? null, amountCents: amount, destination: w.destination }).returning({ id: schema.payoutRequests.id });
-  // dois pedidos ao mesmo tempo (dois cliques, duas abas) passam juntos pela conferência do saldo: confere de novo
-  // com este saque já contado e desfaz se passou do disponível (sem transação no driver HTTP do Neon)
-  const recheck = await walletFor(userId);
-  if (!recheck || recheck.available < 0) {
-    await db.update(schema.payoutRequests).set({ status: "cancelled" }).where(and(eq(schema.payoutRequests.id, row.id), eq(schema.payoutRequests.status, "requested")));
-    return { ok: false, error: "Outro saque foi pedido ao mesmo tempo. Confira o saldo e tente de novo." };
+  // numa transação só: trava os saques desta pessoa, confere que nenhum saque ou reembolso entrou desde o saldo
+  // conferido e grava. Dois pedidos ao mesmo tempo (dois cliques, duas abas) passam um de cada vez e o segundo
+  // é recusado; uma queda no meio não deixa saque acima do saldo gravado (antes: gravava e conferia depois)
+  const id = randomUUID();
+  try {
+    await runBatch([
+      lockKeys([`payout:${userId}`]),
+      ensure(sql`${balanceStampSql(userId, orgId)} = ${stamp}`, "balance"),
+      db.insert(schema.payoutRequests).values({ id, userId, organizerId: w.org?.id ?? null, amountCents: amount, destination: w.destination }),
+    ]);
+  } catch (e) {
+    if (abortOf(e) === "balance") return { ok: false, error: "Outro saque ou um reembolso entrou agora. Confira o saldo e tente de novo." };
+    throw e;
   }
+  const row = { id };
   await logSecurity(userId, "payout", `Saque de ${brl(amount)} pedido`);
   const c = await userContact(userId);
   if (c) after(() => mailPayoutRequested(c.email, c.name, amount, destLabel(w.destination), row.id));
