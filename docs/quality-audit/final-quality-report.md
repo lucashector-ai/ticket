@@ -43,7 +43,8 @@ Verificado sem problema: autorização de todas as páginas privadas e de cada a
 - **Regras num lugar só:** `lib/tickets/limits.ts` (limites usados pela tela e pelo servidor), `lib/tickets/code.ts`, `lib/holds.ts` (vagas seguradas + reconferência), `lib/rate-limit.ts`, `lib/signing-secret.ts`, `lib/image-sniff.ts`.
 - **Código morto/legado:** `createOrder`/`validateCoupon` removidos; `payOrder` usa a emissão única; dependências sem uso removidas.
 - **Arquitetura:** o driver `neon-http` não tem transação; onde havia corrida sem proteção (reserva, saque, edição de lotes) usamos update condicional + reconferência. Recomendação estrutural em `architecture-review.md`.
-- **Build:** `opennextjs-cloudflare build` verde depois de cada bloco (5 builds na cópia `ticket-build`). `tsc --noEmit` e `eslint` limpos em todos os commits.
+- **Build:** `opennextjs-cloudflare build` verde depois de cada bloco (8 builds na cópia `ticket-build`, o último no fim da noite). `tsc --noEmit` sem erros; `eslint src tests` sem erros (3 avisos antigos em arquivos de interface: variável sem uso em `painel/promoters/page.tsx` e `criar/steps-tk.tsx`, `window.location.assign` em `compra-flow.tsx`).
+- **Freios contra abuso** (`lib/rate-limit.ts`, pensados para CGNAT): cupom errado por IP, pedidos criados por conta, "me avise" por IP, transferências por conta, "esqueci a senha" por e-mail, upload por conta.
 
 ## 4. Experiência do comprador
 (Marcos: ver `ux-audit.md`.) Do lado técnico (Romano): checkout ponta a ponta no navegador no modo de teste VALIDADO (2 ingressos, 1 enviado para outra pessoa, total com taxa correto, estoque e ingressos conferidos no banco); duas abas retomam o mesmo pedido em vez de disputar o lugar (VALIDADO); cronômetro "Reservados por" aparece antes de existir reserva (FALHOU, repassado ao Marcos).
@@ -66,7 +67,12 @@ Detalhes em `performance-report.md`. JS da rota: `/entrar` 353 → 105 KB, `/cad
 | Pagamento real com Stripe (cartão, 3D Secure, Pix real, webhook real) | 0 | — | — | BLOQUEADO (sem chave de teste no local) |
 
 ## 9. Arquivos modificados (Romano, principais)
-`src/lib/holds.ts`, `src/lib/tickets/{limits,code}.ts`, `src/lib/payments/fulfill.ts`, `src/lib/actions/{compra,checkout,tickets,painel,eventos,banco,grupo,auth}.ts`, `src/lib/criar/save.ts`, `src/lib/{rate-limit,signing-secret,image-sniff}.ts`, `src/lib/{admin,bank,mfa,portaria,pricing}.ts`, `src/lib/data/events.ts`, `src/lib/auth/client-lazy.ts`, `src/app/api/{midia,admin/banner}/route.ts`, `src/app/eventos/[slug]/page.tsx`, `src/app/checkout/page.tsx`, `src/components/checkin/use-qr-camera.ts` e 3 componentes de login (só o import), `tests/**`, `vitest.config.mts`, `package.json`.
+- Regras e integridade: `src/lib/holds.ts`, `src/lib/tickets/{limits,code,qr}.ts`, `src/lib/payments/fulfill.ts`, `src/lib/criar/save.ts`, `src/lib/pricing.ts`.
+- Ações de servidor: `src/lib/actions/{compra,checkout,tickets,painel,eventos,banco,grupo,auth,launch,senha}.ts`; removido `src/lib/actions/checkin-link.ts` (morto).
+- Segurança: `src/lib/{rate-limit,signing-secret,image-sniff,csv,admin,bank,mfa,portaria,checkin,password-link}.ts`.
+- Rotas/páginas: `src/app/api/{midia,admin/banner,og/evento/[slug]}/route.ts`, `src/app/api/ingressos/[code]/pdf/route.ts`, `src/app/eventos/[slug]/page.tsx`, `src/app/checkout/page.tsx`, `src/lib/data/events.ts`, `src/lib/wallet/pass-data.ts`.
+- Performance (mudança mínima em componentes do Marcos, avisada no handoff): `src/lib/auth/client-lazy.ts` + 3 componentes de login, `src/components/checkin/use-qr-camera.ts`, 4 exportações CSV do painel.
+- Testes: `vitest.config.mts`, `tests/unit/*` (6), `tests/db/*` (9), `tests/e2e/checkout.e2e.mjs`; `package.json` (`test`, `test:watch`, `test:e2e`; vitest; node-forge 1.4.2; sem jspdf/html-to-image).
 
 ## 10. Pendências (Romano)
 Decisões D-01 a D-07 em `pending-decisions.md`. Técnicas: testar com a chave de teste da Stripe (cartão, 3D Secure, Pix, webhook fora de ordem) num ambiente autorizado; agregar o financeiro no SQL; limite por pessoa entre contas com o mesmo CPF confirmando ao mesmo tempo (P2); CSP de scripts.
