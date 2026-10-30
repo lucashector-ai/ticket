@@ -48,7 +48,7 @@ export async function signInWithEmail(_prev: AuthState, formData: FormData): Pro
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (!(await verifyHuman(formData.get("cf-turnstile-response")))) return { error: HUMAN_ERROR };
   const { data, error } = await auth.signIn.email(parsed.data);
-  if (error) return { error: friendly(error.message, error.code) };
+  if (error) return { error: friendlySignIn(error.message, error.code) };
   const next = safeNext(formData.get("next"));
   if (await secondStep(userIdOf(data), tokenOf(data))) redirect(`/verificacao?next=${encodeURIComponent(next)}`);
   redirect(next);
@@ -94,13 +94,19 @@ function friendly(message?: string, code?: string) {
   return message || "Não foi possível entrar. Tente de novo.";
 }
 
+/** No login, "conta não encontrada" vira o mesmo aviso de senha errada: a tela não confirma quais e-mails têm conta. */
+function friendlySignIn(message?: string, code?: string) {
+  const m = friendly(message, code);
+  return /^Não encontramos uma conta/.test(m) ? "E-mail ou senha incorretos." : m;
+}
+
 /** Login sem redirecionar (usado dentro do checkout). `mfa`: falta o código da segunda etapa. */
 export async function signInInline(email: string, password: string, human: string): Promise<{ ok: boolean; error?: string; mfa?: boolean }> {
   const parsed = signInSchema.safeParse({ email, password });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
   if (!(await verifyHuman(human))) return { ok: false, error: HUMAN_ERROR };
   const { data, error } = await auth.signIn.email(parsed.data);
-  if (error) return { ok: false, error: friendly(error.message, error.code) };
+  if (error) return { ok: false, error: friendlySignIn(error.message, error.code) };
   return { ok: true, mfa: await secondStep(userIdOf(data), tokenOf(data)) };
 }
 
