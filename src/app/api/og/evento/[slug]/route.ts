@@ -11,8 +11,9 @@ const MAX_ORIGINAL = 500_000;
 /** Prévia do link do evento: a arte em JPG leve (1200×630 do banner, ou o cartaz reduzido). */
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [e] = await db.select({ flyerId: schema.events.flyerId, bannerId: schema.events.bannerId }).from(schema.events).where(eq(schema.events.slug, slug)).limit(1);
-  const art = e ? eventShareArt(e) : null;
+  const [e] = await db.select({ flyerId: schema.events.flyerId, bannerId: schema.events.bannerId, status: schema.events.status }).from(schema.events).where(eq(schema.events.slug, slug)).limit(1);
+  // rascunho não tem prévia pública (a página dele também é 404 para quem não criou)
+  const art = e && e.status !== "draft" ? eventShareArt(e) : null;
   if (!art) return new Response("Sem arte", { status: 404 });
   const jpg = await mediaJpeg(art.src, art.wide ? { width: 1200, height: 630, fit: "cover" } : { width: 900, height: 900, fit: "scale-down" });
   if (jpg) return new Response(new Blob([jpg as BlobPart], { type: "image/jpeg" }), { headers: HEADERS });
