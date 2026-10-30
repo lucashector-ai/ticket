@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { brl } from "@/lib/format";
-import { MAX_INSTALLMENTS, money } from "@/lib/pricing";
+import { feeShares, MAX_INSTALLMENTS, money } from "@/lib/pricing";
 import { ResaleCard } from "./resale-card";
 import type { EventoData, SessionItem, TierItem } from "./types";
 import type { Tickets } from "./use-tickets";
@@ -26,6 +26,26 @@ const fromLabel = (tiers: TierItem[]) => {
   const min = Math.min(...open.map((t) => t.priceCents));
   return min ? `a partir de ${brl(min)}` : "Grátis";
 };
+/** "Quinta, 19 de novembro de 2026" sem o ano quando é o ano corrente (cabe no topo da tela no celular) */
+const noYear = (d: string) => d.replace(new RegExp(` de ${new Date().getFullYear()}$`), "");
+
+/**
+ * Texto do limite da escolha. O limite por pessoa vale para cada tipo de ingresso; o máximo por compra soma todos.
+ * `head`: frase única no topo (null se não precisar); `perRow`: cada tipo mostra o seu limite.
+ */
+export function limitNote(tiers: TierItem[], maxPerOrder: number): { head: string | null; perRow: boolean } {
+  const open = tiers.filter(onSale);
+  if (!open.length) return { head: null, perRow: false };
+  const limits = new Set(open.map((x) => x.limit));
+  const cap = open.reduce((s, x) => s + x.limit, 0) > maxPerOrder ? `no máximo ${maxPerOrder} por compra` : null;
+  if (limits.size === 1) {
+    const l = [...limits][0];
+    const base = open.length === 1 ? `Até ${l} ${l === 1 ? "ingresso" : "ingressos"} por pessoa` : `Até ${l} de cada tipo por pessoa`;
+    return { head: cap && open.length > 1 ? `${base}, ${cap}` : base, perRow: false };
+  }
+  return { head: cap ? `No máximo ${maxPerOrder} ingressos por compra, somando todos os tipos` : null, perRow: true };
+}
+
 /** setores de uma data, na ordem em que aparecem */
 function sectorsOf(e: EventoData, session: string | null) {
   const out: { name: string; color: string | null; tiers: TierItem[] }[] = [];
@@ -109,15 +129,19 @@ export function BuySheet({ e, t, s, onMap }: { e: EventoData; t: Tickets; s: Buy
 
   const multiDay = e.sessions.length > 1;
   const sess = multiDay ? e.sessions.find((x) => x.id === t.session) ?? null : null;
-  const when = sess ? `${longDay(sess)} · ${sess.sub}` : `${e.dateFull}${e.timed ? ` · ${e.startTime}` : ""}`;
+  const when = sess ? `${longDay(sess)} · ${sess.sub}` : `${noYear(e.dateFull)}${e.timed ? ` · ${e.startTime}` : ""}`;
   const sectors = sectorsOf(e, t.session);
   const hasSectors = sectors.length > 1;
   const steps: SheetStep[] = [...(multiDay ? ["data" as const] : []), ...(hasSectors ? ["setor" as const] : []), "ingressos"];
   const idx = steps.indexOf(step);
   const allFree = t.nq > 0 && t.subtotal === 0;
-  const limits = new Set(t.visibleTiers.map((x) => x.limit));
-  const oneLimit = limits.size === 1 ? [...limits][0] : null;
-  const fee = (cents: number) => Math.round(cents * e.feeRate);
+  const lim = limitNote(t.visibleTiers, e.maxPerOrder);
+  // taxa de cada linha escolhida: a taxa do pedido (calculada no total) dividida entre as linhas, para a soma
+  // das linhas fechar com o total da barra; sem escolha, a taxa de um ingresso
+  const picked = e.tiers.filter((x) => (t.qty[x.id] ?? 0) > 0);
+  const shares = feeShares(t.totalWithFee - t.total, picked.map((x) => x.priceCents * t.qty[x.id]));
+  const lineFee = new Map(picked.map((x, i) => [x.id, shares[i]]));
+  const fee = (x: TierItem) => lineFee.get(x.id) ?? Math.round(x.priceCents * e.feeRate);
 
   const pickDay = (id: string) => {
     t.setSession(id);
@@ -203,8 +227,8 @@ export function BuySheet({ e, t, s, onMap }: { e: EventoData; t: Tickets; s: Buy
               </div>
             )}
             {e.launch.access && <p className="bs-pv"><i aria-hidden="true" />Pré-venda liberada para você · uma compra com este link</p>}
-            {oneLimit !== null && <p className="bs-lim">Até {oneLimit} {oneLimit === 1 ? "ingresso" : "ingressos"} por pessoa</p>}
-            {t.visibleTiers.map((x) => <Row key={x.id} x={x} t={t} fee={fee(x.priceCents)} showLimit={oneLimit === null} />)}
+            {lim.head && <p className="bs-lim">{lim.head}</p>}
+            {t.visibleTiers.map((x) => <Row key={x.id} x={x} t={t} fee={fee(x)} showLimit={lim.perRow} />)}
 
             <div className={cupOpen || t.coupon ? "bs-cup on" : "bs-cup"}>
               {cupOpen || t.coupon ? (
@@ -256,6 +280,10 @@ function Row({ x, t, fee, showLimit }: { x: TierItem; t: Tickets; fee: number; s
   const open = onSale(x);
   const upcoming = x.status === "upcoming";
   const label = x.sector && !t.sector ? `${x.sector} · ${x.name}` : x.name;
+  // no limite (por pessoa, por compra ou estoque) o "+" fica apagado, mas o toque ainda explica o motivo
+  const full = open && !t.canInc(x.id);
+  const owned = x.owned ?? 0;
+  const extra = [x.desc, showLimit && open ? `Até ${x.limit} por pessoa` : null, owned > 0 ? `Você já tem ${owned}` : null].filter(Boolean).join(" · ");
   return (
     <div className={!open && !upcoming ? "bs-t so" : q > 0 ? "bs-t sel" : "bs-t"}>
       <span className="bs-tn">{label}{open && x.note && x.note.length <= 22 && <em>{x.note}</em>}</span>
@@ -265,15 +293,15 @@ function Row({ x, t, fee, showLimit }: { x: TierItem; t: Tickets; fee: number; s
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M2.5 6h7" /></svg>
           </button>
           <span>{q}</span>
-          <button type="button" className="bs-pl" onClick={() => t.inc(x.id)} aria-label={`Adicionar um ${label}`}>
+          <button type="button" className="bs-pl" onClick={() => t.inc(x.id)} aria-label={`Adicionar um ${label}`} aria-disabled={full || undefined}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 2.5v7M2.5 6h7" /></svg>
           </button>
         </span>
       ) : (
         <span className="bs-so">{upcoming ? x.note ?? "Em breve" : "Esgotado"}</span>
       )}
-      <span className="bs-p">{x.priceCents ? money(x.priceCents) : "Grátis"}{x.priceCents > 0 && fee > 0 && <small>+ {money(fee)} taxa</small>}</span>
-      {(x.desc || showLimit) && <span className="bs-td">{x.desc}{showLimit && open && <>{x.desc ? " · " : ""}Até {x.limit} por pessoa</>}</span>}
+      <span className="bs-p">{q > 1 && x.priceCents > 0 && `${q} × `}{x.priceCents ? money(x.priceCents) : "Grátis"}{x.priceCents > 0 && fee > 0 && <small>+ {money(fee)} taxa</small>}</span>
+      {extra && <span className="bs-td">{extra}</span>}
     </div>
   );
 }

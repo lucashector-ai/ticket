@@ -79,10 +79,15 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
     el.scrollIntoView({ behavior: "smooth", block: "start" });
     el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
   };
-  /** abre a compra em tela cheia: com ingressos já escolhidos, direto na lista deles */
+  /**
+   * Abre a compra em tela cheia: com ingressos de um setor só já escolhidos, direto na lista deles; sem escolha,
+   * ou com escolha em mais de um setor/data, no começo (lá cada setor e data mostra quantos já tem).
+   */
   const startBuy = () => {
-    const picked = e.tiers.find((x) => (tickets.qty[x.id] ?? 0) > 0);
-    if (!picked) { tickets.setSector(null); sheet.go(firstStep(e, tickets.session)); return; }
+    const pickedAll = e.tiers.filter((x) => (tickets.qty[x.id] ?? 0) > 0);
+    const picked = pickedAll[0];
+    const spread = new Set(pickedAll.map((x) => `${x.sessionId ?? ""}|${x.sector ?? ""}`)).size > 1;
+    if (!picked || spread) { tickets.setSector(null); sheet.go(firstStep(e, picked?.sessionId ?? tickets.session)); return; }
     if (picked.sessionId && e.sessions.length > 1) tickets.setSession(picked.sessionId);
     const sectors = new Set(e.tiers.filter((x) => e.sessions.length <= 1 || x.sessionId === picked.sessionId).map((x) => x.sector).filter(Boolean));
     tickets.setSector(sectors.size > 1 ? picked.sector : null);
@@ -284,7 +289,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
           </div>
         )}
         <button type="button" onClick={mbarGo} disabled={tickets.pending} tabIndex={inlineBuy && !tickets.nq ? -1 : undefined}>
-          {waiting ? (e.launch.phase === "soon" && e.launch.presaleAt ? "Pré-venda" : "Me avise") : tickets.pending ? "Abrindo…" : tickets.nq ? "Continuar" : "Comprar ingresso"}
+          {waiting ? (e.launch.phase === "soon" && e.launch.presaleAt ? "Pré-venda" : "Me avise") : tickets.pending ? "Abrindo…" : tickets.nq ? "Continuar" : "Comprar ingressos"}
           {!waiting && tickets.nq > 0 && !tickets.pending && <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>}
         </button>
       </div>

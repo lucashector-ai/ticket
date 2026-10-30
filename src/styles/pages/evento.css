@@ -36,6 +36,7 @@
   .buy{margin-top:28px;border:1px solid #EAEAEA;border-radius:24px;padding:24px;animation:rise .8s .2s var(--ease) both}
   .buy-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
   .buy-h h2{margin:0;font-family:'Inter Tight',sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em}
+  .buy-lim{margin:-8px 0 12px;font-size:13px;color:#6E6E73;text-wrap:balance}
   .tiers{display:flex;flex-direction:column;gap:8px}
   .tier{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:18px;align-items:center;padding:16px 16px 16px 20px;border-radius:18px;background:#F7F7F2;transition:background .3s,box-shadow .3s}
   .tier.sel{background:#FFFFFF;box-shadow:inset 0 0 0 1.5px #111}
@@ -48,6 +49,9 @@
   .tier.sel .qty{background:#F7F7F2}
   .qty button{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;transition:background .25s}
   .qty button:hover{background:#111;color:#fff}
+  /* no limite: apagado, mas o clique ainda mostra o motivo */
+  .qty button[aria-disabled="true"]{color:#C4C4C0}
+  .qty button[aria-disabled="true"]:hover{background:transparent;color:#C4C4C0}
   .qty span{min-width:24px;text-align:center;font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums}
   .tot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:20px;padding-top:20px;border-top:1px solid #EAEAEA}
   .tot span{display:block;font-size:13px;color:#6E6E73}
@@ -305,6 +309,8 @@
   .cupmsg.ok{color:#2E7D32}
   .cupmsg.err{color:#B3261E}
   .disc{display:flex;justify-content:space-between;font-size:14px;color:#2E7D32}
+  .tot .fee-l{display:flex;justify-content:space-between;font-size:14px}
+  .tot .fee-l span{display:inline;font-size:14px}
   @media (max-width:640px){.arts{grid-template-columns:repeat(2,minmax(0,1fr))}
 .tl-i{grid-template-columns:46px 22px minmax(0,1fr)}
 .tl::before{left:57px}
@@ -710,7 +716,7 @@
     .bs-ctx>i{flex:none;width:9px;height:9px;border-radius:50%;background:#D3F55B}
     .bs-ctx>div{flex:1;min-width:0}
     .bs-ctx b{display:block;font-size:14px;font-weight:600}
-    .bs-ctx span{display:block;font-size:12px;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bs-ctx span{display:block;font-size:12px;line-height:1.35;color:rgba(255,255,255,.65)}
     .bs-ctx button{flex:none;height:32px;padding:0 13px;border-radius:99px;background:rgba(255,255,255,.12);color:#fff;font-size:12.5px;font-weight:600}
     .bs-pv{display:flex;align-items:center;gap:8px;margin:0 2px 10px;font-size:12.5px;font-weight:600}
     .bs-pv i{width:8px;height:8px;border-radius:50%;background:#7CC42B}
@@ -730,6 +736,8 @@
     .bs-q button{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#111}
     .bs-q button:disabled{color:#C4C4C0}
     .bs-q .bs-pl{background:#111;color:#D3F55B}
+    /* no limite: apagado, mas o toque ainda mostra o motivo */
+    .bs-q .bs-pl[aria-disabled="true"]{background:#DADAD4;color:#fff}
     .bs-q span{min-width:20px;text-align:center;font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums}
     .bs-so{grid-row:1/3;grid-column:2;max-width:130px;padding:6px 10px;border-radius:99px;background:#EDEDE8;font-size:12px;font-weight:600;color:#6E6E73;text-align:center;white-space:normal}
 
