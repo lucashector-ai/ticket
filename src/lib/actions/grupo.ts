@@ -10,6 +10,7 @@ import { abortOf, ensure, lockKeys, runBatch } from "@/lib/payments/tx";
 import { canBuy, randomToken } from "@/lib/launch";
 import { queueAllows } from "@/lib/queue";
 import { tierStatus } from "@/lib/tickets/status";
+import { salesEndedError } from "@/lib/tickets/sales-end";
 
 const { events, groupOrders, groupShares } = schema;
 /** quanto tempo o grupo segura as vagas para os amigos pagarem */
@@ -36,8 +37,11 @@ export async function createGroup(input: z.input<typeof groupSchema>): Promise<{
   if (!user) return { ok: false, error: "Entre na sua conta para montar o grupo.", needsLogin: true };
   const p = groupSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Escolha os ingressos do grupo." };
-  const ev = await db.query.events.findFirst({ where: eq(events.slug, p.data.eventSlug), with: { ticketTypes: true } });
+  const ev = await db.query.events.findFirst({ where: eq(events.slug, p.data.eventSlug), with: { ticketTypes: true, sessions: { columns: { id: true, startAt: true } } } });
   if (!ev || ev.status !== "published") return { ok: false, error: "Evento indisponível." };
+  // evento (ou a data dos ingressos) que já terminou: não segura vagas para grupo
+  const endErr = salesEndedError(ev, p.data.items.map((i) => i.ticketTypeId));
+  if (endErr) return { ok: false, error: endErr };
   if (!(await canBuy(ev)).ok) return { ok: false, error: "As vendas deste evento ainda não abriram." };
   if (!(await queueAllows(ev))) return { ok: false, error: "Você está na fila virtual. Aguarde a sua vez." };
   // um grupo aberto por pessoa em cada evento (D-01): vários grupos virariam um jeito de passar do limite por pessoa

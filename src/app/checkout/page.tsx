@@ -12,6 +12,7 @@ import { meiaBoxOk, SERVICE_FEE_RATE } from "@/lib/pricing";
 import { turnstileSiteKey } from "@/lib/turnstile";
 import { appleSignInEnabled } from "@/lib/auth/apple";
 import { tierStatus } from "@/lib/tickets/status";
+import { salesEnded, salesEndedError, typeSalesEnded } from "@/lib/tickets/sales-end";
 import { canBuy } from "@/lib/launch";
 import { queueAllows } from "@/lib/queue";
 import { heldByType } from "@/lib/holds";
@@ -62,6 +63,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   if (one("aviso") === "cancelado") notice = "Aquele pedido foi cancelado e nada foi cobrado. Confira os ingressos e continue para fazer um novo.";
   const e = await getEventBySlug(slug);
   if (!e || e.status !== "published") redirect("/explorar");
+  // evento que já terminou: a compra não abre (nem retomada, grupo ou revenda); a página do evento mostra "Vendas encerradas"
+  if (salesEnded(e)) redirect(`/eventos/${e.slug}`);
 
   const ref = order
     ? { groupShareId: order.groupShareId, resaleListingId: order.resaleListingId }
@@ -72,6 +75,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   // voltou ao checkout do evento com um pedido deste evento ainda não pago: continua nele
   if (!order && user) order = await pendingOrderFor(user.id, e.id, ref);
   const resume: ResumeData | null = order ? await resumeView(order) : null;
+  // várias datas: a data do pedido retomado ou do ingresso travado (grupo, revenda) já terminou
+  if (salesEndedError(e, resume ? resume.items.map((i) => i.ticketTypeId) : special ? [special.ticketTypeId] : [])) redirect(`/eventos/${e.slug}`);
   // caiu no pedido aberto vindo da página do evento com outra escolha: a tela oferece trocar por ela
   const wantedItens = !pedido && resume && !special ? one("itens") : "";
   const norm = (raw: string) => raw.split(",").filter(Boolean).sort().join(",");
@@ -92,7 +97,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   else for (const part of one("itens").split(",")) {
     const [id, q] = part.split(":");
     const n = Number.parseInt(q ?? "", 10);
-    const tt = e.ticketTypes.find((t) => t.id === id && tierStatus(t) === "open");
+    const tt = e.ticketTypes.find((t) => t.id === id && tierStatus(t) === "open" && !typeSalesEnded(e, t));
     if (tt && Number.isFinite(n) && n > 0) qty[tt.id] = Math.min(n, tt.maxPerOrder, e.maxPerOrder);
   }
   // sem ingressos escolhidos (link antigo, lote virou): volta para a escolha na página do evento
@@ -127,7 +132,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
       return {
         id: t.id, name: t.sector ? `${t.sector} · ${t.name}` : t.name, type: t.name, note: t.note ?? "", desc: t.description,
         priceCents: r ? r.unitPriceCents : special ? special.priceCents : t.priceCents,
-        open: special || r ? true : tierStatus(t) === "open" && left > 0 && (t.kind !== "meia" || meiaOpen(t)),
+        open: special || r ? true : tierStatus(t) === "open" && !typeSalesEnded(e, t) && left > 0 && (t.kind !== "meia" || meiaOpen(t)),
         sold: special || r ? false : t.status === "sold_out" || left <= 0 || (t.kind === "meia" && !meiaOpen(t)),
         sector: t.sector, sectorColor: t.sectorColor, sessionId: special ? null : t.sessionId, meiaOk: special ? false : meiaBoxOk(t, e.ticketTypes) && meiaOpen(t),
         limit: special ? 1 : Math.max(r?.quantity ?? 0, Math.min(t.maxPerOrder, e.maxPerOrder)),

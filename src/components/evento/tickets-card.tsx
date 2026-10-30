@@ -24,6 +24,18 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
     const g = groups.find((x) => x.name === key);
     if (g) g.tiers.push(tier); else groups.push({ name: key, color: tier.sectorColor ?? null, tiers: [tier] });
   }
+  // evento que já terminou (ou cancelado): só o aviso, sem escolha de ingressos nem cupom
+  if (e.closed) return (
+    <div className="buy" id="ingressos">
+      <div className="buy-sc">
+        <div className="buy-h">
+          <h2>Ingressos</h2>
+        </div>
+        <p className="from" role="status"><b>{e.closed === "cancelled" ? "Evento cancelado" : "Vendas encerradas"}</b></p>
+        <p className="note">{e.closed === "cancelled" ? "Os ingressos não estão mais à venda. Quem comprou recebe o reembolso automaticamente." : "Este evento já aconteceu e os ingressos não estão mais à venda."}</p>
+      </div>
+    </div>
+  );
   return (
     <div className="buy" id="ingressos">
       {/* a lista rola dentro do cartão; o total e o botão ficam sempre à vista no rodapé */}

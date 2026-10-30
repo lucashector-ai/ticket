@@ -17,12 +17,13 @@ const H = 3600_000;
 /**
  * Evento com três datas: ontem (sábado do teste), agora (domingo: portões daqui a 1 h, a portaria já está nele)
  * e daqui a 3 dias. Um tipo por data e um pedido pago com um ingresso de cada.
+ * A emissão recusa data que já terminou (U-73): o pedido é pago com as datas no futuro e depois elas voltam ao lugar.
  */
 async function festival() {
   const { db, schema } = D;
   const { eq } = await import("drizzle-orm");
-  const now = Date.now();
-  const [ev] = await db.insert(schema.events).values({ slug: qaId("ev-dias"), title: "QA festival (portaria por dia)", status: "published", startAt: new Date(now - 26 * H) }).returning();
+  const now = Date.now() + 200 * H;
+  const [ev] = await db.insert(schema.events).values({ slug: qaId("ev-dias"), title: "QA festival (portaria por dia)", status: "published", startAt: new Date(now - 26 * H), endAt: new Date(now + 78 * H) }).returning();
   created.push(ev.id);
   const [ontem, hoje, depois] = await db.insert(schema.eventSessions).values([
     { eventId: ev.id, startAt: new Date(now - 26 * H), doorsAt: new Date(now - 27 * H), sortOrder: 0 },
@@ -37,6 +38,10 @@ async function festival() {
   }).returning();
   await db.insert(schema.orderItems).values(types.map((t) => ({ orderId: o.id, ticketTypeId: t.id, quantity: 1, unitPriceCents: 5000, unitFeeCents: 0 })));
   expect((await F.fulfillOrder(o.id, { ref: `TEST-${o.number}`, charged: false })).ok).toBe(true);
+  const { sql } = await import("drizzle-orm");
+  const back = sql`interval '200 hours'`;
+  await db.update(schema.events).set({ startAt: sql`${schema.events.startAt} - ${back}`, endAt: sql`${schema.events.endAt} - ${back}` }).where(eq(schema.events.id, ev.id));
+  await db.update(schema.eventSessions).set({ startAt: sql`${schema.eventSessions.startAt} - ${back}`, doorsAt: sql`${schema.eventSessions.doorsAt} - ${back}` }).where(eq(schema.eventSessions.eventId, ev.id));
   const tks = await db.query.tickets.findMany({ where: eq(schema.tickets.orderId, o.id) });
   const by = (i: number) => tks.find((t) => t.ticketTypeId === types[i].id)!;
   return { ev, ontem: by(0), hoje: by(1), depois: by(2), sessions: [ontem, hoje, depois] };

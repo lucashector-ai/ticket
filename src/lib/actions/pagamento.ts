@@ -8,7 +8,7 @@ import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { cpfValid } from "@/lib/cpf";
 import { ensureCustomer, ownCard } from "@/lib/payments/cards";
-import { fulfillOrder, paidView, type FulfillOk } from "@/lib/payments/fulfill";
+import { eventClosedFor, fulfillOrder, paidView, type FulfillOk } from "@/lib/payments/fulfill";
 import { chargeCard } from "@/lib/payments/intents";
 import { releasePending } from "@/lib/payments/pending";
 import { stripe, stripeEnabled, stripeErrorMessage, stripeRef } from "@/lib/payments/stripe";
@@ -89,6 +89,10 @@ export async function payCard(input: PayCardInput): Promise<PayCardResult> {
   if (order.status !== "pending") return { ok: false, error: "Este pedido não pode mais ser pago. Escolha os ingressos de novo." };
   if (order.paymentMethod !== "card") return { ok: false, error: "Este pedido é de outra forma de pagamento." };
   if (order.expiresAt && order.expiresAt < new Date()) return { ok: false, error: "O tempo da reserva acabou. Escolha os ingressos de novo." };
+  // evento cancelado ou que terminou depois da reserva: não cobra (a emissão recusaria e estornaria)
+  const items = await db.query.orderItems.findMany({ where: eq(schema.orderItems.orderId, order.id), columns: { ticketTypeId: true } });
+  const closed = await eventClosedFor(order.eventId, items.map((i) => i.ticketTypeId));
+  if (closed) return { ok: false, error: closed };
   if (!(await cardTryAllowed(user.id))) return { ok: false, error: "Muitas tentativas com cartão em pouco tempo. Aguarde um pouco ou pague com Pix." };
 
   // de quem é o cartão: um cartão já ligado a um cliente só passa se for o cliente desta conta

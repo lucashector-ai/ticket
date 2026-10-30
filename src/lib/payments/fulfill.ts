@@ -15,6 +15,7 @@ import { overLimit, type Bought } from "@/lib/tickets/limits";
 import { abortOf as abortTx, ensure as ensureTx, lockKeys, runBatch } from "@/lib/payments/tx";
 import { trailInsert } from "@/lib/tickets/trail";
 import { meiaInOrder, meiaLockKey, meiaQuotaPaidOkSql, MEIA_SOLD_OUT } from "@/lib/meia-quota";
+import { salesEndedError } from "@/lib/tickets/sales-end";
 
 /*
  * Emissão dos ingressos de um pedido pago: a MESMA rotina para o webhook da Stripe, para a conferência
@@ -139,6 +140,20 @@ const giftRows = (fromUserId: string, list: { ticketId: string; email: string }[
 }));
 
 /**
+ * O evento deixou de vender estes tipos de ingresso? (cancelado pelo produtor, ou o evento ou a data do ingresso
+ * já terminou). Conferido na emissão e antes de cobrar o cartão. null = pode seguir.
+ */
+export async function eventClosedFor(eventId: string, typeIds: string[]): Promise<string | null> {
+  const ev = await db.query.events.findFirst({
+    where: eq(schema.events.id, eventId), columns: { status: true, startAt: true, endAt: true },
+    with: { sessions: { columns: { id: true, startAt: true } }, ticketTypes: { columns: { id: true, sessionId: true } } },
+  });
+  if (!ev) return null;
+  if (ev.status === "cancelled") return "O evento foi cancelado pelo produtor.";
+  return salesEndedError(ev, typeIds);
+}
+
+/**
  * Confirma o pedido e emite os ingressos nominais.
  * `ref`: o que vai em orders.payment_ref (STRIPE-pi_…, TEST-…, FREE-…).
  */
@@ -183,9 +198,10 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
     return { ok: false, error: `${why} Nada foi cobrado.` };
   };
 
-  // evento cancelado pelo produtor enquanto a pessoa pagava (ex.: Pix pago depois): não emite, estorna
-  const evState = await db.query.events.findFirst({ where: eq(schema.events.id, order.eventId), columns: { status: true } });
-  if (evState?.status === "cancelled") return fail("O evento foi cancelado pelo produtor.");
+  // evento cancelado pelo produtor, ou que já terminou (o evento ou a data do ingresso), enquanto a pessoa pagava
+  // (ex.: Pix pago depois): não emite; se houve cobrança, estorna (vale também para grupo e revenda)
+  const closed = await eventClosedFor(order.eventId, order.items.map((i) => i.ticketTypeId));
+  if (closed) return fail(closed);
   if (order.resaleListingId) return fulfillResale(order, pay, allowed, fail);
   const normal = !order.groupShareId;
   const cpf = order.buyerCpf && order.buyerCpf.length === 11 ? order.buyerCpf : null;

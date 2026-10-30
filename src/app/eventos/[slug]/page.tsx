@@ -11,6 +11,7 @@ import { canEditEvent } from "@/lib/data/org-access";
 import { getSessionUser } from "@/lib/auth/server";
 import { dateFull, hourLabel, initials, parts, timeLabel } from "@/lib/format";
 import { salesStartNote, tierStatus } from "@/lib/tickets/status";
+import { salesEnded, typeSalesEnded } from "@/lib/tickets/sales-end";
 import { presaleAccess, salePhase } from "@/lib/launch";
 import { heldByType } from "@/lib/holds";
 import { groupKey, meiaLeftByGroup } from "@/lib/meia-quota";
@@ -77,8 +78,8 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     ? { id: e.organizer.id, slug: e.organizer.slug, avatarUrl: e.organizer.avatarUrl, name: e.organizer.name, initials: e.organizer.initials ?? initials(e.organizer.name), bio: e.organizer.bio, verified: e.organizer.verified, email: e.organizer.contactEmail }
     : null;
   const tiers: TierItem[] = e.ticketTypes.map((t) => {
-    // evento cancelado: nenhum ingresso à venda
-    const status = e.status === "cancelled" ? "closed" : tierStatus(t);
+    // evento cancelado ou que já terminou (ou a data deste tipo, em evento de várias datas): nenhum ingresso à venda
+    const status = e.status === "cancelled" || typeSalesEnded(e, t) ? "closed" : tierStatus(t);
     return {
       id: t.id, name: t.name, note: status === "upcoming" && t.salesStart ? salesStartNote(t.salesStart) : t.note, desc: t.description,
       priceCents: t.priceCents, limit: Math.min(t.maxPerOrder, e.maxPerOrder), status,
@@ -136,6 +137,7 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     maxPerOrder: e.maxPerOrder,
     feeRate: e.absorbFee ? 0 : SERVICE_FEE_RATE,
     queueOn: e.queueMode !== "off",
+    closed: e.status === "cancelled" ? "cancelled" : salesEnded(e) ? "ended" : null,
     resale: {
       offers: e.resaleEnabled && e.status === "published" && deadlineOpen(e.startAt, e.resaleUntilHours) ? offers.flatMap((o) => {
         const t = e.ticketTypes.find((x) => x.id === o.ticketTypeId);

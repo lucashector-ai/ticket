@@ -91,6 +91,8 @@ export type EventoData = {
   resale: { offers: { id: string; label: string; color: string | null; session: string | null; priceCents: number; totalCents: number; mine: boolean }[] };
   /** fila virtual ligada (automática ou sempre) */
   queueOn: boolean;
+  /** vendas encerradas: o evento já terminou ou foi cancelado (nada à venda; o botão de compra some) */
+  closed: "ended" | "cancelled" | null;
   launch: { phase: "soon" | "presale" | "open"; openAt: string | null; presaleAt: string | null; access: boolean; page: Teaser };
 };
 

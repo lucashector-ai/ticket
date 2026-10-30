@@ -11,6 +11,7 @@ import { getSessionUser } from "@/lib/auth/server";
 import { meiaInOrder, meiaLockKey, meiaQuotaOkSql, MEIA_SOLD_OUT } from "@/lib/meia-quota";
 import { meiaBoxOk, priceOrder, SERVICE_FEE_RATE } from "@/lib/pricing";
 import { tierStatus } from "@/lib/tickets/status";
+import { SALES_ENDED, salesEndedError } from "@/lib/tickets/sales-end";
 import { canBuy } from "@/lib/launch";
 import { promoterForOrder } from "@/lib/promoters";
 import { queueAllows } from "@/lib/queue";
@@ -129,13 +130,18 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const { eventSlug, items, buyer, holders, method, installments, groupShareId, resaleListingId, producerOptIn } = parsed.data;
   let { coupon } = parsed.data;
 
-  const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), with: { ticketTypes: true } });
+  const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), with: { ticketTypes: true, sessions: { columns: { id: true, startAt: true } } } });
   if (!ev || ev.status !== "published") return { ok: false, error: "Evento indisponível." };
+  // evento que já terminou: nenhuma reserva (compra normal, pré-venda, parte de grupo ou revenda)
+  if (salesEndedError(ev)) return { ok: false, error: SALES_ENDED };
 
   // parte de grupo ou revenda: 1 ingresso, preço travado, sem cupom nem meia; não passa por abertura/fila
   const sp = groupShareId || resaleListingId ? await lookupSpecial(ev.id, { groupShareId, resaleListingId }, user.id) : null;
   if (sp && !sp.ok) return { ok: false, error: sp.error };
   const special = sp?.ok ? sp.s : null;
+  // evento de várias datas: a data de cada ingresso pedido também não pode ter terminado
+  const endErr = salesEndedError(ev, special ? [special.ticketTypeId] : items.map((i) => i.ticketTypeId));
+  if (endErr) return { ok: false, error: endErr };
   let presaleSignupId: string | null = null;
   const lines = [];
   if (special) {

@@ -93,10 +93,14 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
     if (window.history.length > 1) { ev.preventDefault(); router.back(); }
   };
   // antes da abertura (ou na pré-venda sem o link), o cartão de ingressos vira contagem regressiva
-  const waiting = e.launch.phase !== "open" && !e.launch.access;
+  // vendas encerradas (evento terminou ou foi cancelado): sem contagem nem compra, só o aviso
+  const closed = e.closed;
+  const waiting = !closed && e.launch.phase !== "open" && !e.launch.access;
+  const selling = !waiting && !closed;
+  const closedLabel = closed === "cancelled" ? "Evento cancelado" : "Vendas encerradas";
   /** leva até o cartão de ingressos e dá um destaque nele */
   const goTickets = () => {
-    if (!waiting && narrow()) { startBuy(); return; }
+    if (selling && narrow()) { startBuy(); return; }
     const el = document.getElementById("ingressos");
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -117,7 +121,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
     sheet.go("ingressos");
   };
   const mbarGo = () => {
-    if (waiting) document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!selling) document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "center" });
     else if (tickets.nq) tickets.checkout();
     else startBuy();
   };
@@ -127,7 +131,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
     const url = new URL(window.location.href);
     url.searchParams.delete("comprar");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-    if (waiting) return;
+    if (!selling) return;
     const id = requestAnimationFrame(() => {
       if (narrow()) startBuy();
       else document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -227,20 +231,20 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
               </ul>
               <div className="et-buy" ref={buyRef}>
                 <div>
-                  <span>{waiting ? (e.launch.phase === "presale" ? "Venda geral abre em" : e.launch.presaleAt ? "Pré-venda começa em" : "Vendas abrem em") : e.minPriceCents > 0 ? "Ingressos a partir de" : "Ingressos"}</span>
-                  {waiting && launchTarget(e.launch) ? <MiniCountdown target={launchTarget(e.launch)!} /> : <b>{e.minPriceCents > 0 ? brl(e.minPriceCents) : e.tiers.some((t) => t.priceCents === 0) ? "Grátis" : "Escolha o seu"}</b>}
+                  <span>{waiting ? (e.launch.phase === "presale" ? "Venda geral abre em" : e.launch.presaleAt ? "Pré-venda começa em" : "Vendas abrem em") : closed ? "Ingressos" : e.minPriceCents > 0 ? "Ingressos a partir de" : "Ingressos"}</span>
+                  {closed ? <b>{closedLabel}</b> : waiting && launchTarget(e.launch) ? <MiniCountdown target={launchTarget(e.launch)!} /> : <b>{e.minPriceCents > 0 ? brl(e.minPriceCents) : e.tiers.some((t) => t.priceCents === 0) ? "Grátis" : "Escolha o seu"}</b>}
                 </div>
-                <button className="et-go" type="button" onClick={goTickets}>
+                {!closed && <button className="et-go" type="button" onClick={goTickets}>
                   {waiting ? (e.launch.phase === "soon" && e.launch.presaleAt ? "Quero a pré-venda" : "Me avise") : "Comprar ingressos"}
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
-                </button>
+                </button>}
               </div>
             </div>
 
-            {!waiting && e.resale.offers.length > 0 && <div className="rsl-m"><ResaleCard e={e} anchor="revenda-m" /></div>}
+            {selling && e.resale.offers.length > 0 && <div className="rsl-m"><ResaleCard e={e} anchor="revenda-m" /></div>}
             <Description paragraphs={e.paragraphs} />
             <Lineup lineup={e.lineup} timed={e.timed} p={player} />
-            {e.venueMap && <VenueMap e={e} t={tickets} onSector={waiting ? undefined : (name) => { tickets.setSector(name); sheet.go("ingressos"); }} />}
+            {e.venueMap && <VenueMap e={e} t={tickets} onSector={!selling ? undefined : (name) => { tickets.setSector(name); sheet.go("ingressos"); }} />}
 
             <div className="blk-s">
               <h2>O que você deve saber</h2>
@@ -301,7 +305,12 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
       </main>
 
       <div className={inlineBuy && !tickets.nq ? "mbar off" : "mbar"} aria-hidden={inlineBuy && !tickets.nq ? true : undefined}>
-        {waiting ? (
+        {closed ? (
+          <div>
+            <span>Ingressos</span>
+            <b>{closedLabel}</b>
+          </div>
+        ) : waiting ? (
           <div>
             <span>{e.launch.phase === "presale" ? "Venda geral abre em" : e.launch.presaleAt ? "Pré-venda começa em" : "Vendas abrem em"}</span>
             {launchTarget(e.launch) ? <MiniCountdown target={launchTarget(e.launch)!} /> : <b>Em breve</b>}
@@ -312,10 +321,10 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
             <b>{tickets.nq ? (tickets.subtotal ? brl(tickets.totalWithFee) : "Grátis") : e.minPriceCents > 0 ? brl(e.minPriceCents) : e.tiers.some((x) => x.priceCents === 0) ? "Grátis" : "Escolha"}</b>
           </div>
         )}
-        <button type="button" onClick={mbarGo} disabled={tickets.pending} tabIndex={inlineBuy && !tickets.nq ? -1 : undefined}>
+        {!closed && <button type="button" onClick={mbarGo} disabled={tickets.pending} tabIndex={inlineBuy && !tickets.nq ? -1 : undefined}>
           {waiting ? (e.launch.phase === "soon" && e.launch.presaleAt ? "Pré-venda" : "Me avise") : tickets.pending ? "Abrindo…" : tickets.nq ? "Continuar" : "Comprar ingressos"}
           {!waiting && tickets.nq > 0 && !tickets.pending && <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>}
-        </button>
+        </button>}
       </div>
 
       {ld && (
@@ -336,14 +345,14 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
       )}
       {ld === "on" && <LdSeenScript />}
 
-      {!waiting && (
+      {selling && (
         <BuySheet e={e} t={tickets} s={sheet} onMap={() => {
           sheet.close();
           setTimeout(() => document.getElementById("mapa")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
         }} />
       )}
       <PlayerBar p={player} />
-      {e.queueOn && !waiting && <QueueGate eventId={e.id} title={e.title} />}
+      {e.queueOn && selling && <QueueGate eventId={e.id} title={e.title} />}
     </>
   );
 }
