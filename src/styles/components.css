@@ -31,6 +31,11 @@
   .qwrap .qb-c,.qwrap .qb-sep,.qwrap .qb-act,.qwrap.stuck .qb-act{display:none}
   .qwrap .qb-s{flex:1 1 auto;padding:0;gap:10px}
   .qwrap .qb-s input{font-size:16px;height:56px}
+  /* o texto de exemplo inteiro, como na referência (o campo segue com 16px: o iPhone não dá zoom ao tocar) */
+  .qwrap .qb-s input{text-overflow:ellipsis}
+  .qwrap .qb-s input::placeholder{font-size:15px}
+  /* logo escondido (largura 0) fora do modo grudado: não deixa o espaço do gap antes da lupa */
+  .qwrap:not(.stuck) .qb-logo{margin-right:-10px}
   .qwrap .qb-stub,.qwrap.stuck .qb-stub{flex:none;align-self:center;width:44px;height:44px;margin:0 6px 0 0;padding:0;border-radius:50%;justify-content:center}
   .qwrap.stuck .qb-logo{max-width:26px;margin-right:0}
   .qwrap.stuck .qb-logo span{display:none}

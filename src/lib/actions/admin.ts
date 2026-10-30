@@ -111,7 +111,8 @@ export async function setHeroArt(eventId: string, art: string | null, html: stri
 
 /**
  * Cria ou edita um banner livre do carrossel: HTML (até 300 KB, roda isolado como o dos eventos) ou imagem, link
- * só do site ("/…") ou https://, rótulo, tamanho de projeto, cor de fundo e ligado/desligado. Novo entra no fim.
+ * só do site ("/…") ou https://, rótulo, tamanho de projeto, cor de fundo, ligado/desligado e, opcional, o HTML
+ * próprio do celular (mesmo limite e mesmo isolamento). Novo entra no fim.
  */
 export async function saveHeroSlide(input: HeroSlideInput): Promise<R & { id?: string }> {
   const g = await guard();
@@ -132,7 +133,7 @@ export async function saveHeroSlide(input: HeroSlideInput): Promise<R & { id?: s
     const [row] = await db.insert(t).values({ ...v, position: Math.max(e?.n ?? 0, s?.n ?? 0) + 1 }).returning({ id: t.id });
     saved = row.id;
   }
-  await logSecurity(g.admin.id, "admin", `Banner livre ${saved!.slice(0, 8)}: ${id ? "editado" : "criado"} (${v.html ? "HTML" : "imagem"}, ${v.active ? "ligado" : "desligado"}, ${v.href})`);
+  await logSecurity(g.admin.id, "admin", `Banner livre ${saved!.slice(0, 8)}: ${id ? "editado" : "criado"} (${v.html ? "HTML" : "imagem"}${v.htmlMobile ? " + celular" : ""}, ${v.active ? "ligado" : "desligado"}, ${v.href})`);
   revalidatePath("/"); revalidatePath(ADMIN_PATH);
   return { ok: true, id: saved };
 }

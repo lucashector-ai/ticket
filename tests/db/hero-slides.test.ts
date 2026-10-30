@@ -64,6 +64,26 @@ describe.skipIf(!TEST_DB)("banner livre do carrossel (hero_slides, banco de test
     expect((await H.listHeroSlides()).some((s) => s.id === r.id)).toBe(false);
   });
 
+  it("arte do celular (html_mobile): grava, troca o tamanho, apaga ao esvaziar; padrão 358 × 206", async () => {
+    const r = await A.saveHeroSlide(input());
+    expect(r).toMatchObject({ ok: true });
+    slides.push(r.id!);
+    const get = async () => (await H.listHeroSlides()).find((s) => s.id === r.id)!;
+    expect(await get()).toMatchObject({ htmlMobile: null, mobileWidth: 358, mobileHeight: 206 });
+    expect(await A.saveHeroSlide(input({ id: r.id, htmlMobile: "<p>celular</p>", mobileWidth: 716, mobileHeight: 412 }))).toMatchObject({ ok: true });
+    expect(await get()).toMatchObject({ htmlMobile: "<p>celular</p>", mobileWidth: 716, mobileHeight: 412 });
+    expect((await L.adminHeroSlides()).find((s) => s.id === r.id)).toMatchObject({ htmlMobile: "<p>celular</p>", mobileWidth: 716 });
+    expect(await A.saveHeroSlide(input({ id: r.id, htmlMobile: "" }))).toMatchObject({ ok: true });
+    expect(await get()).toMatchObject({ htmlMobile: null, mobileWidth: 358, mobileHeight: 206 });
+    expect((await A.saveHeroSlide(input({ id: r.id, htmlMobile: "x".repeat(300_001) }))).error).toMatch(/celular passa de 300 KB/);
+    // o banco também recusa (CHECK)
+    const { db, schema } = D;
+    const { eq } = await import("drizzle-orm");
+    await expect(db.update(schema.heroSlides).set({ htmlMobile: "x".repeat(300_001) }).where(eq(schema.heroSlides.id, r.id!))).rejects.toThrow();
+    await expect(db.update(schema.heroSlides).set({ mobileWidth: 100 }).where(eq(schema.heroSlides.id, r.id!))).rejects.toThrow();
+    await expect(db.update(schema.heroSlides).set({ mobileHeight: 5000 }).where(eq(schema.heroSlides.id, r.id!))).rejects.toThrow();
+  });
+
   it("recusa link de fora, HTML acima de 300 KB e conta sem app autenticador", async () => {
     for (const href of ["//evil.com", "javascript:alert(1)", "http://site.com"]) {
       expect(await A.saveHeroSlide(input({ href }))).toMatchObject({ ok: false });

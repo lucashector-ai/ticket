@@ -118,7 +118,9 @@
   .hl-prev small{font-size:12px;font-weight:600;color:#6E6E73}
   .hl-pv{display:block;position:relative;border-radius:12px;overflow:hidden;background:#111}
   .hl-pv.w{aspect-ratio:21 / 9}
-  .hl-pv.m{aspect-ratio:16 / 9}
+  /* o cartão do topo da home no celular (358 × 206 a 390 px) */
+  .hl-pv.m{aspect-ratio:358 / 206;border-radius:16px}
+  .hl-sub{font-size:13.5px;font-weight:600;color:#111}
   .hl-pv > div{position:absolute !important;inset:0;aspect-ratio:auto !important;height:100%}
   .hl-pv .hl-frame{position:absolute;inset:0}
   .hl-ed-a{display:flex;justify-content:flex-end;gap:8px}

@@ -254,11 +254,12 @@ export async function adminHighlights(): Promise<AdminHighlightEvent[]> {
 export type AdminHeroSlide = {
   id: string; label: string; href: string; cta: string | null; html: string | null; image: string | null;
   width: number; height: number; bg: string; position: number; active: boolean;
+  htmlMobile: string | null; mobileWidth: number; mobileHeight: number;
 };
 
 /** Banners livres do carrossel da home (ligados e desligados), para a aba Destaques. */
 export async function adminHeroSlides(): Promise<AdminHeroSlide[]> {
   const t = schema.heroSlides;
-  return db.select({ id: t.id, label: t.label, href: t.href, cta: t.cta, html: t.html, image: t.image, width: t.width, height: t.height, bg: t.bg, position: t.position, active: t.active })
+  return db.select({ id: t.id, label: t.label, href: t.href, cta: t.cta, html: t.html, image: t.image, width: t.width, height: t.height, bg: t.bg, position: t.position, active: t.active, htmlMobile: t.htmlMobile, mobileWidth: t.mobileWidth, mobileHeight: t.mobileHeight })
     .from(t).orderBy(t.position, t.createdAt);
 }

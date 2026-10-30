@@ -131,6 +131,7 @@ function HeroCard({ events, slides, byId }: { events: Ev[]; slides: Sl[]; byId: 
                   <span className="hl-t"><b>{x.label}</b><small>{x.href} · {x.width} × {x.height}</small>
                     <span className="hl-kinds">
                       <small className="hl-kind lv">Banner livre · {x.html ? "HTML" : "imagem"}</small>
+                      {x.htmlMobile && <small className="hl-kind">Com arte do celular</small>}
                       {!x.active && <small className="hl-kind">Desligado</small>}
                     </span>
                   </span>
@@ -166,6 +167,7 @@ function HeroCard({ events, slides, byId }: { events: Ev[]; slides: Sl[]; byId: 
 const slideInput = (x: Sl) => ({
   id: x.id, label: x.label, href: x.href, cta: x.cta ?? "", kind: x.html ? "html" as const : "image" as const, html: x.html ?? "", image: x.image,
   width: x.width, height: x.height, bg: x.bg, active: x.active,
+  htmlMobile: x.htmlMobile ?? "", mobileWidth: x.mobileWidth, mobileHeight: x.mobileHeight,
 });
 
 /** Criar ou editar um banner livre: arte (HTML ou imagem), link, rótulo, tamanho de projeto, fundo, ligado. */
@@ -173,6 +175,7 @@ function SlideEditor({ slide, onDone }: { slide?: Sl; onDone: (saved: boolean) =
   const [f, setF] = useState(() => slide ? slideInput(slide) : {
     id: null as string | null, label: "", href: "", cta: "", kind: "html" as "html" | "image", html: "", image: null as string | null,
     width: 1440, height: 800, bg: "#111111", active: true,
+    htmlMobile: "", mobileWidth: 358, mobileHeight: 206,
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -181,6 +184,9 @@ function SlideEditor({ slide, onDone }: { slide?: Sl; onDone: (saved: boolean) =
   const w = Math.min(3840, Math.max(320, Math.round(Number(f.width)) || 1440));
   const h = Math.min(2160, Math.max(180, Math.round(Number(f.height)) || 800));
   const bg = /^#[0-9a-f]{6}$/i.test(f.bg) ? f.bg : "#111111";
+  const mw = Math.min(1600, Math.max(240, Math.round(Number(f.mobileWidth)) || 358));
+  const mh = Math.min(1600, Math.max(120, Math.round(Number(f.mobileHeight)) || 206));
+  const mHtml = f.htmlMobile.trim() || null;
 
   async function upload(file0: File | undefined) {
     if (!file0) return;
@@ -208,10 +214,11 @@ function SlideEditor({ slide, onDone }: { slide?: Sl; onDone: (saved: boolean) =
       {!slide && <h3 className="hl-ed-t">Novo banner livre</h3>}
       <div className="hl-fs">
         <label>Rótulo<input value={f.label} onChange={(ev) => set("label", ev.target.value)} maxLength={160} placeholder="Ex.: Produtor, seu evento começa aqui" />
-          <small>O leitor de tela lê no link; no celular aparece embaixo da arte.</small></label>
+          <small>Não aparece na tela: é o que o leitor de tela lê no link do banner.</small></label>
         <label>Link de destino<input value={f.href} onChange={(ev) => set("href", ev.target.value)} maxLength={500} placeholder="/produtores ou https://…" inputMode="url" spellCheck={false} />
           <small>Página do site (começando com /) ou endereço https://.</small></label>
-        <label>Texto do botão no celular (opcional)<input value={f.cta} onChange={(ev) => set("cta", ev.target.value)} maxLength={40} placeholder="Ex.: Crie seu evento" /></label>
+        <label>Texto do botão (opcional)<input value={f.cta} onChange={(ev) => set("cta", ev.target.value)} maxLength={40} placeholder="Ex.: Crie seu evento" />
+          <small>O mesmo do botão desenhado na arte; o leitor de tela lê junto com o rótulo.</small></label>
       </div>
       <div className="hl-tabs" role="tablist" aria-label="Tipo de arte">
         {([["html", "HTML"], ["image", "Imagem ou GIF"]] as const).map(([k, l]) => (
@@ -235,12 +242,23 @@ function SlideEditor({ slide, onDone }: { slide?: Sl; onDone: (saved: boolean) =
         <label>Altura de projeto (px)<input type="number" min={180} max={2160} value={f.height} onChange={(ev) => set("height", Number(ev.target.value))} /></label>
         <label>Cor de fundo<span className="hl-color"><input type="color" value={bg} onChange={(ev) => set("bg", ev.target.value.toUpperCase())} aria-label="Escolher a cor de fundo" /><input value={f.bg} onChange={(ev) => set("bg", ev.target.value)} maxLength={7} spellCheck={false} aria-label="Cor de fundo em #RRGGBB" /></span></label>
       </div>
-      <small className="hl-tip">A arte é desenhada nesse tamanho e escalada para caber: no computador ocupa a largura toda; no celular aparece inteira no cartão 16:9. A cor de fundo preenche as sobras.</small>
+      <small className="hl-tip">A arte é desenhada nesse tamanho e escalada para caber: no computador ocupa a largura toda; no celular aparece inteira no cartão do topo (358 × 206 num celular comum), o que deixa letras pequenas. Para o celular, prefira a arte própria abaixo. A cor de fundo preenche as sobras.</small>
+      <div className="hl-html">
+        <b className="hl-sub">Arte do celular (opcional)</b>
+        <textarea value={f.htmlMobile} onChange={(ev) => set("htmlMobile", ev.target.value)} spellCheck={false} rows={8} placeholder="Cole aqui o HTML da versão de celular (deixe vazio para usar a arte acima)" aria-label="HTML do banner no celular" />
+        <small>HTML até 300 KB, isolado do site como o de cima. Desenhe no tamanho abaixo (o do cartão do topo da home: 358 × 206); a home escala para a largura do celular. Vazio: o celular usa a arte de cima.</small>
+      </div>
+      <div className="hl-fs hl-fs3">
+        <label>Largura no celular (px)<input type="number" min={240} max={1600} value={f.mobileWidth} onChange={(ev) => set("mobileWidth", Number(ev.target.value))} /></label>
+        <label>Altura no celular (px)<input type="number" min={120} max={1600} value={f.mobileHeight} onChange={(ev) => set("mobileHeight", Number(ev.target.value))} /></label>
+      </div>
       <label className="hl-chk"><input type="checkbox" checked={f.active} onChange={(ev) => set("active", ev.target.checked)} /> Ligado (aparece na home)</label>
       {hasArt && (
         <div className="hl-prev">
           <span><small>Computador</small><span className="hl-pv d hl-st"><HeroStage {...art} w={w} h={h} bg={bg} active title="Prévia no computador" /></span></span>
-          <span><small>Celular (16:9)</small><span className="hl-pv m hl-st"><HeroStage {...art} w={w} h={h} bg={bg} active title="Prévia no celular" /></span></span>
+          <span><small>{mHtml ? "Celular (arte própria)" : "Celular"}</small><span className="hl-pv m hl-st">{mHtml
+            ? <HeroStage key="m" html={mHtml} image={null} w={mw} h={mh} bg={bg} active title="Prévia no celular" />
+            : <HeroStage key="d" {...art} w={w} h={h} bg={bg} active title="Prévia no celular" />}</span></span>
         </div>
       )}
       {err && <p className="ad-warn" role="alert">{err}</p>}
@@ -320,11 +338,11 @@ function ListCard({ title, sub, max, initial, byId, events, save, withArt }: {
 }
 
 /** Miniatura do banner como vai aparecer na home. */
-function Preview({ e, html, art }: { e: Ev; html?: string | null; art?: string | null }) {
+function Preview({ e, html, art, fit = "ratio" }: { e: Ev; html?: string | null; art?: string | null; fit?: "ratio" | "tile" }) {
   const h = html !== undefined ? html : e.heroHtml;
   const a = art !== undefined ? art : e.heroArt;
   if (h) return <HtmlArtFrame title={`Prévia de ${e.title}`} html={h} className="hl-frame" />;
-  return <BannerArt id={a ?? e.bannerId ?? e.flyerId} fit="ratio" poster={!a && (e.bannerId ?? e.flyerId) === e.flyerId} />;
+  return <BannerArt id={a ?? e.bannerId ?? e.flyerId} fit={fit} poster={!a && (e.bannerId ?? e.flyerId) === e.flyerId} />;
 }
 
 function ArtEditor({ e, onDone }: { e: Ev; onDone: () => void }) {
@@ -382,7 +400,7 @@ function ArtEditor({ e, onDone }: { e: Ev; onDone: () => void }) {
       )}
       <div className="hl-prev">
         <span><small>Computador (21:9)</small><span className="hl-pv w"><Preview e={e} html={previewHtml} art={previewArt} /></span></span>
-        <span><small>Celular (16:9)</small><span className="hl-pv m"><Preview e={e} html={previewHtml} art={previewArt} /></span></span>
+        <span><small>Celular</small><span className="hl-pv m"><Preview e={e} html={previewHtml} art={previewArt} fit="tile" /></span></span>
       </div>
       {err && <p className="ad-warn">{err}</p>}
       <div className="hl-ed-a">

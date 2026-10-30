@@ -34,7 +34,8 @@ export default async function Home() {
   const heroItems: HeroItem[] = mergeHero(heroEv, slides.map((s) => ({ position: s.position, item: s }))).map((x) =>
     x.kind === "event"
       ? { kind: "event", key: `e:${x.item.slug}`, ev: x.item }
-      : { kind: "free", key: `s:${x.item.id}`, slide: { id: x.item.id, label: x.item.label, href: x.item.href, cta: x.item.cta, html: x.item.html, image: x.item.image, w: x.item.width, h: x.item.height, bg: x.item.bg } },
+      : { kind: "free", key: `s:${x.item.id}`, slide: { id: x.item.id, label: x.item.label, href: x.item.href, cta: x.item.cta, html: x.item.html, image: x.item.image, w: x.item.width, h: x.item.height, bg: x.item.bg,
+          mobile: x.item.htmlMobile ? { html: x.item.htmlMobile, w: x.item.mobileWidth, h: x.item.mobileHeight } : null } },
   );
   const categories = cats.slice(0, 7).map((c) => ({
     slug: c.slug, name: c.name, coverFlyer: c.coverFlyer ?? "baile",

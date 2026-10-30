@@ -324,32 +324,31 @@ input,select{font:inherit;color:inherit}
 .sheet-up{position:relative;z-index:4;margin-top:32px;background:#FFFFFF;border-radius:32px 32px 0 0;padding-top:64px !important;box-shadow:0 -30px 60px -24px rgba(0,0,0,.35)}
 .sheet-up~section,main~footer{position:relative;z-index:4;background:#FFFFFF}
 .grab{position:absolute;left:50%;top:14px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#DADAD5}
-.cfh-m,.bnm-dots{display:none}
+.bnm-dots{display:none}
 /* pontos do banner no celular: o ponto continua com 7px, mas cada botão tem 24×24 (WCAG 2.5.8) */
 .bnm-dots button{position:relative}
 .bnm-dots button:focus-visible{outline:2px solid #EDFF3C;outline-offset:-2px}
 @media (max-width:760px){
-  /* capa no celular: banner 16:9 nítido, o mesmo banner desfocado ao fundo e as infos do evento */
-  .bnx{height:calc(96px + (100vw - 32px) * 9 / 16 + 300px)}
-  .bnx-i{display:block;background:#111;overflow:hidden}
-  .bnx-i .cfh-w{inset:-12%;filter:blur(36px) saturate(1.4) brightness(.55);transform:scale(1.1)}
+  /* topo do celular (como a referência): o cartão do banner logo abaixo do cabeçalho (16 px das bordas, proporção
+     358:206 até 280 px de altura, cantos de 26 px) e a busca 26 px abaixo dele. Evento e banner livre usam o mesmo cartão; a altura do
+     topo acompanha o cartão (busca = --bm-t + --bm-h + 26 px, porque a .qwrap sobe 160 px sobre o fim da .bnx). */
+  .bnx{--bm-t:74px;--bm-h:min(calc((100vw - 32px) * 206 / 358), 280px);height:calc(var(--bm-t) + var(--bm-h) + 186px);background:#111111}
+  .bnx-i{left:16px;right:16px;top:var(--bm-t);bottom:auto;height:var(--bm-h);padding:0;border-radius:26px;overflow:hidden;background:#111111;box-shadow:0 24px 40px -24px rgba(0,0,0,.8)}
+  .bnx-i .cfh-w{display:block;position:absolute;inset:0;filter:none;transform:none}
   .bnx-i.on .cfh-w{animation:none}
   .bnx-i .cfh-t{display:none}
-  .cfh-m{position:absolute;left:16px;right:16px;top:96px;z-index:2;display:flex;flex-direction:column;gap:18px;color:#FFFFFF}
-  .cfh-mb{display:block;border-radius:18px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.16),0 30px 60px -24px rgba(0,0,0,.7)}
-  .bnx-i.on .cfh-mb{animation:rise .7s var(--ease) both}
-  .cfh-mi{display:flex;flex-direction:column;gap:4px;padding:0 4px;animation:rise .7s .08s var(--ease) both}
-  .cfh-mk{align-self:flex-start;height:24px;padding:0 10px;margin-bottom:6px;border-radius:999px;background:#EDFF3C;color:#111;font-size:11.5px;font-weight:700;letter-spacing:.02em;display:inline-flex;align-items:center}
-  .cfh-mi b{font-family:'Inter Tight',sans-serif;font-size:26px;line-height:1.1;font-weight:600;letter-spacing:-.03em}
-  .cfh-mi>span:last-child{font-size:14.5px;color:rgba(255,255,255,.75)}
+  .bnx .bn-shade{display:none}
+  .bnx .bn-hit{left:16px;right:16px;top:var(--bm-t);bottom:auto;height:var(--bm-h);border-radius:26px}
   .bnx .bn-arr2{display:none}
-  .bnx-i .cfh-w{display:block}
-  .bnm-dots{position:absolute;right:28px;top:calc(96px + (100vw - 32px) * 9 / 16 - 40px);z-index:7;display:flex;gap:0;padding:1px 3px;border-radius:999px;background:rgba(17,17,17,.45);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  /* pontos no canto de baixo do cartão; cada botão tem 24×24 (WCAG 2.5.8) */
+  .bnm-dots{position:absolute;right:28px;top:calc(var(--bm-t) + var(--bm-h) - 36px);z-index:7;display:flex;gap:0;padding:0 2px;border-radius:999px;background:rgba(0,0,0,.22);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
   .bnm-dots button{width:24px;height:24px;padding:0;border-radius:999px;background:none;transition:width .35s var(--ease)}
-  .bnm-dots button::after{content:"";position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.45);transform:translate(-50%,-50%);transition:width .35s var(--ease),background .35s}
-  .bnm-dots button.on{width:30px}
-  .bnm-dots button.on::after{width:20px;background:#EDFF3C}
-  .bnx .bn-dots2{bottom:178px}
+  .bnm-dots button::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.5);transform:translate(-50%,-50%);transition:width .35s var(--ease),background .35s}
+  .bnm-dots button.on{width:28px}
+  .bnm-dots button.on::after{width:18px;background:#EDFF3C}
+  .sheet-up{margin-top:26px;padding-top:40px !important}
+  /* a sombra da busca só quando ela gruda sobre o conteúdo; parada sobre o topo escuro, sujava o começo da folha */
+  .qwrap:not(.stuck) .wrap{filter:none}
   .cue{display:none}
   .qwrap{margin-top:-160px;height:auto}
   .qbar{border-radius:18px;padding:0 0 0 14px}
@@ -362,7 +361,7 @@ input,select{font:inherit;color:inherit}
 }
 /* banner livre do carrossel (não é evento): arte de palco fixo (ex.: 1440×800) escalada pelo HeroStage.
    Computador: preenche a largura, centralizada entre o cabeçalho (69px) e a busca (168px do fim).
-   Celular: a arte inteira no cartão 16:9 (como o banner de evento). */
+   Celular: a arte inteira dentro do cartão (a arte própria do celular, se houver, já vem no formato do cartão). */
 .bnx{
   .bnf-box{position:absolute;inset:0;z-index:0;display:block;overflow:hidden;--bnf-fit:width;--bnf-top:69px;--bnf-bot:168px}
   .bnf-art{position:absolute;left:0;top:0;display:block;transform-origin:0 0}
@@ -370,15 +369,7 @@ input,select{font:inherit;color:inherit}
   &.bnx-free .bn-prev{left:20px}
   &.bnx-free .bn-next{right:20px}
   @media (max-width:760px){
-    .bnf{background:#111}
-    .bnf-box{left:16px;right:16px;top:96px;bottom:auto;height:calc((100vw - 32px) * 9 / 16);border-radius:18px;box-shadow:0 0 0 1px rgba(255,255,255,.16),0 30px 60px -24px rgba(0,0,0,.7);--bnf-fit:contain;--bnf-top:0px;--bnf-bot:0px}
-    .bnf.on .bnf-box{animation:rise .7s var(--ease) both}
-    /* sem texto embaixo da arte: o cartão desce para ficar no meio entre o topo e a busca (e os pontos vão junto) */
-    .bnf-box{top:144px}
-    &.bnx-free .bnm-dots{top:calc(144px + (100vw - 32px) * 9 / 16 - 40px)}
-  }
-  @media (prefers-reduced-motion:reduce){
-    .bnf.on .bnf-box{animation:none}
+    .bnf-box{--bnf-fit:contain;--bnf-top:0px;--bnf-bot:0px}
   }
 }
 .bnx .bn-arr2{width:58px;height:58px;margin-top:-90px;color:#FFFFFF;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 10px 30px -12px rgba(0,0,0,.35);opacity:.85;transition:background .35s,opacity .35s,transform .5s var(--ease)}

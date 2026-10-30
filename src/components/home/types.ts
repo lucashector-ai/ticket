@@ -18,6 +18,8 @@ export type HomeFreeSlide = {
   html: string | null; image: string | null;
   /** tamanho de projeto da arte e a cor de fundo que preenche as sobras */
   w: number; h: number; bg: string;
+  /** arte própria do celular (HTML no tamanho de projeto w × h); sem ela, o celular usa a arte normal */
+  mobile: { html: string; w: number; h: number } | null;
 };
 
 /** Slide do carrossel principal: um evento ou um banner livre. */

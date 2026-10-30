@@ -3,7 +3,7 @@
 import { useIsProducer } from "@/components/use-producer";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { BannerArt } from "@/components/art/banner";
 import { FlyerArt } from "@/components/art/flyer";
 import { SiteFooter } from "@/components/site-footer";
@@ -33,6 +33,14 @@ type Props = {
 const FIRST_N = 8;
 const SKELETONS = [0, 1, 2, 3, 4, 5, 6, 7];
 
+/* celular (o mesmo corte do CSS): o banner livre troca para a arte própria do celular, se houver */
+const NARROW = "(max-width: 760px)";
+const subNarrow = (cb: () => void) => {
+  const mq = window.matchMedia(NARROW);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+
 function reduced() {
   try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; }
 }
@@ -47,6 +55,8 @@ export function HomeClient({ user, events, hero, categories, cityOpts, spotify }
   const [showAll, setShowAll] = useState(false);
   const [stuck, setStuck] = useState(false);
   const [heroIdx, setHeroIdx] = useState(0);
+  // null no servidor e na hidratação (ainda não se sabe a largura)
+  const narrow = useSyncExternalStore(subNarrow, () => window.matchMedia(NARROW).matches, () => null);
   const touchX = useRef<number | null>(null);
 
   const gridRef = useRef<HTMLDivElement>(null);
@@ -194,10 +204,15 @@ export function HomeClient({ user, events, hero, categories, cityOpts, spotify }
           >
             {hero.map((it, i) => it.kind === "free" ? (
               <div key={it.key} className={i === heroIdx ? "bnx-i bnf on" : "bnx-i bnf"} aria-hidden={i !== heroIdx}>
-                <HeroStage html={it.slide.html} image={it.slide.image} w={it.slide.w} h={it.slide.h} bg={it.slide.bg} active={i === heroIdx} title={it.slide.label} />
+                {narrow && it.slide.mobile ? (
+                  <HeroStage key="m" html={it.slide.mobile.html} image={null} w={it.slide.mobile.w} h={it.slide.mobile.h} bg={it.slide.bg} active={i === heroIdx} title={it.slide.label} />
+                ) : (
+                  // com arte do celular, só carrega depois de saber a largura (não baixa a arte errada à toa)
+                  <HeroStage key="d" html={it.slide.html} image={it.slide.image} w={it.slide.w} h={it.slide.h} bg={it.slide.bg} active={i === heroIdx && (!it.slide.mobile || narrow === false)} title={it.slide.label} />
+                )}
               </div>
             ) : (
-              <EventSlide key={it.key} b={it.ev} on={i === heroIdx} />
+              <EventSlide key={it.key} b={it.ev} on={i === heroIdx} narrow={narrow} />
             ))}
             <span className="bn-shade" aria-hidden="true" />
             <span className="bnx-dim" aria-hidden="true" />
@@ -426,21 +441,12 @@ export function HomeClient({ user, events, hero, categories, cityOpts, spotify }
 /** Nome do link do banner livre para leitor de tela: o rótulo e, se houver, o texto do botão. */
 const freeLabel = (s: HomeFreeSlide) => (s.cta ? `${s.label.replace(/[.!?:]+$/, "")}: ${s.cta}` : s.label);
 
-/** Slide de evento do carrossel (como sempre foi). */
-function EventSlide({ b, on }: { b: HomeEvent; on: boolean }) {
+/** Slide de evento do carrossel: a mesma arte no computador (tela cheia) e no celular (dentro do cartão, como a referência). */
+function EventSlide({ b, on, narrow }: { b: HomeEvent; on: boolean; narrow: boolean | null }) {
   return (
     <div className={on ? "bnx-i on" : "bnx-i"} aria-hidden={!on}>
-      <span className="cfh-w"><HeroArt b={b} fit="fill" active={on} /></span>
+      <span className="cfh-w"><HeroArt b={b} active={on} tile={!!narrow} /></span>
       <span className="cfh-t"><FlyerArt id={b.flyerId} /></span>
-      {/* celular: banner 16:9 em destaque sobre o próprio banner desfocado */}
-      <span className="cfh-m">
-        <span className="cfh-mb"><HeroArt b={b} fit="card" active={on} /></span>
-        <span className="cfh-mi">
-          <span className="cfh-mk">{b.categoryLabel}</span>
-          <b>{b.title}</b>
-          <span>{b.dateNice} · {b.city}</span>
-        </span>
-      </span>
     </div>
   );
 }
@@ -449,15 +455,15 @@ function EventSlide({ b, on }: { b: HomeEvent; on: boolean }) {
  * Arte do banner principal: imagem (PNG, JPG, WebP ou GIF) ou o HTML escolhido na central.
  * O HTML roda num iframe isolado (sem acesso ao site, aos cookies nem à navegação); o clique vai para o evento.
  */
-function HeroArt({ b, fit, active }: { b: HomeEvent; fit: "fill" | "card"; active: boolean }) {
-  if (!b.bannerHtml) return <BannerArt id={b.bannerId} fit={fit} poster={b.bannerId === b.flyerId} />;
+function HeroArt({ b, active, tile }: { b: HomeEvent; active: boolean; tile: boolean }) {
+  if (!b.bannerHtml) return <BannerArt id={b.bannerId} fit={tile ? "tile" : "fill"} poster={b.bannerId === b.flyerId} />;
   return (
     <HtmlArtFrame
       className="bn-html"
       title={`Banner de ${b.title}`}
       html={b.bannerHtml}
       active={active}
-      style={{ position: fit === "fill" ? "absolute" : "relative", inset: 0, display: "block", width: "100%", height: fit === "fill" ? "100%" : undefined, aspectRatio: fit === "card" ? "16 / 9" : undefined, border: 0, pointerEvents: "none", background: "#111111" }}
+      style={{ position: "absolute", inset: 0, display: "block", width: "100%", height: "100%", border: 0, pointerEvents: "none", background: "#111111" }}
     />
   );
 }

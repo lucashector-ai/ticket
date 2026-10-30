@@ -5,7 +5,9 @@ import { useState } from "react";
 import { isImageArt } from "./flyer";
 export const BANNER_IDS = ["baile", "sintonia", "terreiro", "marea", "subsolo", "cypher", "noite", "luz", "orquestra", "mesa", "calourada", "guitarra"] as const;
 export type BannerId = (typeof BANNER_IDS)[number];
-export type BannerFit = "ratio" | "card" | "fill";
+/** `tile`: como `fill`, para o cartão do topo da home no celular: sem as faixas de baixo (régua, franja, onda), que no
+ *  computador sobem acima da busca e no cartão ficariam pela metade ou atrás dos pontos (como na referência). */
+export type BannerFit = "ratio" | "card" | "fill" | "tile";
 
 type BannerVals = {
   is: Record<BannerId, boolean>;
@@ -15,11 +17,11 @@ type BannerVals = {
 export function bannerVals(id: string, fit: BannerFit = "ratio"): BannerVals {
   const b = (BANNER_IDS as readonly string[]).includes(id) ? (id as BannerId) : "baile";
   const is = Object.fromEntries(BANNER_IDS.map((k) => [k, k === b])) as Record<BannerId, boolean>;
-  const fill = fit === "fill", card = fit === "card";
+  const fill = fit === "fill" || fit === "tile", card = fit === "card";
   return {
     is, pos: fill ? "absolute" : "relative", ar: fill ? "auto" : card ? "16 / 9" : "21 / 9",
     rowTop: fill ? "11%" : card ? "4%" : "10%", rowBot: fill ? "30%" : card ? "18%" : "14%",
-    lift: fill ? "200px" : "0px", padX: fill ? "max(20px, calc((100cqw - 1216px) / 2))" : "8cqw",
+    lift: fit === "tile" ? "200%" : fill ? "200px" : "0px", padX: fill ? "max(20px, calc((100cqw - 1216px) / 2))" : "8cqw",
   };
 }
 

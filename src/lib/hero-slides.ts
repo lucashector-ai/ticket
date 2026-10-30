@@ -8,6 +8,8 @@ import { z } from "zod";
 /** O mesmo limite do HTML do banner de evento (events.hero_html). */
 export const HERO_HTML_MAX = 300_000;
 export const HERO_SIZE_DEFAULT = { width: 1440, height: 800 } as const;
+/** Arte própria do celular: o tamanho do cartão da home a 390 px (358 × 206, proporção do cartão em qualquer largura). */
+export const HERO_MOBILE_SIZE_DEFAULT = { width: 358, height: 206 } as const;
 /** Imagem enviada pela central (/api/admin/banner) */
 export const HERO_IMAGE_RE = /^\/midia\/[\w/.-]+\.(png|jpe?g|webp|gif)$/i;
 
@@ -50,16 +52,22 @@ export const heroSlideInput = z
     height: z.coerce.number().int("Altura em pixels, sem vírgula.").min(180, "Altura entre 180 e 2160 px.").max(2160, "Altura entre 180 e 2160 px."),
     bg: z.string().trim().regex(/^#[0-9a-f]{6}$/i, "Cor de fundo no formato #RRGGBB."),
     active: z.boolean(),
+    /** arte do celular (opcional): vazio = o celular usa a arte normal */
+    htmlMobile: z.string().max(HERO_HTML_MAX + 10_000).optional().default("").transform((v) => v.trim()),
+    mobileWidth: z.coerce.number().int("Largura do celular em pixels, sem vírgula.").min(240, "Largura do celular entre 240 e 1600 px.").max(1600, "Largura do celular entre 240 e 1600 px.").optional().default(HERO_MOBILE_SIZE_DEFAULT.width),
+    mobileHeight: z.coerce.number().int("Altura do celular em pixels, sem vírgula.").min(120, "Altura do celular entre 120 e 1600 px.").max(1600, "Altura do celular entre 120 e 1600 px.").optional().default(HERO_MOBILE_SIZE_DEFAULT.height),
   })
   .superRefine((v, ctx) => {
     if (v.kind === "html") {
       if (!v.html) ctx.addIssue({ code: "custom", message: "Cole o HTML do banner." });
       else if (v.html.length > HERO_HTML_MAX) ctx.addIssue({ code: "custom", message: "O HTML passa de 300 KB. Use imagens por link em vez de embutidas." });
     } else if (!v.image || !HERO_IMAGE_RE.test(v.image)) ctx.addIssue({ code: "custom", message: "Envie a imagem do banner (PNG, JPG, WebP ou GIF)." });
+    if (v.htmlMobile.length > HERO_HTML_MAX) ctx.addIssue({ code: "custom", message: "O HTML do celular passa de 300 KB. Use imagens por link em vez de embutidas." });
   })
   .transform((v) => ({
     id: v.id, label: v.label, href: v.href, cta: v.cta, width: v.width, height: v.height, bg: v.bg.toUpperCase(), active: v.active,
     html: v.kind === "html" ? v.html : null, image: v.kind === "image" ? v.image : null,
+    htmlMobile: v.htmlMobile || null, mobileWidth: v.mobileWidth, mobileHeight: v.mobileHeight,
   }));
 export type HeroSlideInput = z.input<typeof heroSlideInput>;
 

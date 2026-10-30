@@ -1060,20 +1060,24 @@ export const heroSlides = pgTable(
   "hero_slides",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    /** rótulo do link para leitor de tela; no celular aparece embaixo da arte */
+    /** rótulo do link para leitor de tela */
     label: varchar("label", { length: 160 }).notNull(),
     /** um dos dois: HTML (até 300 KB) ou imagem /midia/... */
     html: text("html"),
     image: varchar("image", { length: 300 }),
     /** destino do clique: caminho do site ("/produtores") ou https:// */
     href: varchar("href", { length: 500 }).notNull(),
-    /** texto do botão embaixo da arte no celular (opcional) */
+    /** texto do botão (opcional): entra no nome do link para leitor de tela */
     cta: varchar("cta", { length: 40 }),
     /** tamanho de projeto da arte (palco fixo): a home renderiza nesse tamanho e escala para caber */
     width: integer("width").notNull().default(1440),
     height: integer("height").notNull().default(800),
     /** cor de fundo da arte: preenche as sobras quando a proporção do carrossel é outra */
     bg: varchar("bg", { length: 7 }).notNull().default("#111111"),
+    /** arte própria para o celular (opcional, HTML até 300 KB) e o tamanho de projeto dela; sem ela, o celular usa a arte normal */
+    htmlMobile: text("html_mobile"),
+    mobileWidth: integer("mobile_width").notNull().default(358),
+    mobileHeight: integer("mobile_height").notNull().default(206),
     position: integer("position").notNull().default(0),
     active: boolean("active").notNull().default(true),
     ...timestamps,
@@ -1085,6 +1089,8 @@ export const heroSlides = pgTable(
     check("hero_slides_href_chk", sql`${t.href} ~ '^(/([^/\\\\]|$)|https://)'`),
     check("hero_slides_size_chk", sql`${t.width} between 320 and 3840 and ${t.height} between 180 and 2160`),
     check("hero_slides_bg_chk", sql`${t.bg} ~ '^#[0-9A-Fa-f]{6}$'`),
+    check("hero_slides_html_mobile_chk", sql`${t.htmlMobile} is null or length(${t.htmlMobile}) <= 300000`),
+    check("hero_slides_mobile_size_chk", sql`${t.mobileWidth} between 240 and 1600 and ${t.mobileHeight} between 120 and 1600`),
   ],
 );
 

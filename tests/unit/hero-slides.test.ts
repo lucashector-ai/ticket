@@ -46,6 +46,20 @@ describe("heroSlideInput (central)", () => {
     expect(heroSlideInput.safeParse({ ...base, label: "x" }).success).toBe(false);
     expect(heroSlideInput.safeParse({ ...base, html: "   " }).success).toBe(false);
   });
+  it("arte do celular: opcional (vazio = usa a arte normal), mesmo limite de 300 KB, tamanho próprio", () => {
+    expect(heroSlideInput.parse(base)).toMatchObject({ htmlMobile: null, mobileWidth: 358, mobileHeight: 206 });
+    expect(heroSlideInput.parse({ ...base, htmlMobile: "   " })).toMatchObject({ htmlMobile: null });
+    expect(heroSlideInput.parse({ ...base, htmlMobile: " <p>cel</p> ", mobileWidth: "716", mobileHeight: 412 })).toMatchObject({ htmlMobile: "<p>cel</p>", mobileWidth: 716, mobileHeight: 412 });
+    // também com a arte normal em imagem
+    expect(heroSlideInput.parse({ ...base, kind: "image", image: "/midia/banners/a.webp", htmlMobile: "<p>cel</p>" })).toMatchObject({ image: "/midia/banners/a.webp", htmlMobile: "<p>cel</p>" });
+    const big = heroSlideInput.safeParse({ ...base, htmlMobile: "x".repeat(300_001) });
+    expect(big.success).toBe(false);
+    expect(big.error?.issues[0]?.message).toMatch(/celular passa de 300 KB/);
+    expect(heroSlideInput.safeParse({ ...base, htmlMobile: "x".repeat(300_000) }).success).toBe(true);
+    for (const bad of [{ mobileWidth: 200 }, { mobileWidth: 2000 }, { mobileHeight: 100 }, { mobileHeight: 1601 }, { mobileWidth: 358.5 }]) {
+      expect(heroSlideInput.safeParse({ ...base, ...bad }).success, JSON.stringify(bad)).toBe(false);
+    }
+  });
 });
 
 describe("ordem do carrossel", () => {
