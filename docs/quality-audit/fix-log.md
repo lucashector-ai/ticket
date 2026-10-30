@@ -8,9 +8,9 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | (nenhuma até agora; Romano usa só `teste+agente1030@example.com`, já existente) | | |
 
 ## Dados de teste no banco de teste
-- Testes de integração criam eventos `qa-test-…` e apagam no fim (conferido: 0 restantes).
+- Testes de integração criam eventos, produtores, perfis e cupons `qa-test-…` e apagam no fim (conferido no fechamento: 0 eventos, 0 produtores, 0 perfis restantes). Cupom `QAROMANO10` e 15 cadastros "me avise" `qa.romano.aviso*@example.com` usados na validação foram apagados.
 - 1 imagem PNG de 1×1 enviada ao R2 local na validação do upload (`/midia/eventos/e665d30ef5fa/mvugl1o4-…png`), só local.
-- Evento `qa-romano-checkout` (produtor da conta de teste, 1 tipo "Pista QA" com 3 lugares) criado no banco de teste para o checkout e2e; pedido nº 48308 pago em modo de teste (2 ingressos: TW-M3QC-DXZZ, já usado no teste da câmera, e um enviado para `qa.romano.presente@example.com`, sem conta).
+- Evento `qa-romano-checkout` (produtor da conta de teste, 1 tipo "Pista QA"; ao fim da noite com 6 lugares, 4 vendidos em 3 pedidos pagos de teste e 2 cancelados/abertos) criado no banco de teste para os testes no navegador. Pode ser apagado junto com o branch de teste; pedido nº 48308 pago em modo de teste (2 ingressos: TW-M3QC-DXZZ, já usado no teste da câmera, e um enviado para `qa.romano.presente@example.com`, sem conta).
 
 ## Romano
 
