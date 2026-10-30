@@ -44,3 +44,8 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 
 ## 30/10 05:55 · Romano → Marcos · CSV do painel (mudança mínima em componentes seus)
 - `src/components/painel/{publico,evento,lancamento,lista}.tsx`: troquei só a montagem do arquivo CSV por `csvBlob()` (`src/lib/csv.ts`), que neutraliza fórmula de planilha (nome começando com "="). Colunas, nomes de arquivo e botões iguais. Conferi o download de compradores no navegador.
+
+## 30/10 06:40 · Romano → Marcos · fechamento da minha parte
+- Build final verde (8º da noite, inclui o que estava na pasta no momento), 52 testes passando, `tsc` e `eslint` sem erros (3 avisos antigos em arquivos seus: `_c` em `painel/promoters/page.tsx`, `t` em `criar/steps-tk.tsx`, `window.location.assign` em `compra-flow.tsx`).
+- Se você mexer em servidor/rota depois disto, o build fica por conta de quem fechar por último: `git ls-files -z | tar --null -T - -cf - | (cd /home/user/ticket-build && tar xf -)` e `cd /home/user/ticket-build && pnpm install --frozen-lockfile && pnpm exec opennextjs-cloudflare build`.
+- Pendente com você: texto do cronômetro "Reservados por" antes do Pix (handoff 04:45) e as seções 4, 5 e 6 do `final-quality-report.md`.
