@@ -9,6 +9,7 @@ import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { mailTransferAccepted, mailTransferCancelled, mailTransferSent } from "@/lib/notify";
 import { deadlineLabel, deadlineOpen } from "@/lib/refund-policy";
+import { ticketCode } from "@/lib/tickets/code";
 
 const { tickets, ticketTransfers } = schema;
 
@@ -60,7 +61,8 @@ export async function cancelTransfer(ticketId: string): Promise<{ ok: true } | {
 export type AcceptResult = { ok: true; code: string } | { ok: false; error: string; login?: boolean; verify?: boolean };
 
 /**
- * Quem recebeu aceita pelo link do e-mail: o ingresso vai para a conta logada, com QR novo (o link vale uma vez).
+ * Quem recebeu aceita pelo link do e-mail: o ingresso vai para a conta logada, com QR e código novos (o link vale
+ * uma vez; quem enviou conhecia o código antigo e não entra mais com ele).
  * Ingresso de outra pessoa enviado na compra (kind "gift"): só a conta do e-mail informado no pedido pode receber
  * (o link só chega nesse e-mail, então quem o abre comprovou a caixa de entrada); o titular continua o nome
  * informado na compra.
@@ -86,7 +88,7 @@ export async function acceptTransfer(token: string): Promise<AcceptResult> {
     .where(and(eq(ticketTransfers.id, tr.id), eq(ticketTransfers.status, "pending"))).returning({ id: ticketTransfers.id });
   if (!claimed) return { ok: false, error: "Esta transferência não está mais disponível." };
   const [t] = await db.update(tickets)
-    .set({ holderUserId: user.id, ...(gift ? {} : { holderName: user.name || null }), status: "valid", secret: randomBytes(16).toString("hex") })
+    .set({ holderUserId: user.id, ...(gift ? {} : { holderName: user.name || null }), status: "valid", code: ticketCode(), secret: randomBytes(16).toString("hex") })
     .where(and(eq(tickets.id, tr.ticketId), eq(tickets.holderUserId, tr.fromUserId), eq(tickets.status, "transferred")))
     .returning({ code: tickets.code });
   if (!t) {

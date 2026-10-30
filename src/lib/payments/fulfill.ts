@@ -9,6 +9,7 @@ import { heldSql } from "@/lib/holds";
 import { settleShare, shareStillHeld } from "@/lib/special";
 import { mailGroupSharePaid, mailOrderConfirmed, mailResaleSold, mailTransferSent } from "@/lib/notify";
 import { refundOrder } from "@/lib/payments/refund";
+import { ticketCode } from "@/lib/tickets/code";
 import { overLimit, type Bought } from "@/lib/tickets/limits";
 
 /*
@@ -38,14 +39,6 @@ type ItemRow = typeof orderItems.$inferSelect;
 const CLAIM_STALE_MS = 2 * 60_000;
 
 const methodOf = (o: OrderRow): Method => (o.paymentMethod === "card" || o.paymentMethod === "free" ? o.paymentMethod : "pix");
-
-function ticketCode() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const b = randomBytes(8);
-  let s = "";
-  for (let i = 0; i < 8; i++) s += alphabet[b[i] % alphabet.length];
-  return `TW-${s.slice(0, 4)}-${s.slice(4)}`;
-}
 
 const qrSvg = async (code: string, secret: string) => QRCode.toString(await qrPayload(code, secret), { type: "svg", margin: 0 });
 
@@ -220,7 +213,7 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
   };
 }
 
-/** Revenda: o ingresso do vendedor passa para o comprador com um QR novo (o antigo deixa de valer). */
+/** Revenda: o ingresso do vendedor passa para o comprador com QR e código novos (os antigos deixam de valer). */
 async function fulfillResale(order: OrderRow & { items: ItemRow[] }, pay: { ref: string; charged: boolean }, fail: (why: string) => Promise<FulfillResult>): Promise<FulfillResult> {
   const userId = order.userId;
   const l = await db.query.resaleListings.findFirst({ where: eq(resaleListings.id, order.resaleListingId!), with: { ticket: true, event: { columns: { title: true, slug: true } } } });
@@ -232,7 +225,7 @@ async function fulfillResale(order: OrderRow & { items: ItemRow[] }, pay: { ref:
   if (!sold.length) return fail(gone);
   const holder = order.holders?.[0]?.name ?? order.buyerName ?? null;
   const [t] = await db.update(tickets)
-    .set({ holderUserId: userId, holderName: holder, secret: randomBytes(16).toString("hex"), orderId: order.id, orderItemId: order.items[0]?.id ?? null })
+    .set({ holderUserId: userId, holderName: holder, code: ticketCode(), secret: randomBytes(16).toString("hex"), orderId: order.id, orderItemId: order.items[0]?.id ?? null })
     .where(and(eq(tickets.id, l.ticketId), eq(tickets.holderUserId, l.sellerUserId), eq(tickets.status, "valid")))
     .returning({ id: tickets.id, code: tickets.code, secret: tickets.secret });
   if (!t) {

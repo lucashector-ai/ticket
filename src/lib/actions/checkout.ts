@@ -10,6 +10,7 @@ import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { confirmPayment } from "@/lib/actions/compra";
 import { stripeEnabled } from "@/lib/payments/stripe";
+import { ticketCode } from "@/lib/tickets/code";
 
 const { orders, orderItems, tickets, ticketTypes, coupons, events } = schema;
 
@@ -69,14 +70,6 @@ export async function createOrder(input: Selection): Promise<CheckoutResult> {
   }).returning();
   await db.insert(orderItems).values(lines.map((l) => ({ ...l, orderId: order.id })));
   return { redirect: `/checkout/${order.id}` };
-}
-
-function ticketCode() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const b = randomBytes(8);
-  let s = "";
-  for (let i = 0; i < 8; i++) s += alphabet[b[i] % alphabet.length];
-  return `TW-${s.slice(0, 4)}-${s.slice(4)}`;
 }
 
 /** Confirma o pagamento (modo teste: sem gateway, só sem Stripe configurada; ref TEST-…) e emite os ingressos. */
