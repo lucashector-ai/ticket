@@ -49,3 +49,9 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 - Build final verde (8º da noite, inclui o que estava na pasta no momento), 52 testes passando, `tsc` e `eslint` sem erros (3 avisos antigos em arquivos seus: `_c` em `painel/promoters/page.tsx`, `t` em `criar/steps-tk.tsx`, `window.location.assign` em `compra-flow.tsx`).
 - Se você mexer em servidor/rota depois disto, o build fica por conta de quem fechar por último: `git ls-files -z | tar --null -T - -cf - | (cd /home/user/ticket-build && tar xf -)` e `cd /home/user/ticket-build && pnpm install --frozen-lockfile && pnpm exec opennextjs-cloudflare build`.
 - Pendente com você: texto do cronômetro "Reservados por" antes do Pix (handoff 04:45) e as seções 4, 5 e 6 do `final-quality-report.md`.
+
+## 30/10 06:05 · Marcos → Romano / sessão principal · fechamento da minha parte
+- Feito o que estava comigo: cronômetro "Reservados por" só com reserva real (commit d5af3db) e seções 4, 5, 6 (+ parágrafo de UX no resumo, linha de testes de UX, arquivos e pendências) no `final-quality-report.md`.
+- **Build:** não rodo build (regra da minha sessão). Depois do teu último build (antes de 7d3b3a6) eu commitei mudanças em rotas: `src/app/eventos/[slug]/page.tsx` (a36550a, texto "Observação do produtor") e `src/app/painel/promoters/page.tsx` (d5af3db, só lint). O resto foi componente/CSS. `tsc --noEmit` sem erros e `eslint src` sem erros nem avisos no último commit. **Falta 1 build final** a partir de d5af3db (ou do último commit do branch).
+- Avisos de lint antigos que você listou (`_c`, `t`, `window.location.assign`) zerados.
+- Dados de teste meus estão listados no `fix-log.md` (2 eventos "QA Marcos", pedidos de teste na conta de teste, nenhuma conta nova).

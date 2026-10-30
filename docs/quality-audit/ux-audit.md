@@ -160,3 +160,29 @@ Equipe → "Abrir app da portaria" → app do evento ("0 de 0 entraram"); sem c�
 
 ### Pós-compra (celular 390) · VALIDADO
 Meus ingressos: ingresso em destaque com QR, código, titular, "Baixar PDF" (baixa `ingresso-TW-….pdf`), Transferir (modal com foco no e-mail, Esc fecha), Revender (preço máximo = o que pagou, mostra quanto recebe com a taxa de 5%), Adicionar à agenda. Página do ingresso `/ingressos/[código]` com as mesmas ações.
+
+### U-30 · Cronômetro "Reservados por" antes de existir reserva · P2 · VALIDADO (com o Romano)
+- Desde a etapa Dados o checkout mostrava "Reservados por 14:59" e, aos 0:00, "O tempo da reserva acabou · Seus ingressos voltaram para a venda", mas a reserva só nasce ao gerar o Pix ou pagar (handoff do Romano 04:45). Era urgência falsa. Agora cronômetro e vencimento só existem com pedido aberto (ou vaga de grupo/revenda). Teste: Dados e Pagamento sem cronômetro; Pix com "Código expira em 14:59"; voltar do Pix cancela o pedido e o cronômetro some.
+
+### U-31 · Aba atual cortada nas faixas roláveis (Conta e Painel no celular) · P3 · VALIDADO
+- /conta/compras ("Minhas compr…"), /conta/seguranca, /painel/equipe e /painel/configuracoes: a faixa começava do início e a aba atual ficava fora. Agora rola até ela (320px: as 4 visíveis). M: `vis-320-montagem2.png` (antes).
+
+### U-32 · Textos cortados em 320px · P3 · VALIDADO
+- /explorar: filtros "Todas a…", "Qualque…" → "Todas"/"Todos" (o rótulo já diz o campo). Central de ajuda: placeholder "Busque por reem…" → "Busque sua dúvida". M: `vis-320-montagem.png` → `vis-320-explorar-filtros.png`.
+
+### Celular deitado (844×390) · VALIDADO
+- Página do evento sem rolagem lateral; tela cheia de compra com cabeçalho, lista rolável e barra de total visíveis. M: `land-sheet.png`.
+
+## Pendências de UX (não corrigidas nesta noite)
+| Item | Grav. | Por quê | Status |
+|---|---|---|---|
+| Loader de 1,45 s na página do evento | P2 | design original; precisa do dono | DM-1 |
+| 2 artes obrigatórias para publicar | P2 | regra de publicação | DM-2 |
+| Texto livre de cancelamento pode contradizer a regra | P2 | conteúdo do produtor | DM-3 (mitigado) |
+| Tabelas do painel roláveis sem foco de teclado (`scrollable-region-focusable`) | P3 | precisa de `tabIndex` + rótulo em 10 tabelas | FALHOU (aberto) |
+| Barras do gráfico de vendas só com mouse/toque | P3 | sem teclado no `<rect>` | FALHOU (aberto) |
+| Pontos do carrossel da home com 13px de largura de toque | P3 | área já ampliada na altura; largura < 24px | FALHOU (aberto) |
+| Leitor de tela real (NVDA/VoiceOver) | — | não existe nesta máquina | BLOQUEADO |
+| Firefox e WebKit/Safari | — | não instalados | BLOQUEADO |
+| "Escrever com IA" (descrição) e "Com IA" (mapa) | — | dependem de chave externa | NÃO TESTADO |
+| Criar conta de produtor do zero | — | evitei conta nova (limite de 3, login compartilhado com a produção) | NÃO TESTADO |

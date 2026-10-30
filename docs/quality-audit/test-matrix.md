@@ -79,3 +79,36 @@ E2E versionado: `tests/e2e/checkout.e2e.mjs` (`pnpm test:e2e`, com `E2E_EMAIL`, 
 | Acesso sem login a páginas privadas | cada página chama `getSessionUser`/`painelAccess`/`contaUser`/`adminUser` | VALIDADO por leitura de código (todas as páginas privadas listadas) |
 | Acesso a recurso de outra pessoa (pedido, ingresso, PDF, carteira) | filtros por `userId`/`holderUserId` | VALIDADO por leitura; PDF de código inexistente logado → 404 |
 | Produtor mexendo em evento de outro | `getPainelScope` + `events.find(id)` em cada ação | VALIDADO por leitura |
+
+## Parte de experiência (Marcos)
+
+Playwright + Chromium no servidor local com a cópia do banco. Scripts e prints em `scratchpad/marcos/` (não versionados). Firefox/WebKit: BLOQUEADO.
+
+### Varredura de telas
+| Escopo | Larguras | Medido | Resultado |
+|---|---|---|---|
+| 38 rotas (20 públicas, 18 logadas) | 320×568, 375×667, 390×844, 430×932, 768×1024, 1280×800, 1440×900, 1920×1080 (304 telas) | status, rolagem horizontal, elementos fora da tela, alvos < 24px, erros de JS | 2 rotas com rolagem lateral (evento e painel do evento a 320–390): corrigidas e revalidadas |
+| axe-core WCAG 2.2 AA | 390 e 1280 nas 38 rotas | violações | contraste (> 500 nós), nomes acessíveis, `nested-interactive`, `aria-*`, zoom bloqueado na portaria: corrigidos; restam 3 itens P3 (ver ux-audit) |
+
+### Jornadas e cenários
+| Jornada / cenário | Largura | Execuções | Resultado |
+|---|---|---|---|
+| Compra Pix de teste: evento → setor → ingresso → dados → Pix → confirmação → Meus ingressos | 390 | 5 | VALIDADO (valores conferidos em cada tela) |
+| Recarregar a confirmação | 390 | 3 | FALHOU → corrigido → VALIDADO (U-14) |
+| Pedido aberto + escolha diferente | 390 | 2 | FALHOU → corrigido → VALIDADO (U-17) |
+| Limite por tipo e por compra; "+" bloqueado | 390, 1280 | 4 | FALHOU → corrigido → VALIDADO (U-01) |
+| Taxa por linha × total | 390 | 3 | FALHOU → corrigido → VALIDADO (U-02) |
+| Sessão expirada no checkout | 390 | 2 | FALHOU → corrigido → VALIDADO (U-28) |
+| Offline entre Dados e Pagamento; cliques repetidos | 390 | 1 | VALIDADO |
+| Rede 3G simulada (home, evento) | 390 | 1 | VALIDADO (conteúdo em 2,0–2,7 s) |
+| Teclado: página do evento, tela cheia (foco preso e devolvido), painel de acessibilidade | 390 | 2 | FALHOU → corrigido → VALIDADO (U-27) |
+| Cadastro/entrar com erro: foco no campo | 320, 390, 1280 | 2 | FALHOU → corrigido → VALIDADO (U-12) |
+| Busca: nome, maiúsculas, acento, erro de digitação, gênero, sem resultado | 390 | 2 | FALHOU → corrigido → VALIDADO (U-26) |
+| Criar evento (show, ingresso pago, 2 artes) até publicar | 390 | 2 completas + 5 parciais | VALIDADO (erros de cada etapa conferidos) |
+| Artes: proporção errada, mesma proporção maior, 4:5 | 390 | 1 | VALIDADO (mensagem reescrita) |
+| Portaria: abrir pelo painel, sem câmera, código inexistente, ingresso de outro evento | 390 | 1 | VALIDADO; câmera real BLOQUEADO; válido/já usado NÃO TESTADO |
+| Equipe: criar e desligar acesso da portaria (com confirmação) | 390, 1280 | 2 | VALIDADO |
+| Conta › Endereço: Estado/Cidade | 320, 390, 768 | 2 | FALHOU → corrigido → VALIDADO (U-07) |
+| Pós-compra: transferir (modal), revender, PDF, página do ingresso | 390 | 1 | VALIDADO |
+| Celular deitado (844×390) | — | 1 | VALIDADO |
+| Leitor de tela real | — | 0 | BLOQUEADO |
