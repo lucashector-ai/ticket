@@ -4,7 +4,7 @@ Auditoria noturna de 30/10/2026, branch `claude/auditoria-noturna` (não publica
 Status usados: NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VALIDADO.
 
 ## 1. Resumo executivo (Romano: engenharia)
-A base é cuidadosa: emissão de ingressos idempotente, baixa de estoque atômica, estorno automático, webhook assinado, 2FA e banco com app autenticador. O que encontramos de mais sério estava nas bordas: **quem vendia ou transferia um ingresso ainda entrava no evento com o código antigo**, a **"reserva" de 15 minutos não segurava o lugar** (gente pagando o último ingresso e sendo estornada), **qualquer conta conseguia virar produtor sem aprovação** (via convite de equipe), **ex-membros da equipe mantinham a portaria** e **editar um evento podia quebrar no meio** ao apagar um tipo de ingresso. Tudo isso foi corrigido e coberto por testes. O projeto passou de zero testes para **43 testes automatizados** (unitários + integração no banco de teste), e as dependências vulneráveis de produção caíram de 47 avisos para 8 (os restantes dependem do SDK do Neon Auth, decisão D-06).
+A base é cuidadosa: emissão de ingressos idempotente, baixa de estoque atômica, estorno automático, webhook assinado, 2FA e banco com app autenticador. O que encontramos de mais sério estava nas bordas: **quem vendia ou transferia um ingresso ainda entrava no evento com o código antigo**, a **"reserva" de 15 minutos não segurava o lugar** (gente pagando o último ingresso e sendo estornada), **qualquer conta conseguia virar produtor sem aprovação** (via convite de equipe), **ex-membros da equipe mantinham a portaria** e **editar um evento podia quebrar no meio** ao apagar um tipo de ingresso. Tudo isso foi corrigido e coberto por testes. O projeto passou de zero testes para **45 testes automatizados** (unitários + integração no banco de teste), e as dependências vulneráveis de produção caíram de 47 avisos para 8 (os restantes dependem do SDK do Neon Auth, decisão D-06).
 Ficam para o dono: compra em grupo contornando o limite por pessoa (D-01), confirmação da reserva segurando estoque (D-02, aplicada e reversível), LGPD do e-mail marketing (D-03), app autenticador para trocar a conta de saque (D-04), SDK do login (D-06) e trava do modo de teste na produção (D-07).
 
 ## 2. Segurança (Romano)
@@ -27,6 +27,8 @@ Detalhes, reprodução e evidências em `security-audit.md`.
 | S-15 | P1 | jspdf (críticos) sem uso; node-forge desatualizado | VALIDADO |
 | S-16 | P1 | Editar evento quebrava no meio ao apagar tipo citado em pedido | VALIDADO |
 | S-19 | P2 | "Me avise" e transferências disparavam e-mails sem limite | VALIDADO |
+| S-20 | P3 | Prévia OG mostrava arte de rascunho | VALIDADO |
+| S-21 | P3 | CSV do painel sem neutralizar fórmulas | VALIDADO |
 | S-09 | P1 | Grupo contorna o limite por pessoa | ABERTO (D-01) |
 | S-10 | P2 | Conta de saque troca sem app autenticador | ABERTO (D-04) |
 | S-17 | P1 | SDK do Neon Auth com better-auth 1.7.6 | ABERTO (D-06) |
@@ -35,7 +37,7 @@ Detalhes, reprodução e evidências em `security-audit.md`.
 Verificado sem problema: autorização de todas as páginas privadas e de cada ação de servidor lida (pedido, ingresso, PDF, carteira, painel por evento, reembolsos, banco, central); preço sempre recalculado no servidor; check-in com QR assinado e marcação única; webhooks com assinatura e deduplicação; sanitização do HTML do e-mail; redirecionamentos `next` seguros.
 
 ## 3. Engenharia (Romano)
-- **Testes:** vitest instalado (`pnpm test`), 12 arquivos, 43 testes. Integração real no branch de teste do Neon com `TEST_DATABASE_URL` (pulados sem a variável). Cobrem preço/taxa/cupom/meia/parcelas, limites, concorrência de estoque (10 pelos últimos 2, dois pelo último, confirmação repetida), reserva, evento cancelado, troca de dono do ingresso, portaria (QR adulterado, outro evento, dois operadores), XSS do e-mail, upload e assinatura da Wallet. Conferido que os testes da troca de código, da aprovação de produtor e do saque duplo **falham sem a correção**. Também cobrem permissões do painel (equipe, portaria, excluir evento) e a edição de lotes.
+- **Testes:** vitest instalado (`pnpm test`), 13 arquivos, 45 testes. Integração real no branch de teste do Neon com `TEST_DATABASE_URL` (pulados sem a variável). Cobrem preço/taxa/cupom/meia/parcelas, limites, concorrência de estoque (10 pelos últimos 2, dois pelo último, confirmação repetida), reserva, evento cancelado, troca de dono do ingresso, portaria (QR adulterado, outro evento, dois operadores), XSS do e-mail, upload e assinatura da Wallet. Conferido que os testes da troca de código, da aprovação de produtor e do saque duplo **falham sem a correção**. Também cobrem permissões do painel (equipe, portaria, excluir evento) e a edição de lotes.
 - **Regras num lugar só:** `lib/tickets/limits.ts` (limites usados pela tela e pelo servidor), `lib/tickets/code.ts`, `lib/holds.ts` (vagas seguradas + reconferência), `lib/rate-limit.ts`, `lib/signing-secret.ts`, `lib/image-sniff.ts`.
 - **Código morto/legado:** `createOrder`/`validateCoupon` removidos; `payOrder` usa a emissão única; dependências sem uso removidas.
 - **Arquitetura:** o driver `neon-http` não tem transação; onde havia corrida sem proteção (reserva, saque, edição de lotes) usamos update condicional + reconferência. Recomendação estrutural em `architecture-review.md`.
@@ -56,7 +58,7 @@ Detalhes em `performance-report.md`. JS da rota: `/entrar` 353 → 105 KB, `/cad
 ## 8. Testes (Romano, parte técnica)
 | Tipo | Executados | Aprovados | Reprovados | Bloqueados |
 |---|---|---|---|---|
-| Unitários (vitest) | 19 | 19 | 0 | 0 |
+| Unitários (vitest) | 21 | 21 | 0 | 0 |
 | Integração no banco de teste (vitest) | 24 | 24 | 0 | 0 |
 | Navegador (Playwright, Chromium) | 7 fluxos (checkout e2e, duas abas, upload, cupom, login Google, câmera da portaria, imagem) | 6 | 1 (cronômetro, texto) | Firefox/WebKit: BLOQUEADO (não instalados) |
 | Pagamento real com Stripe (cartão, 3D Secure, Pix real, webhook real) | 0 | — | — | BLOQUEADO (sem chave de teste no local) |
