@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { eq, inArray } from "drizzle-orm";
 import { PainelMarketing, type MarketingProps } from "@/components/painel/marketing";
 import { db, schema } from "@/db";
-import { listOrders } from "@/lib/data/painel";
+import { couponSums } from "@/lib/data/painel";
 import { brl, dateNice } from "@/lib/format";
 import { painelAccess } from "@/lib/painel/access";
 import { ended, nowMs, whenLabel } from "@/lib/painel/build";
@@ -15,15 +15,11 @@ export const metadata: Metadata = { title: "Marketing" };
 export default async function PainelMarketingPage() {
   const { org, events } = await painelAccess("admin");
   const ids = events.map((e) => e.id);
-  const [cps, orders] = await Promise.all([
+  // uso dos cupons somado no banco (não traz os pedidos um a um)
+  const [cps, used] = await Promise.all([
     ids.length ? db.query.coupons.findMany({ where: inArray(schema.coupons.eventId, ids) }) : Promise.resolve([]),
-    listOrders(ids, new Map(events.map((e) => [e.id, e.absorbFee]))),
+    couponSums(ids),
   ]);
-  const used = new Map<string, { n: number; off: number; rev: number }>();
-  for (const o of orders) if (o.status === "paid" && o.couponId) {
-    const x = used.get(o.couponId) ?? { n: 0, off: 0, rev: 0 };
-    x.n += 1; x.off += o.discount; x.rev += o.revenue; used.set(o.couponId, x);
-  }
   const title = new Map(events.map((e) => [e.id, e.title]));
   const proms = org ? await db.query.promoters.findMany({ where: eq(schema.promoters.organizerId, org.id), orderBy: (x, { desc }) => [desc(x.createdAt)] }) : [];
   const pstats = await promoterStats(proms.map((x) => x.id));

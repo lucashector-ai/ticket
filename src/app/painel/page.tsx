@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { PainelHome, type HomeProps } from "@/components/painel/home";
-import { listOrders } from "@/lib/data/painel";
+import { latestPaid, paidBuckets } from "@/lib/data/painel";
 import { painelAccess } from "@/lib/painel/access";
 import { brl, normalize } from "@/lib/format";
-import { DAY, capacity, daily, delta, ended, feedItem, nowMs, soldCount, spark, statusOf, whenLabel, whereLabel } from "@/lib/painel/build";
+import { DAY, capacity, ended, feedItem, nowMs, soldCount, statusOf, whenLabel, whereLabel } from "@/lib/painel/build";
+import { homeKpis, netByEvent, sparkStart } from "@/lib/painel/home";
 
 export const dynamic = "force-dynamic";
 
@@ -15,39 +16,17 @@ export default async function PainelInicio({ searchParams }: Props) {
   // quem ainda não é produtor (sem página e sem eventos) passa primeiro pelo cadastro
   if (role === "owner" && !org?.onboarding && !events.length) redirect("/produtores/cadastro");
   const absorb = new Map(events.map((e) => [e.id, e.absorbFee]));
-  const orders = await listOrders(events.map((e) => e.id), absorb);
-  const paid = orders.filter((o) => o.status === "paid");
-  const title = new Map(events.map((e) => [e.id, e.title]));
   const now = nowMs();
+  const ids = events.map((e) => e.id);
+  // somado no banco (por evento, valor, quantidade, dia e janela), sem trazer os pedidos um a um; o feed traz só os últimos
+  const [rows, latest] = await Promise.all([paidBuckets(ids, now, sparkStart(now, 7)), latestPaid(ids, absorb, 6)]);
+  const title = new Map(events.map((e) => [e.id, e.title]));
 
   /* indicadores por período: atual × anterior, com minilinha de 10 pontos */
-  const PERIODS = [["7d", "7 dias", 7], ["30d", "30 dias", 30], ["all", "Tudo", 0]] as const;
-  const first = paid.length ? Math.min(...paid.map((o) => o.at.getTime())) : now;
-  const kpis = Object.fromEntries(PERIODS.map(([key, , d]) => {
-    const days = d || Math.max(10, Math.ceil((now - first) / DAY) + 1);
-    const inP = paid.filter((o) => o.at.getTime() >= now - days * DAY);
-    const prevP = d ? paid.filter((o) => o.at.getTime() < now - days * DAY && o.at.getTime() >= now - 2 * days * DAY) : [];
-    const sum = (l: typeof paid, f: (o: (typeof paid)[number]) => number) => l.reduce((s, o) => s + f(o), 0);
-    const rev = sum(inP, (o) => o.net), tix = sum(inP, (o) => o.qty), n = inP.length;
-    const pRev = sum(prevP, (o) => o.net), pTix = sum(prevP, (o) => o.qty), pN = prevP.length;
-    const avg = tix ? Math.round(rev / tix) : 0, pAvg = pTix ? Math.round(pRev / pTix) : 0;
-    const bucket = (f: (o: (typeof paid)[number]) => number) => {
-      const per = daily(inP, days, f, now).values, step = Math.ceil(days / 10);
-      return Array.from({ length: 10 }, (_, i) => per.slice(i * step, (i + 1) * step).reduce((a, b) => a + b, 0));
-    };
-    const note = d ? `vs ${d} dias anteriores` : "desde a primeira venda";
-    const mk = (label: string, value: string, cur: number, prev: number, series: number[]) => ({ label, value, ...(d ? delta(cur, prev) : { text: "", cls: "dl" }), note, ...spark(series) });
-    return [key, [
-      mk("Receita líquida", brl(rev), rev, pRev, bucket((o) => o.net)),
-      mk("Ingressos vendidos", tix.toLocaleString("pt-BR"), tix, pTix, bucket((o) => o.qty)),
-      mk("Pedidos", n.toLocaleString("pt-BR"), n, pN, bucket(() => 1)),
-      mk("Ticket médio", brl(avg), avg, pAvg, bucket((o) => o.net / Math.max(1, o.qty))),
-    ]];
-  })) as HomeProps["kpis"];
+  const kpis = homeKpis(rows, absorb, now);
 
   /* lista de eventos */
-  const netBy = new Map<string, number>();
-  for (const o of paid) netBy.set(o.eventId, (netBy.get(o.eventId) ?? 0) + o.net);
+  const netBy = netByEvent(rows, absorb);
   const qn = q ? normalize(q) : "";
   const evs = events.filter((e) => !qn || normalize(e.title).includes(qn)).map((e) => {
     const cap = capacity(e), sold = soldCount(e), st = statusOf(e, now);
@@ -79,14 +58,14 @@ export default async function PainelInicio({ searchParams }: Props) {
   }
 
   const onSale = evs.filter((e) => e.tab === "sale").length;
-  const futureNet = paid.filter((o) => { const e = events.find((x) => x.id === o.eventId); return e && !ended(e, now); }).reduce((s, o) => s + o.net, 0);
+  const futureNet = events.filter((e) => !ended(e, now)).reduce((s, e) => s + (netBy.get(e.id) ?? 0), 0);
   const hour = Number(new Intl.DateTimeFormat("pt-BR", { hour: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date()));
   const props: HomeProps = {
     greeting: `${hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite"}, ${(user.name || "produtor").split(" ")[0]}`,
     sub: `${org?.name ?? "Seus eventos"} · ${onSale} ${onSale === 1 ? "evento" : "eventos"} à venda`,
     query: q ?? "",
     kpis, todos, events: evs,
-    feed: paid.slice(0, 6).map((o) => feedItem(o, title.get(o.eventId) ?? null)),
+    feed: latest.map((o) => feedItem(o, title.get(o.eventId) ?? null)),
     futureNet: brl(futureNet),
   };
   return <PainelHome {...props} />;
