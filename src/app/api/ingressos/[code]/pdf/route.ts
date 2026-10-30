@@ -6,7 +6,7 @@ import { mediaJpeg } from "@/lib/media-jpeg";
 import { ticketCard } from "@/lib/tickets/card";
 import { ticketPdf } from "@/lib/tickets/pdf";
 
-/** PDF do ingresso, gerado no servidor (abre e baixa em qualquer celular). Só o titular baixa. */
+/** PDF do ingresso, gerado no servidor e entregue como download (vai direto para os arquivos). Só o titular baixa. */
 export async function GET(req: Request, ctx: { params: Promise<{ code: string }> }) {
   const { code } = await ctx.params;
   const user = await getSessionUser();
@@ -23,8 +23,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
   return new NextResponse(new Blob([pdf as BlobPart], { type: "application/pdf" }), {
     headers: {
       "content-type": "application/pdf",
-      // inline: no celular abre o leitor de PDF (com "Salvar"/"Compartilhar"); o link tem download para o computador baixar
-      "content-disposition": `inline; filename="ingresso-${t.code}.pdf"`,
+      // attachment: clicou, baixou (Android vai para Downloads; iPhone salva em Arquivos › Downloads)
+      "content-disposition": `attachment; filename="ingresso-${t.code}.pdf"`,
+      "content-length": String(pdf.byteLength),
       "cache-control": "private, no-store",
     },
   });

@@ -40,9 +40,20 @@ export const TicketCard = forwardRef<HTMLDivElement, { t: TicketCardData; qrSvg:
 
 /**
  * Baixa o ingresso em PDF. O PDF é gerado no servidor (/api/ingressos/[código]/pdf): montar no aparelho falhava
- * no Safari do iPhone e nos navegadores do WhatsApp/Instagram. No computador baixa; no celular abre o PDF,
- * com "Salvar" e "Compartilhar".
+ * no Safari do iPhone e nos navegadores do WhatsApp/Instagram. O servidor entrega como download: clicou, baixou.
  */
 export function TicketPdfButton({ t, className, children }: { t: TicketCardData; qrSvg?: string; className?: string; children: React.ReactNode }) {
-  return <a className={className} href={`/api/ingressos/${encodeURIComponent(t.code)}/pdf`} download={`ingresso-${t.code}.pdf`}>{children}</a>;
+  const href = `/api/ingressos/${encodeURIComponent(t.code)}/pdf`;
+  // navegador de dentro do Instagram/Facebook não baixa arquivo: no Android abre no Chrome; no iPhone, avisa
+  function inApp(e: React.MouseEvent) {
+    const ua = navigator.userAgent;
+    if (!/Instagram|FBAN|FBAV|FB_IAB|Line\//i.test(ua)) return;
+    e.preventDefault();
+    if (/Android/i.test(ua)) {
+      window.location.href = `intent://${window.location.host}${href}#Intent;scheme=https;package=com.android.chrome;end`;
+      return;
+    }
+    alert("Este navegador do app não deixa baixar arquivos. Toque nos três pontinhos (⋯) e escolha “Abrir no Safari” (ou no navegador), depois toque em Baixar PDF de novo.");
+  }
+  return <a className={className} href={href} download={`ingresso-${t.code}.pdf`} onClick={inApp}>{children}</a>;
 }
