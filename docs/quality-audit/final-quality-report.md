@@ -14,6 +14,10 @@ A base é cuidadosa: emissão de ingressos idempotente, baixa de estoque atômic
 
 **Rodada 4 (Romano).** As quatro decisões do dono estão aplicadas e testadas. **D-11:** o ingresso transferido é de quem tem o e-mail de destino; o link aberto em outra conta é recusado com o e-mail mascarado (antes, quem abrisse um e-mail encaminhado ficava com o ingresso). **D-09:** o produtor ajusta o preço da meia (sugerido: metade, aviso da Lei 12.933; o servidor não deixa passar da inteira) e a meia passa a ter um caminho só: onde há tipo Meia, a caixa "Meia-entrada" some da Inteira (a cota da meia não é mais contornada); onde não há, a caixa continua com 50%. **D-12:** cada ingresso tem rastro gravado na mesma transação da emissão, envio, transferência, revenda, reembolso e check-in, visível só na central (com os ingressos antigos reconstruídos dos dados existentes); **exige a tabela nova antes do código** (SQL no topo do `pending-decisions.md`). **D-08:** produtores antigos seguem normais (teste de regressão). Suíte: 127 testes aprovados.
 
+**Resposta direta ao dono (equipe com admin).** *"Colocando um admin, ele consegue criar eventos dentro da produtora?"* **Antes desta rodada, não:** o evento criado pelo admin ia para uma produtora nova, dele, e não aparecia na sua; ele também não conseguia editar os seus eventos (só quem criou editava). Pior: alguém convidado só para a **portaria** conseguia criar evento do mesmo jeito, numa produtora própria, sem passar pela aprovação. **Agora sim:** o admin convidado cria e edita eventos **na sua produtora** (você vê e edita os dele; ele vê e edita os seus), vê vendas e pedidos, faz cupons e acessos de portaria. Ele **não** mexe nos dados de recebimento/CNPJ (Configurações), no Banco/saques, nem convida ou remove pessoas da equipe (isso é só seu). Não existe "apagar a produtora" no painel. A portaria só faz a portaria. Comprovado em teste automático no banco de teste (falha sem a correção); o convite foi feito pela tela Equipe e a jornada do admin no navegador está com o Marcos.
+
+**Várias produtoras numa conta.** Uma conta pode ser dona de até 3 produtoras, cada uma com seus eventos, equipe, dados de recebimento/CNPJ e saldo separados; o painel trabalha na produtora escolhida no seletor (e quem é admin de outra produtora também troca para ela por ali). Criar a 2ª e a 3ª não pede nova aprovação. Tela do seletor e de "Nova produtora": Marcos.
+
 Decisões que o dono manteve como estão: reserva segurando estoque (D-02) e modo de teste sem a chave da Stripe (D-07). D-05 fechada (imagem existe na produção). D-06: o código vulnerável do better-auth não roda no nosso servidor; falta só a confirmação do Neon (perguntas em `pending-decisions.md`).
 
 ## 2. Segurança (Romano)
@@ -52,6 +56,9 @@ Detalhes, reprodução e evidências em `security-audit.md`.
 | S-31 | P2 | Conta sem e-mail confirmado enviava inscrição de produtor | VALIDADO (rodada 3) |
 | S-32 | P2 | Link de transferência aceito por qualquer conta logada (D-11) | VALIDADO (rodada 4) |
 | S-33 | P3 | Transferir/cancelar/aceitar em comandos soltos (dois links para o mesmo ingresso) | VALIDADO (rodada 4) |
+| S-34 | P1 | Portaria/admin da equipe criava evento numa produtora própria (sem aprovação) | VALIDADO (rodada 4) |
+| S-35 | — | Produtora ativa por cookie: id de outra produtora ignorado | VALIDADO (rodada 4) |
+| S-36 | P1 | Banners em HTML barrados com a CSP bloqueando (srcdoc herdava a CSP) | VALIDADO (rodada 4) |
 | S-17 | P1 | SDK do Neon Auth com better-auth 1.7.6 | NÃO SE APLICA ao nosso servidor (D-06); confirmar com o Neon |
 | S-18 | P1 | Modo de teste liga sozinho sem chave da Stripe | MANTIDO por decisão do dono (D-07) |
 
@@ -142,11 +149,13 @@ Detalhes em `performance-report.md`. Rodada 2: financeiro e extrato do Banco dei
 | Navegador (Playwright, Chromium) | 13 fluxos (checkout e2e ×2, duas abas, upload, cupom, login Google, login com e-mail inexistente, câmera da portaria, portaria offline, "me avise", prévia OG, CSV, Meus ingressos/PDF) | 12 | 1 (cronômetro, texto, com o Marcos) | Firefox/WebKit: BLOQUEADO (não instalados) |
 | Navegador, UX (Marcos; Playwright, Chromium) | 304 telas (8 larguras) + axe em 76 + 21 jornadas/cenários (ver `test-matrix.md`) | 21 cenários aprovados ao fim (11 falharam antes e foram corrigidos) | 0 em aberto | leitor de tela real, Firefox/WebKit, câmera real: BLOQUEADO |
 | Navegador, UX rodada 2 (Marcos; Playwright, Chromium) | 22 cenários (ver `test-matrix.md`, "Rodada 2") + 100 telas de regressão + e2e da câmera do Romano rodado de novo (13/13) | 22 executados: 20 aprovados ao fim (6 falharam antes e foram corrigidos), 2 com uma parte BLOQUEADA (ativação/aprovação de produtor; geração com IA) | 0 em aberto | ativação de conta nova, aprovação de produtor, IA, câmera real, leitor de tela, Firefox/WebKit: BLOQUEADO |
-| Rodada 4: unitários + integração no banco de teste (suíte inteira, `pnpm test`) | 127 (36 arquivos) | 127 | 0 | 0 |
+| Rodada 4: unitários + integração no banco de teste (suíte inteira, `pnpm test`), com equipe e produtoras | 138 (40 arquivos) | 138 | 0 | 0 |
+| Rodada 4: banner em HTML com a CSP bloqueando (home, 1280 e 390) | 3 navegadores | 3 | 0 | 0 |
 | Rodada 4: navegador (Chromium 390 e 1280): caixa de meia no checkout com e sem tipo Meia; link de transferência aberto por outra conta | 2 × 2 | 4 | 0 | aceite positivo pela tela: coberto na integração (conta de destino precisa de e-mail confirmado) |
 | Pagamento real com Stripe (cartão, 3D Secure, Pix real, webhook real) | 0 | — | — | BLOQUEADO (sem chave de teste no local) |
 
 ## 9. Arquivos modificados (Romano, principais)
+- Rodada 4 (equipe, produtoras, banners): `src/lib/data/{org-access,painel}.ts`, `src/lib/actions/{produtoras,onboarding}.ts`, `src/lib/criar/save.ts`, `src/lib/{bank,art-frame}.ts`, `src/lib/mail/{data,send}.ts`, `src/app/api/arte-html/route.ts`, `src/app/criar-evento/page.tsx`, `src/app/eventos/[slug]/page.tsx`, `src/components/art/html-art-frame.tsx` (+ troca mínima em `hero-stage`, `home-client`, `highlights`). Testes: `tests/db/{team,produtoras}.test.ts`, `tests/unit/art-frame.test.ts`.
 - Rodada 4: `src/lib/actions/tickets.ts` (D-11 e transações), `src/lib/{pricing,format,checkin,admin-trail}.ts`, `src/lib/criar/{meia,save,model}.ts`, `src/lib/actions/compra.ts`, `src/app/checkout/page.tsx`, `src/lib/payments/{fulfill,refund}.ts`, `src/lib/tickets/{trail,card}.ts`, `src/lib/auth/verified.ts`, `src/lib/help/articles.ts`, `src/lib/notify.ts` (nota do e-mail de transferência), `src/db/schema.ts` (`ticket_events`); mínimo em telas do Marcos: `src/app/transferencia/[token]/page.tsx`, `src/components/ingressos/accept-transfer.tsx`. Testes: `tests/unit/{meia,ticket-card}.test.ts`, `tests/db/trail.test.ts`, casos novos em `tests/db/{tickets,activation,place-order}.test.ts`.
 - Regras e integridade: `src/lib/holds.ts`, `src/lib/tickets/{limits,code,qr}.ts`, `src/lib/payments/fulfill.ts`, `src/lib/criar/save.ts`, `src/lib/pricing.ts`.
 - Ações de servidor: `src/lib/actions/{compra,checkout,tickets,painel,eventos,banco,grupo,auth,launch,senha}.ts`; removido `src/lib/actions/checkin-link.ts` (morto).

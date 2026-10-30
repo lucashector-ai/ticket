@@ -116,6 +116,18 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 - **Antes:** `transferTicket` gravava o link e depois travava o ingresso (dois envios ao mesmo tempo abriam dois links pendentes); `acceptTransfer` marcava o link como aceito e depois mudava o dono (uma queda no meio deixava o link "aceito" com o ingresso parado).
 - **Correção (ea4ab2f, junto com o rastro D-12):** cada operação é uma transação (lote com `ensure` ou CTE num comando só), com o registro do rastro dentro. Aceites simultâneos: o segundo não acha mais o ingresso "transferred" e não muda nada. **VALIDADO** (`tests/db/trail.test.ts`, `tests/db/tickets.test.ts`).
 
+### S-34 · Portaria (e admin) da equipe virava produtor sem aprovação (P1) · rodada 4
+- **Reprodução:** o dono convida uma conta como **portaria**; ela aceita, abre `/criar-evento` (para o site ela já "é produtor", pela equipe) e salva um evento: `organizerFor` não acha produtora com ela como dona e **cria uma produtora nova dela**, com evento vendável, sem inscrição nem aprovação. Com admin, o mesmo: o evento saía da produtora da dona.
+- **Causa:** a produtora do evento era achada pelo dono (`organizers.owner_user_id`), sem olhar o papel na equipe; editar evento era só para quem criou (`created_by_user_id`).
+- **Correção (3c3c57d):** produtora ativa por conta (`src/lib/data/org-access.ts`); evento novo só na produtora ativa como dono ou admin; portaria recusada ("Na equipe desta produtora você está na portaria…") e redirecionada no `/criar-evento`; edição e prévia de rascunho pela produtora do evento. Configurações (recebimento), equipe e Banco seguem só do dono.
+- **Teste:** `tests/db/team.test.ts` (falha sem a correção). **VALIDADO.**
+
+### S-35 · Produtora ativa por cookie: troca de id (rodada 4, item B)
+- O cookie `tw_org` só escolhe entre as produtoras da própria conta (dona ou equipe); id de outra produtora é ignorado (cai na primeira da conta) e `setActiveOrganizer` recusa. Teste com cookie forjado: sem eventos, equipe, recebimento ou criação na produtora de outra pessoa (`tests/db/produtoras.test.ts`). Limite de 3 com trava por conta na transação (3 pedidos simultâneos: 1 passa). **VALIDADO.**
+
+### S-36 · Banners em HTML herdavam a CSP da página (P1 para ligar a D-10) · rodada 4
+- `srcdoc` herda a CSP: com o bloqueio, o script da arte era barrado. Agora o iframe abre `/api/arte-html` (fora do proxy) com CSP própria e `sandbox allow-scripts` (origem opaca mesmo fora do iframe), `connect-src 'none'`, `form-action 'none'`, `frame-ancestors 'self'`; o HTML chega por `postMessage` e o palco só aceita a mensagem do `parent`. Validado nos 3 navegadores com a CSP bloqueando (687174a). **VALIDADO.**
+
 ### D-12 · Rastro dos ingressos: superfície nova (rodada 4)
 - Dados pessoais (e-mails, nomes, contas de quem comprou, recebeu e revendeu) ficam numa tabela lida só por `adminTicketTrail` (`src/lib/admin-trail.ts`, `server-only`), chamada só pela central (e-mail de admin do domínio, confirmado, com app autenticador). Nenhuma rota de API, ação de servidor ou tela de produtor/comprador lê `ticket_events`. Busca parametrizada (sem SQL montado com texto do usuário); entrada aceita só código, e-mail ou número do pedido, no máximo 20 ingressos por busca.
 - LGPD: é registro de operação para suporte e fraude (base: execução do contrato e legítimo interesse/prevenção a fraude); prazo de guarda a definir junto com a retenção de CPF/telefone (D-03, pendente jurídico). O rastro some com o ingresso (apagar o pedido apaga em cascata).
