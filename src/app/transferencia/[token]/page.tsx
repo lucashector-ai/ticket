@@ -9,7 +9,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getSessionUser } from "@/lib/auth/server";
 import { userContact } from "@/lib/notify";
-import { eventLabels } from "@/lib/tickets/labels";
+import { eventLabels, forSession } from "@/lib/tickets/labels";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Ingresso recebido", robots: { index: false } };
@@ -26,14 +26,15 @@ export default async function TransferenciaPage({ params }: { params: Promise<{ 
   if (!tr) notFound();
   const t = await db.query.tickets.findFirst({
     where: eq(schema.tickets.id, tr.ticketId),
-    with: { ticketType: { columns: { name: true } }, event: { with: { venue: { with: { city: true } } } }, order: { columns: { buyerName: true } } },
+    with: { ticketType: { columns: { name: true }, with: { session: true } }, event: { with: { venue: { with: { city: true } } } }, order: { columns: { buyerName: true } } },
   });
   if (!t) notFound();
   const gift = tr.kind === "gift";
   const user = await getSessionUser();
   const from = gift && t.order?.buyerName ? { name: t.order.buyerName } : await userContact(tr.fromUserId);
   const fromFirst = from?.name?.split(" ")[0] || (gift ? "Alguém" : "um amigo");
-  const L = eventLabels(t.event);
+  // evento de várias datas: a data do ingresso, não o período todo
+  const L = eventLabels(forSession(t.event, t.ticketType.session));
   const next = `/transferencia/${token}`;
   const mine = tr.status === "accepted" && !!user && tr.toUserId === user.id;
   const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
