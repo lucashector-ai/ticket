@@ -61,6 +61,8 @@ E2E versionado: `tests/e2e/checkout.e2e.mjs` (`pnpm test:e2e`, com `E2E_EMAIL`, 
 | "Me avise" sem login: 15 cadastros por IP por hora | VALIDADO |
 | Prévia OG de rascunho | VALIDADO: 404 (publicado 200) |
 | Exportar compradores (CSV) | VALIDADO: arquivo com colunas corretas |
+| App da portaria sem internet, código digitado | VALIDADO: "NÃO LIBERADO · Sem conexão." e o ingresso continua válido no banco (falha fechada) |
+| Ingresso reembolsado na portaria (QR e código) | VALIDADO (`tests/db/refund.test.ts`) |
 
 ### Matriz de cenários do produto (técnico)
 

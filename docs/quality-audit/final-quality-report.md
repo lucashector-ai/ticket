@@ -61,7 +61,7 @@ Detalhes em `performance-report.md`. JS da rota: `/entrar` 353 → 105 KB, `/cad
 |---|---|---|---|---|
 | Unitários (vitest) | 21 | 21 | 0 | 0 |
 | Integração no banco de teste (vitest) | 24 | 24 | 0 | 0 |
-| Navegador (Playwright, Chromium) | 7 fluxos (checkout e2e, duas abas, upload, cupom, login Google, câmera da portaria, imagem) | 6 | 1 (cronômetro, texto) | Firefox/WebKit: BLOQUEADO (não instalados) |
+| Navegador (Playwright, Chromium) | 13 fluxos (checkout e2e ×2, duas abas, upload, cupom, login Google, login com e-mail inexistente, câmera da portaria, portaria offline, "me avise", prévia OG, CSV, Meus ingressos/PDF) | 12 | 1 (cronômetro, texto, com o Marcos) | Firefox/WebKit: BLOQUEADO (não instalados) |
 | Pagamento real com Stripe (cartão, 3D Secure, Pix real, webhook real) | 0 | — | — | BLOQUEADO (sem chave de teste no local) |
 
 ## 9. Arquivos modificados (Romano, principais)
