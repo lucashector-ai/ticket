@@ -663,7 +663,7 @@
 /* Mobile: a barra fixa de compra (.mbar, 64px a 12px do fundo) ocupa a base da tela;
    o botão de acessibilidade sobe para ficar acima dela em vez de cobrir o preço. */
 @media (max-width:1024px){
-  body:has(.pg-evento .mbar:not(.off)):not(:has(.mm)) .a11y-tab{bottom:calc(84px + env(safe-area-inset-bottom))}
+  body:has(.pg-evento .mbar:not(.off)):not(:has(.mpn)) .a11y-tab{bottom:calc(84px + env(safe-area-inset-bottom))}
   body:has(.pg-evento .mbar) .ftr{padding-bottom:120px}
   body.bs-open .a11y-tab{display:none}
   body.bs-open .toast{bottom:calc(118px + env(safe-area-inset-bottom))}

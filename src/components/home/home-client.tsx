@@ -143,6 +143,15 @@ export function HomeClient({ user, events, hero, categories, cityOpts, spotify }
     return () => { window.removeEventListener("click", close); window.removeEventListener("keydown", onKey); window.removeEventListener("scroll", onScroll); };
   }, [acct]);
 
+  /* cidades com a contagem de eventos (folha de cidade do celular) */
+  const cityChoices = useMemo(() => cityOpts.map((c) => {
+    const list = c.value === "all" ? events : events.filter((e) => e.city === c.value);
+    const n = `${list.length} ${list.length === 1 ? "evento" : "eventos"}`;
+    return { ...c, sub: c.value === "all" ? n : `${list[0]?.uf ?? ""} · ${n}`.replace(/^ · /, "") };
+  }), [cityOpts, events]);
+  /* chips de categoria do celular: só as que têm evento */
+  const chips = useMemo(() => categories.filter((c) => c.count > 0), [categories]);
+
   const ok = !loading && !swap;
   const first = showAll ? view : view.slice(0, FIRST_N);
   const hasRest = ok && !showAll && view.length > FIRST_N;
@@ -156,7 +165,7 @@ export function HomeClient({ user, events, hero, categories, cityOpts, spotify }
         variant="home"
         onImage
         activePath="/"
-        cities={cityOpts}
+        cities={cityChoices}
         city={filters.city}
         onCity={(v) => refilter({ city: v })}
         query={filters.query}
@@ -279,6 +288,10 @@ export function HomeClient({ user, events, hero, categories, cityOpts, spotify }
                   <span className="qb-nl">Explorar eventos</span>
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
                 </Link>
+                {/* celular: com a busca grudada (o header some), o menu fica dentro dela */}
+                <button className="qb-menu" type="button" onClick={() => window.dispatchEvent(new Event("tw:menu"))} aria-label="Abrir menu" aria-haspopup="dialog" tabIndex={stuck ? undefined : -1} aria-hidden={stuck ? undefined : true}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16" /></svg>
+                </button>
               </div>
             </div>
           </div>
@@ -292,7 +305,16 @@ export function HomeClient({ user, events, hero, categories, cityOpts, spotify }
               <div>
                 <h2 className="h2" id="ev-t" style={{ fontSize: 30, lineHeight: 1.15, letterSpacing: "-0.02em" }}>Eventos em destaque</h2>
               </div>
+              <Link className="sh-all" href={exploreHref(filters)}>Ver tudo</Link>
             </div>
+            {chips.length > 1 && (
+              <div className="hchips" role="group" aria-label="Filtrar por categoria">
+                <button className={filters.cat === "all" ? "hchip on" : "hchip"} type="button" aria-pressed={filters.cat === "all"} onClick={() => refilter({ cat: "all" })}>Todos</button>
+                {chips.map((c) => (
+                  <button key={c.slug} className={filters.cat === c.slug ? "hchip on" : "hchip"} type="button" aria-pressed={filters.cat === c.slug} onClick={() => refilter({ cat: filters.cat === c.slug ? "all" : c.slug })}>{c.name}</button>
+                ))}
+              </div>
+            )}
             <div className="gwrap" ref={gridRef} style={{ minHeight: lockH || undefined }}>
               {loading && (
                 <div className="grid" aria-busy="true">

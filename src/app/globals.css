@@ -38,6 +38,7 @@
 @import "../styles/pages/sobre.css";
 @import "../styles/pages/reembolsos.css";
 @import "../styles/pages/pedido.css";
+@import "../styles/mobile-nav.css";
 
 @theme inline {
   --color-ink: #111111;

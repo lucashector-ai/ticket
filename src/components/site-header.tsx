@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { SignOutButton } from "@/components/sign-out-button";
 import { BrandLogo } from "@/components/brand-logo";
 import { useIsProducer } from "@/components/use-producer";
+import { CitySheet, MenuPanel, TabBar, useOverlay, type CityChoice } from "@/components/mobile-nav";
 
 export type HeaderUser = { id: string; name?: string | null; email?: string | null; image?: string | null } | null;
 
@@ -16,7 +17,7 @@ type Props = {
   onImage?: boolean;
   /** Esconde o header quando a busca da home "gruda" (comportamento do design). */
   hideWhenStuck?: boolean;
-  cities?: { value: string; label: string }[];
+  cities?: CityChoice[];
   city?: string;
   onCity?: (v: string) => void;
   /** @deprecated a home não mostra mais busca no cabeçalho */
@@ -31,8 +32,18 @@ type Props = {
 
 export function SiteHeader({ user, variant = "default", onImage = false, cities, city = "all", onCity, stuck = false, activePath }: Props) {
   const [scrolled, setScrolled] = useState(false);
-  const [menu, setMenu] = useState(false);
+  const mn = useOverlay();
+  const cs = useOverlay();
+  const menu = mn.open;
   const producer = useIsProducer(user?.id);
+  const openMenu = mn.show;
+
+  // a busca grudada da home tem o próprio botão de menu (o header some quando ela gruda)
+  useEffect(() => {
+    const on = () => openMenu();
+    window.addEventListener("tw:menu", on);
+    return () => window.removeEventListener("tw:menu", on);
+  }, [openMenu]);
 
   useEffect(() => {
     const onScroll = () => setScrolled((window.scrollY || 0) > 12);
@@ -40,10 +51,6 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-  useEffect(() => {
-    document.documentElement.style.overflow = menu ? "hidden" : "";
-    return () => { document.documentElement.style.overflow = ""; };
-  }, [menu]);
 
   const cls = stuck && !menu ? "hdr is-s hide" : scrolled ? "hdr is-s" : menu ? "hdr" : onImage ? "hdr on-img" : "hdr";
   const isActive = (p: string) => (activePath === p ? "on" : undefined);
@@ -100,48 +107,27 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" /></svg>
               Criar evento
             </Link>
-            <button className="ib only-m" type="button" onClick={() => setMenu((m) => !m)} aria-label={menu ? "Fechar menu" : "Abrir menu"} aria-expanded={menu}>
-              {menu ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16" /></svg>
-              )}
+            {variant === "home" && cities && (
+              <button className="cityb only-m" type="button" onClick={cs.show} aria-haspopup="dialog" aria-expanded={cs.open} aria-label={`Cidade: ${cityLabel(cities, city)}. Trocar cidade`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+                <span>{city === "all" ? "Todas" : cityLabel(cities, city)}</span>
+              </button>
+            )}
+            <button className="ib only-m" type="button" onClick={openMenu} aria-label="Abrir menu" aria-haspopup="dialog" aria-expanded={menu}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><path d="M4 9h16M4 15h16" /></svg>
             </button>
           </div>
         </div>
       </header>
-      {menu && (
-        <div className="mm" role="dialog" aria-label="Menu">
-          <div className="wrap">
-            <Link href="/explorar" onClick={() => setMenu(false)} style={{ animationDelay: ".04s" }}>Explorar <span className="mute" aria-hidden="true">→</span></Link>
-            <Link href="/#destaque" onClick={() => setMenu(false)} style={{ animationDelay: ".08s" }}>Eventos <span className="mute" aria-hidden="true">→</span></Link>
-            <Link href="/#categorias" onClick={() => setMenu(false)} style={{ animationDelay: ".12s" }}>Categorias <span className="mute" aria-hidden="true">→</span></Link>
-            {user ? (
-              <>
-                {/* no celular não há o dropdown do perfil: os atalhos da conta aparecem só para quem entrou */}
-                <Link href="/meus-ingressos" onClick={() => setMenu(false)} style={{ animationDelay: ".16s" }}>Meus ingressos <span className="mute" aria-hidden="true">→</span></Link>
-                <Link href="/conta" onClick={() => setMenu(false)} style={{ animationDelay: ".165s" }}>Minha conta <span className="mute" aria-hidden="true">→</span></Link>
-                {producer && <Link href="/painel" onClick={() => setMenu(false)} style={{ animationDelay: ".17s" }}>Painel do produtor <span className="mute" aria-hidden="true">→</span></Link>}
-                {producer && <Link href="/meus-eventos" onClick={() => setMenu(false)} style={{ animationDelay: ".18s" }}>Meus eventos <span className="mute" aria-hidden="true">→</span></Link>}
-                <SignOutButton className="mm-b" style={{ animationDelay: ".2s" }}>Sair <span className="mute" aria-hidden="true">→</span></SignOutButton>
-              </>
-            ) : (
-              <Link href="/entrar" onClick={() => setMenu(false)} style={{ animationDelay: ".2s" }}>Entrar <span className="mute" aria-hidden="true">→</span></Link>
-            )}
-            {cities && (
-              <label className="fld" style={{ padding: "18px 0 0", background: "transparent" }}>
-                <span>Cidade</span>
-                <select value={city} onChange={(e) => onCity?.(e.target.value)} style={{ fontSize: "20px", height: "32px" }}>
-                  {cities.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-              </label>
-            )}
-            <Link className="btn-p" href="/criar-evento" style={{ marginTop: "28px" }}>Criar evento</Link>
-          </div>
-        </div>
-      )}
+      {menu && <MenuPanel user={user} producer={producer} out={mn.out} onClose={mn.hide} />}
+      {cs.open && cities && <CitySheet cities={cities} city={city} out={cs.out} onPick={(v) => onCity?.(v)} onClose={cs.hide} />}
+      <TabBar user={user} />
     </>
   );
+}
+
+function cityLabel(cities: CityChoice[], v: string) {
+  return cities.find((c) => c.value === v)?.label ?? "Todas as cidades";
 }
 
 function firstName(u: NonNullable<HeaderUser>) {
