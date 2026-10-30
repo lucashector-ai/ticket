@@ -744,8 +744,9 @@ a.open{position:absolute;inset:0;z-index:2;border-radius:24px}
 .wrap,.ftr .wrap{width:100%;max-width:none;margin-left:0;margin-right:0;padding-left:max(20px, calc((100% - 1216px) / 2));padding-right:max(20px, calc((100% - 1216px) / 2))}
 .sb-in{max-width:none;padding-left:max(20px, calc((100% - 1216px) / 2));padding-right:max(20px, calc((100% - 1216px) / 2))}
 .qwrap.stuck .qbar{max-width:1216px}
-.bnx .bn-prev{left:max(20px, calc((100% - 1216px) / 2))}
-.bnx .bn-next{right:max(20px, calc((100% - 1216px) / 2))}
+/* setas do carrossel da home sempre na borda da tela (todos os banners, como no banner livre) */
+.bnx .bn-prev{left:20px}
+.bnx .bn-next{right:20px}
 
 /* keyframes (todas as páginas) */
 @keyframes slideIn{from{opacity:0;transform:scale(1.035)}to{opacity:1;transform:none}}
