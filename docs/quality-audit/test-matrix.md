@@ -41,9 +41,10 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/db/payout.test.ts | Dois saques do saldo inteiro ao mesmo tempo | no máximo um fica (falha sem a correção) | VALIDADO |
 | tests/db/refund.test.ts | Três "reembolsar tudo" ao mesmo tempo | um reembolso, valor = total, estoque volta uma vez | VALIDADO |
 | tests/db/webhook.test.ts | Webhook: assinatura errada, confirmação, repetida, cancelamento fora de ordem, cancelamento de pendente | 400 / emite 1× / sem duplicar / não desfaz / expira | VALIDADO (sem rede) |
+| tests/db/place-order.test.ts | Total no servidor; último lugar reservado por outra pessoa; mesma pessoa refaz; dois simultâneos pelo último; limite por pessoa | R$ 107,99 / recusa / aceita / ≤ 1 aberto (falha sem a correção) / recusa | VALIDADO |
 | tests/db/tickets.test.ts | Portaria: QR adulterado, outro evento, dois operadores no mesmo QR, já usado | recusa / uma entrada só | VALIDADO |
 
-Última execução completa: 30/10 madrugada, **48 testes, 48 aprovados, 0 reprovados** (14 arquivos, com `TEST_DATABASE_URL`); sem a variável, os 24 de integração ficam pulados. Build do OpenNext verde depois de cada bloco.
+Última execução completa: 30/10 madrugada, **52 testes, 52 aprovados, 0 reprovados** (15 arquivos, com `TEST_DATABASE_URL`); sem a variável, os 24 de integração ficam pulados. Build do OpenNext verde depois de cada bloco.
 
 ### No navegador (Playwright, servidor local, conta de teste)
 
