@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { qrPayload } from "@/lib/tickets/qr";
 import { getTicketByCode } from "@/lib/data/ingressos";
 import { checkinGuest, guestKind, guestTokenFrom } from "@/lib/guest-list";
+import { sessionRefusal } from "@/lib/checkin-day";
 
 const PAYLOAD_RE = /^ONDE\|((?:TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4})\|([A-Za-z0-9_-]{16})$/;
 const CODE_RE = /^(?:TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
@@ -49,6 +50,13 @@ export async function checkinTicket(input: string, eventIds: Set<string> | null,
   if (ticket.status !== "valid") {
     const why = ticket.status === "transferred" ? "transferido" : ticket.status === "refunded" ? "reembolsado" : "cancelado";
     return { ok: false, status: 409, error: `Ingresso ${why}.`, ticket: info };
+  }
+  // evento de várias datas: o ingresso é de uma data (a sessão do tipo) e só entra nela
+  if (ticket.ticketType.sessionId) {
+    const sessions = await db.select({ id: schema.eventSessions.id, startAt: schema.eventSessions.startAt, doorsAt: schema.eventSessions.doorsAt, sortOrder: schema.eventSessions.sortOrder })
+      .from(schema.eventSessions).where(eq(schema.eventSessions.eventId, ticket.eventId));
+    const wrong = sessionRefusal(ticket.ticketType.sessionId, sessions, new Date());
+    if (wrong) return { ok: false, status: 409, error: wrong, ticket: info };
   }
   // só marca se ainda estiver válido: duas leituras ao mesmo tempo não passam as duas
   // e, no mesmo comando, entrou no evento: sai da revenda (uma ida ao banco a menos em cada leitura da fila)
