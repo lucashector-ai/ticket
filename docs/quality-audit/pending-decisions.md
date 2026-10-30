@@ -4,6 +4,8 @@ Cada item: o que é, por que precisa da decisão, opções e a recomendação. N
 
 ## Rodada 4 · schema para a produção (aplicar ANTES de publicar a rodada 4)
 
+Ordem: (1) `ticket_events` (abaixo), (2) `hero_slides` e o banner de produtores (bloco seguinte). As produtoras múltiplas e a correção da equipe **não** mudam o schema.
+
 D-12 (rastro de cada ingresso, só a central vê). Tabela nova, sem mexer em nenhuma linha existente; o código grava nela dentro das mesmas transações de emissão, envio por e-mail, transferência, revenda, reembolso/cancelamento e check-in. Já criada e testada no branch de **teste** (`teste-r4`). Idempotente (pode rodar mais de uma vez). Ingressos antigos não precisam de migração: a central monta o rastro deles a partir dos dados que já existem.
 
 ```sql
@@ -67,6 +69,7 @@ Depois da tabela, o banner "BEM-VINDO, PRODUTOR." (1º slide, leva para `/produt
 Reversão (só se o código do banner for desfeito): `DROP TABLE IF EXISTS hero_slides;`
 
 **Para o dono (risco conhecido, não é deste banner só):** os banners em HTML (os de evento e os livres) rodam num iframe `srcdoc`, que herda a CSP da página. Hoje a CSP está em "só avisar" (D-10) e nada é bloqueado; **se ela for ligada em modo bloquear, o script de animação dos banners HTML para de rodar**. Conferido no Chromium trocando o cabeçalho para bloquear: neste banner o texto todo começa escondido e fica **só o fundo amarelo** (print `home-chromium-1280-csp-enforce.png` na pasta `shots/` do banner). Antes de ligar o bloqueio: servir o HTML do banner por uma rota própria, fora da CSP do site e com CSP própria (`sandbox allow-scripts`, sem acesso a nada do site), e apontar o iframe para ela no lugar do `srcdoc`. Também: a arte usa `Inter Tight` do Google Fonts sem fonte reserva; se o Google Fonts não carregar, o subtítulo e o botão da arte saem em fonte serifada.
+- **Rodada 4 (Romano, 687174a): RESOLVIDO.** Os banners em HTML não usam mais `srcdoc`: o iframe abre `/api/arte-html`, uma página do site com CSP própria (`sandbox allow-scripts`, sem rede, só dentro do próprio site) que recebe o HTML por mensagem. Validado com a CSP bloqueando nos 3 navegadores: o banner de produtores anima e a home não gera aviso `csp`. Não impede mais ligar o bloqueio (D-10).
 
 ## Schema para a produção (aplicar ANTES de publicar o código das rodadas 2 e 3, já aplicado)
 
@@ -188,6 +191,7 @@ Reversão: `DROP INDEX IF EXISTS order_refunds_one_pending_idx;`
 - **Opções:** (a) publicar em **Report-Only** (padrão do código), olhar os avisos `csp` no log do Worker por 1 a 2 semanas e então ligar o bloqueio com a variável `CSP_MODE=enforce` (sem mudar código; voltar é apagar a variável); (b) publicar já bloqueando; (c) não publicar a CSP.
 - **Recomendação:** (a). O que dava para testar aqui passou bloqueando nos 3 navegadores, mas o que só existe na produção (scripts da Cloudflare, VLibras, logins sociais) não. Bloquear às cegas pode quebrar o login ou o checkout; o Report-Only não muda nada para o usuário e mostra exatamente o que falta liberar. Critério para ligar: uma semana sem aviso `csp` de `script-src` vindo de páginas do site (avisos de extensões do navegador, `chrome-extension:`/`moz-extension:`, podem ser ignorados).
 - **Status:** APLICADO em Report-Only, aguardando o dono para ligar o bloqueio na produção.
+- **Rodada 4:** o bloqueio dos banners em HTML da home (que herdavam a CSP) foi resolvido (S-36, 687174a); com a CSP bloqueando, home e banner de produtores sem violação nos 3 navegadores. Recomendação inalterada: (a).
 
 ## D-11 · Transferência comum: quem tem o link fica com o ingresso (H-R3-2 do Marcos, Romano, P2 de segurança/produto)
 - **Hoje (não alterado):** no envio feito **na compra** ("presente"), aceitar exige estar na conta do e-mail indicado. Na **transferência comum** (Meus ingressos → Transferir), `acceptTransfer` aceita com qualquer conta logada que abrir o link do e-mail; a tela diz "Enviado para <e-mail>". Se o e-mail for encaminhado (ou lido por outra pessoa), quem abrir primeiro fica com o ingresso, e o código antigo deixa de valer.
