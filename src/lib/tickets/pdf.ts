@@ -14,7 +14,7 @@ const INK = rgb(0.067, 0.067, 0.067);
 const MUTE = rgb(0.43, 0.43, 0.45);
 const SOFT = rgb(0.6, 0.6, 0.62);
 const LIME = rgb(0.827, 0.961, 0.357);
-const BRAND_G = rgb(0.235, 1, 0.388); // #3CFF63, o isotipo
+const BRAND_LIME = rgb(0.929, 1, 0.235); // #EDFF3C, o isotipo
 const PAPER = rgb(0.949, 0.949, 0.933);
 const WHITE = rgb(1, 1, 1);
 const NAVY = rgb(0.094, 0.098, 0.2);
@@ -151,7 +151,7 @@ export async function ticketPdf(t: TicketCardData, qrPayload: string, art: Uint8
   // marca: isotipo + logotipo, os mesmos desenhos (e proporções) do logo do site
   const [lbx, lby, lbw, lbh] = BRAND_BOX.full, ls = 18 / lbh;
   const lx = (W - lbw * ls) / 2 - lbx * ls, ly = Y(y) + 2 + lby * ls;
-  page.drawSvgPath(MARK, { x: lx, y: ly, scale: ls, color: BRAND_G });
+  page.drawSvgPath(MARK, { x: lx, y: ly, scale: ls, color: BRAND_LIME });
   for (const d of WORD) page.drawSvgPath(d, { x: lx, y: ly, scale: ls, color: INK });
 
   return doc.save();
