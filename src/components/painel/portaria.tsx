@@ -18,8 +18,12 @@ export function Portaria({ eventId, title, sub, total, inside: inside0 }: { even
   const [log, setLog] = useState<Shot[]>([]);
   const [code, setCode] = useState("");
   const seq = useRef(0);
+  const camBox = useRef<HTMLElement>(null);
+  const codeIn = useRef<HTMLInputElement>(null);
+  /** no celular a câmera fica abaixo do título e o "Digitar código" abaixo dela: traz o resultado para a vista */
+  const showBox = (block: ScrollLogicalPosition) => requestAnimationFrame(() => camBox.current?.scrollIntoView({ behavior: "smooth", block }));
 
-  const check = useCallback(async (text: string) => {
+  const check = useCallback(async (text: string, typed = false) => {
     if (busy.current) return;
     busy.current = true;
     const r = await scanTicket(eventId, text).catch(() => ({ ok: false, error: "Sem conexão. Tente de novo.", ticket: undefined, auth: true }));
@@ -34,7 +38,9 @@ export function Portaria({ eventId, title, sub, total, inside: inside0 }: { even
     try { navigator.vibrate?.(r.ok ? 80 : [60, 60, 60]); } catch { /* sem vibração */ }
     setResult(shot);
     setLog((l) => [shot, ...l].slice(0, 30));
-    setTimeout(() => { setResult(null); busy.current = false; }, r.ok ? 1400 : 2600);
+    showBox("nearest");
+    // código digitado: depois do resultado, o foco volta ao campo para o próximo
+    setTimeout(() => { setResult(null); busy.current = false; if (typed) codeIn.current?.focus(); }, r.ok ? 1400 : 2600);
   }, [eventId]);
 
   const camError = useCallback(() => setCam("erro"), []);
@@ -50,7 +56,7 @@ export function Portaria({ eventId, title, sub, total, inside: inside0 }: { even
       </div>
 
       <div className="prt-g">
-        <section className={`prt-cam${result ? (result.ok ? " ok" : " no") : ""}`}>
+        <section ref={camBox} className={`prt-cam${result ? (result.ok ? " ok" : " no") : ""}`}>
           {cam === "on" ? (
             <>
               <video ref={video} playsInline muted />
@@ -61,14 +67,15 @@ export function Portaria({ eventId, title, sub, total, inside: inside0 }: { even
             <div className="prt-off">
               <b>{cam === "erro" ? "Não deu para abrir a câmera" : "Leitor de QR code"}</b>
               <span>{cam === "erro" ? "Permita o acesso à câmera nas configurações do navegador, ou digite o código do ingresso abaixo." : "Aponte a câmera para o QR code do ingresso. A entrada é marcada na hora."}</span>
-              <button className="b2 dark" type="button" onClick={() => setCam("on")}>{cam === "erro" ? "Tentar de novo" : "Abrir câmera"}</button>
+              <button className="b2 dark" type="button" onClick={() => { setCam("on"); showBox("center"); }}>{cam === "erro" ? "Tentar de novo" : "Abrir câmera"}</button>
             </div>
           )}
           {result && (
             <div className="prt-res" role="status" aria-live="assertive">
               <span className="prt-ic" aria-hidden="true">{result.ok ? "✓" : "✕"}</span>
-              <b>{result.title}</b>
+              <b className={result.title.length > 34 ? "long" : undefined}>{result.title}</b>
               {result.sub && <span>{result.sub}</span>}
+              {!result.ok && /^(QR code inválido|Ingresso não encontrado)/.test(result.title) && <small>Peça o ingresso aberto em Meus ingressos ou no e-mail e confira o código.</small>}
             </div>
           )}
         </section>
@@ -76,8 +83,8 @@ export function Portaria({ eventId, title, sub, total, inside: inside0 }: { even
         <aside className="side2">
           <section className="cx">
             <div className="card-h"><h2 className="card-t">Digitar código</h2></div>
-            <form className="frm" onSubmit={(e) => { e.preventDefault(); if (code.trim()) { void check(code.trim()); setCode(""); } }}>
-              <label className="fld"><span>Código do ingresso</span><input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="TW-XXXX-XXXX" autoCapitalize="characters" autoComplete="off" /></label>
+            <form className="frm" onSubmit={(e) => { e.preventDefault(); if (code.trim()) { void check(code.trim(), true); setCode(""); } }}>
+              <label className="fld"><span>Código do ingresso</span><input ref={codeIn} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="TW-XXXX-XXXX" autoCapitalize="characters" autoComplete="off" /></label>
               <button className="b2 dark block" type="submit" disabled={!code.trim()}>Validar</button>
             </form>
           </section>

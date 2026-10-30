@@ -449,6 +449,8 @@
   .prt-ic{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:38px;font-weight:700}
   .prt-res b{font:600 26px/1.15 'Inter Tight',sans-serif;letter-spacing:-.02em}
   .prt-res span{font-size:15px;opacity:.85}
+  .prt-res b.long{font-size:20px}
+  .prt-res small{max-width:300px;font-size:14px;line-height:1.45;opacity:.85}
   .sdot.no{background:#E5484D}
   @media (max-width:900px){
     .prt-g{grid-template-columns:minmax(0,1fr)}
