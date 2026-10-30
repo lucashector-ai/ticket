@@ -66,15 +66,18 @@ Reversão (só se o código desta rodada for desfeito): `ALTER TABLE orders DROP
 - **Por que decidir:** é um atraso artificial na página que mais vende; quem volta ao evento (do checkout, de um link) espera de novo. Faz parte do design original, por isso não removi.
 - **Opções:** (a) remover; (b) mostrar só na primeira visita da sessão; (c) encurtar para ~400 ms e só enquanto a imagem do topo carrega; (d) manter.
 - **Recomendação:** (b) ou (c). Mudança pequena em `src/components/evento/evento-view.tsx` (sem servidor).
+- **Status (rodada 2): APLICADO (b) + mais curto, VALIDADO.** Só na primeira página de evento da sessão (sessionStorage com try/catch), 0,9 s; recarregar, voltar do checkout e abrir outro evento não mostram de novo. Commit bd2bc5e (`ux-audit.md` U-33).
 
 ## DM-2 · Produtor precisa enviar 2 artes (cartaz 3:4 e banner 16:9) para publicar (Marcos, P2, ativação)
 - **Hoje:** "Envie o cartaz (3:4) e o banner (16:9) antes de publicar." O servidor já usa o cartaz no lugar do banner quando falta (`bannerId: media.banner ?? media.poster` em `src/lib/criar/save.ts`), mas a validação exige os dois.
 - **Por que decidir:** é a única trava "dura" da criação além de nome/data/local/preço; o iniciante quase sempre tem só o flyer. Mas o banner 16:9 com o cartaz 3:4 cortado fica feio no topo da página.
 - **Opções:** (a) exigir só o cartaz e montar o banner com o cartaz centralizado sobre um fundo desfocado dele mesmo (como o fundo da página já faz); (b) manter os dois.
 - **Recomendação:** (a). Romano: soltar a validação; Marcos: banner composto no `BannerArt`.
+- **Status (rodada 2): APLICADO (a), VALIDADO.** Criador e servidor exigem só o cartaz (`src/lib/criar/save.ts`, mudança mínima avisada ao Romano); sem banner, o `BannerArt` monta o banner com o cartaz inteiro sobre ele mesmo desfocado; prévia de link usa o cartaz reduzido. Evento "QA Marcos · Só cartaz (não comprar)" publicado e conferido em 390/768/1280, prévias, busca e prévia de link. Commit 70c84ef (U-34). Em aberto para o Romano: e-mail, aviso e passe da carteira ainda tratam o cartaz como banner horizontal (handoff 11:50).
 
 ## DM-3 · Texto livre "Política de cancelamento" pode contradizer a regra do sistema (Marcos, P2, confiança)
 - **Hoje:** a regra real de cancelamento é a estruturada (`cancelPolicy` + direito de arrependimento), e a página do evento mostra o texto dela. O campo livre da revisão ("Até 7 dias após a compra, com 48h de antecedência") é colado em seguida, então a página repete a mesma regra com outras palavras, e um produtor pode escrever "Não há reembolso", contradizendo o que o sistema faz.
 - **O que fiz (reversível):** na página do evento, o texto livre agora aparece como "Observação do produtor: …", separado da regra do sistema.
 - **Opções:** (a) trocar o campo livre por "Observações (opcional)" sem texto padrão; (b) remover o campo; (c) manter.
 - **Recomendação:** (a).
+- **Status (rodada 2): APLICADO (a), VALIDADO.** "Observações (opcional)" sem texto padrão no criador e "Observações padrão (opcional)" em Configurações; o antigo texto pronto salvo é tratado como vazio; a página do evento mantém "Observação do produtor". Regra de cancelamento intacta. Commits 96c2556, e1a2a6d (U-35).

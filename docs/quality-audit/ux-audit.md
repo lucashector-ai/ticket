@@ -173,16 +173,83 @@ Meus ingressos: ingresso em destaque com QR, código, titular, "Baixar PDF" (bai
 ### Celular deitado (844×390) · VALIDADO
 - Página do evento sem rolagem lateral; tela cheia de compra com cabeçalho, lista rolável e barra de total visíveis. M: `land-sheet.png`.
 
-## Pendências de UX (não corrigidas nesta noite)
-| Item | Grav. | Por quê | Status |
-|---|---|---|---|
-| Loader de 1,45 s na página do evento | P2 | design original; precisa do dono | DM-1 |
-| 2 artes obrigatórias para publicar | P2 | regra de publicação | DM-2 |
-| Texto livre de cancelamento pode contradizer a regra | P2 | conteúdo do produtor | DM-3 (mitigado) |
-| Tabelas do painel roláveis sem foco de teclado (`scrollable-region-focusable`) | P3 | precisa de `tabIndex` + rótulo em 10 tabelas | FALHOU (aberto) |
-| Barras do gráfico de vendas só com mouse/toque | P3 | sem teclado no `<rect>` | FALHOU (aberto) |
-| Pontos do carrossel da home com 13px de largura de toque | P3 | área já ampliada na altura; largura < 24px | FALHOU (aberto) |
-| Leitor de tela real (NVDA/VoiceOver) | — | não existe nesta máquina | BLOQUEADO |
-| Firefox e WebKit/Safari | — | não instalados | BLOQUEADO |
-| "Escrever com IA" (descrição) e "Com IA" (mapa) | — | dependem de chave externa | NÃO TESTADO |
-| Criar conta de produtor do zero | — | evitei conta nova (limite de 3, login compartilhado com a produção) | NÃO TESTADO |
+## Pendências de UX
+Situação depois da rodada 2 (30/10).
+
+| Item | Grav. | Situação |
+|---|---|---|
+| Loader de 1,45 s na página do evento | P2 | DM-1 aplicada: só na 1ª visita da sessão, 0,9 s (U-33) · VALIDADO |
+| 2 artes obrigatórias para publicar | P2 | DM-2 aplicada: só o cartaz; banner montado com o cartaz (U-34) · VALIDADO |
+| Texto livre de cancelamento pode contradizer a regra | P2 | DM-3 aplicada: "Observações (opcional)" sem texto pronto (U-35) · VALIDADO |
+| Tabelas do painel roláveis sem foco de teclado | P3 | U-36 · VALIDADO |
+| Barras do gráfico de vendas só com mouse/toque | P3 | U-37 · VALIDADO |
+| Pontos do carrossel da home com 13px de largura de toque | P3 | U-38 · VALIDADO |
+| Leitor de tela real (NVDA/VoiceOver/TalkBack) | — | BLOQUEADO (não existe nesta máquina) |
+| Firefox e WebKit/Safari | — | BLOQUEADO (a rede não deixa baixar; o dono vai liberar) |
+| "Escrever com IA" e "Gerar mapa 3D" (geração real) | — | BLOQUEADO (sem ANTHROPIC_API_KEY no local); falha tratada: VALIDADO |
+| Criar conta de produtor do zero | — | VALIDADO até "Ative sua conta"; ativação BLOQUEADO (e-mail do Neon Auth não chega no @example.com); aprovação da inscrição BLOQUEADO (central só @ticketswin.com.br) |
+| Câmera real de celular na portaria | — | BLOQUEADO (só câmera falsa do Chromium com vídeo do QR) |
+
+## Parte 3 · Rodada 2 (30/10, decisões do dono e pendências)
+Prints desta parte em `scratchpad/marcos/r2/` (indicados como "R2:").
+
+### U-33 · DM-1: "Preparando seus ingressos" só na primeira visita · P2 · VALIDADO
+- **Antes:** 1,45 s cobrindo a página em toda visita a `/eventos/*` (voltar do checkout, abrir outro evento).
+- **Solução:** marca na sessão (`sessionStorage`, com try/catch: sem storage, mostra); 0,9 s no total (0,6 s visível + 0,3 s saindo). Na carga direta, um script inline (padrão do guia "preventing flash before hydration" do Next) esconde o loader antes da primeira pintura; na navegação interna, `useLayoutEffect`. Com "reduzir movimento": 0,1 s.
+- **Teste:** 1ª visita ~0,6 s depois do DOMContentLoaded; recarregar, outro evento (carga direta) e navegação interna: 0 ms; sessão nova: mostra de novo. Commit bd2bc5e.
+
+### U-34 · DM-2: só o cartaz é obrigatório para publicar · P2 · VALIDADO
+- **Solução:** criador e servidor exigem só o cartaz ("Envie o cartaz (3:4) antes de publicar."); Banner vira "Opcional · Sem banner, montamos um com o cartaz" e o "Onde aparece" já mostra o resultado. O `BannerArt` monta o banner com o cartaz inteiro no centro sobre o próprio cartaz desfocado quando a imagem é o cartaz (`bannerId === flyerId`, o que o servidor já gravava) ou é alta (proporção < 1,3, detectada ao carregar). Prévia de link: cartaz reduzido (675×900) em vez de cortar o cartaz em 1200×630.
+- **Teste:** evento "QA Marcos · Só cartaz (não comprar)" publicado só com o cartaz. Página 390 e 1280, prévia do criador (celular e desktop), tela de contagem, busca, OG 200 image/jpeg. R2: `dm2-390-artes.png`, `dm2-390-pagina.png`, `dm2-1280-pagina.png`, `dm2-390-previa.png`, `dm2-1280-previa.png`. Commit 70c84ef.
+- **Para o Romano avaliar:** banner do e-mail, aviso e faixa do passe da carteira também usam `bannerId` como imagem horizontal (handoff 11:50).
+
+### U-35 · DM-3: "Política de cancelamento" → "Observações (opcional)" · P2 · VALIDADO
+- **Solução:** o campo começa vazio, com exemplo no placeholder e a nota "Aparece na página do evento como 'Observação do produtor', junto da regra de cancelamento. A regra em si fica no painel, em Cancelamentos e reembolsos." O antigo texto pronto ("Até 7 dias após a compra, com 48h de antecedência") salvo em rascunhos, eventos e Configurações é tratado como sem observação (não aparece mais repetido na página). Configurações: "Observações padrão (opcional)". Regra de cancelamento não mudou.
+- **Teste:** evento antigo e novo, 390 e 1280; página do evento sem a "Observação" repetida. R2: `dm3-390-obs.png`, `cfg-1280.png`. Commits 96c2556, e1a2a6d.
+
+### U-36 · Tabelas do painel roláveis pelo teclado · P3 · VALIDADO
+- Componente `Tbl` (15 tabelas): quando a tabela rola de lado, entra no Tab com nome ("Compradores", "Cupons"…); sem rolagem, não cria parada à toa. axe `scrollable-region-focusable`: 0 em /painel/publico, /painel/marketing, /painel/financeiro. Commit 4b24197.
+
+### U-37 · Gráfico de vendas pelo teclado · P3 · VALIDADO
+- O gráfico vira um controle deslizante: setas (1 dia), Page Up/Down (7 dias), Home/End; o leitor de tela recebe "30 de out, hoje: R$ 0". Foco visível. Clique continua igual. R2: `chart-390.png`. Commit 41f69a8.
+
+### U-38 · Pontos do carrossel da home com 24×24 · P3 · VALIDADO
+- Botões de 24×24 (o atual 30×24); o ponto visível continua com 7 px. axe `target-size` sem violação em 320, 390 e 1280. R2: `dots-390-full.png`. Commit 2204011.
+
+### U-39 · Login pedido por página protegida não voltava para ela · P2 · VALIDADO
+- **Tela:** qualquer página protegida aberta sem login (link do ingresso no e-mail, Meus ingressos, Criar evento). **Antes:** o middleware do Neon Auth mandava para `/entrar` sem `next`; depois de entrar, a pessoa caía na home. **Solução (mudança mínima no `proxy.ts`, avisada):** o redirecionamento leva `next` com a página pedida. Entrar e Criar conta dizem o motivo ("Entre na sua conta para criar e gerenciar seus eventos."). Commit 04c5974.
+
+### U-40 · Ativação: sem saída para e-mail digitado errado · P2 · VALIDADO
+- "E-mail errado? Cadastrar com outro e-mail" sai da conta pendente e volta ao cadastro mantendo o destino. Código errado: "Código incorreto ou expirado. Confira ou peça outro." (ok). Commit 1a724a5.
+
+### U-41 · Inscrição de produtor: um erro por envio · P2 · VALIDADO
+- **Antes:** envio vazio mostrava só "Digite a cidade do evento." (antes do estado, que vem primeiro), no fim do formulário, sem marcar campo e com o foco perdido; eram até 10 envios para descobrir tudo. **Depois:** "Faltam 7 campos. Eles estão marcados em vermelho.", cada campo com o motivo embaixo (não só a cor), foco no primeiro; o servidor continua conferindo. Envio válido → "Inscrição enviada!" e, ao recarregar, "Sua inscrição está em análise". R2: `prod-insc-erro.png`. Commit dc9b3ff.
+
+### U-42 · Portaria: "Entrada liberada" virava "Já entrou" com o celular ainda apontado · P1 · VALIDADO
+- **Tela:** app da portaria e portaria do painel, leitura pela câmera. **Antes:** depois do verde (1,7 s) a leitura voltava, e o mesmo QR só ficava bloqueado 4 s desde a primeira leitura: quem continuava com o celular na frente via, ~4 s depois, a tela vermelha "JÁ ENTROU ÀS 08:24" (no primeiro teste, um ingresso nunca usado apareceu assim). Na fila, isso gera discussão e retrabalho. **Solução (hook compartilhado):** o mesmo QR só é lido de novo depois de sair da frente da câmera por 2 s; reentrada continua sendo pega. **Teste:** QR parado 14 s → 1 verde e volta à câmera; QR que sai e volta → vermelho "Já entrou às 08:27" (certo). R2: `port-1-valido.png` (antes), `port2-parado-1.png`, `port2-volta-1.png`. Commit 264b8c2.
+
+### U-43 · Portaria: QR inválido sem próximo passo; painel com resultado fora da tela · P2 · VALIDADO
+- App e painel: "QR code inválido" / "Ingresso não encontrado" dizem "Peça o ingresso aberto em Meus ingressos ou no e-mail e confira o código.". Painel no celular: a câmera começava na metade de baixo da tela e o resultado do código digitado aparecia fora da vista; agora a câmera é centralizada ao abrir, o resultado é trazido para a vista e o foco volta ao campo; mensagem longa ("outro evento (nome)") com fonte menor e inteira; "já usado" mostra "Já entrou às HH:MM" + nome, como o app. E2E do Romano 13/13 com o texto novo. Commits bce8d62, 74f5a2e, 48d4f77.
+
+### U-44 · Editar evento no ar parecia rascunho · P2 · VALIDADO
+- **Antes:** ao editar um evento à venda, o topo dizia "Rascunho na sua conta", o botão "Publicar evento" e, depois de salvar, "Seu evento está no ar! Publicamos…" com confete. **Depois:** "Publicado", "Salvar alterações" e "Alterações salvas · continua no ar, já com as mudanças.". Commit f2f1ee1.
+
+### U-45 · Criador a 320 px e nomes acessíveis · P3 · VALIDADO
+- Botão da prévia saía da tela a 320 px (barra de baixo); etapas concluídas no celular (só ícone) sem nome; prévia rolável sem foco. Corrigidos; axe sem violação. Commit f5f01f1.
+
+### U-46 · Ingresso usado/cancelado com texto ilegível · P3 · VALIDADO
+- Horário do check-in, pedido e código em cinza 2,3–2,65:1. Agora só a arte e o QR ficam apagados; textos ≥ 4,5:1. R2: `used-ticket.png`. Commit 3aa8503.
+
+### Revisões feitas para o Romano (D-03, D-04)
+- **D-03** (caixa de novidades no checkout): desmarcada, depois de "Quem vai usar os ingressos", toque e teclado ok, 390 e 1280. Sem mudança. R2: `d03-390.png`, `d03-1280.png`.
+- **D-04** (código do app para trocar a conta de saque): aparece só quando pedido, recebe o foco. Texto da ajuda ajustado (por que é pedido + "Sem acesso ao app? Fale com a gente"). Commit e1a2a6d.
+
+### Teste do iniciante · produtor do zero (rodada 2)
+| Passo | Ações | Observado |
+|---|---|---|
+| Home → "Criar evento" (sem conta) | 2 toques (menu, Criar evento) | ia para `/entrar` sem contexto e sem voltar depois (U-39, corrigido) |
+| Criar conta | 5 campos + aceite + 1 toque | claro; o nome e o celular são reaproveitados na inscrição |
+| Ativar conta | código de 6 números | BLOQUEADO (o e-mail não chega no @example.com); sem saída para e-mail errado (U-40, corrigido) |
+| Inscrição de produtor | 10 campos obrigatórios | um erro por envio (U-41, corrigido); depois: 1 envio vazio mostra tudo |
+| Aprovação | — | BLOQUEADO (central só para @ticketswin.com.br) |
+

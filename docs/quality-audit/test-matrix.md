@@ -124,9 +124,38 @@ Playwright + Chromium no servidor local com a cópia do banco. Scripts e prints 
 | Busca: nome, maiúsculas, acento, erro de digitação, gênero, sem resultado | 390 | 2 | FALHOU → corrigido → VALIDADO (U-26) |
 | Criar evento (show, ingresso pago, 2 artes) até publicar | 390 | 2 completas + 5 parciais | VALIDADO (erros de cada etapa conferidos) |
 | Artes: proporção errada, mesma proporção maior, 4:5 | 390 | 1 | VALIDADO (mensagem reescrita) |
-| Portaria: abrir pelo painel, sem câmera, código inexistente, ingresso de outro evento | 390 | 1 | VALIDADO; câmera real BLOQUEADO; válido/já usado NÃO TESTADO |
+| Portaria: abrir pelo painel, sem câmera, código inexistente, ingresso de outro evento | 390 | 1 | VALIDADO; câmera real BLOQUEADO; válido/já usado: ver rodada 2 |
 | Equipe: criar e desligar acesso da portaria (com confirmação) | 390, 1280 | 2 | VALIDADO |
 | Conta › Endereço: Estado/Cidade | 320, 390, 768 | 2 | FALHOU → corrigido → VALIDADO (U-07) |
 | Pós-compra: transferir (modal), revender, PDF, página do ingresso | 390 | 1 | VALIDADO |
 | Celular deitado (844×390) | — | 1 | VALIDADO |
 | Leitor de tela real | — | 0 | BLOQUEADO |
+
+### Rodada 2 (30/10, depois das decisões do dono)
+Câmera da portaria: vídeo `.y4m` com o QR de verdade (tirado de `/ingressos/<código>`) como câmera falsa do Chromium (`--use-file-for-fake-video-capture`). Firefox/WebKit e leitor de tela real continuam BLOQUEADOS.
+
+| Jornada / cenário | Largura | Execuções | Resultado |
+|---|---|---|---|
+| DM-1: loader "Preparando seus ingressos" (1ª visita, recarregar, outro evento, navegação interna, sessão nova, reduzir movimento) | 390 | 1 | VALIDADO (só na 1ª visita, ~0,6 s; sem piscar na carga direta) |
+| DM-2: criar e publicar evento só com o cartaz; prévias, página, busca, prévia de link | 390, 768, 1280 | 2 (1 publicada, 1 até a revisão) | VALIDADO |
+| DM-3: "Observações (opcional)" vazio no evento novo, no evento antigo e em Configurações; página do evento sem o texto pronto | 390, 1280 | 1 | VALIDADO |
+| D-03: caixa "Quero receber novidades" (desmarcada, toque e teclado) | 390, 1280 | 1 | VALIDADO |
+| D-04: campo do código do app em Configurações (texto e aparência) | 1280 | 1 (print do Romano + revisão) | VALIDADO (texto ajustado); código real validado pelo Romano |
+| Tabelas do painel com rolagem: Tab e nome (axe `scrollable-region-focusable`) | 390 | 3 rotas | VALIDADO |
+| Gráfico de vendas pelo teclado (setas, Page Up/Down, Home/End, valor anunciado) | 390, 1280 | 1 | VALIDADO |
+| Pontos do carrossel da home ≥ 24×24 (axe `target-size`) | 320, 390, 1280 | 1 | VALIDADO |
+| Cadastro de produtor do zero: home → Criar evento → entrar → criar conta → ativar | 390 | 1 | VALIDADO até "Ative sua conta"; ativação BLOQUEADO (código vai por e-mail do Neon Auth; @example.com não recebe) |
+| Página protegida sem login volta para ela depois de entrar (`next`) | — | 4 rotas (curl) + 1 navegador | FALHOU → corrigido → VALIDADO |
+| E-mail errado na ativação: "Cadastrar com outro e-mail" | 390 | 1 | VALIDADO |
+| Inscrição de produtor: envio vazio, parcial, público < 10, envio válido, recarregar | 390 | 1 | FALHOU (1 erro por envio, sem foco) → corrigido → VALIDADO; aprovação BLOQUEADO (central só @ticketswin.com.br) |
+| Portaria (app) pela câmera: válido, já usado, outro evento, QR inválido | 320, 390 | 6 | FALHOU (válido virava "Já entrou" com o celular parado) → corrigido → VALIDADO |
+| Portaria (app): QR parado 14 s / sai e volta (reentrada) | 390 | 2 | VALIDADO (1 verde; reentrada vermelha) |
+| Portaria (painel) no celular: câmera e resultado à vista, código digitado, "Já entrou às" | 390 | 2 + e2e do Romano 13/13 | FALHOU → corrigido → VALIDADO |
+| "Escrever com IA" e "Gerar mapa 3D" | 390 | 1 | Geração: BLOQUEADO (sem ANTHROPIC_API_KEY); mensagem de falha e alternativa ("planta-modelo"): VALIDADO |
+| Zoom 200% (1280×800 → 640×400) em 8 rotas | 640 | 1 | VALIDADO (sem rolagem lateral) |
+| Girar a tela no meio da escolha de ingressos | 390 ↔ 844 | 1 | VALIDADO (escolha e barra de total mantidas) |
+| Editar evento já publicado: status e botão | 1280 | 1 | FALHOU ("Rascunho"/"Publicar evento") → corrigido → VALIDADO |
+| Regressão: compra completa Pix de teste | 320, 1280 | 2 | VALIDADO (R$ 80 + 7,99% = R$ 86,39 em todas as telas; recarregar → Meus ingressos) |
+| Regressão: criar evento até a revisão | 768 | 1 | VALIDADO |
+| Regressão: varredura 25 rotas (públicas, compra, conta, painel, criador, portaria) | 320, 390, 768, 1280 (100 telas) + axe em 390/1280 | 1 | 1 elemento fora da tela (prévia do criador a 320), 2 avisos de nome/rolagem no criador e contraste do ingresso usado: corrigidos e revalidados; restam falsos positivos de contraste (título sobre fundo desfocado, arte decorativa, lote esgotado desabilitado) |
+

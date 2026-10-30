@@ -6,6 +6,7 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | Conta | Quem criou | Para quê |
 |---|---|---|
 | (nenhuma até agora; Romano usa só `teste+agente1030@example.com`, já existente) | | |
+| `teste+marcos-produtor@example.com` | Marcos (rodada 2) | Testar o cadastro de produtor do zero pela interface (conta, inscrição de produtor, primeiro acesso ao painel) |
 
 ## Dados de teste no banco de teste
 - Testes de integração criam eventos, produtores, perfis e cupons `qa-test-…` e apagam no fim (conferido no fechamento: 0 eventos, 0 produtores, 0 perfis restantes). Cupom `QAROMANO10` e 15 cadastros "me avise" `qa.romano.aviso*@example.com` usados na validação foram apagados.
@@ -73,8 +74,25 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 06:10 | 71e2206 | Contraste dos cinzas de texto (U-19) | axe em 30 telas × 390/1280, antes/depois | VALIDADO |
 | 30/10 06:10 | 805d704 | Nomes acessíveis, 1 link por card, zoom na portaria, Esgotado/Encerrado (U-20, U-21) | axe + Playwright | VALIDADO |
 
+| 30/10 rodada 2 | bd2bc5e | DM-1: loader do evento só na 1ª visita da sessão, 0,9 s | Playwright 390: 1ª visita, recarregar, outro evento, navegação interna, sessão nova | VALIDADO |
+| 30/10 rodada 2 | 70c84ef | DM-2: só o cartaz para publicar; banner montado com o cartaz; prévia de link com o cartaz (mudança mínima em `save.ts` e `share-image.ts`) | evento publicado só com cartaz; 390/768/1280, prévias, OG 200 | VALIDADO |
+| 30/10 rodada 2 | 96c2556 · e1a2a6d | DM-3: "Observações (opcional)" sem texto pronto; texto antigo tratado como vazio; textos de Configurações e do código do app (D-04) | criador e Configurações 390/1280, página do evento | VALIDADO |
+| 30/10 rodada 2 | 4b24197 | Tabelas do painel roláveis entram no Tab com nome (`Tbl`) | axe 0 em 3 rotas a 390 | VALIDADO |
+| 30/10 rodada 2 | 41f69a8 | Gráfico de vendas operável pelo teclado (slider) | Playwright 390/1280: setas, Page, Home/End, clique | VALIDADO |
+| 30/10 rodada 2 | 2204011 | Pontos do carrossel 24×24 | axe target-size 320/390/1280; toque | VALIDADO |
+| 30/10 rodada 2 | 04c5974 | Página protegida sem login volta para ela (`next` no `proxy.ts`); entrar/cadastro com motivo | curl 4 rotas; Playwright Criar evento → entrar → cadastro | VALIDADO |
+| 30/10 rodada 2 | 1a724a5 | Ativação: "Cadastrar com outro e-mail" | Playwright 390 com a conta nova | VALIDADO |
+| 30/10 rodada 2 | dc9b3ff | Inscrição de produtor: todos os campos que faltam de uma vez, com foco | Playwright 390: vazio, parcial, inválido, válido | VALIDADO |
+| 30/10 rodada 2 | 264b8c2 | Portaria: o mesmo QR só é relido depois de sair da câmera por 2 s (verde não vira "Já entrou") | câmera falsa: QR parado 14 s, sai e volta | VALIDADO |
+| 30/10 rodada 2 | bce8d62 · 74f5a2e · 48d4f77 | Portaria: próximo passo no QR inválido; painel no celular com câmera e resultado à vista; "Já entrou às HH:MM" no painel; e2e ajustado | câmera falsa 320/390; e2e do Romano 13/13 | VALIDADO |
+| 30/10 rodada 2 | f5f01f1 | Criador: prévia cabe a 320; etapas e prévia com nome acessível | Playwright 320/360/390; axe 390/1280 | VALIDADO |
+| 30/10 rodada 2 | f2f1ee1 | Editar evento no ar: "Publicado", "Salvar alterações", "Alterações salvas" | Playwright 1280: salvar evento publicado | VALIDADO |
+| 30/10 rodada 2 | 3aa8503 | Ingresso usado/cancelado com textos ≥ 4,5:1 | axe /ingressos e /meus-ingressos 390 | VALIDADO |
+
 ### Dados de teste criados pelo Marcos (banco de teste)
 - 2 eventos publicados "QA Marcos · Show de teste (não comprar)" (`/eventos/qa-marcos-show-de-teste-nao-comprar` e `…-2`), conta de teste existente, Casa Tangente, 7/11. Apagar depois.
 - Compras de teste (Pix de teste, sem cobrança) na conta de teste: 6 pedidos de Aurora Ao Vivo (#48307, #48317–#48322) e pedidos pendentes/cancelados de Marea Festival (#48350, #48351).
 - 1 acesso de portaria "Portão Principal Norte (QA Marcos)" criado e desligado (2×).
 - Imagens enviadas ao R2 local (cartaz e banner de teste). Nenhuma conta nova criada.
+- **Rodada 2:** evento publicado "QA Marcos · Só cartaz (não comprar)" (`/eventos/qa-marcos-so-cartaz-nao-comprar`, id f9454f65-…) da conta de teste, só com cartaz (imagem no R2 local). Pedidos Pix de teste na conta de teste: #49031 (TW-AFH9-QDXL, usado na portaria), #49034 (TW-QNLX-7J8K, usado na portaria), #49261 e #49262 (regressão 320/1280). Um rodada do e2e da câmera do Romano (cria e usa ingressos no `qa-romano-checkout`).
+- **Conta nova (rodada 2):** `teste+marcos-produtor@example.com` (login do Neon Auth, compartilhado com a produção; e-mail **não ativado**) com 1 inscrição de produtor "em análise" (São Paulo – SP, Show) no banco de teste. Apagar a conta e a inscrição depois.
