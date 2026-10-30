@@ -504,22 +504,24 @@
   .cl-h .card-s{display:block;margin-top:4px;line-height:1.5}
   .cl-ic{flex:none;width:42px;height:42px;border-radius:12px;background:#111;color:#D3F55B;display:grid;place-items:center}
   .cl-new{display:flex;flex-wrap:wrap;gap:8px}
-  .cl-new input{flex:1 1 200px}
-  .cl-new input{flex:1;min-width:0;height:42px;padding:0 14px;border:0;border-radius:12px;background:#F4F4F1;font:inherit;font-size:14px;outline:none;box-shadow:inset 0 0 0 1.5px transparent}
+  /* campos com pelo menos 200px (os botões descem para a linha de baixo quando não cabem) */
+  .cl-new input{flex:1 1 200px;min-width:0;height:42px;padding:0 14px;border:0;border-radius:12px;background:#F4F4F1;font:inherit;font-size:14px;outline:none;box-shadow:inset 0 0 0 1.5px transparent}
   .cl-new input:focus{background:#fff;box-shadow:inset 0 0 0 1.5px #111}
   .cl-list{display:flex;flex-direction:column;border-radius:16px;background:#F7F7F2;padding:4px 12px}
   .cl-row{padding:10px 0;border-top:1px solid #EBEBE5}
   .cl-row:first-child{border-top:0}
-  .cl-top{display:flex;align-items:center;gap:6px}
+  .cl-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
   .cl-dot{flex:none;width:8px;height:8px;border-radius:50%;background:#7FB800;margin-right:4px;box-shadow:0 0 0 4px rgba(127,184,0,.14)}
   .cl-dot.off{background:#C9C9C2;box-shadow:0 0 0 4px rgba(17,17,17,.05)}
-  .cl-i{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-  .cl-i b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cl-i{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .cl-i b{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+  .cl-i b .cl-code{display:inline-block}
   .cl-i span{font-size:12.5px;color:#6E6E73}
   .cl-code{margin-left:8px;padding:2px 8px;border-radius:7px;background:#111;color:#D3F55B;font:700 12px 'Space Mono',monospace;letter-spacing:.06em;vertical-align:1px;user-select:all}
   .cl-b{flex:none;height:30px;padding:0 11px;border-radius:999px;background:#fff;font-size:12.5px;font-weight:600;color:#111;display:inline-flex;align-items:center;text-decoration:none;transition:background .2s}
   .cl-b:hover,.cl-b.on{background:#EAEAE4}
   .cl-b.danger{color:#B42318}
+  .cl-b.danger.on{background:#B42318;color:#fff}
   .cl-qr{display:flex;align-items:center;gap:16px;margin-top:10px;padding:14px;border-radius:14px;background:#fff}
   .cl-qr-c{flex:none;width:150px;height:150px;display:block}
   .cl-qr-c svg{width:100%;height:100%;display:block}
@@ -528,7 +530,16 @@
   .cl-qr-i span{font-size:13px;color:#6E6E73}
   .cl-qr-i code{margin-top:4px;font:12px 'Space Mono',monospace;color:#55554E;word-break:break-all}
   .cl-note{margin:0;font-size:12.5px;line-height:1.5;color:#8A8A90}
-  @media (max-width:640px){.cl-top{flex-wrap:wrap}.cl-i{flex-basis:calc(100% - 20px)}.cl-new{flex-direction:column}.cl-new .b2{width:100%}}
+  @media (max-width:640px){
+    .cl-i{flex-basis:calc(100% - 20px)}
+    .cl-new{flex-direction:column}
+    /* em coluna, o "flex:1 1 200px" virava altura: o campo ficava com 17px */
+    .cl-new input{flex:none;width:100%}
+    .cl-new .b2{width:100%}
+    /* QR em cima e o texto embaixo, com a largura toda (ao lado sobrava uma coluna de uma palavra por linha) */
+    .cl-qr{flex-direction:column;align-items:stretch}
+    .cl-qr-c{align-self:center;width:180px;height:180px}
+  }
 
   /* Financeiro: cartão do Banco Tickets Win */
   .bkc{position:relative;overflow:hidden;margin-bottom:16px;padding:26px 28px 22px;border-radius:24px;background:#141511;color:#F4F4EF}

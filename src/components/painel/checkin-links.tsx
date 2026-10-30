@@ -45,6 +45,13 @@ export function CheckinLinks({ eventId, links: links0 }: { eventId: string; link
       flash(`Acesso enviado para ${r.email}.`);
     });
   };
+  /** "Desligar" pede um segundo toque (o acesso cai na hora e não volta) */
+  const [arm, setArm] = useState<string | null>(null);
+  useEffect(() => {
+    if (!arm) return;
+    const id = setTimeout(() => setArm(null), 5000);
+    return () => clearTimeout(id);
+  }, [arm]);
   const revoke = (l: CheckinLink) => start(async () => {
     const r = await revokeCheckinLink(l.id);
     if (!r.ok) { flash(r.error); return; }
@@ -87,7 +94,7 @@ export function CheckinLinks({ eventId, links: links0 }: { eventId: string; link
                 <button className={qr === l.id ? "cl-b on" : "cl-b"} type="button" onClick={() => setQr(qr === l.id ? null : l.id)} aria-expanded={qr === l.id}>QR code</button>
                 <button className="cl-b" type="button" onClick={() => send(l)} disabled={busy}>{l.sent ? "Reenviar" : "Enviar por e-mail"}</button>
                 <button className="cl-b" type="button" onClick={() => void copy(l)}>Copiar link</button>
-                <button className="cl-b danger" type="button" onClick={() => revoke(l)} disabled={busy}>Desligar</button>
+                <button className={arm === l.id ? "cl-b danger on" : "cl-b danger"} type="button" onClick={() => { if (arm === l.id) { setArm(null); revoke(l); } else setArm(l.id); }} disabled={busy}>{arm === l.id ? "Confirmar: desligar" : "Desligar"}</button>
               </div>
               {qr === l.id && <LinkQr url={urlOf(l)} name={l.label} />}
             </div>
