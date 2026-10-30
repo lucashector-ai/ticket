@@ -1,6 +1,9 @@
 /* Gerado automaticamente a partir do template "tpl-Flyer" do export Tickets Win. Refine à mão. */
 import { Fragment } from "react";
 
+/** fundo de um evento sem cartaz (e de um cartaz que não carregou: a imagem quebrada some, ver BrokenImages) */
+const NO_ART = "repeating-linear-gradient(135deg,#F0F0EA 0 10px,#EAEAE4 10px 20px)";
+
 export const FLYER_IDS = ["baile", "subsolo", "marea", "cypher", "noite", "luz", "orquestra", "mesa", "calourada", "guitarra", "terreiro", "sintonia"] as const;
 export type FlyerId = typeof FLYER_IDS[number];
 
@@ -373,7 +376,7 @@ export function isImageArt(id: string | null | undefined): id is string {
 export function FlyerArt({ id }: { id: string }) {
   if (isImageArt(id)) {
     return (
-      <div aria-hidden="true" style={{ position: "relative", width: "100%", aspectRatio: "3 / 4", overflow: "hidden", background: "#DDDDD8" }}>
+      <div aria-hidden="true" style={{ position: "relative", width: "100%", aspectRatio: "3 / 4", overflow: "hidden", background: NO_ART }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={id} alt="" loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
       </div>
@@ -381,7 +384,7 @@ export function FlyerArt({ id }: { id: string }) {
   }
   if (!(id in MAP)) {
     // evento ainda sem cartaz enviado
-    return <div aria-hidden="true" style={{ position: "relative", width: "100%", aspectRatio: "3 / 4", background: "repeating-linear-gradient(135deg,#F0F0EA 0 10px,#EAEAE4 10px 20px)" }} />;
+    return <div aria-hidden="true" style={{ position: "relative", width: "100%", aspectRatio: "3 / 4", background: NO_ART }} />;
   }
   const Cmp = MAP[id as FlyerId];
   return (
