@@ -832,9 +832,12 @@
     .snt-b{flex:1}
   }
 }
-/* ingresso usado, cancelado ou reembolsado: meio apagado (cinza), com o selo do status ainda legível */
-.tkb.dim .tkb-art,.tkb.dim .tkb-i,.tm.dim .tm-art,.tm.dim .tm-i{filter:grayscale(1);opacity:.5;transition:opacity .3s,filter .3s}
-.tkb.dim .tkb-s .qr-b,.tkb.dim .tkb-s .tkb-code{filter:grayscale(1);opacity:.35}
+/* ingresso usado, cancelado ou reembolsado: arte e QR apagados (cinza); os textos (horário do check-in,
+   pedido, código) continuam legíveis, com contraste de pelo menos 4,5:1 */
+.tkb.dim .tkb-art,.tm.dim .tm-art{filter:grayscale(1);opacity:.5;transition:opacity .3s,filter .3s}
+.tkb.dim .tkb-i,.tm.dim .tm-i{filter:grayscale(1);opacity:.8;transition:opacity .3s,filter .3s}
+.tkb.dim .tkb-s .qr-b{filter:grayscale(1);opacity:.35}
+.tkb.dim .tkb-s .tkb-code{opacity:.75}
 .tkb.dim .tkb-s .tk-st{filter:none;opacity:1}
-.tkb.dim:hover .tkb-art,.tkb.dim:hover .tkb-i{opacity:.65}
+.tkb.dim:hover .tkb-art{opacity:.65}
 
