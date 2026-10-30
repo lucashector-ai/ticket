@@ -7,6 +7,8 @@ import { emailEnabled } from "@/lib/email";
 import { salePhase } from "@/lib/launch";
 import { resaleCap } from "@/lib/resale";
 import { listEventCoupons, listOrders, listParticipants, revenueByType } from "@/lib/data/painel";
+import { groupKey, meiaLeftByGroup } from "@/lib/meia-quota";
+import { meiaCap } from "@/lib/meia-share";
 import { refundTabData } from "@/lib/data/reembolsos";
 import { painelAccess } from "@/lib/painel/access";
 import { brl, dateNice, initials } from "@/lib/format";
@@ -66,6 +68,15 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
   const labels = rev.values.map((_, i) => dm(new Date(rev.start + i * DAY + DAY / 2)));
 
   const sessLabel = new Map(sessions.map((s) => [s.id, dateNice(s.startAt)]));
+  // cota de meia por setor (e data): 40% dos lugares; usadas = vendidas + reservadas agora
+  const meiaLeft = await meiaLeftByGroup(e.id, e.ticketTypes);
+  const meia = [...meiaLeft].map(([k, left]) => {
+    const ts = e.ticketTypes.filter((t) => groupKey(t) === k);
+    const cap = meiaCap(ts.reduce((s, t) => s + t.quantity, 0));
+    const t0 = ts[0];
+    const name = [t0?.sector ?? (meiaLeft.size > 1 ? "Ingressos" : null), t0?.sessionId && sessions.length > 1 ? sessLabel.get(t0.sessionId) : null].filter(Boolean).join(" · ");
+    return { name, used: Math.max(0, cap - left), cap };
+  }).filter((m) => m.cap > 0);
   const tiers = [...e.ticketTypes].sort((a, b) => a.sortOrder - b.sortOrder).map((t) => {
     const r = byType.get(t.id);
     const [status, stCls] = t.quantity > 0 && t.sold >= t.quantity ? TT_STATUS.sold_out : TT_STATUS[t.status] ?? TT_STATUS.open;
@@ -102,6 +113,7 @@ export default async function PainelEventoPage({ params, searchParams }: Props) 
     },
     chart: { revenue: rev.values, tickets: qty.values, labels },
     tiers,
+    meia,
     feed: paid.slice(0, 8).map((o) => feedItem(o, null)),
     methods: [...methods].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: METHOD[k] ?? k, pct: gross ? Math.round((v / gross) * 100) : 0, value: brl(v) })),
     coupons: cps.map((c) => ({ code: c.code, uses: usedBy.get(c.id)?.n ?? 0, off: brl(usedBy.get(c.id)?.off ?? 0), label: c.percentOff ? `${c.percentOff}%` : brl(c.amountOffCents ?? 0) })),

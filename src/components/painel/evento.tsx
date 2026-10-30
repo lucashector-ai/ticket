@@ -28,6 +28,8 @@ export type EventoPainelProps = {
   kpis: { net: string; gross: string; sold: number; cap: number; pct: number; orders: number; avg: string; tix: number };
   chart: { revenue: number[]; tickets: number[]; labels: string[] };
   tiers: { id: string; name: string; sub: string; color: string; price: string; sold: number; total: number; pct: number; revenue: string; status: string; stCls: string }[];
+  /** cota de meia por setor (40% dos lugares); name vazio = evento sem setores */
+  meia?: { name: string; used: number; cap: number }[];
   feed: FeedRow[];
   methods: { name: string; pct: number; value: string }[];
   coupons: { code: string; uses: number; off: string; label: string }[];
@@ -172,6 +174,12 @@ function Geral({ p }: { p: EventoPainelProps }) {
                 </div>
               ))}
             </Tbl>
+            {!!p.meia?.length && (
+              <p className="mq-l">
+                <b>Meia-entrada (até 40% de cada setor):</b>{" "}
+                {p.meia.map((m, i) => <span key={i} className={m.used >= m.cap ? "full" : undefined}>{i > 0 && " · "}{m.name ? `${m.name}: ` : ""}{n(m.used)} de {n(m.cap)}{m.used >= m.cap ? " (esgotada)" : ""}</span>)}
+              </p>
+            )}
           </section>
         </div>
         <aside className="side2">

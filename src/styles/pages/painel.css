@@ -656,3 +656,10 @@
 }
 /* folha aberta: a aba de acessibilidade não cobre a lista */
 body:has(.pg-painel .os-pop) .a11y-tab{display:none}
+
+/* painel do evento: cota de meia por setor embaixo de "Ingressos por setor" */
+.pg-painel {
+  .mq-l{margin:12px 0 0;font-size:13px;line-height:1.5;color:#55554E}
+  .mq-l b{color:#111;font-weight:600}
+  .mq-l .full{color:#B3261E}
+}
