@@ -204,6 +204,7 @@ function Chart({ c }: { c: EventoPainelProps["chart"] }) {
   const grid = [0, 1, 2, 3].map((g) => ({ y: BASE - (g / 3) * (BASE - TOP), v: (max / 3) * g }));
   const b = bars[sel];
   const total = vals.reduce((s, v) => s + v, 0);
+  const tipX = ((b.x + BW / 2) / 720) * 100;
   return (
     <section className="cx">
       <div className="card-h">
@@ -217,7 +218,8 @@ function Chart({ c }: { c: EventoPainelProps["chart"] }) {
         </svg>
         {grid.map((g) => <span key={g.y} className="ch-yl" style={{ top: `${(g.y / 220) * 100}%` }}>{g.v ? fmt(g.v) : "0"}</span>)}
         {[0, 7, 14, 21, vals.length - 1].map((i) => <span key={i} className="ch-xl" style={{ left: `${((X0 + i * SL + SL / 2) / 720) * 100}%` }}>{c.labels[i]}</span>)}
-        <div className="tip" style={{ left: `${((b.x + BW / 2) / 720) * 100}%`, top: `${(b.y / 220) * 100}%` }}>
+        {/* nas pontas o balão encosta na borda do gráfico em vez de sair da tela (barra de hoje, no celular) */}
+        <div className={tipX > 80 ? "tip tip-r" : tipX < 20 ? "tip tip-l" : "tip"} style={{ left: `${tipX}%`, top: `${(b.y / 220) * 100}%` }}>
           <b className="tp-v">{mode === "receita" ? brl(vals[sel]) : `${n(vals[sel])} ${vals[sel] === 1 ? "ingresso" : "ingressos"}`}</b>
           <span className="tp-s">{c.labels[sel]}{sel === vals.length - 1 ? " · hoje" : ""}</span>
         </div>
