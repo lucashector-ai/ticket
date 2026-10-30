@@ -6,6 +6,7 @@ import { useToast } from "@/components/toast";
 import { checkCoupon } from "@/lib/actions/compra";
 import { createGroup } from "@/lib/actions/grupo";
 import { priceOrder } from "@/lib/pricing";
+import { roomFor } from "@/lib/tickets/limits";
 import type { EventoData } from "./types";
 
 export type Coupon = { code: string; percentOff: number; amountOffCents: number; amountPerTicket: boolean; sector: string | null };
@@ -13,12 +14,10 @@ export type Coupon = { code: string; percentOff: number; amountOffCents: number;
 /** Escolha vinda da URL (`itens=<id>:<qtd>,...`, ao voltar do checkout): só tipos à venda, dentro dos limites. */
 function parseItens(e: EventoData, raw: string) {
   const q: Record<string, number> = {};
-  let sum = 0;
   for (const part of raw.split(",")) {
     const [id, n] = part.split(":");
-    const tier = e.tiers.find((t) => t.id === id && t.status === "open" && t.available > 0);
-    const k = Math.min(Number.parseInt(n ?? "", 10), tier?.limit ?? 0, tier?.available ?? 0, e.maxPerOrder - sum);
-    if (tier && k > 0) { q[tier.id] = k; sum += k; }
+    const k = Math.min(Number.parseInt(n ?? "", 10), roomFor(e.tiers, e.maxPerOrder, q, id ?? "").left);
+    if (id && k > 0) q[id] = k;
   }
   return q;
 }
@@ -66,16 +65,17 @@ export function useTickets(e: EventoData, initialItens = "") {
     return priceOrder({ lines, holders: [], coupon, method: "pix", installments: 1, feeRate: e.feeRate }).total;
   }, [coupon, e.tiers, e.feeRate, qty]);
 
+  /** Por que não dá para somar mais um deste tipo (limite por compra, por pessoa ou estoque); null se dá. */
+  const incBlock = useCallback((id: string) => roomFor(e.tiers, e.maxPerOrder, qty, id).reason, [e.tiers, e.maxPerOrder, qty]);
+  const canInc = useCallback((id: string) => incBlock(id) === null, [incBlock]);
+
   const inc = useCallback((id: string) => {
     const tier = e.tiers.find((t) => t.id === id);
     if (!tier || tier.status !== "open") return;
-    const sum = Object.values(qty).reduce((s, n) => s + n, 0);
-    if (sum >= e.maxPerOrder) { flash(`Máximo de ${e.maxPerOrder} ingressos por pessoa.`); return; }
-    const cur = qty[id] ?? 0;
-    if (cur >= tier.available) { flash(`Restam só ${tier.available} ingressos em ${tier.name}.`); return; }
-    if (cur >= tier.limit) { flash(`Máximo de ${tier.limit} ${tier.limit === 1 ? "ingresso" : "ingressos"} de ${tier.name} por pessoa.`); return; }
-    setQty({ ...qty, [id]: cur + 1 });
-  }, [e.tiers, e.maxPerOrder, qty, flash]);
+    const why = incBlock(id);
+    if (why) { flash(why); return; }
+    setQty({ ...qty, [id]: (qty[id] ?? 0) + 1 });
+  }, [e.tiers, qty, flash, incBlock]);
 
   const dec = useCallback((id: string) => {
     setQty((q) => ({ ...q, [id]: Math.max(0, (q[id] ?? 0) - 1) }));
@@ -142,7 +142,7 @@ export function useTickets(e: EventoData, initialItens = "") {
   const qtyLabel = nq ? `${nq} ${nq === 1 ? "ingresso selecionado" : "ingressos selecionados"}` : "Nenhum ingresso selecionado";
 
   return {
-    qty, inc, dec, nq, subtotal, discount, total, totalWithFee, qtyLabel, session, setSession, sector, setSector, visibleTiers,
+    qty, inc, dec, canInc, incBlock, nq, subtotal, discount, total, totalWithFee, qtyLabel, session, setSession, sector, setSector, visibleTiers,
     couponInput, setCouponInput: (v: string) => { setCouponInput(v.toUpperCase()); setCouponError(null); },
     coupon, couponMessage, applyCoupon, checking,
     checkout, pending, group, grouping,

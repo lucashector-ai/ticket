@@ -16,6 +16,7 @@ import { and, asc, eq, lt, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
 import { artVersion, eventShareArt } from "@/lib/share-image";
+import { boughtByType, type Bought } from "@/lib/payments/fulfill";
 
 export const dynamic = "force-dynamic";
 
@@ -37,11 +38,17 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
+/** Ingressos de cada tipo que quem está vendo já comprou (pela conta e pelo CPF do perfil). */
+async function viewerBought(userId: string, typeIds: string[]): Promise<Bought> {
+  const p = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, userId), columns: { cpf: true } });
+  return boughtByType(userId, p?.cpf ?? null, typeIds);
+}
+
 /* Paleta do design (mesma do seed) usada nos gradientes das faixas do player mock. */
 const PAL = ["#1E1E22", "#D3F55B", "#E9E7E0", "#2C55F5", "#FF4FD8", "#C4532B"];
 
 type Offer = { id: string; ticketTypeId: string; priceCents: number; sellerUserId: string };
-function toData(e: EventDetail, access: boolean, held: Map<string, number>, offers: Offer[], viewerId: string | null): EventoData {
+function toData(e: EventDetail, access: boolean, held: Map<string, number>, offers: Offer[], viewerId: string | null, bought: Bought): EventoData {
   const venueName = e.venueNameOverride ?? e.venue?.name ?? "";
   const city = e.venue?.city.name ?? "";
   const uf = e.venue?.city.uf ?? "";
@@ -73,6 +80,8 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     return {
       id: t.id, name: t.name, note: status === "upcoming" && t.salesStart ? salesStartNote(t.salesStart) : t.note, desc: t.description,
       priceCents: t.priceCents, limit: Math.min(t.maxPerOrder, e.maxPerOrder), status, available: Math.max(0, t.quantity - t.sold - (held.get(t.id) ?? 0)),
+      // limite por pessoa já usado em compras pagas (conta e CPF), a mesma conta que o checkout faz
+      owned: bought.get(t.id)?.all ?? 0,
       sector: t.sector, sectorColor: t.sectorColor, sessionId: t.sessionId,
     };
   });
@@ -148,11 +157,15 @@ export default async function EventoPage({ params, searchParams }: Params) {
     ev.organizerId ? isFollowing(user?.id, "organizer", ev.organizerId) : Promise.resolve(false),
   ]);
   const access = salePhase(ev) === "presale" && !!(await presaleAccess(ev.id));
-  const offers = await db.select({ id: schema.resaleListings.id, ticketTypeId: schema.resaleListings.ticketTypeId, priceCents: schema.resaleListings.priceCents, sellerUserId: schema.resaleListings.sellerUserId })
-    .from(schema.resaleListings)
-    .where(and(eq(schema.resaleListings.eventId, ev.id), or(eq(schema.resaleListings.status, "active"), and(eq(schema.resaleListings.status, "reserved"), lt(schema.resaleListings.reservedUntil, new Date())))))
-    .orderBy(asc(schema.resaleListings.priceCents));
-  const data = toData(ev, access, await heldByType(ev.id), offers, user?.id ?? null);
+  const [offers, held, bought] = await Promise.all([
+    db.select({ id: schema.resaleListings.id, ticketTypeId: schema.resaleListings.ticketTypeId, priceCents: schema.resaleListings.priceCents, sellerUserId: schema.resaleListings.sellerUserId })
+      .from(schema.resaleListings)
+      .where(and(eq(schema.resaleListings.eventId, ev.id), or(eq(schema.resaleListings.status, "active"), and(eq(schema.resaleListings.status, "reserved"), lt(schema.resaleListings.reservedUntil, new Date())))))
+      .orderBy(asc(schema.resaleListings.priceCents)),
+    heldByType(ev.id),
+    user ? viewerBought(user.id, ev.ticketTypes.map((t) => t.id)) : Promise.resolve<Bought>(new Map()),
+  ]);
+  const data = toData(ev, access, held, offers, user?.id ?? null, bought);
   const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
 
   return (

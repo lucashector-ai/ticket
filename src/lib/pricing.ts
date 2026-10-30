@@ -49,6 +49,26 @@ export function priceOrder(input: {
   return { subtotal, meia, discount, fee, base, installments: n, interest, total: base + interest };
 }
 
+/**
+ * Divide a taxa do pedido (calculada sobre o total, como em priceOrder) entre as linhas, proporcional ao
+ * valor de cada uma, pelo maior resto: a soma das partes é exatamente `fee`. Serve para mostrar a taxa por
+ * linha sem a diferença de centavos que aparece ao arredondar ingresso a ingresso (2 × 43,95 ≠ 87,89).
+ */
+export function feeShares(fee: number, amounts: number[]): number[] {
+  const total = amounts.reduce((s, a) => s + Math.max(0, a), 0);
+  if (!total || fee <= 0) return amounts.map(() => 0);
+  const raw = amounts.map((a) => (Math.max(0, a) * fee) / total);
+  const out = raw.map(Math.floor);
+  let rest = fee - out.reduce((s, v) => s + v, 0);
+  const order = raw.map((v, i) => [v - Math.floor(v), i] as const).sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  for (const [, i] of order) {
+    if (rest <= 0) break;
+    out[i] += 1;
+    rest -= 1;
+  }
+  return out;
+}
+
 /** Opções de parcelamento para um valor base (sem juros). */
 export function installmentOptions(baseCents: number) {
   return Array.from({ length: MAX_INSTALLMENTS }, (_, i) => {

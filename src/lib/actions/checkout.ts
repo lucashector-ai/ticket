@@ -43,7 +43,7 @@ export async function createOrder(input: Selection): Promise<CheckoutResult> {
   const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), with: { ticketTypes: true } });
   if (!ev || ev.status !== "published") return { error: "Evento indisponível." };
   const total = items.reduce((s, i) => s + i.quantity, 0);
-  if (total > ev.maxPerOrder) return { error: `Máximo de ${ev.maxPerOrder} ingressos por pessoa.` };
+  if (total > ev.maxPerOrder) return { error: `Máximo de ${ev.maxPerOrder} ingressos por compra, somando todos os tipos.` };
 
   let subtotal = 0, fees = 0;
   const lines: { ticketTypeId: string; quantity: number; unitPriceCents: number; unitFeeCents: number }[] = [];

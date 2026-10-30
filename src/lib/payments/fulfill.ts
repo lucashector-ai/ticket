@@ -9,6 +9,7 @@ import { heldSql } from "@/lib/holds";
 import { settleShare, shareStillHeld } from "@/lib/special";
 import { mailGroupSharePaid, mailOrderConfirmed, mailResaleSold, mailTransferSent } from "@/lib/notify";
 import { refundOrder } from "@/lib/payments/refund";
+import { overLimit, type Bought } from "@/lib/tickets/limits";
 
 /*
  * Emissão dos ingressos de um pedido pago: a MESMA rotina para o webhook da Stripe, para a conferência
@@ -53,7 +54,8 @@ const qrSvg = async (code: string, secret: string) => QRCode.toString(await qrPa
  * Conta pela conta e também pelo CPF do comprador, para o limite valer mesmo com outra conta.
  * `all`: tudo que conta para o limite; `mine`: só os desta conta (o resto veio do mesmo CPF em outra conta).
  */
-export type Bought = Map<string, { all: number; mine: number }>;
+export type { Bought };
+export { overLimit };
 export async function boughtByType(userId: string, cpf: string | null, typeIds: string[], exceptOrderId?: string): Promise<Bought> {
   if (!typeIds.length) return new Map();
   const rows = await db.select({
@@ -70,25 +72,6 @@ export async function boughtByType(userId: string, cpf: string | null, typeIds: 
     ))
     .groupBy(orderItems.ticketTypeId);
   return new Map(rows.map((r) => [r.id, { all: Number(r.all), mine: Number(r.mine) }]));
-}
-
-/** Confere o limite por pessoa de cada tipo; devolve a mensagem de erro (dizendo de onde vem a conta) ou null. */
-export function overLimit(items: { ticketTypeId: string; quantity: number }[], types: { id: string; name: string; maxPerOrder: number }[], bought: Bought) {
-  for (const it of items) {
-    const tt = types.find((t) => t.id === it.ticketTypeId);
-    if (!tt) continue;
-    const { all: had, mine } = bought.get(tt.id) ?? { all: 0, mine: 0 };
-    if (had + it.quantity > tt.maxPerOrder) {
-      const lim = `O limite é ${tt.maxPerOrder} ${tt.maxPerOrder === 1 ? "ingresso" : "ingressos"} de ${tt.name} por pessoa, conferido pela conta e pelo CPF.`;
-      if (!had) return lim;
-      const left = Math.max(0, tt.maxPerOrder - had);
-      const rest = left ? ` Você ainda pode comprar ${left}.` : " Não dá para comprar mais deste tipo.";
-      const other = had - mine;
-      if (!other) return `${lim} Esta conta já tem ${had}.${rest}`;
-      return `${lim} Já existem ${had} ${had === 1 ? "ingresso" : "ingressos"} deste tipo comprados com o CPF informado${mine ? ` (${mine} nesta conta e ${other} em outra conta)` : ", em outra conta"}.${rest} Se não foi você, fale com a Tickets Win.`;
-    }
-  }
-  return null;
 }
 
 /** Resumo de um pedido já pago (para a tela de confirmação). */

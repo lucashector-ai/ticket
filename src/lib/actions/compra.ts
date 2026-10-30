@@ -133,7 +133,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     if (!access.ok) return { ok: false, error: access.phase === "presale" ? "A pré-venda é só para quem recebeu o link. A venda geral abre em breve." : "As vendas deste evento ainda não abriram." };
     presaleSignupId = access.presaleSignupId;
     const totalQty = items.reduce((s, i) => s + i.quantity, 0);
-    if (totalQty > ev.maxPerOrder) return { ok: false, error: `Máximo de ${ev.maxPerOrder} ingressos por pessoa.` };
+    if (totalQty > ev.maxPerOrder) return { ok: false, error: `Máximo de ${ev.maxPerOrder} ingressos por compra, somando todos os tipos.` };
     if (holders.length !== totalQty) return { ok: false, error: "Informe o titular de cada ingresso." };
     const limitErr = overLimit(items, ev.ticketTypes, await boughtByType(user.id, digits(buyer.cpf), items.map((i) => i.ticketTypeId)));
     if (limitErr) return { ok: false, error: limitErr };

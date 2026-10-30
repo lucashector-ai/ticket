@@ -28,6 +28,8 @@ export type TierItem = {
   priceCents: number;
   /** máximo por pessoa deste tipo */
   limit: number;
+  /** quantos deste tipo quem está vendo já comprou (conta e CPF); conta para o limite por pessoa */
+  owned?: number;
   status: "upcoming" | "open" | "sold_out" | "closed";
   available: number;
   sector: string | null;
