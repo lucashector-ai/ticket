@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
-import { heldByType } from "@/lib/holds";
+import { heldByType, overbooked } from "@/lib/holds";
 import { canBuy, randomToken } from "@/lib/launch";
 import { queueAllows } from "@/lib/queue";
 import { tierStatus } from "@/lib/tickets/status";
@@ -46,6 +46,11 @@ export async function createGroup(input: z.input<typeof groupSchema>): Promise<{
     code, eventId: ev.id, leaderUserId: user.id, leaderName: user.name ?? null, expiresAt: new Date(Date.now() + GROUP_MINUTES * 60_000),
   }).returning({ id: groupOrders.id });
   await db.insert(groupShares).values(shares.map((s, i) => ({ groupId: g.id, ticketTypeId: s.ticketTypeId, priceCents: s.priceCents, sortOrder: i })));
+  // dois grupos (ou um grupo e um pedido) pelos últimos lugares no mesmo instante: este desiste
+  if ((await overbooked(ev.id, [...new Set(shares.map((s) => s.ticketTypeId))])).length) {
+    await db.update(groupOrders).set({ status: "cancelled" }).where(eq(groupOrders.id, g.id));
+    return { ok: false, error: "Outra pessoa acabou de reservar os últimos ingressos. Confira o que ainda resta e tente de novo." };
+  }
   return { ok: true, code };
 }
 

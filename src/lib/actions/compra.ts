@@ -11,7 +11,7 @@ import { tierStatus } from "@/lib/tickets/status";
 import { canBuy } from "@/lib/launch";
 import { promoterForOrder } from "@/lib/promoters";
 import { queueAllows } from "@/lib/queue";
-import { heldByType } from "@/lib/holds";
+import { heldByType, overbooked } from "@/lib/holds";
 import { claimSpecial, lookupSpecial } from "@/lib/special";
 import { boughtByType, fulfillOrder, overLimit, type FulfillResult } from "@/lib/payments/fulfill";
 import { startPix, STRIPE_MIN_BRL_CENTS } from "@/lib/payments/intents";
@@ -137,7 +137,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     if (holders.length !== totalQty) return { ok: false, error: "Informe o titular de cada ingresso." };
     const limitErr = overLimit(items, ev.ticketTypes, await boughtByType(user.id, digits(buyer.cpf), items.map((i) => i.ticketTypeId)));
     if (limitErr) return { ok: false, error: limitErr };
-    const held = await heldByType(ev.id);
+    // vagas de grupos e reservas de outras pessoas (os pedidos abertos desta conta são liberados abaixo)
+    const held = await heldByType(ev.id, { exceptUserId: user.id });
     for (const it of items) {
       const tt = ev.ticketTypes.find((t) => t.id === it.ticketTypeId);
       if (!tt || tierStatus(tt) !== "open") return { ok: false, error: "Um dos lotes não está mais disponível." };
@@ -195,6 +196,12 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     orderId: order.id, ticketTypeId: l.ticketTypeId, quantity: l.quantity, unitPriceCents: l.priceCents,
     unitFeeCents: Math.round(l.priceCents * feeRate),
   })));
+  // a reserva vale a partir daqui: se outra pessoa reservou os mesmos últimos lugares no mesmo instante, este
+  // pedido sai antes de gerar Pix ou cobrar (melhor do que cobrar e estornar depois)
+  if (!special && (await overbooked(ev.id, lines.map((l) => l.ticketTypeId))).length) {
+    await db.update(orders).set({ status: "cancelled" }).where(and(eq(orders.id, order.id), eq(orders.status, "pending")));
+    return { ok: false, error: "Outra pessoa acabou de reservar os últimos ingressos deste tipo. Confira o que ainda resta e tente de novo." };
+  }
 
   // guarda celular e CPF no perfil para preencher da próxima vez
   await db.insert(userProfiles).values({ userId: user.id, name: buyer.name.trim(), email: user.email ?? buyer.email, phone: buyer.phone, cpf: digits(buyer.cpf) })

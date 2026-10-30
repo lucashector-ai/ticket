@@ -73,7 +73,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   const resume: ResumeData | null = order ? await resumeView(order) : null;
   // pedido já criado passou pela abertura das vendas e pela fila
   if (!special && !resume && (!(await canBuy(e)).ok || !(await queueAllows(e)))) redirect(`/eventos/${e.slug}`);
-  const held = special ? new Map<string, number>() : await heldByType(e.id);
+  const held = special ? new Map<string, number>() : await heldByType(e.id, { exceptUserId: user?.id });
   const resumed = new Map((resume?.items ?? []).map((i) => [i.ticketTypeId, i]));
 
   const qty: Record<string, number> = {};

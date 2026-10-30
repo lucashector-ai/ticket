@@ -162,7 +162,8 @@ export default async function EventoPage({ params, searchParams }: Params) {
       .from(schema.resaleListings)
       .where(and(eq(schema.resaleListings.eventId, ev.id), or(eq(schema.resaleListings.status, "active"), and(eq(schema.resaleListings.status, "reserved"), lt(schema.resaleListings.reservedUntil, new Date())))))
       .orderBy(asc(schema.resaleListings.priceCents)),
-    heldByType(ev.id),
+    // a reserva de quem está vendo (pedido aberto dele) não tira lugar dele mesmo
+    heldByType(ev.id, { exceptUserId: user?.id }),
     user ? viewerBought(user.id, ev.ticketTypes.map((t) => t.id)) : Promise.resolve<Bought>(new Map()),
   ]);
   const data = toData(ev, access, held, offers, user?.id ?? null, bought);
