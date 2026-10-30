@@ -12,6 +12,8 @@ export function ResaleModal({ title, ticketId, faceCents, maxCents, onClose, onD
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const cents = Math.round(Number(value.replace(/\./g, "").replace(",", ".")) * 100) || 0;
+  // fora da faixa o botão trava: diz o motivo (antes ficava travado sem explicação)
+  const range = cents < 500 ? "O preço mínimo na revenda é R$ 5,00." : cents > maxCents ? `O preço máximo é ${money(maxCents)}.` : null;
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     start(async () => {
@@ -32,14 +34,15 @@ export function ResaleModal({ title, ticketId, faceCents, maxCents, onClose, onD
       <form className="mo-f" onSubmit={submit}>
         <label className="fld">
           <span className="fld-l">Preço de venda</span>
-          <span className="rs-in"><em>R$</em><input autoComplete="off" className="fld-i" inputMode="decimal" value={value} onChange={(e) => { setValue(e.target.value.replace(/[^\d,.]/g, "")); setError(null); }} autoFocus /></span>
+          <span className="rs-in"><em>R$</em><input autoComplete="off" className="fld-i" inputMode="decimal" aria-invalid={range ? true : undefined} aria-describedby="rs-sum" value={value} onChange={(e) => { setValue(e.target.value.replace(/[^\d,.]/g, "")); setError(null); }} autoFocus /></span>
         </label>
-        <div className="rs-sum">
-          <span>Você pagou <b>{money(faceCents)}</b> · máximo permitido <b>{money(maxCents)}</b></span>
-          <span>Você recebe <b className="rs-get">{money(Math.round(cents * 0.95))}</b> <small>(menos a taxa de 5% da revenda)</small></span>
+        <div className="rs-sum" id="rs-sum" aria-live="polite">
+          {/* faceCents é o preço do tipo (ou meia), não o que a pessoa pagou (cupom, revenda): "Você pagou" mentia para quem comprou na revenda */}
+          <span>Valor do ingresso <b>{money(faceCents)}</b> · máximo permitido <b>{money(maxCents)}</b></span>
+          {range ? <span className="fld-err">{range}</span> : <span>Você recebe <b className="rs-get">{money(Math.round(cents * 0.95))}</b> <small>(menos a taxa de 5% da revenda)</small></span>}
         </div>
         {error && <p className="fld-err" role="alert">{error}</p>}
-        <button className="go-b" type="submit" disabled={pending || cents < 500 || cents > maxCents}>{pending ? "Anunciando…" : "Anunciar na revenda"}</button>
+        <button className="go-b" type="submit" disabled={pending || !!range}>{pending ? "Anunciando…" : "Anunciar na revenda"}</button>
       </form>
     </Modal>
   );
