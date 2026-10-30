@@ -116,6 +116,10 @@ type Addr = { cep: string; street: string; number: string; complement: string; d
 const NO_ADDR: Addr = { cep: "", street: "", number: "", complement: "", district: "", city: "", uf: "" };
 const UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
 
+/** guarda (na aba) que esta URL de checkout acabou num pedido pago, para o recarregar levar aos ingressos */
+const PAID_KEY = "twPaid";
+let booted = false;
+
 export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, apple = false, stripeKey, resume, notice, hasSavedCards }: Props) {
   const live = !!stripeKey;
   const router = useRouter();
@@ -204,6 +208,22 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     return () => clearInterval(iv);
   }, []);
   useEffect(() => { window.scrollTo(0, 0); }, []);
+  // recarregou a tela de "Pedido confirmado": vai para os ingressos desse pedido, em vez de abrir um checkout
+  // novo com os mesmos itens (parecia a confirmação e levava a comprar de novo)
+  useEffect(() => {
+    // só na carga desta página (o router.refresh da confirmação monta o componente de novo)
+    if (booted) return;
+    booted = true;
+    try {
+      const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+      const here = `${window.location.pathname}${window.location.search}`;
+      const paid = JSON.parse(sessionStorage.getItem(PAID_KEY) ?? "null") as { url: string; n: number; at: number } | null;
+      if (!paid || paid.url !== here || Date.now() - paid.at > 3 * 3_600_000) return;
+      if (!nav || nav.type === "navigate" || !nav.name.endsWith(here)) return;
+      sessionStorage.removeItem(PAID_KEY);
+      window.location.replace(`/meus-ingressos?pedido=${paid.n}`);
+    } catch { /* sem sessionStorage: segue no checkout */ }
+  }, []);
 
   /* depois de entrar na conta, preenche o que estiver vazio */
   const [seenUser, setSeenUser] = useState(user?.id ?? null);
@@ -371,6 +391,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     window.scrollTo({ top: 0, behavior: "smooth" });
     // o pedido está pago: a URL volta para o evento (um ?pedido= pago levaria para Meus ingressos)
     window.history.replaceState(null, "", urlFor());
+    try { sessionStorage.setItem(PAID_KEY, JSON.stringify({ url: urlFor(), n: r.number, at: Date.now() })); } catch { /* sem storage */ }
     // parte de grupo / revenda: recarregar a página levaria de volta ao grupo (a vaga já está paga)
     if (!lock) router.refresh();
   }, [lock, router, setPending, urlFor]);
