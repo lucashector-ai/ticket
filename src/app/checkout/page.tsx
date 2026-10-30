@@ -105,11 +105,14 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
     })
     : [];
 
+  // revenda/parte de grupo num evento de várias datas: a data é a do ingresso travado, não o período todo
+  const lockedSession = special ? e.sessions.find((s) => s.id === e.ticketTypes.find((t) => t.id === special.ticketTypeId)?.sessionId) : undefined;
+
   const event: CompraEvent = {
     slug: e.slug,
     title: e.title,
     flyerId: e.flyerId,
-    dateNice: e.dateLabel ?? "",
+    dateNice: lockedSession && e.sessions.length > 1 ? dateNice(lockedSession.startAt) : e.dateLabel ?? "",
     venue: e.venueNameOverride ?? e.venue?.name ?? "",
     city: e.venue?.city.name ?? "",
     maxPerOrder: e.maxPerOrder,
