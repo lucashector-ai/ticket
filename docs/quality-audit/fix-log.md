@@ -33,6 +33,7 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 05:10 | 5943600 | jsQR sob demanda (/portaria 234 → 107 KB) | câmera falsa no Chromium leu o QR de um ingresso de teste | VALIDADO |
 | 30/10 05:15 | a5f57da | Editar evento: apagar tipo de ingresso não quebra no meio (FK) | `tests/db/edit-types.test.ts` (4 cenários) | VALIDADO |
 | 30/10 05:35 | 0d5d79c | Freio de e-mails: "me avise" 15/h por IP; transferências 20/h por conta (S-19) | Playwright: 15 cadastros e o 16º recusado; dados de teste apagados | VALIDADO |
+| 30/10 05:45 | d72c91c | `placeOrder`: no máximo 12 pedidos por conta a cada 10 min (reserva não vira trava de estoque) | tsc/eslint; testes | CORRIGIDO, NÃO VALIDADO no navegador |
 
 ## Marcos
 
