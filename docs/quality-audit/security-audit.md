@@ -26,6 +26,7 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 | S-16 | P1 | Integridade (editar evento) | Apagar tipo de ingresso citado em pedido estourava a chave estrangeira no meio da gravação (evento meio salvo, reenvio duplicava tipos) | VALIDADO (integração) | a5f57da |
 | S-17 | P1 | Dependências | SDK do Neon Auth fixa better-auth 1.7.6 (avisos críticos de OAuth, código do servidor de login hospedado) | ABERTO: decisão D-06 | — |
 | S-18 | P1 | Configuração | Sem `STRIPE_SECRET_KEY` o checkout entra sozinho no modo de teste e emite ingresso sem cobrança | ABERTO: decisão D-07 | — |
+| S-19 | P2 | Abuso de e-mail | "Me avise" (sem login) e transferências mandavam e-mail para qualquer endereço sem limite | VALIDADO (15 cadastros, 16º recusado) | ver fix-log |
 
 ## Detalhes
 

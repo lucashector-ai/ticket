@@ -26,6 +26,7 @@ Detalhes, reprodução e evidências em `security-audit.md`.
 | S-14 | P2 | Cupom sem limite de consultas | VALIDADO |
 | S-15 | P1 | jspdf (críticos) sem uso; node-forge desatualizado | VALIDADO |
 | S-16 | P1 | Editar evento quebrava no meio ao apagar tipo citado em pedido | VALIDADO |
+| S-19 | P2 | "Me avise" e transferências disparavam e-mails sem limite | VALIDADO |
 | S-09 | P1 | Grupo contorna o limite por pessoa | ABERTO (D-01) |
 | S-10 | P2 | Conta de saque troca sem app autenticador | ABERTO (D-04) |
 | S-17 | P1 | SDK do Neon Auth com better-auth 1.7.6 | ABERTO (D-06) |
