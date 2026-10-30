@@ -62,6 +62,14 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
     setRestored(true);
     try { const base = emptyDraft(); const s = JSON.parse(stored) as Draft; setD({ ...base, ...s, teaser: { ...base.teaser, ...s.teaser } }); } catch { /* rascunho corrompido: ignora */ }
   }
+  // celular/tablet: a etapa atual sempre à vista na faixa de etapas (que rola de lado)
+  const stepsRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = stepsRef.current, cur = nav?.querySelector<HTMLElement>(".cv-sb.cur");
+    if (!nav || !cur || nav.scrollWidth <= nav.clientWidth) return;
+    const a = nav.getBoundingClientRect(), r = cur.getBoundingClientRect();
+    nav.scrollBy({ left: r.left - a.left - (a.width - r.width) / 2, behavior: "smooth" });
+  }, [step]);
   const first = useRef(true);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
@@ -96,7 +104,12 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
   const next = () => {
     if (busy) return;
     if (step === REVIEW) { void publish(); return; }
-    if (step < 2 && !x.ok[step]) { flash(step === 0 ? "Escolha o tipo do evento." : "Dê um nome ao evento."); return; }
+    if (step < 2 && !x.ok[step]) {
+      flash(step === 0 ? "Escolha o tipo do evento." : "Dê um nome ao evento.");
+      // leva direto ao que falta (o aviso some sozinho; o foco fica)
+      document.querySelector<HTMLElement>(step === 0 ? ".cv-l button" : '.cv-l input[aria-label="Nome do evento"]')?.focus();
+      return;
+    }
     go(step + 1);
   };
   const onKey = (e: React.KeyboardEvent) => {
@@ -120,7 +133,7 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
       <header className="cv-top">
         <Link href="/" aria-label="Tickets Win: início" className="cv-logo"><BrandLogo height={24} /></Link>
         <span className="cv-save"><i aria-hidden="true" />{status}</span>
-        <nav className="cv-steps" aria-label="Etapas">
+        <nav className="cv-steps" aria-label="Etapas" ref={stepsRef}>
           {STEP_LABELS.map((l, i) => {
             const cur = !published && step === i, done = x.ok[i] && (i < step || published);
             return (

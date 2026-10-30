@@ -467,7 +467,7 @@ export function RevisarStep({ c, x }: { c: Ctx; x: Derived }) {
         <div className="cv-seg big">
           {VIS.map((v) => <button key={v.id} className={d.vis === v.id ? "sg on" : "sg"} type="button" onClick={() => set({ vis: v.id })}>{v.t}<small>{v.s}</small></button>)}
         </div>
-        <label className="cv-fl" style={{ marginTop: 20 }}><span>Política de cancelamento</span><input autoComplete="off" className="cv-in" value={d.refund} onChange={(e) => set({ refund: e.target.value })} /></label>
+        <label className="cv-fl" style={{ marginTop: 20 }}><span>Política de cancelamento</span><textarea className="cv-in ta" rows={2} maxLength={500} value={d.refund} onChange={(e) => set({ refund: e.target.value })} /></label>
       </div>
     </section>
   );

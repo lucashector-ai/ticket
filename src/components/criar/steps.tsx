@@ -339,8 +339,8 @@ function VenueHits({ hits, busy, onPick, children }: { hits: VenueHit[]; busy: s
       {hits.map((v, i) => (
         <button key={v.placeId ?? v.name + v.city} className={v.placeId && busy === v.placeId ? "vr ld" : "vr"} type="button" disabled={!!busy} onClick={() => onPick(v)} style={{ animationDelay: `${i * 40}ms` }}>
           <span className={v.placeId ? "pin g" : "pin"}><Ico d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11zM12 12.4a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8z" size={18} /></span>
-          <span className="tx"><b>{v.name}</b><span className="s">{[v.addr, v.city].filter(Boolean).join(" · ")}</span></span>
-          {v.cap ? <em>até {v.cap.toLocaleString("pt-BR")} pessoas</em> : !v.placeId ? <em>Na Tickets Win</em> : null}
+          <span className="tx"><b>{v.name}</b><span className="s">{[v.addr, v.city && !v.addr?.includes(v.city) ? v.city : null].filter(Boolean).join(" · ")}</span></span>
+          {v.cap ? <em>até {v.cap.toLocaleString("pt-BR")} pessoas</em> : !v.placeId ? <em>Já cadastrado</em> : null}
         </button>
       ))}
       {children}

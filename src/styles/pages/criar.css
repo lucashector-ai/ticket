@@ -178,7 +178,10 @@
   .cv-logo{display:inline-flex;color:#111;line-height:0}
   .cv-save{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--cv-mut);white-space:nowrap}
   .cv-save i{width:7px;height:7px;border-radius:50%;background:#7BC70A}
-  .cv-steps{flex:1;display:flex;justify-content:center;gap:4px;min-width:0;overflow-x:auto;scrollbar-width:none}
+  /* centralizado só quando cabe: com justify-content:center e rolagem, as primeiras etapas ficavam cortadas e inalcançáveis */
+  .cv-steps{flex:1;display:flex;justify-content:flex-start;gap:4px;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .cv-steps>.cv-sb:first-child{margin-left:auto}
+  .cv-steps>.cv-sb:last-child{margin-right:auto}
   .cv-steps::-webkit-scrollbar{display:none}
   .cv-sb{flex:none;display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 12px 0 6px;border:0;border-radius:999px;background:transparent;font-size:13.5px;font-weight:600;color:#74746C;transition:background .25s,color .25s}
   .cv-sb .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#EFEFEA;color:#63635C;font-size:12px;transition:background .3s,color .3s,transform .3s var(--cv-spring)}
@@ -854,7 +857,10 @@
     .cv-cps .cp{grid-template-columns:1fr 1fr}
     .cv-act{padding:12px 16px 16px}
     .cv-kb,.cv-adv{display:none}
-    .cv-go{flex:1;justify-content:center}
+    .cv-go{flex:1;justify-content:center;white-space:nowrap;padding:0 20px}
+    /* "Quem pode ver" em lista no celular: em 3 colunas o texto quebrava em 3 linhas */
+    .cv-seg.big{flex-direction:column;border-radius:20px}
+    .cv-seg.big .sg{flex:none;height:auto;min-height:52px;padding:10px 16px;border-radius:16px;flex-direction:row;justify-content:space-between;gap:12px}
     .src,.sk,.gen,.m3{grid-template-columns:minmax(0,1fr)}
     .cv-pm{padding:12px 8px}
     .cv-pg{padding:16px}
@@ -877,3 +883,7 @@
 @keyframes cvHl1{25%{box-shadow:0 0 0 6px rgba(220,245,104,.9);background-color:rgba(220,245,104,.35)}100%{box-shadow:0 0 0 0 rgba(220,245,104,0)}}
 @media (prefers-reduced-motion:reduce){.pg-criar *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 @keyframes cvPulse{50%{transform:scale(.86);opacity:.6}}
+/* barra fixa de Continuar no celular/tablet: a aba de acessibilidade sobe para não cobrir o botão */
+@media (max-width:1024px){
+  body:has(.pg-criar .cv-act) .a11y-tab{bottom:calc(84px + env(safe-area-inset-bottom))}
+}
