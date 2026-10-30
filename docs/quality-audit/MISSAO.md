@@ -19,7 +19,7 @@ Cinco dimensões: (1) segurança e integridade dos dados, (2) qualidade e confia
 - **O login (Neon Auth) é o mesmo da produção.** Nada de força bruta, teste de carga ou de limite de tentativas contra login/cadastro. No máximo 3 contas novas por auditoria (somando os dois agentes), sempre com e-mail `@example.com`, todas listadas em `fix-log.md` para apagar depois. Prefira a conta de teste existente.
 - Pagamentos: o ambiente local roda sem chave da Stripe (modo de teste interno). Nunca use cartão real nem chaves reais. Nunca mostre a palavra "Stripe" para o usuário final.
 - E-mails: o ambiente local não envia e-mail (sem RESEND_API_KEY). Não ligue isso.
-- Navegador de teste: Playwright com Chromium (`NODE_PATH=$(npm root -g) node script.js`). Firefox e WebKit não existem nesta máquina: registre como BLOQUEADO. Não rode `playwright install`.
+- Navegadores de teste: Playwright (`NODE_PATH=$(npm root -g) node script.js`) com Chromium, Firefox e WebKit (motor do Safari). Se Firefox/WebKit faltarem numa máquina nova, a sessão principal instala (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node $(npm root -g)/playwright/cli.js install firefox webkit` + `install-deps webkit firefox`); sem eles, registre BLOQUEADO. Nunca reinstale o Chromium.
 - Scripts, prints e saídas de teste: na pasta de rascunho da sessão (informada no início), nunca na raiz do projeto.
 
 **Código e entrega**

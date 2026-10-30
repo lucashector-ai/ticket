@@ -16,7 +16,7 @@ Seja extremamente crítico: interface bonita pode ter experiência ruim. Seu tra
 
 - **Use o site de verdade no navegador** (Playwright/Chromium): abra a página, entenda o objetivo, clique, preencha, avance e volte etapas, observe mensagens e mudanças de estado, provoque erros e caminhos alternativos. Não se limite a ler código ou DOM. Salve prints de antes e depois.
 - **Perfis:** comprador iniciante, recorrente, indeciso, com pouca familiaridade com tecnologia; produtor iniciante e experiente; operador da portaria; administrador. Não use o que você sabe do código para achar caminhos: entre pela interface pública.
-- **Telas:** 320×568, 375×667, 390×844, 430×932, 768×1024, 1280×800, 1440×900, 1920×1080. Procure conteúdo cortado, rolagem horizontal, botões fora da tela, sobreposição, modais ruins, teclado cobrindo campo, alvos de toque pequenos, tipografia pequena, coisas que só funcionam com mouse. Responsivo não é só encolher: a organização tem que se adaptar. Firefox/WebKit: BLOQUEADO nesta máquina.
+- **Telas:** 320×568, 375×667, 390×844, 430×932, 768×1024, 1280×800, 1440×900, 1920×1080. Procure conteúdo cortado, rolagem horizontal, botões fora da tela, sobreposição, modais ruins, teclado cobrindo campo, alvos de toque pequenos, tipografia pequena, coisas que só funcionam com mouse. Responsivo não é só encolher: a organização tem que se adaptar. Teste também em Firefox e WebKit (Safari) nas jornadas principais.
 
 ## Jornadas (repita várias vezes)
 
