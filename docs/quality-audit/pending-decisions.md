@@ -35,6 +35,39 @@ CREATE INDEX IF NOT EXISTS ticket_events_to_idx ON ticket_events (to_user_id);
 Importante: **o código da rodada 4 não funciona sem esta tabela** (a emissão, a transferência e o check-in gravam nela na mesma transação; sem a tabela, essas operações falham). Por isso o SQL vai antes do código.
 Reversão (só se o código da rodada 4 for desfeito): `DROP TABLE IF EXISTS ticket_events;` (apaga só o rastro).
 
+**Banner livre no carrossel da home (aplicar antes de publicar o código do banner de produtores):** tabela nova `hero_slides` para slides do carrossel que não são evento (HTML ou imagem + link + rótulo + posição + ligado/desligado + tamanho de projeto). Só cria tabela e índice: não mexe em nenhuma linha existente. Já aplicada no branch de teste (`teste-r4`), rodada duas vezes (idempotente). Sem ela, a home do código novo dá erro 500: por isso vem **antes** do código.
+
+```sql
+-- Banner livre do carrossel da home (não é evento): HTML ou imagem + link + rótulo + posição + ligado/desligado
+CREATE TABLE IF NOT EXISTS hero_slides (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  label varchar(160) NOT NULL,
+  html text,
+  image varchar(300),
+  href varchar(500) NOT NULL,
+  cta varchar(40),
+  width integer NOT NULL DEFAULT 1440,
+  height integer NOT NULL DEFAULT 800,
+  bg varchar(7) NOT NULL DEFAULT '#111111',
+  position integer NOT NULL DEFAULT 0,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT hero_slides_art_chk CHECK ((html IS NULL) <> (image IS NULL)),
+  CONSTRAINT hero_slides_html_chk CHECK (html IS NULL OR length(html) <= 300000),
+  CONSTRAINT hero_slides_href_chk CHECK (href ~ '^(/([^/\\]|$)|https://)'),
+  CONSTRAINT hero_slides_size_chk CHECK (width BETWEEN 320 AND 3840 AND height BETWEEN 180 AND 2160),
+  CONSTRAINT hero_slides_bg_chk CHECK (bg ~ '^#[0-9A-Fa-f]{6}$')
+);
+CREATE INDEX IF NOT EXISTS hero_slides_active_pos_idx ON hero_slides (active, position);
+```
+
+Depois da tabela, o banner "BEM-VINDO, PRODUTOR." (1º slide, leva para `/produtores`) entra pelo INSERT idempotente gerado a partir do arquivo da arte (não está no repositório porque o HTML tem 55 KB): `insert-banner-produtores.sql` na pasta de rascunho do agente do banner (`…/scratchpad/banner/`). Id fixo + `ON CONFLICT (id) DO NOTHING`: rodar de novo não duplica nem desfaz o que for editado na central. Posição 0 = antes dos eventos do banner (que começam em 1). Depois de publicado, dá para editar, ordenar, desligar ou apagar na central (Destaques).
+
+Reversão (só se o código do banner for desfeito): `DROP TABLE IF EXISTS hero_slides;`
+
+**Para o dono (risco conhecido, não é deste banner só):** os banners em HTML (os de evento e os livres) rodam num iframe `srcdoc`, que herda a CSP da página. Hoje a CSP está em "só avisar" (D-10) e nada é bloqueado; **se ela for ligada em modo bloquear, o script de animação dos banners HTML para de rodar**. Conferido no Chromium trocando o cabeçalho para bloquear: neste banner o texto todo começa escondido e fica **só o fundo amarelo** (print `home-chromium-1280-csp-enforce.png` na pasta `shots/` do banner). Antes de ligar o bloqueio: servir o HTML do banner por uma rota própria, fora da CSP do site e com CSP própria (`sandbox allow-scripts`, sem acesso a nada do site), e apontar o iframe para ela no lugar do `srcdoc`. Também: a arte usa `Inter Tight` do Google Fonts sem fonte reserva; se o Google Fonts não carregar, o subtítulo e o botão da arte saem em fonte serifada.
+
 ## Schema para a produção (aplicar ANTES de publicar o código das rodadas 2 e 3, já aplicado)
 
 A produção recebe o schema antes do código (decisão do dono). Já aplicado e testado no branch de **teste**. É idempotente (pode rodar mais de uma vez) e não mexe em nenhuma linha existente: os pedidos antigos ficam com `NULL` (= "de antes da caixa", seguem recebendo campanhas como antes).

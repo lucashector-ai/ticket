@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { HomeClient } from "@/components/home/home-client";
-import type { HomeEvent } from "@/components/home/types";
+import type { HeroItem, HomeEvent } from "@/components/home/types";
 import { getSessionUser } from "@/lib/auth/server";
 import { listCategories, listCities, listHeroEvents, listLiveEvents, type EventCard } from "@/lib/data/events";
+import { listHeroSlides } from "@/lib/data/hero";
 import { listHomeExtras } from "@/lib/data/home";
 import { getSpotifyConnection } from "@/lib/data/user";
 import { slugify } from "@/lib/format";
+import { mergeHero } from "@/lib/hero-slides";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const [live, hero, cats, cities, user] = await Promise.all([listLiveEvents(), listHeroEvents(), listCategories(), listCities(), getSessionUser()]);
+  const [live, hero, slides, cats, cities, user] = await Promise.all([listLiveEvents(), listHeroEvents(), listHeroSlides(), listCategories(), listCities(), getSessionUser()]);
   const [extras, spotifyConn] = await Promise.all([listHomeExtras([...live, ...hero].map((e) => e.id)), getSpotifyConnection(user?.id)]);
 
   const toHome = (e: EventCard & { heroArt?: string | null; heroHtml?: string | null }): HomeEvent => ({
@@ -27,7 +29,13 @@ export default async function Home() {
   });
 
   const events = live.map(toHome);
-  const heroEvents = (hero.length ? hero : live.slice(0, 4)).map(toHome);
+  // carrossel: eventos escolhidos na central (sem nenhum, os próximos 4) e banners livres, pela posição de cada um
+  const heroEv = hero.length ? hero.map((e) => ({ order: e.heroOrder, item: toHome(e) })) : live.slice(0, 4).map((e) => ({ order: null, item: toHome(e) }));
+  const heroItems: HeroItem[] = mergeHero(heroEv, slides.map((s) => ({ position: s.position, item: s }))).map((x) =>
+    x.kind === "event"
+      ? { kind: "event", key: `e:${x.item.slug}`, ev: x.item }
+      : { kind: "free", key: `s:${x.item.id}`, slide: { id: x.item.id, label: x.item.label, href: x.item.href, cta: x.item.cta, html: x.item.html, image: x.item.image, w: x.item.width, h: x.item.height, bg: x.item.bg } },
+  );
   const categories = cats.slice(0, 7).map((c) => ({
     slug: c.slug, name: c.name, coverFlyer: c.coverFlyer ?? "baile",
     count: live.filter((e) => e.kinds.includes(c.slug)).length,
@@ -47,6 +55,6 @@ export default async function Home() {
   const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
 
   return (
-    <HomeClient user={headerUser} events={events} heroEvents={heroEvents} categories={categories} cityOpts={cityOpts} spotify={spotify} />
+    <HomeClient user={headerUser} events={events} hero={heroItems} categories={categories} cityOpts={cityOpts} spotify={spotify} />
   );
 }

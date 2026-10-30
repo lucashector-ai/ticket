@@ -12,6 +12,17 @@ export type HomeEvent = {
   bannerHtml?: string | null;
 };
 
+/** Banner livre do carrossel (não é evento: HTML ou imagem com link próprio), já pronto para a home. */
+export type HomeFreeSlide = {
+  id: string; label: string; href: string; cta: string | null;
+  html: string | null; image: string | null;
+  /** tamanho de projeto da arte e a cor de fundo que preenche as sobras */
+  w: number; h: number; bg: string;
+};
+
+/** Slide do carrossel principal: um evento ou um banner livre. */
+export type HeroItem = { kind: "event"; key: string; ev: HomeEvent } | { kind: "free"; key: string; slide: HomeFreeSlide };
+
 export type HomeCategory = { slug: string; name: string; coverFlyer: string; count: number };
 export type CityOpt = { value: string; label: string };
 export type DateFilter = "any" | "hoje" | "semana" | "fds" | "p30";

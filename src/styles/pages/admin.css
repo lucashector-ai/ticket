@@ -122,9 +122,36 @@
   .hl-pv > div{position:absolute !important;inset:0;aspect-ratio:auto !important;height:100%}
   .hl-pv .hl-frame{position:absolute;inset:0}
   .hl-ed-a{display:flex;justify-content:flex-end;gap:8px}
+  /* banner livre (não é evento): miniatura e prévias com a arte de palco fixo escalada (HeroStage) */
+  .hl-st{position:relative;aspect-ratio:21 / 9}
+  .hl-st .bnf-box{position:absolute;inset:0;display:block;overflow:hidden}
+  .hl-st .bnf-art{position:absolute;left:0;top:0;display:block;transform-origin:0 0}
+  .hl-pv.d{aspect-ratio:16 / 10}
+  .hl-pv.d .bnf-box{--bnf-fit:width}
+  .hl-item.off{background:#F6F6F3}
+  .hl-item.off .hl-thumb{opacity:.45}
+  .hl-kinds{display:flex;flex-wrap:wrap;gap:6px}
+  .hl-t .hl-kind.lv{background:#F8FFC2;color:#445000}
+  .hl-new{border:1px solid #EFEFEA;border-radius:16px;background:#FCFCFA;padding-top:4px}
+  .hl-ed-t{margin:12px 0 0;font:600 16px 'Inter Tight',sans-serif;letter-spacing:-.01em}
+  .hl-fs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+  .hl-fs label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#3A3A3C}
+  .hl-fs input{height:40px;padding:0 12px;border:1.5px solid #E4E4DE;border-radius:12px;background:#fff;font:inherit;font-size:14px;font-weight:400;color:#111}
+  .hl-fs small{font-size:12px;font-weight:400;line-height:1.45;color:#6E6E73}
+  .hl-color{display:flex;gap:8px}
+  .hl-color input[type=color]{width:48px;flex:none;padding:4px}
+  .hl-color input:not([type=color]){flex:1;min-width:0;font-family:'Space Mono',ui-monospace,monospace}
+  .hl-chk{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+  .hl-chk input{width:18px;height:18px;accent-color:#111}
   @media (max-width:900px){
+    .hl-fs{grid-template-columns:minmax(0,1fr)}
     .hl-hd{flex-direction:column}
     .hl-row{grid-template-columns:28px minmax(0,1fr) auto}
+    /* celular: os botões descem para baixo do título (com 4 ou 5 botões o nome sumia) */
+    @media (max-width:600px){
+      .hl-row{grid-template-columns:28px minmax(0,1fr)}
+      .hl-acts{grid-column:2;flex-wrap:wrap}
+    }
     .hl-thumb{display:none}
     .hl-prev{grid-template-columns:minmax(0,1fr)}
   }

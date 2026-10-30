@@ -14,14 +14,16 @@ import { applyFilters, DEFAULT_FILTERS, exploreHref, type Filters } from "./filt
 import { HomeCard, SkeletonCard } from "./home-card";
 import { Newsletter } from "./newsletter";
 import { SpotifyStrip, type HomeSpotify } from "./spotify-strip";
-import type { CityOpt, HomeCategory, HomeEvent } from "./types";
+import { HeroStage } from "./hero-stage";
+import type { CityOpt, HeroItem, HomeCategory, HomeEvent, HomeFreeSlide } from "./types";
 import { BrandMark, BrandWord } from "@/components/brand-logo";
 import { SignOutButton } from "@/components/sign-out-button";
 
 type Props = {
   user: HeaderUser;
   events: HomeEvent[];
-  heroEvents: HomeEvent[];
+  /** carrossel principal: eventos e banners livres, já na ordem */
+  hero: HeroItem[];
   categories: HomeCategory[];
   cityOpts: CityOpt[];
   spotify: HomeSpotify;
@@ -34,7 +36,7 @@ function reduced() {
   try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; }
 }
 
-export function HomeClient({ user, events, heroEvents, categories, cityOpts, spotify }: Props) {
+export function HomeClient({ user, events, hero, categories, cityOpts, spotify }: Props) {
   const router = useRouter();
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -71,7 +73,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
   }, []);
 
   /* vitrine: autoplay a cada 7s (pausa no hover, com a busca grudada ou com reduced-motion) */
-  const heroCount = heroEvents.length;
+  const heroCount = hero.length;
   const nextSlide = useCallback(() => setHeroIdx((i) => (i + 1) % Math.max(1, heroCount)), [heroCount]);
   const prevSlide = useCallback(() => setHeroIdx((i) => (i + heroCount - 1) % Math.max(1, heroCount)), [heroCount]);
   useEffect(() => {
@@ -143,7 +145,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
   const ok = !loading && !swap;
   const first = showAll ? view : view.slice(0, FIRST_N);
   const hasRest = ok && !showAll && view.length > FIRST_N;
-  const hero = heroEvents[heroIdx] ?? heroEvents[0];
+  const cur = hero[heroIdx] ?? hero[0];
   const topScroll = (dir: number) => topRef.current?.scrollBy({ left: dir * 408, behavior: reduced() ? "auto" : "smooth" });
 
   return (
@@ -167,7 +169,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
         <section className="hero2" aria-labelledby="hero-t">
           <h1 className="sr" id="hero-t">Descubra os eventos que valem sair de casa.</h1>
           <div
-            className="bnx"
+            className={cur?.kind === "free" ? "bnx bnx-free" : "bnx"}
             aria-roledescription="carrossel"
             aria-label="Eventos em destaque"
             onMouseEnter={() => { hovRef.current = true; }}
@@ -180,30 +182,32 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
               if (x1 < x0) nextSlide(); else prevSlide();
             }}
           >
-            {heroEvents.map((b, i) => (
-              <div key={b.slug} className={i === heroIdx ? "bnx-i on" : "bnx-i"} aria-hidden={i !== heroIdx}>
-                <span className="cfh-w"><HeroArt b={b} fit="fill" active={i === heroIdx} /></span>
-                <span className="cfh-t"><FlyerArt id={b.flyerId} /></span>
-                {/* celular: banner 16:9 em destaque sobre o próprio banner desfocado */}
-                <span className="cfh-m">
-                  <span className="cfh-mb"><HeroArt b={b} fit="card" active={i === heroIdx} /></span>
-                  <span className="cfh-mi">
-                    <span className="cfh-mk">{b.categoryLabel}</span>
-                    <b>{b.title}</b>
-                    <span>{b.dateNice} · {b.city}</span>
-                  </span>
+            {hero.map((it, i) => it.kind === "free" ? (
+              <div key={it.key} className={i === heroIdx ? "bnx-i bnf on" : "bnx-i bnf"} aria-hidden={i !== heroIdx}>
+                <HeroStage html={it.slide.html} image={it.slide.image} w={it.slide.w} h={it.slide.h} bg={it.slide.bg} active={i === heroIdx} title={it.slide.label} />
+                {/* celular: a arte inteira fica pequena; o rótulo e o botão embaixo dela ficam legíveis */}
+                <span className="bnf-cap">
+                  <b>{it.slide.label}</b>
+                  {it.slide.cta && (
+                    <span className="bnf-cta">{it.slide.cta}<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg></span>
+                  )}
                 </span>
               </div>
+            ) : (
+              <EventSlide key={it.key} b={it.ev} on={i === heroIdx} />
             ))}
             <span className="bn-shade" aria-hidden="true" />
             <span className="bnx-dim" aria-hidden="true" />
-            {hero && (
-              <Link className="bn-hit" href={`/eventos/${hero.slug}`} aria-label={`Ver ingressos de ${hero.title}, ${hero.dateNice}, ${hero.city}`} />
+            {cur?.kind === "event" && (
+              <Link className="bn-hit" href={`/eventos/${cur.ev.slug}`} aria-label={`Ver ingressos de ${cur.ev.title}, ${cur.ev.dateNice}, ${cur.ev.city}`} />
             )}
+            {cur?.kind === "free" && (cur.slide.href.startsWith("/")
+              ? <Link className="bn-hit" href={cur.slide.href} aria-label={freeLabel(cur.slide)} />
+              : <a className="bn-hit" href={cur.slide.href} rel="noopener" aria-label={freeLabel(cur.slide)} />)}
             {heroCount > 1 && (
               <div className="bnm-dots" role="tablist" aria-label="Banners">
-                {heroEvents.map((b, i) => (
-                  <button key={b.slug} type="button" role="tab" aria-selected={i === heroIdx} aria-label={`Banner ${i + 1}: ${b.title}`} className={i === heroIdx ? "on" : undefined} onClick={() => setHeroIdx(i)} />
+                {hero.map((it, i) => (
+                  <button key={it.key} type="button" role="tab" aria-selected={i === heroIdx} aria-label={`Banner ${i + 1}: ${it.kind === "event" ? it.ev.title : it.slide.label}`} className={i === heroIdx ? "on" : undefined} onClick={() => setHeroIdx(i)} />
                 ))}
               </div>
             )}
@@ -399,6 +403,28 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
       )}
       <SiteFooter />
 
+    </div>
+  );
+}
+
+/** Nome do link do banner livre para leitor de tela: o rótulo e, se houver, o texto do botão. */
+const freeLabel = (s: HomeFreeSlide) => (s.cta ? `${s.label.replace(/[.!?:]+$/, "")}: ${s.cta}` : s.label);
+
+/** Slide de evento do carrossel (como sempre foi). */
+function EventSlide({ b, on }: { b: HomeEvent; on: boolean }) {
+  return (
+    <div className={on ? "bnx-i on" : "bnx-i"} aria-hidden={!on}>
+      <span className="cfh-w"><HeroArt b={b} fit="fill" active={on} /></span>
+      <span className="cfh-t"><FlyerArt id={b.flyerId} /></span>
+      {/* celular: banner 16:9 em destaque sobre o próprio banner desfocado */}
+      <span className="cfh-m">
+        <span className="cfh-mb"><HeroArt b={b} fit="card" active={on} /></span>
+        <span className="cfh-mi">
+          <span className="cfh-mk">{b.categoryLabel}</span>
+          <b>{b.title}</b>
+          <span>{b.dateNice} · {b.city}</span>
+        </span>
+      </span>
     </div>
   );
 }

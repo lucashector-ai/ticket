@@ -1,12 +1,14 @@
 "use server";
 
-import { eq, isNotNull } from "drizzle-orm";
+import { eq, inArray, isNotNull, max } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { ADMIN_PATH, adminUser, grantProducer, ungrantProducer } from "@/lib/admin";
+import { HERO_HTML_MAX, heroOrderToken, heroSlideInput, type HeroSlideInput } from "@/lib/hero-slides";
 import { logSecurity } from "@/lib/mfa";
+import { runBatch } from "@/lib/payments/tx";
 import { mailApplicationApproved, mailApplicationRejected, mailPayoutUpdated, mailProducerAuthorized } from "@/lib/notify";
 
 type R = { ok: boolean; error?: string };
@@ -86,7 +88,7 @@ export async function setFeaturedList(ids: string[]): Promise<R> {
   return { ok: true };
 }
 
-const MAX_HTML = 300_000;
+const MAX_HTML = HERO_HTML_MAX;
 
 /**
  * Arte do banner principal de um evento: imagem enviada pela central (ou a do próprio evento) ou HTML.
@@ -101,6 +103,78 @@ export async function setHeroArt(eventId: string, art: string | null, html: stri
   if (h && h.length > MAX_HTML) return { ok: false, error: "O HTML passa de 300 KB. Use imagens por link em vez de embutidas." };
   await db.update(schema.events).set({ heroArt: h ? null : art, heroHtml: h }).where(eq(schema.events.id, eventId));
   await logSecurity(g.admin.id, "admin", `Arte do banner ${eventId.slice(0, 8)}: ${h ? "HTML" : art ? "imagem" : "padrão"}`);
+  revalidatePath("/"); revalidatePath(ADMIN_PATH);
+  return { ok: true };
+}
+
+/* ============================== banner livre (não é evento) ============================== */
+
+/**
+ * Cria ou edita um banner livre do carrossel: HTML (até 300 KB, roda isolado como o dos eventos) ou imagem, link
+ * só do site ("/…") ou https://, rótulo, tamanho de projeto, cor de fundo e ligado/desligado. Novo entra no fim.
+ */
+export async function saveHeroSlide(input: HeroSlideInput): Promise<R & { id?: string }> {
+  const g = await guard();
+  if (!g.ok) return g;
+  const p = heroSlideInput.safeParse(input);
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Confira os dados do banner." };
+  const { id, ...v } = p.data;
+  const t = schema.heroSlides;
+  let saved = id ?? undefined;
+  if (id) {
+    const [row] = await db.update(t).set(v).where(eq(t.id, id)).returning({ id: t.id });
+    if (!row) return { ok: false, error: "Banner não encontrado." };
+  } else {
+    const [[e], [s]] = await Promise.all([
+      db.select({ n: max(schema.events.heroOrder) }).from(schema.events),
+      db.select({ n: max(t.position) }).from(t),
+    ]);
+    const [row] = await db.insert(t).values({ ...v, position: Math.max(e?.n ?? 0, s?.n ?? 0) + 1 }).returning({ id: t.id });
+    saved = row.id;
+  }
+  await logSecurity(g.admin.id, "admin", `Banner livre ${saved!.slice(0, 8)}: ${id ? "editado" : "criado"} (${v.html ? "HTML" : "imagem"}, ${v.active ? "ligado" : "desligado"}, ${v.href})`);
+  revalidatePath("/"); revalidatePath(ADMIN_PATH);
+  return { ok: true, id: saved };
+}
+
+/** Apaga um banner livre (para só tirar da home, desligue). */
+export async function deleteHeroSlide(id: string): Promise<R> {
+  const g = await guard();
+  if (!g.ok) return g;
+  if (!uuid.safeParse(id).success) return { ok: false, error: "Banner não encontrado." };
+  const [row] = await db.delete(schema.heroSlides).where(eq(schema.heroSlides.id, id)).returning({ id: schema.heroSlides.id });
+  if (!row) return { ok: false, error: "Banner não encontrado." };
+  await logSecurity(g.admin.id, "admin", `Banner livre ${id.slice(0, 8)}: apagado`);
+  revalidatePath("/"); revalidatePath(ADMIN_PATH);
+  return { ok: true };
+}
+
+/**
+ * Ordem única do carrossel (eventos e banners livres juntos): "e:<id do evento>" ou "s:<id do banner>", de cima
+ * para baixo. Evento fora da lista sai do carrossel (como em setHeroList); banner livre fora da lista mantém a
+ * posição (sai da home só desligado ou apagado). Tudo numa transação.
+ */
+export async function setHeroOrder(tokens: string[]): Promise<R> {
+  const g = await guard();
+  if (!g.ok) return g;
+  const p = z.array(heroOrderToken).max(40).safeParse(tokens);
+  if (!p.success || new Set(p.data).size !== p.data.length) return { ok: false, error: "Lista inválida." };
+  const evIds = p.data.filter((x) => x.startsWith("e:")).map((x) => x.slice(2));
+  const slIds = p.data.filter((x) => x.startsWith("s:")).map((x) => x.slice(2));
+  const [evOk, slOk] = await Promise.all([
+    evIds.length ? db.select({ id: schema.events.id }).from(schema.events).where(inArray(schema.events.id, evIds)) : [],
+    slIds.length ? db.select({ id: schema.heroSlides.id }).from(schema.heroSlides).where(inArray(schema.heroSlides.id, slIds)) : [],
+  ]);
+  if (evOk.length !== evIds.length || slOk.length !== slIds.length) return { ok: false, error: "Algum item da lista não existe mais. Recarregue a página." };
+  await runBatch([
+    db.update(schema.events).set({ heroOrder: null }).where(isNotNull(schema.events.heroOrder)),
+    ...p.data.map((x, i) =>
+      x.startsWith("e:")
+        ? db.update(schema.events).set({ heroOrder: i + 1 }).where(eq(schema.events.id, x.slice(2)))
+        : db.update(schema.heroSlides).set({ position: i + 1 }).where(eq(schema.heroSlides.id, x.slice(2))),
+    ),
+  ]);
+  await logSecurity(g.admin.id, "admin", `Banner principal: ${evIds.length} evento(s) e ${slIds.length} banner(s) livre(s)`);
   revalidatePath("/"); revalidatePath(ADMIN_PATH);
   return { ok: true };
 }

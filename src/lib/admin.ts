@@ -250,3 +250,15 @@ export async function adminHighlights(): Promise<AdminHighlightEvent[]> {
     flyerId: e.flyerId, bannerId: e.bannerId, heroOrder: e.heroOrder, featuredOrder: e.featuredOrder, heroArt: e.heroArt, heroHtml: e.heroHtml,
   }));
 }
+
+export type AdminHeroSlide = {
+  id: string; label: string; href: string; cta: string | null; html: string | null; image: string | null;
+  width: number; height: number; bg: string; position: number; active: boolean;
+};
+
+/** Banners livres do carrossel da home (ligados e desligados), para a aba Destaques. */
+export async function adminHeroSlides(): Promise<AdminHeroSlide[]> {
+  const t = schema.heroSlides;
+  return db.select({ id: t.id, label: t.label, href: t.href, cta: t.cta, html: t.html, image: t.image, width: t.width, height: t.height, bg: t.bg, position: t.position, active: t.active })
+    .from(t).orderBy(t.position, t.createdAt);
+}

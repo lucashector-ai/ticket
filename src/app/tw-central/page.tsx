@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { AdminAccountProducer, AdminApps, AdminPayouts } from "@/components/admin/actions";
 import { AdminHighlights } from "@/components/admin/highlights";
-import { ADMIN_PATH, adminApplications, adminEvents, adminHighlights, adminOverview, adminPayouts, adminProducers, adminUser, adminUsers } from "@/lib/admin";
+import { ADMIN_PATH, adminApplications, adminEvents, adminHeroSlides, adminHighlights, adminOverview, adminPayouts, adminProducers, adminUser, adminUsers } from "@/lib/admin";
 import { destLabel } from "@/lib/bank";
 import { brl } from "@/lib/format";
 
@@ -70,7 +70,7 @@ export default async function Central({ searchParams }: { searchParams: Promise<
 
         {tab === "saques" && <AdminPayouts rows={(await adminPayouts()).map((p) => ({ id: p.id, at: day(p.createdAt), amount: brl(p.amountCents), status: p.status, org: p.organizer?.name ?? "—", dest: p.destination ? [destLabel(p.destination), p.destination.pixKey ? `Pix: ${p.destination.pixKey}` : `${p.destination.bank ?? ""} ag ${p.destination.agency ?? ""} cc ${p.destination.account ?? ""} (${p.destination.kind ?? "corrente"})`, p.destination.holder ? `Titular: ${p.destination.holder}${p.destination.doc ? ` · ${p.destination.doc}` : ""}` : ""].filter(Boolean).join("\n") : "—", note: p.note }))} />}
 
-        {tab === "destaques" && <AdminHighlights events={await adminHighlights()} />}
+        {tab === "destaques" && <AdminHighlights events={await adminHighlights()} slides={await adminHeroSlides()} />}
 
         {tab === "produtores" && (
           <section className="ad-card">

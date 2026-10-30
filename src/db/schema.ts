@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -1047,6 +1048,43 @@ export const refundRequests = pgTable(
   (t) => [
     uniqueIndex("refund_requests_pending_idx").on(t.orderId).where(sql`status = 'pending'`),
     index("refund_requests_event_idx").on(t.eventId, t.status),
+  ],
+);
+
+/**
+ * Banner livre do carrossel principal da home (não é evento): arte em HTML (roda isolada num iframe, como o
+ * `hero_html` dos eventos) ou imagem, com link próprio. Divide a ordem com os eventos do banner (`events.hero_order`):
+ * os dois entram na home pelo número da posição; empate, o banner livre vem antes. Editado na central (Destaques).
+ */
+export const heroSlides = pgTable(
+  "hero_slides",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** rótulo do link para leitor de tela; no celular aparece embaixo da arte */
+    label: varchar("label", { length: 160 }).notNull(),
+    /** um dos dois: HTML (até 300 KB) ou imagem /midia/... */
+    html: text("html"),
+    image: varchar("image", { length: 300 }),
+    /** destino do clique: caminho do site ("/produtores") ou https:// */
+    href: varchar("href", { length: 500 }).notNull(),
+    /** texto do botão embaixo da arte no celular (opcional) */
+    cta: varchar("cta", { length: 40 }),
+    /** tamanho de projeto da arte (palco fixo): a home renderiza nesse tamanho e escala para caber */
+    width: integer("width").notNull().default(1440),
+    height: integer("height").notNull().default(800),
+    /** cor de fundo da arte: preenche as sobras quando a proporção do carrossel é outra */
+    bg: varchar("bg", { length: 7 }).notNull().default("#111111"),
+    position: integer("position").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [
+    index("hero_slides_active_pos_idx").on(t.active, t.position),
+    check("hero_slides_art_chk", sql`(${t.html} is null) <> (${t.image} is null)`),
+    check("hero_slides_html_chk", sql`${t.html} is null or length(${t.html}) <= 300000`),
+    check("hero_slides_href_chk", sql`${t.href} ~ '^(/([^/\\\\]|$)|https://)'`),
+    check("hero_slides_size_chk", sql`${t.width} between 320 and 3840 and ${t.height} between 180 and 2160`),
+    check("hero_slides_bg_chk", sql`${t.bg} ~ '^#[0-9A-Fa-f]{6}$'`),
   ],
 );
 

@@ -41,13 +41,13 @@ export async function listLiveEvents(): Promise<EventCard[]> {
 }
 
 /** Banner principal da home: eventos escolhidos na central, na ordem de lá, com a arte própria (imagem ou HTML). */
-export async function listHeroEvents(): Promise<(EventCard & { heroArt: string | null; heroHtml: string | null })[]> {
+export async function listHeroEvents(): Promise<(EventCard & { heroOrder: number | null; heroArt: string | null; heroHtml: string | null })[]> {
   const rows = await db.query.events.findMany({
     where: and(eq(events.status, "published"), eq(events.unlisted, false), sql`${events.heroOrder} is not null`, gte(sql`coalesce(${events.endAt}, ${events.startAt})`, sql`now()`)),
     with: cardWith,
     orderBy: [asc(events.heroOrder)],
   });
-  return rows.map((r) => ({ ...toCard(r), heroArt: r.heroArt, heroHtml: r.heroHtml }));
+  return rows.map((r) => ({ ...toCard(r), heroOrder: r.heroOrder, heroArt: r.heroArt, heroHtml: r.heroHtml }));
 }
 
 export async function listCategories() {
