@@ -25,7 +25,7 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 04:30 | 163ea2a | Reserva de 15 min segura estoque; reconferência após gravar (S-08) | `tests/db/stock.test.ts` no banco de teste (9 cenários); checkout e2e no navegador | VALIDADO |
 | 30/10 04:40 | 675aac5 | Assinaturas (QR, portaria, banco, 2FA) sem segredo padrão no código | testes de integração geram e conferem QR | VALIDADO |
 | 30/10 04:40 | 7730368 | Checkout antigo: `createOrder` sem uso removido; `payOrder` usa a emissão única; `cancelOrder` cancela a cobrança | `tests/db/checkout-legacy.test.ts`; build | VALIDADO |
-| 30/10 04:45 | 2550e88 | Login com mensagem genérica para conta inexistente | tsc/eslint | CORRIGIDO, NÃO VALIDADO |
+| 30/10 04:45 | 2550e88 | Login com mensagem genérica para conta inexistente | Playwright: 1 tentativa com e-mail inexistente → "E-mail ou senha incorretos." | VALIDADO |
 | 30/10 04:45 | c23bfe6 | Cupom sem login limitado a 30 consultas por IP em 10 min | Playwright: após o limite, "Muitas tentativas" | VALIDADO |
 | 30/10 04:50 | bb0f74f · a59301a | Remove jspdf/html-to-image (sem uso, críticos); node-forge 1.4.2 com teste de assinatura | `pnpm audit --prod` 47 → 8; teste da Wallet | VALIDADO |
 | 30/10 04:55 | 4fbf9d8 | Cliente do Neon Auth sob demanda (−250 KB em /entrar, /cadastro, /ativar-conta, /checkout) | build: medidas por rota; Playwright: botão do Google em /entrar | VALIDADO |

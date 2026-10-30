@@ -22,7 +22,7 @@ Detalhes, reprodução e evidências em `security-audit.md`.
 | S-08 | P1 | Reserva de 15 min não segurava estoque | VALIDADO |
 | S-11 | P2 | Assinaturas com segredo padrão no código | VALIDADO |
 | S-12 | P2 | Checkout antigo com regras mais fracas | VALIDADO (integração) |
-| S-13 | P3 | Login revelava se o e-mail tinha conta | CORRIGIDO, NÃO VALIDADO |
+| S-13 | P3 | Login revelava se o e-mail tinha conta | VALIDADO |
 | S-14 | P2 | Cupom sem limite de consultas | VALIDADO |
 | S-15 | P1 | jspdf (críticos) sem uso; node-forge desatualizado | VALIDADO |
 | S-16 | P1 | Editar evento quebrava no meio ao apagar tipo citado em pedido | VALIDADO |
