@@ -27,3 +27,8 @@ Cada item: o que é, por que precisa da decisão, opções e a recomendação. N
 
 ## D-05 · Imagem 404 na produção (item 11 do QA) · NÃO TESTADO
 - No ambiente local a imagem some porque o R2 local não tem os arquivos da produção (2 eventos). Não testamos a produção (regra da auditoria). Conferir no site: `/midia/eventos/56899a8bb6eb/mvqr4wvg-076766523c83.png`.
+
+## D-06 · SDK do Neon Auth com better-auth 1.7.6 (Romano, segurança)
+- `pnpm audit --prod` (depois de remover jspdf/html-to-image e atualizar node-forge): 8 avisos, 1 crítico e 2 altos, **todos** dentro de `@neondatabase/auth@0.7.0-beta` (a última publicada), que fixa `better-auth@1.7.6` e `zod@4.5.4`. Os avisos críticos (OAuth state / OAuth proxy permitindo entrar como outra pessoa) são de código que roda no servidor de login; o Neon Auth é hospedado pelo Neon, então a correção principal é deles.
+- **Opções:** (a) perguntar ao suporte do Neon se o servidor do Neon Auth já está em ≥ 1.7.7; (b) forçar no projeto `pnpm.overrides` de `better-auth` para 1.7.14 dentro do SDK (mesma linha 1.7) e testar login, cadastro, Google, Apple e 2FA num ambiente que não seja a produção antes de publicar.
+- **Por que não fiz:** o login é o mesmo da produção; trocar a versão de biblioteca de login sem um teste completo de todos os provedores é arriscado para uma madrugada sem supervisão.
