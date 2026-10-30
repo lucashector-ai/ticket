@@ -10,6 +10,7 @@ import { getSessionUser } from "@/lib/auth/server";
 import { checkinTicket, type CheckinResult } from "@/lib/checkin";
 import { organizerFor } from "@/lib/criar/save";
 import { getPainelScope, type PainelRole } from "@/lib/data/painel";
+import { isProducer } from "@/lib/data/producer";
 import { mailPortariaAccess, mailSecurityNotice, mailTeamInvite } from "@/lib/notify";
 import { destLabel } from "@/lib/bank";
 import { logSecurity } from "@/lib/mfa";
@@ -24,7 +25,11 @@ async function scope(need: PainelRole) {
   const user = await getSessionUser();
   if (!user) return null;
   const s = await getPainelScope(user);
-  return RANK[s.role] >= RANK[need] ? { user, ...s } : null;
+  if (RANK[s.role] < RANK[need]) return null;
+  // conta sem equipe cai como "dono" (de nada): convidar equipe ou criar o produtor nas configurações só para
+  // produtor aprovado; senão qualquer conta convidava uma segunda conta e virava produtor sem passar pela aprovação
+  if (need === "owner" && !(await isProducer(user))) return null;
+  return { user, ...s };
 }
 
 /* ---------- check-in (portaria) ---------- */
