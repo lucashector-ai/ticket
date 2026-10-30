@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 import { adminUser } from "@/lib/admin";
+import { sniffImage } from "@/lib/image-sniff";
 
 const MAX_BYTES = 15 * 1024 * 1024;
 const TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
@@ -17,8 +18,10 @@ export async function POST(req: Request) {
   const ext = TYPES[file.type];
   if (!ext) return NextResponse.json({ error: "Envie PNG, JPG, WebP ou GIF." }, { status: 415 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "O arquivo passa de 15 MB." }, { status: 413 });
+  const bytes = await file.arrayBuffer();
+  if (sniffImage(new Uint8Array(bytes, 0, Math.min(16, bytes.byteLength))) !== file.type) return NextResponse.json({ error: "Envie PNG, JPG, WebP ou GIF." }, { status: 415 });
   const key = `destaques/${Date.now().toString(36)}-${randomBytes(6).toString("hex")}.${ext}`;
   const { env } = await getCloudflareContext({ async: true });
-  await env.MEDIA.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" } });
+  await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" } });
   return NextResponse.json({ url: `/midia/${key}` });
 }
