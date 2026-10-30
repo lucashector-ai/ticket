@@ -267,11 +267,11 @@ const REFUNDABLE_SQL = sql.join(REFUNDABLE.map((x) => sql`${x}`), sql`, `);
  * venda, num comando só. Ingresso comprado na revenda não devolve o lugar (ele já tinha sido vendido antes).
  */
 const releaseTickets = (where: SQL, status: "refunded" | "cancelled", resale: boolean) => db.execute(sql`
-  with gone as (update ${tickets} set status = ${status} where ${where} returning id, ticket_type_id),
-  tr as (update ${ticketTransfers} set status = 'cancelled' where ticket_id in (select id from gone) and status = 'pending' returning 1),
-  rl as (update ${resaleListings} set status = 'cancelled' where ticket_id in (select id from gone) and status in ('active', 'reserved') returning 1),
+  with gone as (update ${tickets} set status = ${status}, updated_at = now() where ${where} returning id, ticket_type_id),
+  tr as (update ${ticketTransfers} set status = 'cancelled', updated_at = now() where ticket_id in (select id from gone) and status = 'pending' returning 1),
+  rl as (update ${resaleListings} set status = 'cancelled', updated_at = now() where ticket_id in (select id from gone) and status in ('active', 'reserved') returning 1),
   per as (select ticket_type_id, count(*)::int n from gone where not ${resale}::boolean group by ticket_type_id),
-  seats as (update ${ticketTypes} tt set sold = greatest(tt.sold - per.n, 0) from per where tt.id = per.ticket_type_id returning 1)
+  seats as (update ${ticketTypes} tt set sold = greatest(tt.sold - per.n, 0), updated_at = now() from per where tt.id = per.ticket_type_id returning 1)
   select (select count(*) from gone)::int as n`);
 
 /**
@@ -376,11 +376,11 @@ export async function markOrderRefunded(orderId: string) {
   // primeiro passo deixava o pedido reembolsado com ingressos válidos, e a nova tentativa parava logo no começo)
   const r = await db.execute<{ flipped: number }>(sql`
     with o as (update ${orders} set status = 'refunded', updated_at = now() where id = ${orderId} and status <> 'refunded' returning id, resale_listing_id),
-    gone as (update ${tickets} t set status = 'refunded' from o where t.order_id = o.id and t.status in ('valid', 'transferred') returning t.id, t.ticket_type_id),
-    tr as (update ${ticketTransfers} set status = 'cancelled' where ticket_id in (select id from gone) and status = 'pending' returning 1),
-    rl as (update ${resaleListings} set status = 'cancelled' where ticket_id in (select id from gone) and status in ('active', 'reserved') returning 1),
+    gone as (update ${tickets} t set status = 'refunded', updated_at = now() from o where t.order_id = o.id and t.status in ('valid', 'transferred') returning t.id, t.ticket_type_id),
+    tr as (update ${ticketTransfers} set status = 'cancelled', updated_at = now() where ticket_id in (select id from gone) and status = 'pending' returning 1),
+    rl as (update ${resaleListings} set status = 'cancelled', updated_at = now() where ticket_id in (select id from gone) and status in ('active', 'reserved') returning 1),
     per as (select ticket_type_id, count(*)::int n from gone where not exists (select 1 from o where resale_listing_id is not null) group by ticket_type_id),
-    seats as (update ${ticketTypes} tt set sold = greatest(tt.sold - per.n, 0) from per where tt.id = per.ticket_type_id returning 1)
+    seats as (update ${ticketTypes} tt set sold = greatest(tt.sold - per.n, 0), updated_at = now() from per where tt.id = per.ticket_type_id returning 1)
     select (select count(*) from o)::int as flipped`);
   return (r.rows[0]?.flipped ?? 0) > 0;
 }

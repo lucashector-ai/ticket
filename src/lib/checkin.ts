@@ -51,13 +51,16 @@ export async function checkinTicket(input: string, eventIds: Set<string> | null,
     return { ok: false, status: 409, error: `Ingresso ${why}.`, ticket: info };
   }
   // só marca se ainda estiver válido: duas leituras ao mesmo tempo não passam as duas
+  // e, no mesmo comando, entrou no evento: sai da revenda (uma ida ao banco a menos em cada leitura da fila)
   const now = new Date();
-  const done = await db.update(schema.tickets).set({ status: "used", checkedInAt: now })
-    .where(and(eq(schema.tickets.id, ticket.id), eq(schema.tickets.status, "valid"))).returning({ id: schema.tickets.id });
-  if (!done.length) return { ok: false, status: 409, error: "Ingresso já utilizado.", ticket: info };
-  // entrou no evento: sai da revenda
-  await db.update(schema.resaleListings).set({ status: "cancelled" })
-    .where(and(eq(schema.resaleListings.ticketId, ticket.id), inArray(schema.resaleListings.status, ["active", "reserved"])));
+  const done = await db.execute<{ n: number }>(sql`
+    with u as (
+      update ${schema.tickets} set status = 'used', checked_in_at = ${now}, updated_at = now() where id = ${ticket.id} and status = 'valid' returning id
+    ), r as (
+      update ${schema.resaleListings} set status = 'cancelled', updated_at = now() where ticket_id in (select id from u) and status in ('active', 'reserved') returning 1
+    )
+    select (select count(*) from u)::int as n`);
+  if (!done.rows[0]?.n) return { ok: false, status: 409, error: "Ingresso já utilizado.", ticket: info };
   return { ok: true, status: 200, checkedInAt: now, ticket: info };
 }
 
