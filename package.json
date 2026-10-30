@@ -28,7 +28,7 @@
     "@stripe/stripe-js": "10.2.0",
     "better-auth": "^1.7.14",
     "drizzle-orm": "^0.45.4",
-    "fflate": "0.8.2",
+    "fflate": "0.8.3",
     "jsqr": "1.4.0",
     "next": "16.4.3",
     "node-forge": "1.4.2",
