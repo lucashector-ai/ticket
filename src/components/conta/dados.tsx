@@ -111,7 +111,7 @@ export function ContaDados({ initial }: { initial: Initial }) {
           <label className="ct-f span2"><span className="ct-l">Rua</span><input className="ct-in" value={addr.street} onChange={(e) => setA({ street: e.target.value })} autoComplete="address-line1" /></label>
           <label className="ct-f"><span className="ct-l">Número</span><input autoComplete="off" ref={numRef} className="ct-in" value={addr.number} onChange={(e) => setA({ number: e.target.value })} /></label>
           <label className="ct-f span2"><span className="ct-l">Complemento <em>opcional</em></span><input className="ct-in" value={addr.complement ?? ""} onChange={(e) => setA({ complement: e.target.value })} autoComplete="address-line2" placeholder="Apto, bloco, referência" /></label>
-          <label className="ct-f"><span className="ct-l">Bairro</span><input autoComplete="off" className="ct-in" value={addr.district} onChange={(e) => setA({ district: e.target.value })} /></label>
+          <label className="ct-f ct-bairro"><span className="ct-l">Bairro</span><input autoComplete="off" className="ct-in" value={addr.district} onChange={(e) => setA({ district: e.target.value })} /></label>
           <label className="ct-f"><span className="ct-l">Estado</span><UfSelect className="ct-in" value={addr.uf} onChange={(uf) => setA({ uf })} /></label>
           <label className="ct-f"><span className="ct-l">Cidade</span><CitySelect className="ct-in" uf={addr.uf} value={addr.city} onChange={(city) => setA({ city })} /></label>
         </div>

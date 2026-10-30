@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 /*
  * Campos de Estado e Cidade usados em todo o site. Cidade abre como o Estado (com a setinha), mas com busca:
@@ -77,6 +77,11 @@ function SearchSelect({ options, value, onPick, className, invalid, id, ariaLabe
 
   const close = () => { setOpen(false); setQ(null); };
   const pick = (v: string) => { onPick(v); close(); };
+  // lista mais larga que o campo (coluna estreita no celular): se passar da borda da tela, alinha pela direita
+  useLayoutEffect(() => {
+    const ul = listRef.current;
+    if (open && ul && ul.getBoundingClientRect().right > document.documentElement.clientWidth - 8) ul.classList.add("cs-flip");
+  }, [open]);
   const move = (d: number) => {
     const n = Math.max(0, Math.min(hits.length - 1, hi + d));
     setHi(n);
