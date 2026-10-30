@@ -90,6 +90,14 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 
 **Dados criados no banco de teste (`teste-r4`):** organizador "Agente Teste Produções" (`agente-teste-producoes-r4`, dono `teste+agente1030@example.com`, e-mail da conta continua não confirmado) e o perfil dessa conta; evento `qa-romano-r4-meia` ("QA Romano · Meia D-09 (não comprar)", Pista Inteira/Meia e Camarote Inteira); pedido de teste `TEST-r4-d11` de uma conta fictícia `qa-romano-r4-remetente` com o ingresso `TW-R4QA-D11X` transferido (pendente) para `marcia.qa.r4@example.com`; tabela `ticket_events`. Nenhuma conta nova criada pelo Romano. Convite de equipe (admin) da produtora "Agente Teste Produções" para `teste+marcos-r4@example.com`, feito pela tela no banco de teste. A pedido do Marcos, a conta dele `teste+marcos-r4@example.com` (criada depois da cópia) ganhou uma linha **só no `neon_auth."user"` do branch de teste**, com o e-mail confirmado, para validar o aceite positivo da D-11 (não afeta o login da produção); apagar junto com o branch.
 
+### Romano · rodada 5 (30/10)
+
+| Data/hora | Commit | Correção | Validação | Status |
+|---|---|---|---|---|
+| 30/10 21:35 | edf6763 | **U-73 / S-37 (P1):** compra de evento já encerrado recusada no servidor (reserva, grupo, pré-venda, revenda, cobrança no cartão e emissão; Pix pago depois do fim = estorno automático sem ingresso); checkout redireciona; página do evento com "Vendas encerradas". Regra única em `src/lib/tickets/sales-end.ts` | `tests/db/sales-end.test.ts` (6 cenários falham sem a correção: reserva da Calourada, data encerrada de evento de várias datas, Pix tardio, modo de teste, grupo, revenda) e `tests/unit/sales-end.test.ts` (horários reais da Calourada); fixture da portaria (`checkin-day`) paga antes das datas passarem; suíte 44 arquivos / 158 testes; no servidor local: `/checkout?evento=calourada&itens=…` → 307 para `/eventos/calourada`; página com "Vendas encerradas" e nenhum "Comprar ingressos" em 1366 e 390 (Chromium); `festa-da-putaria` (datas futuras) segue vendendo | VALIDADO |
+
+O pedido de teste #48256 (já pago, TEST) ficou como está no banco de teste: é evidência do achado; não houve cobrança real.
+
 ## Marcos
 
 | Data/hora | Commit | Correção | Validação | Status |

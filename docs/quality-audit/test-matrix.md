@@ -76,7 +76,11 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/db/produtoras.test.ts | Até 3 produtoras (3 pedidos simultâneos: 1 passa), isolamento de eventos/recebimento/saques, cookie forjado com a produtora de outra pessoa, admin alternando para a produtora da equipe | conforme | VALIDADO (rodada 4) |
 | tests/unit/art-frame.test.ts | Palco dos banners em HTML: CSP própria (sandbox sem mesma origem, sem rede), rota fixa, aceita só a página que emoldura | conforme | VALIDADO (rodada 4) |
 | tests/db/trail.test.ts | D-12: jornada inteira registrada (emissão, presente, transferência enviada/cancelada/aceita, revenda, check-in recusado e aceito, reembolso) e achada pelo código original, e-mail e nº do pedido; emissão que falha não deixa rastro; ingresso antigo reconstruído; busca | conforme | VALIDADO (rodada 4) |
-Última execução completa: 30/10 rodada 4, commit c934fec, **147 testes, 147 aprovados, 0 reprovados** (42 arquivos, com `TEST_DATABASE_URL` do branch `teste-r4`).
+| tests/db/sales-end.test.ts | U-73: reserva de evento encerrado (Calourada pelo link direto); evento em andamento vende; data encerrada × próxima data em evento de várias datas; Pix pago depois do fim; confirmação de teste depois do fim; grupo (montar e pagar parte depois do fim); revenda (reservar e pagar depois do fim) | recusa sem gravar pedido / vende / "desta data" × vende / estorno, 0 ingressos, estoque intacto / cancelado / recusa e estorno, parte não paga / recusa e estorno, ingresso fica com quem vendeu | VALIDADO (rodada 5; 6 de 7 falham sem a correção, o 7º é o controle) |
+| tests/unit/sales-end.test.ts | Fim das vendas: horários reais da Calourada (vende até 07:59Z, encerra 08:00Z), sem término = início, várias datas pela duração da última, término inconsistente não estende a venda | conforme | VALIDADO (rodada 5) |
+
+Última execução completa: 30/10 rodada 5, commit edf6763, **158 testes, 158 aprovados, 0 reprovados** (44 arquivos, com `TEST_DATABASE_URL` do branch de teste novo).
+Rodada 4: commit c934fec, 147 testes, 147 aprovados, 0 reprovados (42 arquivos, com `TEST_DATABASE_URL` do branch `teste-r4`).
 Anterior: 30/10 rodada 3, **103 testes, 103 aprovados, 0 reprovados** (32 arquivos, com `TEST_DATABASE_URL`; perfis `qa-test-…` apagados no fim pela limpeza global). Rodada 2: 71 testes, 71 aprovados (23 arquivos: 27 unitários + 44 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 99aed9b); e2e da câmera repetido depois das mudanças de portaria do Marcos (13/13).
 
 ### No navegador (Playwright, servidor local, conta de teste)
@@ -129,6 +133,7 @@ E2E da portaria pela câmera: `tests/e2e/portaria-camera.e2e.mjs` (`pnpm test:e2
 | Restam poucos e muitos compram ao mesmo tempo (10/50/100) | trava por tipo + conferência no mesmo lote (`placeOrder`) | VALIDADO (carga, rodada 3: vende exatamente o estoque) |
 | Ingresso de outra data do mesmo evento na portaria | `sessionRefusal` no `checkinTicket` | VALIDADO (integração e tela, rodada 3) |
 | Queda no meio do reembolso ou do saque | transação única (`tx.ts`) | VALIDADO (integração, rodada 3) |
+| Compra, grupo, revenda ou pagamento depois do fim do evento (ou da data) | `salesEndedError` em `placeOrder`/`createGroup`, `eventClosedFor` em `fulfillOrder`/`payCard`; checkout redireciona | VALIDADO (integração e navegador, rodada 5) |
 | Meia pela caixa da Inteira com tipo Meia esgotado | não protegido: regra comercial em D-09 | aberto (decisão do dono) |
 
 ## Parte de experiência (Marcos)
