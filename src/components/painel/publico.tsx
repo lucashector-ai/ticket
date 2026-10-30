@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { csvBlob } from "@/lib/csv";
 
 type Buyer = { id: string; name: string; ini: string; bg: string; email: string; orders: number; tickets: number; spent: string; events: number; last: string; meia: boolean };
 export type PublicoProps = {
@@ -24,9 +25,8 @@ export function PainelPublico(p: PublicoProps) {
   const FIL: [typeof f, string, number][] = [["all", "Todos", p.buyers.length], ["back", "Voltaram", p.buyers.filter((b) => b.events > 1).length], ["meia", "Meia-entrada", p.buyers.filter((b) => b.meia).length]];
 
   const csv = () => {
-    const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
     const rows = [["Nome", "E-mail", "Pedidos", "Ingressos", "Eventos", "Gasto", "Última compra"], ...list.map((b) => [b.name, b.email, b.orders, b.tickets, b.events, b.spent, b.last])];
-    const blob = new Blob(["﻿" + rows.map((r) => r.map(esc).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const blob = csvBlob(rows);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = "compradores.csv"; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);

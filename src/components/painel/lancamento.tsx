@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { removeSignup, saveLaunch, sendLaunchNow } from "@/lib/actions/launch";
 import { useOrigin } from "./use-origin";
+import { csvBlob } from "@/lib/csv";
 
 type Signup = { id: string; kind: "abertura" | "presale"; email: string; when: string; notified: boolean; used: boolean; token: string };
 export type LaunchProps = {
@@ -58,7 +59,7 @@ export function PainelLancamento({ p }: { p: LaunchProps }) {
   const shown = list === "presale" ? pres : abert;
   const csv = () => {
     const rows = [["E-mail", "Lista", "Cadastro", "Avisado", "Comprou na pré-venda", "Link da pré-venda"], ...p.signups.map((s) => [s.email, s.kind === "presale" ? "Pré-venda" : "Aviso de abertura", s.when, s.notified ? "Sim" : "Não", s.used ? "Sim" : "Não", s.kind === "presale" ? `${origin}/pv/${s.token}` : ""])];
-    const blob = new Blob(["﻿" + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const blob = csvBlob(rows);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = "lista-lancamento.csv"; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { addGuest, addGuestsBulk, inviteAllPending, inviteGuest, removeGuest, undoGuestCheckin } from "@/lib/actions/lista";
+import { csvBlob } from "@/lib/csv";
 
 export type ListaGuest = {
   id: string; name: string; email: string; token: string; guests: number; note: string;
@@ -180,10 +181,8 @@ export function PainelLista({ p }: { p: ListaProps }) {
 
 /** Lista em CSV (abre no Excel/Planilhas). */
 function exportCsv(title: string, rows: ListaGuest[]) {
-  // aspas dobradas e sem fórmula de planilha (=, +, -, @ no começo)
-  const esc = (v: string) => `"${(/^[=+\-@]/.test(v) ? `'${v}` : v).replace(/"/g, '""')}"`;
   const lines = [["Nome", "E-mail", "Acompanhantes", "Observação", "Adicionado em", "Entrou", "Liberado por"], ...rows.map((r) => [r.name, r.email, String(r.guests), r.note, r.added, r.inAt ?? "", r.by ?? ""])];
-  const blob = new Blob(["﻿" + lines.map((l) => l.map(esc).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
+  const blob = csvBlob(lines);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `lista-free-${title.toLowerCase().normalize("NFD").replace(/[^\w]+/g, "-")}.csv`;

@@ -16,6 +16,7 @@ import { PainelReembolsos } from "./reembolsos";
 import type { RefundTab } from "@/lib/data/reembolsos";
 import { CheckinLinks, type CheckinLink } from "./checkin-links";
 import { useOrigin } from "./use-origin";
+import { csvBlob } from "@/lib/csv";
 
 type Tab = "geral" | "participantes" | "lista" | "checkin" | "financeiro" | "lancamento" | "revenda" | "reembolsos";
 type Person = { id: string; name: string; ini: string; bg: string; email: string; ticket: string; meia: boolean; order: string; date: string; status: string; inAt: string | null };
@@ -347,9 +348,8 @@ function Fin({ p }: { p: EventoPainelProps }) {
 
 /** Lista de participantes em CSV (abre no Excel/Planilhas). */
 function exportCsv(title: string, rows: Person[]) {
-  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
   const lines = [["Nome", "E-mail", "Ingresso", "Meia", "Pedido", "Compra", "Check-in"], ...rows.map((r) => [r.name, r.email, r.ticket, r.meia ? "sim" : "não", r.order, r.date, r.inAt ?? ""])];
-  const blob = new Blob(["﻿" + lines.map((l) => l.map(esc).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
+  const blob = csvBlob(lines);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `participantes-${title.toLowerCase().normalize("NFD").replace(/[^\w]+/g, "-")}.csv`;
