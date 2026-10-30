@@ -48,5 +48,13 @@ describe.skipIf(!TEST_DB)("reembolso repetido (banco de teste)", () => {
     expect(order?.status).toBe("refunded");
     expect(tks.every((t) => t.status === "refunded")).toBe(true);
     expect(rs.some((r) => r.ok)).toBe(true);
+    // na portaria, ingresso reembolsado não entra (QR assinado ou código digitado)
+    const { checkinTicket } = await import("@/lib/checkin");
+    const { qrPayload } = await import("@/lib/tickets/qr");
+    const byQr = await checkinTicket(await qrPayload(tks[0].code, tks[0].secret), new Set([ev.id]));
+    const byCode = await checkinTicket(tks[1].code, new Set([ev.id]));
+    expect(byQr.ok || byCode.ok).toBe(false);
+    expect(byQr.error).toMatch(/reembolsado/);
+    expect(byCode.error).toMatch(/reembolsado/);
   });
 });
