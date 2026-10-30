@@ -5,6 +5,7 @@ import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
 import type { OrganizerPayout } from "@/db/schema";
 import { getPainelScope, listOrders } from "@/lib/data/painel";
+import { signingSecret } from "@/lib/signing-secret";
 
 /*
  * Banco Tickets Win: a carteira do dono dos eventos.
@@ -158,7 +159,7 @@ export async function checkBankPassword(password: string, stored: string) {
 const SESSION = "tw_banco";
 const PENDING = "tw_banco_p";
 const SESSION_MIN = 30;
-const mac = (s: string) => createHmac("sha256", process.env.NEON_AUTH_COOKIE_SECRET ?? "tw").update(`banco:${s}`).digest("base64url").slice(0, 32);
+const mac = (s: string) => createHmac("sha256", signingSecret()).update(`banco:${s}`).digest("base64url").slice(0, 32);
 const opts = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" as const, path: "/" };
 const pack = (userId: string, exp: number) => `${userId}.${exp}.${mac(`${userId}:${exp}`)}`;
 function unpack(v: string | undefined) {

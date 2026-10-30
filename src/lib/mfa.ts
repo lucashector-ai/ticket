@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
 import { mailMfaCode } from "@/lib/notify";
+import { signingSecret } from "@/lib/signing-secret";
 
 /*
  * Verificação em duas etapas da Tickets Win (por cima do login do Neon Auth).
@@ -26,7 +27,7 @@ const MAX_TRIES = 5;
 export const RESEND_AFTER = 30;
 const MAX_SENDS_HOUR = 8;
 
-const secret = () => process.env.NEON_AUTH_COOKIE_SECRET ?? "tw";
+const secret = () => signingSecret();
 const mac = (s: string) => createHmac("sha256", secret()).update(s).digest("base64url").slice(0, 32);
 const hashCode = (userId: string, purpose: string, code: string) => createHash("sha256").update(`${secret()}:${userId}:${purpose}:${code}`).digest("base64url");
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));

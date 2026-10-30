@@ -10,12 +10,13 @@ import { getSessionUser } from "@/lib/auth/server";
 import { mailTransferAccepted, mailTransferCancelled, mailTransferSent } from "@/lib/notify";
 import { deadlineLabel, deadlineOpen } from "@/lib/refund-policy";
 import { ticketCode } from "@/lib/tickets/code";
+import { signingSecret } from "@/lib/signing-secret";
 
 const { tickets, ticketTransfers } = schema;
 
 /** Payload assinado do QR: ONDE|código|assinatura (HMAC do segredo do ingresso). */
 export async function qrPayload(code: string, secret: string) {
-  const sig = createHmac("sha256", process.env.NEON_AUTH_COOKIE_SECRET ?? "onde").update(`${code}:${secret}`).digest("base64url").slice(0, 16);
+  const sig = createHmac("sha256", signingSecret()).update(`${code}:${secret}`).digest("base64url").slice(0, 16);
   return `ONDE|${code}|${sig}`;
 }
 

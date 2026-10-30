@@ -3,6 +3,7 @@ import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { signingSecret } from "@/lib/signing-secret";
 
 /*
  * App da portaria (/portaria): o aparelho entra num evento com o código curto ou o link de um
@@ -26,7 +27,7 @@ export function normalizeCode(v: string) {
   return s.length === 8 ? `${s.slice(0, 4)}-${s.slice(4)}` : null;
 }
 
-const sign = (id: string) => createHmac("sha256", process.env.NEON_AUTH_COOKIE_SECRET ?? "tw").update(`portaria:${id}`).digest("base64url").slice(0, 32);
+const sign = (id: string) => createHmac("sha256", signingSecret()).update(`portaria:${id}`).digest("base64url").slice(0, 32);
 
 /** Cookie do aparelho conectado a um acesso: só o id, assinado; HttpOnly. */
 export const portariaCookie = (linkId: string) => ({
