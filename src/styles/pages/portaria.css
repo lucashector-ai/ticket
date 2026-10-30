@@ -1,7 +1,8 @@
 /* App da portaria (/portaria): tela cheia escura, câmera, flash de resultado e lista. */
 .pg-portaria{position:fixed;inset:0;overflow:hidden;background:#000;color:#fff;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
 .pg-portaria {
-  button{font-family:inherit;cursor:pointer;border:0;text-align:center;justify-content:center}
+  /* sem zoom de toque duplo nos botões (operação rápida); o zoom de pinça fica liberado (WCAG 1.4.4) */
+  button{font-family:inherit;cursor:pointer;border:0;text-align:center;justify-content:center;touch-action:manipulation}
   /* ---------- entrada com código ---------- */
   .pt-login{height:100%;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:18px;padding:calc(36px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));background:radial-gradient(90% 50% at 50% 0%,rgba(211,245,91,.16),transparent 70%),#000}
   .pt-brand{display:flex;align-items:center;gap:10px;color:#fff}
@@ -117,11 +118,11 @@
   .pt-list li.in .pt-av{background:#14A44D}
   .pt-gi{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
   .pt-gi b{font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pt-gi small{font-size:12.5px;color:#8E8E93;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pt-gi small{font-size:12.5px;color:#6E6E73;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pt-in{flex:none;font-size:12px;font-weight:700;color:#5BE38A}
   .pt-rel{flex:none;height:38px;padding:0 16px;border-radius:999px;background:#fff;color:#111;font-size:13.5px;font-weight:700;transition:background .2s,transform .25s cubic-bezier(.34,1.56,.64,1)}
   .pt-rel.arm{background:#34E66E;transform:scale(1.04)}
-  .pt-empty{justify-content:center;color:#8E8E93;font-size:14px;border:0!important;padding:28px 0!important}
+  .pt-empty{justify-content:center;color:#6E6E73;font-size:14px;border:0!important;padding:28px 0!important}
   /* ---------- acesso desligado ---------- */
   .pt-off{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center}
   .pt-off b{font:600 26px 'Inter Tight',sans-serif}

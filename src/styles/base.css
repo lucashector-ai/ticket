@@ -165,7 +165,7 @@ input,select{font:inherit;color:inherit}
 .hsearch:focus-within{border-color:#111;box-shadow:0 0 0 4px rgba(211,245,91,.5)}
 .hdr:not(.on-img) .hsearch{background:#F7F7F2;border-color:transparent}
 .hsearch input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:14.5px}
-.hsearch input::placeholder{color:#8A8A90}
+.hsearch input::placeholder{color:#6E6E73}
 .only-s{display:none}
 @media (max-width:1280px){.hsearch{display:none}.only-s{display:grid}}
 @media (max-width:760px){
@@ -251,7 +251,7 @@ input,select{font:inherit;color:inherit}
 .qbar:focus-within{box-shadow:0 0 0 4px rgba(211,245,91,.6),0 24px 48px -24px rgba(17,17,17,.35)}
 .qb-s{flex:1;min-width:0;display:flex;align-items:center;gap:12px;color:#6E6E73}
 .qb-s input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:15.5px;color:#111;height:44px}
-.qb-s input::placeholder{color:#8A8A90}
+.qb-s input::placeholder{color:#6E6E73}
 .qb-sep{width:1px;height:28px;background:#EAEAEA;margin:0 4px}
 .qb-c{display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 14px;border-radius:999px;font-size:14px;font-weight:500;white-space:nowrap;transition:background .3s,color .3s}
 .qb-c:hover{background:#F7F7F2}
@@ -432,7 +432,7 @@ input,select{font:inherit;color:inherit}
   .sb2-sea svg{top:2cqw;height:5cqw}
 }
 .cwhere{font-size:14px}
-.ccity{display:block;margin-top:2px;font-size:12.5px;color:#8A8A90}
+.ccity{display:block;margin-top:2px;font-size:12.5px;color:#6E6E73}
 .cbadge{position:absolute;left:10px;top:10px;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;width:46px;height:50px;border-radius:12px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font-size:10px;font-weight:600;letter-spacing:.08em;color:#6E6E73;line-height:1;box-shadow:0 6px 16px -10px rgba(0,0,0,.4);transition:transform .6s var(--ease)}
 .cbadge b{font-family:'Inter Tight',sans-serif;font-size:19px;letter-spacing:-.03em;color:#111;margin-bottom:3px}
 .card:hover .cbadge{transform:translateY(-2px) rotate(-4deg)}

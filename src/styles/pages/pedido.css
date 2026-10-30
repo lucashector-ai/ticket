@@ -17,11 +17,11 @@
   .od-ev{margin:0;font-size:14.5px;line-height:1.45;color:#55555A}
   .od-hero .ct-link{margin-top:6px}
   .od-hero-r{display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
-  .od-hero-r small{font-size:12.5px;color:#8A8A90}
+  .od-hero-r small{font-size:12.5px;color:#6E6E73}
   .od-hero-r b{font:600 28px 'Inter Tight',sans-serif;letter-spacing:-.03em;white-space:nowrap}
   .od-hero-r .od-ref{color:#1F4FB3;font-weight:600}
   .od-bought{grid-column:1 / -1;display:flex;align-items:center;gap:8px;margin:0;padding-top:16px;border-top:1px solid #F0F0EA;font-size:14px;font-weight:500;color:#3A3A3C}
-  .od-bought svg{color:#8A8A90;flex:none}
+  .od-bought svg{color:#6E6E73;flex:none}
 
   .od-alert{padding:14px 18px;border-radius:16px;background:#F2F2EC;color:#3A3A3C;font-size:14px;line-height:1.5}
   .od-alert b{color:#111}
@@ -51,7 +51,7 @@
   .od-sum > div{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:9px 0;border-top:1px solid #F4F4EF;font-size:14.5px}
   .od-sum > div:first-child{border-top:0}
   .od-sum dt{display:flex;flex-direction:column;gap:1px;min-width:0;color:#3A3A3C}
-  .od-sum dt small{font-size:12.5px;color:#8A8A90}
+  .od-sum dt small{font-size:12.5px;color:#6E6E73}
   .od-sum dd{margin:0;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
   .od-sum .disc dd{color:#2D6A00}
   .od-sum .tot{border-top:1px solid #E4E4DE;padding-top:12px;margin-top:4px;font:600 17px 'Inter Tight',sans-serif;letter-spacing:-.02em}
@@ -78,7 +78,7 @@
   .od-tl li.bad::before{border-color:#B3261E;background:#FFD9D5}
   .od-tl li.azul::before{border-color:#1F4FB3;background:#DCE7FF}
   .od-tl b{font-size:14px;font-weight:600}
-  .od-tl time{font-size:12.5px;color:#8A8A90}
+  .od-tl time{font-size:12.5px;color:#6E6E73}
   .od-tl small{font-size:13px;line-height:1.45;color:#55555A;overflow-wrap:anywhere}
 
   .od-box{display:flex;flex-direction:column;gap:14px;padding:16px 18px;border-radius:16px;background:#FAFAF7;border:1px solid #EDEDE7}
@@ -140,17 +140,17 @@
   .rc-head-r h1{margin:0;font:600 20px 'Inter Tight',sans-serif;letter-spacing:-.02em}
   .rc-head-r p{font-size:14px;color:#111}
   .rc-kv{margin:20px 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px}
-  .rc-kv dt{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A8A90}
+  .rc-kv dt{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6E6E73}
   .rc-kv dd{margin:2px 0 0;font-weight:600}
   .rc-sec{margin-top:20px}
-  .rc-sec h2{margin:0 0 4px;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A8A90}
+  .rc-sec h2{margin:0 0 4px;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6E6E73}
   .rc-sec p{margin:0}
   .rc-tb{width:100%;margin-top:24px;border-collapse:collapse;font-variant-numeric:tabular-nums}
-  .rc-tb caption{text-align:left;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A8A90;padding-bottom:6px}
+  .rc-tb caption{text-align:left;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6E6E73;padding-bottom:6px}
   .rc-tb th,.rc-tb td{padding:8px 0;border-bottom:1px solid #EDEDE7;text-align:right;vertical-align:top}
   .rc-tb th:first-child,.rc-tb td:first-child{text-align:left}
   .rc-tb thead th{font-size:12px;color:#6E6E73;font-weight:600}
-  .rc-tb td small{display:block;font-size:12px;color:#8A8A90}
+  .rc-tb td small{display:block;font-size:12px;color:#6E6E73}
   .rc-tb tfoot th{font-weight:500;color:#3A3A3C;text-align:right}
   .rc-tb tfoot .tot th,.rc-tb tfoot .tot td{font-weight:700;color:#111;border-bottom:2px solid #111}
   .rc-tks{margin:0;padding-left:18px}

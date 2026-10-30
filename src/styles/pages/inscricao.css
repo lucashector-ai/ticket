@@ -21,7 +21,7 @@
   .ins-steps{list-style:none;margin:32px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
   .ins-steps li{display:flex;gap:16px;align-items:flex-start;padding:14px 0}
   .ins-steps li + li{border-top:1px dashed #E2E2DC}
-  .ins-n{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#fff;border:1.5px solid #E2E2DC;font:600 14px 'Inter Tight',sans-serif;color:#8A8A90}
+  .ins-n{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#fff;border:1.5px solid #E2E2DC;font:600 14px 'Inter Tight',sans-serif;color:#6E6E73}
   .ins-steps li.on .ins-n{background:#111;border-color:#111;color:#D3F55B}
   .ins-steps li.ok .ins-n{background:#D3F55B;border-color:#D3F55B;color:#111}
   .ins-steps li > span:last-child{display:flex;flex-direction:column;gap:3px;padding-top:6px}
@@ -40,18 +40,18 @@
   .ins-fine{font-size:13.5px !important;color:#6E6E73 !important}
   .ins-fine a,.ins-card p a{color:#111;font-weight:600;text-decoration:underline;text-underline-offset:3px}
   .ins-form fieldset{min-width:0;margin:0;padding:18px 0 0;border:0;border-top:1px solid #F0F0EA;display:flex;flex-direction:column;gap:14px}
-  .ins-form legend{float:left;width:100%;margin-bottom:2px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A8A90}
+  .ins-form legend{float:left;width:100%;margin-bottom:2px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6E6E73}
   .ins-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .ins-g2.city{grid-template-columns:minmax(0,.9fr) minmax(0,1.2fr)}
   .ins-f{display:flex;flex-direction:column;gap:7px;min-width:0}
   .ins-f > span:first-child{font-size:13.5px;font-weight:600}
-  .ins-f small{font-size:12.5px;color:#8A8A90}
+  .ins-f small{font-size:12.5px;color:#6E6E73}
   .ins-f input,.ins-f select,.ins-f textarea{width:100%;min-height:50px;padding:0 14px;border:1.5px solid #E4E4DE;border-radius:14px;background:#fff;font:inherit;font-size:15.5px;color:#111;outline:none;transition:border-color .2s,box-shadow .2s}
   .ins-f textarea{padding:12px 14px;line-height:1.5;resize:vertical}
   .ins-f input:focus,.ins-f select:focus,.ins-f textarea:focus{border-color:#111;box-shadow:0 0 0 4px rgba(211,245,91,.5)}
   .ins-pre{display:flex;align-items:center;gap:8px;min-height:50px;padding:0 14px;border:1.5px solid #E4E4DE;border-radius:14px;transition:border-color .2s,box-shadow .2s}
   .ins-pre:focus-within{border-color:#111;box-shadow:0 0 0 4px rgba(211,245,91,.5)}
-  .ins-pre b{color:#8A8A90;font-weight:600}
+  .ins-pre b{color:#6E6E73;font-weight:600}
   .ins-pre input{border:0 !important;box-shadow:none !important;padding:0 !important;min-height:46px}
   .ins-chips{display:flex;flex-wrap:wrap;gap:8px}
   .ins-chips button{height:38px;padding:0 15px;border-radius:999px;border:1.5px solid #E4E4DE;background:#fff;font-size:14px;font-weight:500;transition:border-color .2s,background .2s,color .2s}
@@ -68,7 +68,7 @@
   .ins-pulse{width:46px;height:46px;border-radius:50%;background:#D3F55B;box-shadow:0 0 0 0 rgba(211,245,91,.7);animation:insPulse 1.8s ease-out infinite}
   .ins-sum{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px;border-radius:16px;background:#F7F7F2}
   .ins-sum div{display:flex;flex-direction:column;gap:3px;min-width:0}
-  .ins-sum dt{font-size:12px;font-weight:600;color:#8A8A90}
+  .ins-sum dt{font-size:12px;font-weight:600;color:#6E6E73}
   .ins-sum dd{margin:0;font-size:14.5px;font-weight:600;overflow-wrap:anywhere}
 
   @media (max-width:1040px){

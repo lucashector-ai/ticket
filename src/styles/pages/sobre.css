@@ -66,7 +66,7 @@
   .sob-stub small{display:block;font-size:11.5px;font-weight:600;color:var(--sob-mut);text-transform:uppercase;letter-spacing:.08em}
   .sob-stub b{display:block;margin-top:2px;font:600 30px 'Inter Tight',sans-serif;letter-spacing:-.04em}
   .sob-stub-a{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--sob-lime)}
-  .sob-stub-t{position:absolute;left:22px;right:22px;bottom:9px;font:500 10.5px 'Space Mono',monospace;color:#9A9A92;letter-spacing:.06em;text-transform:uppercase;border-top:1.5px dashed #E4E4DD;padding-top:5px}
+  .sob-stub-t{position:absolute;left:22px;right:22px;bottom:9px;font:500 10.5px 'Space Mono',monospace;color:#74746C;letter-spacing:.06em;text-transform:uppercase;border-top:1.5px dashed #E4E4DD;padding-top:5px}
 
   /* ---------- marquee ---------- */
   .sob-mq{position:relative;margin-top:120px;height:150px}
