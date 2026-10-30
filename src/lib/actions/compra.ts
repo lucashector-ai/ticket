@@ -113,8 +113,6 @@ function checkHolders(holders: PlaceOrderInput["holders"], own: string[], limits
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Entre na sua conta para finalizar a compra.", needsLogin: true };
-  // cada pedido segura os ingressos por 15 min: criar pedidos em sequência viraria um jeito de travar o estoque
-  if (!(await allowHit(`pedido:${user.id}`, ORDERS_PER_10MIN, 600))) return { ok: false, error: "Muitos pedidos em pouco tempo. Espere alguns minutos e tente de novo." };
   const parsed = placeSchema.safeParse(input);
   if (!parsed.success) {
     const missing = Array.from(new Set(parsed.error.issues.map((i) => i.message)));
@@ -183,6 +181,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const free = p.total === 0;
   const live = stripeEnabled();
   if (live && !free && p.total < STRIPE_MIN_BRL_CENTS) return { ok: false, error: "O valor mínimo para pagamento online é R$ 0,50." };
+  // cada pedido segura os ingressos por 15 min: criar pedidos em sequência viraria um jeito de travar o estoque
+  // (conta só pedido criado de verdade; erro de preenchimento não gasta a cota)
+  if (!(await allowHit(`pedido:${user.id}`, ORDERS_PER_10MIN, 600))) return { ok: false, error: "Muitos pedidos em pouco tempo. Espere alguns minutos e tente de novo." };
   // um pedido aberto por evento: o anterior (recarregou, voltou, trocou a forma de pagamento) é liberado
   const released = await releaseOthers(user.id, ev.id, { groupShareId: special?.kind === "grupo" ? special.shareId : null, resaleListingId: special?.kind === "revenda" ? special.listingId : null });
   if (!released.ok) return { ok: false, error: released.error };
