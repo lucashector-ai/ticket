@@ -11,7 +11,7 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 | S-01 | P1 | Portaria / revenda / transferência | Código do ingresso não mudava na troca de dono: quem vendeu ou transferiu entrava ditando o código | VALIDADO (`tests/db/tickets.test.ts`, falha sem a correção) | f8306a2 |
 | S-02 | P1 | Autorização (painel) | Qualquer conta logada criava produtor e convidava equipe; o convidado virava "produtor" sem aprovação | VALIDADO (`tests/db/painel.test.ts`, falha sem a correção) | ff46243 |
 | S-03 | P1 | Integridade de pagamento | Excluir evento apagava pedidos com pagamento em andamento (Pix pago depois ficava sem pedido e sem estorno) | VALIDADO (integração) | 087a0c8 |
-| S-04 | P2 | Financeiro | Dois saques simultâneos passavam juntos pela conferência do saldo | CORRIGIDO, NÃO VALIDADO | 087a0c8 |
+| S-04 | P2 | Financeiro | Dois saques simultâneos passavam juntos pela conferência do saldo | VALIDADO (`tests/db/payout.test.ts`, falha sem a correção) | 087a0c8 |
 | S-05 | P3 | Central admin | Central não exigia e-mail confirmado (já exigia domínio e app autenticador) | CORRIGIDO, NÃO VALIDADO | 087a0c8 |
 | S-06 | P1 | Equipe / portaria | Membro removido da equipe mantinha o acesso pessoal de portaria (cookie de 30 dias) | VALIDADO (integração) | 371f032 |
 | S-07 | P2 | Upload | `/api/midia` confiava no tipo informado pelo navegador e não tinha limite de envios | VALIDADO | c959201 |
