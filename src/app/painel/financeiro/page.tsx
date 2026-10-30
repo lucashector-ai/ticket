@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listOrders } from "@/lib/data/painel";
+import { orderSums, totalsOf } from "@/lib/data/painel";
 import { painelAccess } from "@/lib/painel/access";
 import { brl } from "@/lib/format";
 import { ended, nowMs } from "@/lib/painel/build";
@@ -12,29 +12,40 @@ import { Tbl } from "@/components/painel/tbl";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Financeiro" };
 
-/** Financeiro de todos os eventos do produtor. */
-export default async function PainelFinanceiro() {
+/** eventos por página na tabela "Por evento" */
+const PER_PAGE = 25;
+
+/** Financeiro de todos os eventos do produtor (somado no banco; a tabela por evento é paginada). */
+export default async function PainelFinanceiro({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const { org, events, role, user } = await painelAccess("admin");
   const [wallet, cred, mfa] = role === "owner" ? await Promise.all([walletFor(user.id), bankCredential(user.id), mfaSettings(user.id)]) : [null, null, null];
   const dm = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "America/Sao_Paulo" }).replace(".", "");
-  const orders = await listOrders(events.map((e) => e.id), new Map(events.map((e) => [e.id, e.absorbFee])));
+  // somas por evento, dia e valor feitas no banco: produtor grande não traz dezenas de milhares de pedidos
+  const sums = await orderSums(events.map((e) => e.id));
+  const absorb = new Map(events.map((e) => [e.id, e.absorbFee]));
   const now = nowMs();
-  const year = new Date(now).getFullYear();
-  const paid = orders.filter((o) => o.status === "paid");
-  const refunded = orders.filter((o) => o.status === "refunded");
-  const sum = (l: typeof orders, f: (o: (typeof orders)[number]) => number) => l.reduce((s, o) => s + f(o), 0);
+  const year = String(new Date(now).getFullYear());
+  const paid = sums.filter((s) => s.status === "paid");
+  const tot = (l: typeof sums) => {
+    const byEv = new Map<string, typeof sums>();
+    for (const s of l) byEv.set(s.eventId, [...(byEv.get(s.eventId) ?? []), s]);
+    return [...byEv].reduce((t, [id, rs]) => { const x = totalsOf(rs, absorb.get(id) ?? false); return { gross: t.gross + x.gross, net: t.net + x.net, qty: t.qty + x.qty, orders: t.orders + x.orders }; }, { gross: 0, net: 0, qty: 0, orders: 0 });
+  };
   const future = new Set(events.filter((e) => !ended(e, now)).map((e) => e.id));
-  const rows = events.filter((e) => e.status !== "draft").map((e) => {
-    const mine = paid.filter((o) => o.eventId === e.id);
-    return { id: e.id, title: e.title, gross: sum(mine, (o) => o.revenue), fee: sum(mine, (o) => o.revenue - o.net), net: sum(mine, (o) => o.net), n: sum(mine, (o) => o.qty), future: future.has(e.id) };
-  });
-  const grossAll = sum(paid, (o) => o.revenue), refAll = sum(refunded, (o) => o.revenue);
+  const published = events.filter((e) => e.status !== "draft");
+  const all = tot(paid), refunded = tot(sums.filter((s) => s.status === "refunded"));
   const kpis = [
-    { l: "Líquido das vendas", v: brl(sum(paid, (o) => o.net)), n: `${events.filter((e) => e.status !== "draft").length} eventos` },
-    { l: "Em eventos futuros", v: brl(sum(paid.filter((o) => future.has(o.eventId)), (o) => o.net)), n: `${future.size} ${future.size === 1 ? "evento" : "eventos"}` },
-    { l: `Vendido em ${year}`, v: brl(sum(paid.filter((o) => o.at.getFullYear() === year), (o) => o.revenue)), n: "em ingressos" },
-    { l: "Reembolsos", v: `${grossAll + refAll ? ((refAll / (grossAll + refAll)) * 100).toFixed(1).replace(".", ",") : "0"}%`, n: `${refunded.length} ${refunded.length === 1 ? "pedido" : "pedidos"}` },
+    { l: "Líquido das vendas", v: brl(all.net), n: `${published.length} eventos` },
+    { l: "Em eventos futuros", v: brl(tot(paid.filter((s) => future.has(s.eventId))).net), n: `${future.size} ${future.size === 1 ? "evento" : "eventos"}` },
+    { l: `Vendido em ${year}`, v: brl(tot(paid.filter((s) => s.day.startsWith(year))).gross), n: "em ingressos" },
+    { l: "Reembolsos", v: `${all.gross + refunded.gross ? ((refunded.gross / (all.gross + refunded.gross)) * 100).toFixed(1).replace(".", ",") : "0"}%`, n: `${refunded.orders} ${refunded.orders === 1 ? "pedido" : "pedidos"}` },
   ];
+  const pages = Math.max(1, Math.ceil(published.length / PER_PAGE));
+  const page = Math.min(pages, Math.max(1, Number.parseInt((await searchParams).p ?? "1", 10) || 1));
+  const rows = published.slice((page - 1) * PER_PAGE, page * PER_PAGE).map((e) => {
+    const x = totalsOf(paid.filter((s) => s.eventId === e.id), e.absorbFee);
+    return { id: e.id, title: e.title, gross: x.gross, fee: x.gross - x.net, net: x.net, n: x.qty };
+  });
   return (
     <div className="pane">
       <div className="pg-h"><div><h1 className="pg-t">Financeiro</h1><p className="pg-s">Todos os eventos de {org?.name ?? "você"}</p></div></div>
@@ -62,6 +73,13 @@ export default async function PainelFinanceiro() {
           ))}
           {rows.length === 0 && <div className="empty2"><b className="em-t">Nenhum evento publicado</b><span className="em-s">Quando você vender, os valores aparecem aqui.</span></div>}
         </Tbl>
+        {pages > 1 && (
+          <nav className="pgn" aria-label="Páginas da tabela por evento">
+            <span>{(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, published.length)} de {published.length} eventos</span>
+            {page > 1 && <Link className="b2" href={`/painel/financeiro?p=${page - 1}`} scroll={false}>Anteriores</Link>}
+            {page < pages && <Link className="b2" href={`/painel/financeiro?p=${page + 1}`} scroll={false}>Próximos</Link>}
+          </nav>
+        )}
       </section>
     </div>
   );

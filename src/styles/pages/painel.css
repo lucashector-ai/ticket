@@ -131,6 +131,8 @@
   .empty2{display:flex;flex-direction:column;align-items:center;gap:6px;padding:32px 16px;text-align:center}
   .empty2.big{padding:96px 16px;background:#fff;border-radius:20px}
   .empty2 .b2{margin-top:10px}
+  .pgn{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px 10px;margin-top:14px;font-size:13px;color:#6B6B64}
+  .pgn span{margin-right:auto}
   .em-t{font:600 17px 'Inter Tight',sans-serif}
   .em-s{font-size:14px;color:#63635C}
   .live-d{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#3D5200}

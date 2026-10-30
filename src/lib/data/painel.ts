@@ -102,3 +102,43 @@ export async function revenueByType(eventId: string) {
 export async function listEventCoupons(eventId: string) {
   return db.query.coupons.findMany({ where: eq(coupons.eventId, eventId) });
 }
+
+/**
+ * Pedidos resumidos no banco (para o financeiro e o extrato do Banco, sem trazer pedido por pedido): uma linha
+ * por evento, situação, dia (fuso de São Paulo), venda de teste e valor dos ingressos. Agrupar também pelo
+ * valor mantém a taxa arredondada pedido a pedido (`platformFee`), igual a somar os pedidos um a um.
+ * `trail`: o pedido tem reembolso registrado (order_refunds pendente/concluído, de verdade, com parte do produtor).
+ */
+export type OrderSum = { eventId: string; status: "paid" | "refunded"; day: string; at: Date; test: boolean; trail: boolean; revenue: number; n: number; qty: number };
+export async function orderSums(eventIds: string[]): Promise<OrderSum[]> {
+  if (!eventIds.length) return [];
+  const ids = sql.join(eventIds.map((id) => sql`${id}`), sql`, `);
+  const rows = await db.execute<{ event_id: string; status: "paid" | "refunded"; day: string; at: string; test: boolean; trail: boolean; revenue: number; n: string; qty: string }>(sql`
+    with o as (
+      select o.id, o.event_id, o.status, coalesce(o.paid_at, o.created_at) as at,
+        (o.payment_method::text = 'test' or coalesce(o.payment_ref, '') like 'TEST-%') as test,
+        o.subtotal_cents - o.meia_cents - o.discount_cents as revenue
+      from ${orders} o
+      where o.event_id in (${ids}) and o.status in ('paid', 'refunded') and o.resale_listing_id is null
+    ), q as (
+      select oi.order_id, sum(oi.quantity) as qty from ${orderItems} oi where oi.order_id in (select id from o) group by oi.order_id
+    ), t as (
+      select distinct r.order_id from ${schema.orderRefunds} r
+      where r.event_id in (${ids}) and r.status in ('pending', 'succeeded') and r.test = false and r.producer_cents > 0
+    )
+    select o.event_id, o.status, to_char(o.at at time zone 'America/Sao_Paulo', 'YYYY-MM-DD') as day, max(o.at) as at,
+      o.test, (t.order_id is not null) as trail, o.revenue, count(*) as n, coalesce(sum(q.qty), 0) as qty
+    from o left join q on q.order_id = o.id left join t on t.order_id = o.id
+    group by 1, 2, 3, 5, 6, 7`);
+  return rows.rows.map((r) => ({
+    eventId: r.event_id, status: r.status, day: r.day, at: new Date(r.at), test: !!r.test, trail: !!r.trail,
+    revenue: Number(r.revenue), n: Number(r.n), qty: Number(r.qty),
+  }));
+}
+
+/** Soma de linhas de `orderSums` de um evento: vendido, líquido (taxa por pedido), ingressos e pedidos. */
+export function totalsOf(rows: OrderSum[], absorb: boolean) {
+  return rows.reduce((t, s) => ({
+    gross: t.gross + s.revenue * s.n, net: t.net + (s.revenue - platformFee(s.revenue, absorb)) * s.n, qty: t.qty + s.qty, orders: t.orders + s.n,
+  }), { gross: 0, net: 0, qty: 0, orders: 0 });
+}

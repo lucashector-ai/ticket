@@ -4,7 +4,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
 import type { OrganizerPayout } from "@/db/schema";
-import { getPainelScope, listOrders } from "@/lib/data/painel";
+import { getPainelScope, orderSums, platformFee } from "@/lib/data/painel";
 import { signingSecret } from "@/lib/signing-secret";
 
 /*
@@ -41,11 +41,12 @@ export async function walletFor(userId: string) {
     inArray(schema.orderRefunds.eventId, evIds), inArray(schema.orderRefunds.status, ["pending", "succeeded"]),
     eq(schema.orderRefunds.test, false), sql`${schema.orderRefunds.producerCents} > 0`,
   )) : [];
-  const refundedOrders = new Set(refunds.map((r) => r.orderId));
+  // vendas somadas no banco (por evento, dia e valor), sem trazer os pedidos um a um.
   // pedido reembolsado entra como venda + reembolso; os antigos, sem trilha, simplesmente não entram (como antes)
-  const orders = (await listOrders(evIds, new Map(evs.map((e) => [e.id, e.absorbFee])))).filter((o) => o.status === "paid" || refundedOrders.has(o.id));
+  const sums = (await orderSums(evIds)).filter((s) => s.status === "paid" || s.trail);
+  const netOf = (s: (typeof sums)[number]) => s.revenue - platformFee(s.revenue, byId.get(s.eventId)?.absorbFee ?? false);
   // venda de teste (sem gateway: payment_ref TEST-… ou método "test") nunca vira saldo sacável
-  const real = orders.filter((o) => !o.test && o.net > 0);
+  const real = sums.filter((s) => !s.test && netOf(s) > 0);
   const now = Date.now();
 
   const releaseOf = (eventId: string) => {
@@ -58,11 +59,11 @@ export async function walletFor(userId: string) {
 
   // vendas agrupadas por evento e dia (no fuso de São Paulo)
   const groups = new Map<string, { eventId: string; day: string; at: Date; net: number; n: number; qty: number }>();
-  for (const o of real) {
-    const k = `${o.eventId}:${spDay(o.at)}`;
-    const g = groups.get(k) ?? { eventId: o.eventId, day: spDay(o.at), at: o.at, net: 0, n: 0, qty: 0 };
-    g.net += o.net; g.n += 1; g.qty += o.qty;
-    if (o.at > g.at) g.at = o.at;
+  for (const s of real) {
+    const k = `${s.eventId}:${s.day}`;
+    const g = groups.get(k) ?? { eventId: s.eventId, day: s.day, at: s.at, net: 0, n: 0, qty: 0 };
+    g.net += netOf(s) * s.n; g.n += s.n; g.qty += s.qty;
+    if (s.at > g.at) g.at = s.at;
     groups.set(k, g);
   }
   // reembolsos agrupados por evento e dia
@@ -110,7 +111,7 @@ export async function walletFor(userId: string) {
     // pode ficar negativo: reembolso de venda já sacada (descontado das próximas vendas)
     available: released - out, pending, paidOut, inFlight, refunded: refunds.reduce((s, r) => s + r.cents, 0),
     nextRelease: next?.toISOString() ?? null,
-    testSales: orders.length - real.length,
+    testSales: sums.filter((s) => !real.includes(s)).reduce((t, s) => t + s.n, 0),
     destination: (scope.org?.payout ?? null) as OrganizerPayout | null,
   };
 }
