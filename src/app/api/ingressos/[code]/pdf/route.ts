@@ -6,6 +6,7 @@ import { getSessionUser } from "@/lib/auth/server";
 import { getTicketByCode } from "@/lib/data/ingressos";
 import { mediaJpeg } from "@/lib/media-jpeg";
 import { ticketCard } from "@/lib/tickets/card";
+import { forSession } from "@/lib/tickets/labels";
 import { ticketPdf } from "@/lib/tickets/pdf";
 
 /** PDF do ingresso, gerado no servidor e entregue como download (vai direto para os arquivos). Só o titular baixa. */
@@ -16,7 +17,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
   const t = await getTicketByCode(code);
   if (!t || t.holderUserId !== user.id) return NextResponse.json({ error: "Ingresso não encontrado." }, { status: 404 });
 
-  const card = ticketCard(t, t.event);
+  const card = ticketCard(t, forSession(t.event, t.ticketType.session));
   const payload = await qrPayload(t.code, t.secret);
   // PDF pronto fica guardado no R2 (muda a chave se qualquer dado do ingresso, o QR ou a arte mudar)
   const { env } = await getCloudflareContext({ async: true });

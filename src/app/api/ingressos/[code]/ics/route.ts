@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/server";
 import { getTicketByCode } from "@/lib/data/ingressos";
-import { eventLabels } from "@/lib/tickets/labels";
+import { eventLabels, forSession } from "@/lib/tickets/labels";
 
 function icsDate(d: Date) {
   return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
@@ -18,9 +18,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ code: string }>
   const t = await getTicketByCode(code);
   if (!t || t.holderUserId !== user.id) return NextResponse.json({ error: "Ingresso não encontrado." }, { status: 404 });
 
-  const L = eventLabels(t.event);
-  const start = t.event.startAt;
-  const end = t.event.endAt ?? new Date(start.getTime() + 4 * 3600_000);
+  // várias datas: a agenda recebe o dia do ingresso, não o período todo
+  const ev = forSession(t.event, t.ticketType.session);
+  const L = eventLabels(ev);
+  const start = ev.startAt;
+  const end = ev.endAt ?? new Date(start.getTime() + 4 * 3600_000);
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
   const url = `${site}/ingressos/${t.code}`;
   const desc = `Ingresso ${t.code} · ${t.ticketType.name}${t.holderName ? ` · Titular: ${t.holderName}` : ""}${L.doors ? `\n${L.doors}` : ""}\nAbra o QR code em ${url}`;

@@ -12,7 +12,8 @@ export async function getTicketByCode(code: string) {
     where: eq(tickets.code, code.trim().toUpperCase()),
     with: {
       event: { with: { venue: { with: { city: true } }, organizer: { columns: { name: true } } } },
-      ticketType: true,
+      // a sessão do tipo: num evento de várias datas, o ingresso mostra o dia dele
+      ticketType: { with: { session: true } },
       order: true,
     },
   });

@@ -1,4 +1,4 @@
-import { dateFull, dateNice, daysUntil, parts } from "@/lib/format";
+import { dateFull, dateNice, daysUntil, hourLabel, parts } from "@/lib/format";
 
 const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -24,6 +24,16 @@ type EventLike = {
   venueNameOverride: string | null; addressLabel: string | null;
   venue: { name: string; address: string | null; neighborhood: string | null; city: { name: string; uf: string } } | null;
 };
+
+/**
+ * Evento de várias datas: o ingresso vale para a data do tipo dele (sessão), não para o período todo.
+ * Devolve o evento com a data, o horário e os portões dessa sessão (sem sessão, o evento como está).
+ */
+export function forSession<E extends EventLike>(e: E, s: { startAt: Date; doorsAt: Date | null } | null | undefined): E {
+  if (!s) return e;
+  const doors = s.doorsAt ? `Portões ${hourLabel(s.doorsAt)} · início ${hourLabel(s.startAt)}` : `Início ${hourLabel(s.startAt)}`;
+  return { ...e, startAt: s.startAt, endAt: null, dateLabel: null, dateFullLabel: null, doorsLabel: doors };
+}
 
 /** Rótulos de evento usados nos cartões de ingresso. */
 export function eventLabels(e: EventLike) {

@@ -19,7 +19,8 @@ export async function listUserTickets(userId: string) {
     where: eq(tickets.holderUserId, userId),
     with: {
       event: { with: { venue: { with: { city: true } } } },
-      ticketType: true,
+      // a sessão do tipo: num evento de várias datas, o ingresso mostra o dia dele
+      ticketType: { with: { session: true } },
       order: true,
     },
     orderBy: [desc(tickets.createdAt)],

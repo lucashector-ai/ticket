@@ -15,7 +15,7 @@ import { getSessionUser } from "@/lib/auth/server";
 import { listUserTickets, type TicketWithEvent } from "@/lib/data/user";
 import { listIncomingTransfers, listSentTransfers } from "@/lib/data/envios";
 import { listPendingOrders } from "@/lib/payments/pending";
-import { countdownLabel, datePast, eventLabels } from "@/lib/tickets/labels";
+import { countdownLabel, datePast, eventLabels, forSession } from "@/lib/tickets/labels";
 import { ticketQrSvg } from "@/lib/tickets/qr";
 import { dateNice } from "@/lib/format";
 
@@ -30,7 +30,8 @@ const finished = (t: TicketWithEvent) => t.status === "used" || t.status === "ca
 async function groupTickets(rows: TicketWithEvent[], now: Date, sentOf: Map<string, NonNullable<TicketItem["sentTo"]>>): Promise<TicketGroup[]> {
   const byOrder = new Map<string, TicketWithEvent[]>();
   for (const t of rows) {
-    const k = `${t.eventId}:${finished(t) ? "fim" : "ativo"}`;
+    // várias datas: um grupo por data (cada dia é um ingresso diferente)
+    const k = `${t.eventId}:${t.ticketType.sessionId ?? ""}:${finished(t) ? "fim" : "ativo"}`;
     const arr = byOrder.get(k);
     if (arr) arr.push(t); else byOrder.set(k, [t]);
   }
@@ -39,7 +40,7 @@ async function groupTickets(rows: TicketWithEvent[], now: Date, sentOf: Map<stri
     // o ingresso do comprador vem primeiro; os demais em ordem de código
     const buyer = list[0].order?.buyerName ?? null;
     list.sort((a, b) => Number(b.holderName === buyer) - Number(a.holderName === buyer) || a.code.localeCompare(b.code));
-    const e = list[0].event;
+    const e = forSession(list[0].event, list[0].ticketType.session);
     const L = eventLabels(e);
     const tiers = Array.from(new Set(list.map((t) => t.ticketType.name)));
     const tickets: TicketItem[] = await Promise.all(list.map(async (t) => ({

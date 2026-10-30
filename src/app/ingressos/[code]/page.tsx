@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { getSessionUser } from "@/lib/auth/server";
 import { getTicketByCode } from "@/lib/data/ingressos";
 import { dateNice } from "@/lib/format";
-import { countdownLabel, eventLabels } from "@/lib/tickets/labels";
+import { countdownLabel, eventLabels, forSession } from "@/lib/tickets/labels";
 import { ticketQrSvg } from "@/lib/tickets/qr";
 import { ticketCard } from "@/lib/tickets/card";
 import { appleWalletEnabled } from "@/lib/wallet/apple";
@@ -39,6 +39,8 @@ export default async function IngressoPage({ params, searchParams }: { params: P
 
   const now = new Date();
   const e = t.event;
+  // várias datas: data, portões e contagem do dia do ingresso (prazos de transferência e revenda seguem os do evento)
+  const day = forSession(e, t.ticketType.session);
   const listing = await db.query.resaleListings.findFirst({ where: and(eq(schema.resaleListings.ticketId, t.id), inArray(schema.resaleListings.status, ["active", "reserved"])) });
   // os outros ingressos deste evento na mesma conta entram na pilha (o atual no meio deles, por código)
   const siblings = await db.query.tickets.findMany({
@@ -46,12 +48,12 @@ export default async function IngressoPage({ params, searchParams }: { params: P
     columns: { code: true, holderName: true }, orderBy: (x, { asc }) => [asc(x.code)],
   });
   const pending = t.status === "transferred" ? await db.query.ticketTransfers.findFirst({ where: and(eq(schema.ticketTransfers.ticketId, t.id), eq(schema.ticketTransfers.status, "pending")), columns: { toEmail: true } }) : null;
-  const L = eventLabels(e);
+  const L = eventLabels(day);
   const data: TicketViewData = {
     wallet: { apple: appleWalletEnabled(), google: googleWalletEnabled() },
     ticket: { id: t.id, code: t.code, holderName: t.holderName, status: t.status, checkedInAt: t.checkedInAt?.toISOString() ?? null, qrSvg: await ticketQrSvg(t.code, t.secret) },
     eventSlug: e.slug, title: e.title, flyerId: e.flyerId,
-    upcoming: (e.endAt ?? e.startAt).getTime() >= now.getTime(), countdown: countdownLabel(e.startAt, now),
+    upcoming: (day.endAt ?? day.startAt).getTime() >= now.getTime(), countdown: countdownLabel(day.startAt, now),
     dateFull: L.dateFull, dateNice: L.dateNice, doors: L.doors, venue: L.venue, addr: L.addr,
     tier: t.ticketType.name, orderNumber: t.order?.number ?? null,
     checkedInLabel: t.checkedInAt ? dateNice(t.checkedInAt) : null,
