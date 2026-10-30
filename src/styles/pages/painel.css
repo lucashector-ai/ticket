@@ -634,13 +634,24 @@
   .os-lim,.os-err{margin:6px 10px 4px;font-size:12.5px;line-height:1.45;color:#63635C}
   .os-err{color:#B3261E}
   @media (max-width:900px){
+    /* topo: logo à esquerda e a produtora ocupando o resto (sem a busca, que fica escondida aqui) */
+    .pd-top{grid-template-columns:auto minmax(0,1fr)}
+    .pd-tr{min-width:0;justify-content:flex-end}
+    .os{min-width:0}
+    .os-b{display:flex;max-width:100%}
     /* no celular o nome da produtora fica à vista (antes só as iniciais) */
-    .os-b .pd-mi{display:flex;max-width:min(42vw,200px)}
+    .os-b .pd-mi{display:flex;min-width:0;max-width:none}
     .os-b .pd-ms{display:none}
     .os-b{padding-right:6px}
+    /* o desfoque do topo cria um bloco de contenção para position:fixed: com a folha aberta, topo sem desfoque */
+    .pd-top:has(.os-pop){backdrop-filter:none;-webkit-backdrop-filter:none;background:#fff}
     .os-scrim{display:block;position:fixed;inset:0;z-index:59;background:rgba(17,17,17,.32)}
     .os-pop{position:fixed;left:0;right:0;top:auto;bottom:0;width:auto;max-height:80dvh;overflow:auto;padding:12px 12px calc(16px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0}
     .os-i{min-height:56px}
+  }
+  /* telefone: o selo "Produtor" sai para o nome da produtora caber (o seletor já diz onde a pessoa está) */
+  @media (max-width:480px){
+    .pd-top:has(.os) .pd-tag{display:none}
   }
 }
 /* folha aberta: a aba de acessibilidade não cobre a lista */

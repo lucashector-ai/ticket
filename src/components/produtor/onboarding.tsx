@@ -4,15 +4,18 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { checkOrganizerName, finishOnboarding } from "@/lib/actions/onboarding";
+import { createOrganizer } from "@/lib/actions/produtoras";
 import { CitySelect, UfSelect } from "@/components/city-select";
 
 type Init = { name: string; city: string; uf: string; instagram: string; tagline: string };
-type Result = { ok: true; slug: string } | { ok: false; error: string };
 /**
  * `nova`: segunda (ou terceira) produtora de quem já é produtor, no painel: outros textos, sem os termos (já
  * aceitos) e a ação que cria e ativa a produtora nova no lugar da que conclui o cadastro.
  */
-type Props = { firstName: string; initial: Init; ufs: readonly string[]; nova?: { create: (f: Init) => Promise<Result>; owned: number; max: number } };
+type Props = { firstName: string; initial: Init; ufs: readonly string[]; nova?: { owned: number; max: number } };
+
+/** Campos do formulário para a ação de nova produtora (mesmos nomes do cadastro). */
+const formOf = (f: Init) => { const fd = new FormData(); for (const [k, v] of Object.entries(f)) fd.set(k, v); return fd; };
 
 const initialsOf = (n: string) => n.trim().split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "TW";
 
@@ -44,7 +47,7 @@ export function ProducerOnboarding({ firstName, initial, nova }: Props) {
   const nameOk = f.name.trim().length >= 2 && check.state === "ok";
   function finish() {
     start(async () => {
-      const r = nova ? await nova.create(f) : await finishOnboarding(f);
+      const r = nova ? await createOrganizer(null, formOf(f)) : await finishOnboarding(f);
       if (!r.ok) { setError(r.error); if (r.error.includes("nome")) setStep(0); return; }
       setCheck((c) => ({ ...c, slug: r.slug }));
       setStep(2);
@@ -63,7 +66,14 @@ export function ProducerOnboarding({ firstName, initial, nova }: Props) {
 
       <div className="ob-grid">
         <section className="ob-main" key={step}>
-          {step === 0 && (
+          {step === 0 && nova && nova.owned >= nova.max ? (
+            <div>
+              <span className="ob-tag"><i aria-hidden="true" />Limite de produtoras</span>
+              <h1 className="ob-h">Você já tem {nova.max} produtoras.</h1>
+              <p className="ob-sub">É o máximo por conta. Para criar outra, fale com a gente pela Central de ajuda.</p>
+              <div className="ob-row"><Link className="ob-go" href="/painel">Voltar ao painel</Link></div>
+            </div>
+          ) : step === 0 && (
             <form onSubmit={(e) => { e.preventDefault(); if (nameOk && terms) setStep(1); }}>
               {nova ? (
                 <>
@@ -79,7 +89,7 @@ export function ProducerOnboarding({ firstName, initial, nova }: Props) {
                 </>
               )}
               <label className="ob-f">
-                <span className="ob-l">Nome do organizador</span>
+                <span className="ob-l">{nova ? "Nome da produtora" : "Nome do organizador"}</span>
                 <span className={`ob-in ${check.state === "taken" ? "bad" : nameOk ? "good" : ""}`}>
                   <input autoComplete="off" autoFocus value={f.name} maxLength={80} onChange={(e) => { set({ name: e.target.value }); if (e.target.value.trim().length < 2) setCheck({ state: "idle", slug: "" }); }} placeholder="Ex.: Noite Alta Produções" />
                   {check.state === "checking" && <i className="ob-spin" aria-hidden="true" />}

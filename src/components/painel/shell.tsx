@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
+import { OrgSwitch, type OrgItem } from "./org-switch";
 
 const ICON = {
   home: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z",
@@ -27,7 +28,11 @@ const NAV: { href: string; label: string; icon: keyof typeof ICON }[] = [
 ];
 
 /** Barra do topo + menu lateral do painel (layout do design "painel do produtor"). */
-export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, payoutMissing = false, children }: { role: "owner" | "admin" | "portaria"; orgName: string; orgInitials: string; orgSlug: string | null; userName: string; payoutMissing?: boolean; children: React.ReactNode }) {
+export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, payoutMissing = false, orgs = [], activeId = null, canCreateOrg = false, maxOrgs = 3, children }: {
+  role: "owner" | "admin" | "portaria"; orgName: string; orgInitials: string; orgSlug: string | null; userName: string; payoutMissing?: boolean;
+  /** produtoras da conta (seletor no topo); vazio = conta ainda sem produtora */
+  orgs?: OrgItem[]; activeId?: string | null; canCreateOrg?: boolean; maxOrgs?: number; children: React.ReactNode;
+}) {
   const path = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -51,7 +56,9 @@ export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, pay
         <div className="pd-tr">
           {orgSlug && <Link className="pd-site" href={`/produtor/${orgSlug}`}>Ver minha página</Link>}
           <Link className="pd-site" href="/">Ir para o site</Link>
-          <span className="pd-me"><span className="pd-av">{orgInitials}</span><span className="pd-mi"><b className="pd-mn">{orgName}</b><span className="pd-ms">{userName} · {role === "owner" ? "Dono" : role === "admin" ? "Admin" : "Portaria"}</span></span></span>
+          {orgs.length && activeId
+            ? <OrgSwitch orgs={orgs} activeId={activeId} userName={userName} canCreate={canCreateOrg} max={maxOrgs} />
+            : <span className="pd-me"><span className="pd-av">{orgInitials}</span><span className="pd-mi"><b className="pd-mn">{orgName}</b><span className="pd-ms">{userName} · {role === "owner" ? "Dono" : role === "admin" ? "Admin" : "Portaria"}</span></span></span>}
         </div>
       </header>
       <div className="pd-shell">
