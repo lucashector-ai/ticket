@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PainelConfig } from "@/components/painel/config";
-import { AGES, DEFAULT_REFUND } from "@/lib/criar/model";
+import { AGES, isDefaultRefund } from "@/lib/criar/model";
 import { painelAccess } from "@/lib/painel/access";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export default async function PainelConfigPage() {
         payout: { bank: "", agency: "", account: "", kind: "corrente", holder: "", doc: "", pixKey: "", ...org?.payout },
         defaults: {
           buyerPaysFee: org?.defaults?.buyerPaysFee ?? true, autoMeia: org?.defaults?.autoMeia ?? true,
-          age: AGES.find((a) => a === org?.defaults?.age) ?? "18+", refund: org?.defaults?.refund ?? DEFAULT_REFUND,
+          age: AGES.find((a) => a === org?.defaults?.age) ?? "18+", refund: isDefaultRefund(org?.defaults?.refund) ? "" : org?.defaults?.refund ?? "",
         },
       }}
       hasOrg={!!org}

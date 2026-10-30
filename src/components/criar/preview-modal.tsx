@@ -106,7 +106,7 @@ function PageMock({ d, x }: { d: Draft; x: Derived }) {
           <div className="pgx-info">
             <div><b>Classificação</b><span>{d.age}{d.minors && d.age !== "Livre" && d.age !== "18+" ? " · menores acompanhados" : ""}</span></div>
             <div><b>Abertura dos portões</b><span>{v.s0 ? v.s0.doors : "A confirmar"}</span></div>
-            <div><b>Cancelamento</b><span>{d.refund}</span></div>
+            <div><b>Cancelamento</b><span>Regra de Cancelamentos e reembolsos do painel{d.refund.trim() ? ` · Observação do produtor: ${d.refund.trim()}` : ""}</span></div>
             <div><b>Ingresso</b><span>Digital, com QR code{d.transfer ? " · transferível" : ""}</span></div>
           </div>
         </div>

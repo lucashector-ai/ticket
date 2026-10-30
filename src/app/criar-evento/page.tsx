@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { CriarFlow } from "@/components/criar/flow";
-import { brDateTime, emptyDraft, STEP_LABELS, type DbMap, type Draft } from "@/lib/criar/model";
+import { brDateTime, emptyDraft, isDefaultRefund, STEP_LABELS, type DbMap, type Draft } from "@/lib/criar/model";
 import { ProducerApply } from "@/components/produtor/inscricao";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -57,6 +57,8 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
       saleStart: ev.salesOpenAt ? brDateTime(ev.salesOpenAt) : "", presaleStart: ev.presaleAt ? brDateTime(ev.presaleAt) : "",
       teaser: { ...base.teaser, ...(saved?.form?.teaser ?? {}), ...(ev.launchPage ?? {}) },
     };
+    // texto pronto do antigo campo "Política de cancelamento": hoje é "Observações (opcional)" e começa vazio
+    if (isDefaultRefund(initial.refund)) initial.refund = "";
     dbMap = saved?.dbMap ?? null;
     slug = ev.slug;
   }
@@ -65,7 +67,7 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
   if (!editId) {
     const org = await db.query.organizers.findFirst({ where: eq(schema.organizers.ownerUserId, user.id), columns: { defaults: true } });
     const d = org?.defaults;
-    if (d) defaults = { fee: d.buyerPaysFee ?? true, autoMeia: d.autoMeia ?? true, ...(d.age ? { age: d.age } : {}), ...(d.refund ? { refund: d.refund } : {}) };
+    if (d) defaults = { fee: d.buyerPaysFee ?? true, autoMeia: d.autoMeia ?? true, ...(d.age ? { age: d.age } : {}), ...(d.refund && !isDefaultRefund(d.refund) ? { refund: d.refund } : {}) };
   }
   // ?etapa=vendas abre direto numa etapa (atalho do painel)
   const etapa = typeof sp.etapa === "string" ? STEP_LABELS.findIndex((l) => l.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === sp.etapa) : -1;

@@ -77,7 +77,7 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
               <label className="tg2"><span><b>Comprador paga a taxa</b><small>{f.defaults.buyerPaysFee ? "A taxa de 7,99% vai à parte no checkout." : "Você absorve os 7,99%: o preço já inclui a taxa."}</small></span><input className="sr" type="checkbox" checked={f.defaults.buyerPaysFee} onChange={(e) => def({ buyerPaysFee: e.target.checked })} /><span className="sw" aria-hidden="true" /></label>
               <label className="tg2"><span><b>Meia-entrada automática</b><small>Cria a meia (50%) para cada inteira.</small></span><input className="sr" type="checkbox" checked={f.defaults.autoMeia} onChange={(e) => def({ autoMeia: e.target.checked })} /><span className="sw" aria-hidden="true" /></label>
               <label className="fld"><span>Classificação</span><select value={f.defaults.age} onChange={(e) => def({ age: e.target.value as Form["defaults"]["age"] })}>{AGES.map((a) => <option key={a}>{a}</option>)}</select></label>
-              <label className="fld"><span>Política de reembolso</span><textarea value={f.defaults.refund} maxLength={300} onChange={(e) => def({ refund: e.target.value })} /></label>
+              <label className="fld"><span>Observações padrão (opcional)</span><textarea value={f.defaults.refund} maxLength={300} placeholder="Vem preenchido em cada evento novo. A regra de cancelamento fica em Cancelamentos e reembolsos." onChange={(e) => def({ refund: e.target.value })} /></label>
             </div>
           </section>
         </aside>

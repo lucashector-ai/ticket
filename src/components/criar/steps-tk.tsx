@@ -469,7 +469,8 @@ export function RevisarStep({ c, x }: { c: Ctx; x: Derived }) {
         <div className="cv-seg big">
           {VIS.map((v) => <button key={v.id} className={d.vis === v.id ? "sg on" : "sg"} type="button" onClick={() => set({ vis: v.id })}>{v.t}<small>{v.s}</small></button>)}
         </div>
-        <label className="cv-fl" style={{ marginTop: 20 }}><span>Política de cancelamento</span><textarea className="cv-in ta" rows={2} maxLength={500} value={d.refund} onChange={(e) => set({ refund: e.target.value })} /></label>
+        <label className="cv-fl" style={{ marginTop: 20 }}><span>Observações (opcional)</span><textarea className="cv-in ta" rows={2} maxLength={300} value={d.refund} onChange={(e) => set({ refund: e.target.value })} placeholder="Ex.: troca de titular só até 24h antes do evento." aria-describedby="cv-obs-h" /></label>
+        <p className="cv-note" id="cv-obs-h">Aparece na página do evento como &ldquo;Observação do produtor&rdquo;, junto da regra de cancelamento. A regra em si (prazos e reembolso) fica no painel, em Cancelamentos e reembolsos.</p>
       </div>
     </section>
   );

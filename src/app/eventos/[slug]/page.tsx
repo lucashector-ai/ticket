@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { deadlineOpen, EVENT_RULES, policyOf, policyText } from "@/lib/refund-policy";
-import { DEFAULT_TEASER } from "@/lib/criar/model";
+import { DEFAULT_TEASER, isDefaultRefund } from "@/lib/criar/model";
 import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { EventoView } from "@/components/evento/evento-view";
@@ -120,7 +120,7 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     age: e.ageRating,
     halfPrice: e.halfPriceInfo,
     // política estruturada (painel → Cancelamentos e reembolsos) + o texto livre do produtor, se houver
-    refund: e.status === "cancelled" ? "Evento cancelado pelo produtor. Quem comprou recebe o reembolso integral, com a taxa de serviço, automaticamente." : [policyText(policyOf(e)), e.refundPolicy?.trim() ? `Observação do produtor: ${e.refundPolicy.trim()}` : null, EVENT_RULES].filter(Boolean).join(" "),
+    refund: e.status === "cancelled" ? "Evento cancelado pelo produtor. Quem comprou recebe o reembolso integral, com a taxa de serviço, automaticamente." : [policyText(policyOf(e)), e.refundPolicy?.trim() && !isDefaultRefund(e.refundPolicy) ? `Observação do produtor: ${e.refundPolicy.trim()}` : null, EVENT_RULES].filter(Boolean).join(" "),
     lineup,
     organizer,
     tiers,

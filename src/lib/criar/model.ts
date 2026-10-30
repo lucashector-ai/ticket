@@ -79,7 +79,10 @@ export const EVENT_TYPES: { cat: string; sub: string; icon: string }[] = [
 export const ROLES = ["Headliner", "Convidado", "Abertura"] as const;
 export const PALETTE = ["#7DA2FF", "#D3F55B", "#FF8AD8", "#FFB547", "#7DF9FF", "#C9B6FF"];
 export const MEIA_DESC = "Estudantes, PcD, jovens de baixa renda e maiores de 60. Documento na entrada.";
+/** Texto que vinha pronto no antigo campo "Política de cancelamento". Hoje o campo é "Observações (opcional)"
+ *  e começa vazio (DM-3); quem ainda tem este texto salvo é tratado como sem observação. */
 export const DEFAULT_REFUND = "Até 7 dias após a compra, com 48h de antecedência";
+export const isDefaultRefund = (s: string | null | undefined) => (s ?? "").trim().replace(/\.$/, "") === DEFAULT_REFUND;
 export const MAX_LIMIT = 20;
 /** Limite por pessoa do tipo (rascunhos antigos não tinham o campo: 2 no personalizado, 6 nos outros). */
 export function limitOf(t: Pick<DraftType, "kind" | "limit">) {
@@ -107,7 +110,7 @@ export function emptyDraft(): Draft {
     lineup: [], media: {}, coupons: [], venue: { name: "", city: "" }, sessions: [],
     autoMeia: true, fee: true, transfer: true, resale: true,
     sectors: [{ id: "k1", name: "Ingressos", color: "#D3F55B", open: true, types: [{ id: "t1", kind: "inteira", name: "Inteira", price: "", qty: "100", desc: "", limit: "6" }] }],
-    map: "empty", prompt: "", sketchUrl: "", plan: null, vis: "publico", saleStart: "", presaleStart: "", minors: false, teaser: { ...DEFAULT_TEASER }, refund: DEFAULT_REFUND,
+    map: "empty", prompt: "", sketchUrl: "", plan: null, vis: "publico", saleStart: "", presaleStart: "", minors: false, teaser: { ...DEFAULT_TEASER }, refund: "",
   };
 }
 
