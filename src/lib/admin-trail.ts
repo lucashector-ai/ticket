@@ -151,8 +151,11 @@ export async function adminTicketTrail(q: string): Promise<AdminTrail[]> {
     db.select().from(orderRefunds).where(sql`${orderRefunds.status} = 'succeeded' and ${orderRefunds.ticketIds} ?| ${sql`array[${sql.join(found.map((f) => sql`${f}`), sql`, `)}]::text[]`}`),
   ]);
   const orderIds = [...new Set(evs.map((e) => e.orderId).filter((x): x is string => !!x))];
-  const evOrders = orderIds.length ? await db.select({ id: orders.id, number: orders.number }).from(orders).where(inArray(orders.id, orderIds)) : [];
+  const evOrders = orderIds.length ? await db.select({ id: orders.id, number: orders.number, buyerName: orders.buyerName, buyerEmail: orders.buyerEmail }).from(orders).where(inArray(orders.id, orderIds)) : [];
   const orderNo = new Map(evOrders.map((o) => [o.id, o.number]));
+  // nome e e-mail do pedido: reserva para contas antigas sem perfil
+  const orderBuyer = new Map(evOrders.map((o) => [o.id, [o.buyerName, o.buyerEmail].filter(Boolean).join(" · ") || null]));
+  const firstBuyer = new Map<string, Person>();
 
   const raws = new Map<string, Raw[]>();
   const userIds = new Set<string>();
@@ -170,7 +173,7 @@ export async function adminTicketTrail(q: string): Promise<AdminTrail[]> {
       const base: Raw = { at: e.createdAt, kind, code: e.code, amountCents: e.amountCents };
       const prev = e.prevCode ? `Código anterior: ${e.prevCode}` : null;
       const no = e.orderId ? orderNo.get(e.orderId) : null;
-      if (kind === "emitido") steps.push({ ...base, whoId: keep(e.fromUserId), toText: e.holderName ? `Titular: ${e.holderName}` : null, note: no ? `Pedido #${no}` : null });
+      if (kind === "emitido") steps.push({ ...base, whoId: keep(e.fromUserId), whoFallback: e.orderId ? orderBuyer.get(e.orderId) : null, toText: e.holderName ? `Titular: ${e.holderName}` : null, note: no ? `Pedido #${no}` : null });
       else if (kind === "presente") steps.push({ ...base, whoId: keep(e.fromUserId), toText: e.toEmail, note: e.holderName ? `Titular: ${e.holderName}` : null });
       else if (kind === "transferencia_enviada" || kind === "transferencia_reenviada" || kind === "transferencia_cancelada") steps.push({ ...base, whoId: keep(e.fromUserId), toText: e.toEmail, note: e.note });
       else if (kind === "presente_aceito" || kind === "transferencia_aceita") steps.push({ ...base, whoId: keep(e.fromUserId), toId: keep(e.toUserId), toText: e.toEmail, note: prev });
@@ -183,6 +186,11 @@ export async function adminTicketTrail(q: string): Promise<AdminTrail[]> {
     const accepted = trs.filter((x) => x.ticketId === t.id && x.status === "accepted").map((x) => ({ at: x.acceptedAt ?? x.updatedAt, from: x.fromUserId }));
     const sold = lis.filter((l) => l.ticketId === t.id && l.status === "sold").map((l) => ({ at: l.soldAt ?? l.updatedAt, from: l.sellerUserId }));
     const firstOwner = [...accepted, ...sold].sort((a, b) => a.at.getTime() - b.at.getTime())[0]?.from ?? t.holderUserId;
+    {
+      const rec = mine.find((e) => e.kind === "emitido" && e.orderId);
+      const ord = rec ? evOrders.find((o) => o.id === rec.orderId) : t.order && !t.order.resaleListingId ? t.order : null;
+      if (ord) firstBuyer.set(t.id, { name: ord.buyerName ?? null, email: ord.buyerEmail ?? null });
+    }
     if (!hasKind("emitido")) {
       // o pedido do ingresso revendido já é o da revenda: o pedido original não fica ligado ao ingresso
       const original = t.order && !t.order.resaleListingId ? t.order : null;
@@ -244,7 +252,8 @@ export async function adminTicketTrail(q: string): Promise<AdminTrail[]> {
       }));
       // titulares: quem comprou (ou o primeiro dono conhecido) e cada troca de dono, na ordem
       const first = raw.find((s) => s.kind === "emitido")?.whoId ?? t.holderUserId;
-      const holders: TrailHolder[] = [{ ...(who.get(first ?? "") ?? { name: null, email: null }), since: t.createdAt, via: "compra" }];
+      // conta antiga sem perfil: o nome e o e-mail do pedido de compra
+      const holders: TrailHolder[] = [{ ...(who.get(first ?? "") ?? firstBuyer.get(t.id) ?? { name: null, email: null }), since: t.createdAt, via: "compra" }];
       for (const s of raw) {
         if (!OWNER_CHANGE.has(s.kind) || !s.toId) continue;
         holders.push({ ...(who.get(s.toId) ?? { name: null, email: s.toText ?? null }), since: s.at, via: VIA[s.kind]! });

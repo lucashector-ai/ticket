@@ -1,10 +1,11 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
 import type { OrganizerPayout } from "@/db/schema";
-import { getPainelScope, orderSums, platformFee } from "@/lib/data/painel";
+import { orderSums, platformFee } from "@/lib/data/painel";
+import { chosenOrgId, orgAccessList } from "@/lib/data/org-access";
 import { signingSecret } from "@/lib/signing-secret";
 
 /*
@@ -28,10 +29,37 @@ export type BankEntry = {
 
 const spDay = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
-/** Saldo, extrato e destino do repasse de quem é dono dos eventos. `null` se a pessoa não é dona de nada. */
+/**
+ * Produtora do banco: sempre uma de que a conta é DONA (a ativa no painel, se for dela; senão a primeira). Ser admin
+ * ou portaria da equipe de outra produtora nunca dá acesso ao banco, ao saldo ou aos saques dela, nem com o seletor
+ * apontando para ela. Conta sem produtora nenhuma (antiga): os eventos que criou. `null`: só está em equipe de outros.
+ */
+export async function bankScope(userId: string) {
+  const [list, chosen] = await Promise.all([orgAccessList(userId), chosenOrgId()]);
+  const owned = list.filter((x) => x.role === "owner");
+  const { events } = schema;
+  if (!owned.length) {
+    if (list.length) return null;
+    return { org: null, events: await db.query.events.findMany({ where: eq(events.createdByUserId, userId) }), ownedIds: [] as string[] };
+  }
+  const org = (owned.find((x) => x.org.id === chosen) ?? owned[0]).org;
+  const evs = await db.query.events.findMany({ where: or(eq(events.organizerId, org.id), and(isNull(events.organizerId), eq(events.createdByUserId, userId))) });
+  return { org, events: evs, ownedIds: owned.map((x) => x.org.id) };
+}
+
+/** Dono de alguma produtora com evento (ou conta antiga com evento sem produtora): quem pode criar acesso e entrar no banco. */
+export async function bankOwner(userId: string) {
+  const s = await bankScope(userId);
+  if (!s) return false;
+  if (s.events.length) return true;
+  if (!s.ownedIds.length) return false;
+  return !!(await db.query.events.findFirst({ where: inArray(schema.events.organizerId, s.ownedIds), columns: { id: true } }));
+}
+
+/** Saldo, extrato e destino do repasse da produtora do banco (bankScope). `null` se a pessoa não é dona de nada. */
 export async function walletFor(userId: string) {
-  const scope = await getPainelScope({ id: userId });
-  if (scope.role !== "owner") return null;
+  const scope = await bankScope(userId);
+  if (!scope) return null;
   const evs = scope.events.filter((e) => e.status !== "draft");
   const byId = new Map(evs.map((e) => [e.id, e]));
   const evIds = evs.map((e) => e.id);

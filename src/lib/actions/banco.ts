@@ -7,10 +7,9 @@ import { after } from "next/server";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import {
-  balanceStamp, balanceStampSql, bankCredential, bankPendingUserId, bankSetup, bankUserId, checkBankPassword, clearBankSetup, closeBankSession, destLabel, hasDestination,
+  balanceStamp, balanceStampSql, bankCredential, bankOwner, bankScope, bankPendingUserId, bankSetup, bankUserId, checkBankPassword, clearBankSetup, closeBankSession, destLabel, hasDestination,
   hashBankPassword, MIN_PAYOUT, openBankSession, ownerByEmail, setBankPending, setBankSetup, walletFor,
 } from "@/lib/bank";
-import { getPainelScope } from "@/lib/data/painel";
 import { brl } from "@/lib/format";
 import { checkCode, checkSecondFactor, issueCode, logSecurity, maskEmail, mfaSettings } from "@/lib/mfa";
 import { mailPayoutRequested, mailSecurityNotice, userContact } from "@/lib/notify";
@@ -31,8 +30,9 @@ const NEED_APP = "O banco exige o app autenticador. Ative em Minha conta → Pri
 
 /** Dono de eventos (e só ele) com o app autenticador cadastrado? */
 async function ownerReady(userId: string) {
-  const [scope, mfa] = await Promise.all([getPainelScope({ id: userId }), mfaSettings(userId)]);
-  return { owner: scope.role === "owner" && scope.events.length > 0, totp: mfa.method === "totp" };
+  // dono de produtora (nunca só admin/portaria da equipe de outra), independente da produtora ativa no painel
+  const [owner, mfa] = await Promise.all([bankOwner(userId), mfaSettings(userId)]);
+  return { owner, totp: mfa.method === "totp" };
 }
 
 /* ============================== entrar ============================== */
@@ -149,7 +149,8 @@ export async function requestPayout(amountCents: number, code: string): Promise<
   const amount = Math.round(Number(amountCents));
   if (!Number.isFinite(amount) || amount < MIN_PAYOUT) return { ok: false, error: `O saque mínimo é ${brl(MIN_PAYOUT)}.` };
   // marca dos saques e reembolsos ANTES de ler o saldo: se algo entrar no meio, a gravação abaixo recusa
-  const scope = await getPainelScope({ id: userId });
+  const scope = await bankScope(userId);
+  if (!scope) return { ok: false, error: "Só o dono dos eventos pode sacar." };
   const orgId = scope.org?.id ?? null;
   const stamp = await balanceStamp(userId, orgId);
   const w = await walletFor(userId);

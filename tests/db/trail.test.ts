@@ -174,6 +174,17 @@ describe.skipIf(!TEST_DB)("rastro do ingresso (D-12, banco de teste)", () => {
     expect((await A.adminTicketTrail(a.email)).map((x) => x.id)).toContain(t.id);
   });
 
+  it("conta antiga sem perfil: emissão e primeiro titular usam o nome e o e-mail do pedido (não \"Conta sem perfil\")", async () => {
+    const { db, schema } = D;
+    const { ev, tt } = await eventWith();
+    const ghost = qaId("sem-perfil");
+    const [o] = await db.insert(schema.orders).values({ userId: ghost, eventId: ev.id, status: "paid", subtotalCents: 5000, totalCents: 5000, paymentMethod: "pix", paymentRef: "TEST-sem-perfil", buyerName: "Comprador Antigo", buyerEmail: "comprador.antigo@example.com" }).returning();
+    const [t] = await db.insert(schema.tickets).values({ code: `TW-${qaId("p").slice(-4).toUpperCase()}-${qaId("q").slice(-4).toUpperCase()}`, orderId: o.id, eventId: ev.id, ticketTypeId: tt.id, holderUserId: ghost, holderName: "Comprador Antigo", secret: "x".repeat(32) }).returning();
+    const [tr] = await A.adminTicketTrail(t.code);
+    expect(tr.steps[0]).toMatchObject({ kind: "emitido", who: "Comprador Antigo · comprador.antigo@example.com" });
+    expect(tr.holders[0]).toMatchObject({ name: "Comprador Antigo", email: "comprador.antigo@example.com", via: "compra" });
+  });
+
   it("a busca entende código com e sem hífen, e-mail e número do pedido; o resto não busca nada", () => {
     expect(A.parseTrailQuery(" tw-ab12-cd34 ")).toEqual({ code: "TW-AB12-CD34" });
     expect(A.parseTrailQuery("TWAB12CD34")).toEqual({ code: "TW-AB12-CD34" });
