@@ -39,7 +39,7 @@
   .mc-back{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;color:#63635C;text-decoration:none}
   .mc-back:hover{color:#111}
   .mc-nr{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
-  .mc-name{min-width:0;flex:0 1 auto;width:min(560px,100%);border:0;border-radius:10px;padding:2px 6px;margin-left:-6px;background:transparent;font:600 30px/1.15 'Inter Tight',sans-serif;letter-spacing:-.025em;color:#111;outline:none}
+  .mc-name{min-width:0;flex:0 1 auto;width:min(560px,100%);border:0;border-radius:10px;padding:2px 6px;margin-left:-6px;background:transparent;font:600 30px/1.15 'Inter Tight',sans-serif;letter-spacing:-.025em;color:#111;outline:none;text-overflow:ellipsis}
   .mc-name:hover{background:#EDEDE7}
   .mc-name:focus{background:#fff;box-shadow:0 0 0 2px #111}
   .mc-name.as-h{margin:0;width:auto;padding:0}

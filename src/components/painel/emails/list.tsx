@@ -64,7 +64,7 @@ export function PainelEmails(p: EmailsProps) {
           <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" /></svg>Novo e-mail
         </button>
       </div>
-      {!p.emailOn && <div className="warn2"><b className="wr-t">Envio desligado.</b><span className="wr-s">Você já pode montar e agendar campanhas. Os e-mails começam a sair quando a chave do Resend for configurada no Cloudflare.</span></div>}
+      {!p.emailOn && <div className="warn2"><b className="wr-t">Envio desligado.</b><span className="wr-s">Você já pode montar e agendar campanhas. Os e-mails começam a sair assim que o envio for ligado.</span></div>}
 
       <div className="kpis">
         <div className="kpi"><span className="kp-l">Contatos</span><b className="kp-v">{n(p.kpis.contacts)}</b><div className="kp-f"><span className="kp-n">compradores, seguidores e listas</span></div></div>

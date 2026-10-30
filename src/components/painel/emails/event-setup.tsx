@@ -74,7 +74,7 @@ export function EventSetup({ p }: { p: CampaignProps }) {
   if (!count) checks.push({ kind: "err", text: "Ninguém recebe com esse público" });
   if (!f.subject.trim()) checks.push({ kind: "err", text: "Falta o assunto" });
   if (ct.motive === "cupom" && !ct.coupon) checks.push({ kind: "err", text: "Escolha o cupom" });
-  if (!p.emailOn) checks.push({ kind: "warn", text: "O envio ainda não está ligado (chave do Resend). Dá para agendar." });
+  if (!p.emailOn) checks.push({ kind: "warn", text: "O envio de e-mails está desligado no momento. Dá para montar e agendar: o agendado sai quando ele for ligado." });
   if (!tested) checks.push({ kind: "warn", text: "Mande um teste para você antes" });
   checks.push({ kind: "ok", text: ct.message.trim() ? "Seu recado entra depois das informações do evento" : "Sem recado: o e-mail usa a descrição do evento" });
   checks.push({ kind: "ok", text: "Descadastro, rodapé e marca Tickets Win incluídos" });

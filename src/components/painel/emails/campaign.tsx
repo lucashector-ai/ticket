@@ -124,7 +124,7 @@ function Setup({ p }: { p: CampaignProps }) {
   if (!design.blocks.length) checks.push({ kind: "err", text: "O e-mail está vazio", fix: () => setEditor(true) });
   if (missingEv.length) checks.push({ kind: "err", text: `${missingEv.length === 1 ? "Um bloco está" : `${missingEv.length} blocos estão`} sem evento escolhido`, fix: () => setEditor(true) });
   if (design.blocks.some((b) => b.t === "cupom" && !b.code)) checks.push({ kind: "err", text: "O bloco de cupom está sem código", fix: () => setEditor(true) });
-  if (!p.emailOn) checks.push({ kind: "warn", text: "O envio ainda não está ligado (chave do Resend). Dá para agendar." });
+  if (!p.emailOn) checks.push({ kind: "warn", text: "O envio de e-mails está desligado no momento. Dá para montar e agendar: o agendado sai quando ele for ligado." });
   if (!f.preheader.trim()) checks.push({ kind: "warn", text: "Preencha o pré-cabeçalho (texto de prévia na caixa de entrada)", fix: () => setOpen("subj") });
   if (design.blocks.some((b) => b.t === "imagem" && !b.src)) checks.push({ kind: "warn", text: "Tem um bloco de imagem vazio (ele não aparece no envio)", fix: () => setEditor(true) });
   if (!tested) checks.push({ kind: "warn", text: "Envie um teste para você antes de disparar" });
