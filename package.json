@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "node tests/e2e/checkout.e2e.mjs",
     "test:e2e:portaria": "node tests/e2e/portaria-camera.e2e.mjs",
+    "test:load": "vitest run --config vitest.load.config.ts --silent=false",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",

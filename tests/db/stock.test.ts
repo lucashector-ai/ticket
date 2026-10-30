@@ -11,6 +11,12 @@ type Db = typeof import("@/db");
 type Fulfill = typeof import("@/lib/payments/fulfill");
 type Holds = typeof import("@/lib/holds");
 let D: Db, F: Fulfill, H: Holds;
+/** A condição SQL que o pedido confere dentro da transação (holds.capacityOkSql). */
+async function capacityOk(eventId: string, typeId: string) {
+  const { sql } = await import("drizzle-orm");
+  const r = await D.db.execute<{ ok: boolean }>(sql`select ${H.capacityOkSql(eventId, [typeId])} as ok`);
+  return !!r.rows[0]?.ok;
+}
 const created: string[] = [];
 
 async function makeEvent(opts: { quantity: number; maxPerOrder?: number; status?: "published" | "cancelled" }) {
@@ -128,13 +134,13 @@ describe.skipIf(!TEST_DB)("estoque e emissão (banco de teste)", () => {
     await makeOrder(ev.id, tt.id, 1, { expiresAt: new Date(Date.now() - 60_000) });
     expect((await H.heldByType(ev.id)).get(tt.id)).toBe(2);
     expect((await H.heldByType(ev.id, { exceptUserId: userA })).get(tt.id) ?? 0).toBe(0);
-    expect(await H.overbooked(ev.id, [tt.id])).toEqual([]);
+    expect(await capacityOk(ev.id, tt.id)).toBe(true);
   });
 
-  it("dois pedidos pelo último lugar no mesmo instante: a reconferência acusa", async () => {
+  it("dois pedidos pelo último lugar: a conferência de lugares acusa", async () => {
     const { ev, tt } = await makeEvent({ quantity: 1 });
     await Promise.all([makeOrder(ev.id, tt.id, 1), makeOrder(ev.id, tt.id, 1)]);
-    expect(await H.overbooked(ev.id, [tt.id])).toEqual([tt.id]);
+    expect(await capacityOk(ev.id, tt.id)).toBe(false);
   });
 
   it("quem já pagou passa na frente de reserva não paga", async () => {

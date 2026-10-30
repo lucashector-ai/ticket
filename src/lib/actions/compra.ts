@@ -1,6 +1,8 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
+import type { BatchItem } from "drizzle-orm/batch";
 import { z } from "zod";
 import { cpfValid } from "@/lib/cpf";
 import { normalizePhone, phoneValid } from "@/lib/phone";
@@ -11,7 +13,7 @@ import { tierStatus } from "@/lib/tickets/status";
 import { canBuy } from "@/lib/launch";
 import { promoterForOrder } from "@/lib/promoters";
 import { queueAllows } from "@/lib/queue";
-import { heldByType, overbooked } from "@/lib/holds";
+import { capacityOkSql, heldByType, stockLockKeys } from "@/lib/holds";
 import { claimSpecial, lookupSpecial } from "@/lib/special";
 import { boughtByType, fulfillOrder, overLimit, type FulfillResult } from "@/lib/payments/fulfill";
 import { startPix, STRIPE_MIN_BRL_CENTS } from "@/lib/payments/intents";
@@ -19,6 +21,7 @@ import { releaseOthers } from "@/lib/payments/pending";
 import { testPix } from "@/lib/payments/pix-test";
 import { stripeEnabled } from "@/lib/payments/stripe";
 import { addHit, allowHit, clientIp, limitReached } from "@/lib/rate-limit";
+import { abortOf, ensure, lockKeys, runBatch } from "@/lib/payments/tx";
 
 const { orders, orderItems, coupons, events, userProfiles } = schema;
 
@@ -194,8 +197,16 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   // comissão do parceiro: % do valor dos ingressos (sem taxa e sem juros)
   const promoter = special?.kind === "revenda" ? null : await promoterForOrder(ev);
 
-  const [order] = await db.insert(orders).values({
-    userId: user.id, eventId: ev.id, status: "pending",
+  // pedido e itens numa transação só; com estoque, a trava por tipo e a conferência de lugares vão junto: a
+  // reserva vale a partir daqui e, se outra pessoa reservou os últimos lugares antes, este pedido não é gravado
+  // (sai antes de gerar Pix ou cobrar). Parte de grupo e revenda não usam o estoque.
+  const orderId = randomUUID();
+  const typeIds = [...new Set(lines.map((l) => l.ticketTypeId))];
+  const steps: BatchItem<"pg">[] = [];
+  if (!special) steps.push(lockKeys(stockLockKeys(typeIds)));
+  const at = steps.length;
+  steps.push(db.insert(orders).values({
+    id: orderId, userId: user.id, eventId: ev.id, status: "pending",
     subtotalCents: p.subtotal, meiaCents: p.meia, discountCents: p.discount, feeCents: p.fee,
     interestCents: p.interest, installments: p.installments, totalCents: p.total,
     couponId: couponRow?.id ?? null, paymentMethod: free ? "free" : method,
@@ -207,16 +218,19 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     resaleListingId: special?.kind === "revenda" ? special.listingId : null,
     promoterId: promoter?.id ?? null,
     commissionCents: promoter ? Math.round(((p.subtotal - p.meia - p.discount) * promoter.commissionPct) / 100) : 0,
-  }).returning();
-  await db.insert(orderItems).values(lines.map((l) => ({
-    orderId: order.id, ticketTypeId: l.ticketTypeId, quantity: l.quantity, unitPriceCents: l.priceCents,
+  }).returning());
+  steps.push(db.insert(orderItems).values(lines.map((l) => ({
+    orderId, ticketTypeId: l.ticketTypeId, quantity: l.quantity, unitPriceCents: l.priceCents,
     unitFeeCents: Math.round(l.priceCents * feeRate),
-  })));
-  // a reserva vale a partir daqui: se outra pessoa reservou os mesmos últimos lugares no mesmo instante, este
-  // pedido sai antes de gerar Pix ou cobrar (melhor do que cobrar e estornar depois)
-  if (!special && (await overbooked(ev.id, lines.map((l) => l.ticketTypeId))).length) {
-    await db.update(orders).set({ status: "cancelled" }).where(and(eq(orders.id, order.id), eq(orders.status, "pending")));
-    return { ok: false, error: "Outra pessoa acabou de reservar os últimos ingressos deste tipo. Confira o que ainda resta e tente de novo." };
+  }))));
+  if (!special) steps.push(ensure(capacityOkSql(ev.id, typeIds), "stock"));
+  let order: typeof orders.$inferSelect;
+  try {
+    const res = await runBatch(steps);
+    order = (res[at] as (typeof orders.$inferSelect)[])[0];
+  } catch (e) {
+    if (abortOf(e) === "stock") return { ok: false, error: "Outra pessoa acabou de reservar os últimos ingressos deste tipo. Confira o que ainda resta e tente de novo." };
+    throw e;
   }
 
   // guarda celular e CPF no perfil para preencher da próxima vez

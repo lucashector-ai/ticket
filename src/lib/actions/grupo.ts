@@ -1,10 +1,12 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { and, asc, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
-import { heldByType, overbooked } from "@/lib/holds";
+import { capacityOkSql, heldByType, stockLockKeys } from "@/lib/holds";
+import { abortOf, ensure, lockKeys, runBatch } from "@/lib/payments/tx";
 import { canBuy, randomToken } from "@/lib/launch";
 import { queueAllows } from "@/lib/queue";
 import { tierStatus } from "@/lib/tickets/status";
@@ -54,20 +56,28 @@ export async function createGroup(input: z.input<typeof groupSchema>): Promise<{
     for (let k = 0; k < it.quantity; k++) shares.push({ ticketTypeId: tt.id, priceCents: tt.priceCents });
   }
   const code = randomToken(10);
-  const [g] = await db.insert(groupOrders).values({
-    code, eventId: ev.id, leaderUserId: user.id, leaderName: user.name ?? null, expiresAt: new Date(Date.now() + GROUP_MINUTES * 60_000),
-  }).returning({ id: groupOrders.id });
-  await db.insert(groupShares).values(shares.map((s, i) => ({ groupId: g.id, ticketTypeId: s.ticketTypeId, priceCents: s.priceCents, sortOrder: i })));
+  // grupo e vagas numa transação só, com a mesma trava e conferência de lugares do pedido (compra.ts): se outra
+  // pessoa reservou os últimos lugares antes, o grupo não é gravado
+  const g = { id: randomUUID() };
+  const typeIds = [...new Set(shares.map((s) => s.ticketTypeId))];
+  try {
+    await runBatch([
+      lockKeys(stockLockKeys(typeIds)),
+      db.insert(groupOrders).values({
+        id: g.id, code, eventId: ev.id, leaderUserId: user.id, leaderName: user.name ?? null, expiresAt: new Date(Date.now() + GROUP_MINUTES * 60_000),
+      }),
+      db.insert(groupShares).values(shares.map((s, i) => ({ groupId: g.id, ticketTypeId: s.ticketTypeId, priceCents: s.priceCents, sortOrder: i }))),
+      ensure(capacityOkSql(ev.id, typeIds), "stock"),
+    ]);
+  } catch (e) {
+    if (abortOf(e) === "stock") return { ok: false, error: "Outra pessoa acabou de reservar os últimos ingressos. Confira o que ainda resta e tente de novo." };
+    throw e;
+  }
   // dois grupos da mesma pessoa criados no mesmo instante: fica o primeiro
   const first = await openGroupOf(user.id, ev.id);
   if (first && first !== g.id) {
     await db.update(groupOrders).set({ status: "cancelled" }).where(eq(groupOrders.id, g.id));
     return { ok: false, error: ONE_GROUP };
-  }
-  // dois grupos (ou um grupo e um pedido) pelos últimos lugares no mesmo instante: este desiste
-  if ((await overbooked(ev.id, [...new Set(shares.map((s) => s.ticketTypeId))])).length) {
-    await db.update(groupOrders).set({ status: "cancelled" }).where(eq(groupOrders.id, g.id));
-    return { ok: false, error: "Outra pessoa acabou de reservar os últimos ingressos. Confira o que ainda resta e tente de novo." };
   }
   return { ok: true, code };
 }
