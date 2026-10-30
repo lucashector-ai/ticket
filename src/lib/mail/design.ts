@@ -59,7 +59,7 @@ export type Audience = {
 export const DEFAULT_AUDIENCE: Audience = { buyers: "all", buyerEvents: [], followers: true, signups: true, excludeBuyersOf: [] };
 
 export const DEFAULT_STYLE: MailStyle = {
-  bg: "#F1F1EC", card: "#FFFFFF", text: "#141414", accent: "#141414", accentText: "#DCF568",
+  bg: "#F1F1EC", card: "#FFFFFF", text: "#141414", accent: "#141414", accentText: "#EDFF3C",
   font: "sans", radius: 14, header: "logo", headerBg: "#FFFFFF", headerText: "#141414",
 };
 

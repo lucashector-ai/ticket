@@ -192,8 +192,8 @@ export function BlockProps({ b, update, events, data, coupons, onEvents, onRemov
 /* ---------- estilo ---------- */
 
 const PRESETS: { name: string; s: Partial<MailStyle> }[] = [
-  { name: "Tickets Win", s: { bg: "#F1F1EC", card: "#FFFFFF", text: "#141414", accent: "#141414", accentText: "#DCF568", headerBg: "#FFFFFF", headerText: "#141414", font: "sans" } },
-  { name: "Noite", s: { bg: "#0A0A0B", card: "#141416", text: "#F4F4F2", accent: "#DCF568", accentText: "#141414", headerBg: "#141416", headerText: "#F4F4F2", font: "sans" } },
+  { name: "Tickets Win", s: { bg: "#F1F1EC", card: "#FFFFFF", text: "#141414", accent: "#141414", accentText: "#EDFF3C", headerBg: "#FFFFFF", headerText: "#141414", font: "sans" } },
+  { name: "Noite", s: { bg: "#0A0A0B", card: "#141416", text: "#F4F4F2", accent: "#EDFF3C", accentText: "#141414", headerBg: "#141416", headerText: "#F4F4F2", font: "sans" } },
   { name: "Festival", s: { bg: "#FBE7F1", card: "#FFFFFF", text: "#1D1528", accent: "#E5197A", accentText: "#FFFFFF", headerBg: "#1D1528", headerText: "#FFFFFF", font: "sans" } },
   { name: "Editorial", s: { bg: "#ECE8DF", card: "#FBF9F4", text: "#1E1B16", accent: "#1E1B16", accentText: "#FBF9F4", headerBg: "#FBF9F4", headerText: "#1E1B16", font: "serif" } },
   { name: "Limpo", s: { bg: "#F2F4F7", card: "#FFFFFF", text: "#101828", accent: "#2E62F5", accentText: "#FFFFFF", headerBg: "#FFFFFF", headerText: "#101828", font: "sans" } },

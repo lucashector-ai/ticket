@@ -5,7 +5,7 @@ import { encodePng } from "./png";
 
 export type RGB = [number, number, number];
 
-export const PASS_THEME = { bg: [0, 0, 0] as RGB, fg: [255, 255, 255] as RGB, label: [220, 245, 104] as RGB };
+export const PASS_THEME = { bg: [0, 0, 0] as RGB, fg: [255, 255, 255] as RGB, label: [237, 255, 60] as RGB };
 export const toHex = (c: RGB) => `#${c.map((x) => x.toString(16).padStart(2, "0")).join("")}`;
 
 const NOTCH: RGB = [242, 242, 246]; // #F2F2F6, o fundo claro da Carteira

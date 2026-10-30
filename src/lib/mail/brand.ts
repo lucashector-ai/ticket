@@ -6,7 +6,7 @@
  */
 
 export const BRAND = {
-  bg: "#F2F2EE", card: "#FFFFFF", ink: "#111111", body: "#6E6E73", muted: "#77776F", hair: "#EFEFEC", panel: "#F6F6F3", lime: "#D3F55B", limeSoft: "#EEFBC4", limeInk: "#3D5200",
+  bg: "#F2F2EE", card: "#FFFFFF", ink: "#111111", body: "#6E6E73", muted: "#77776F", hair: "#EFEFEC", panel: "#F6F6F3", lime: "#EDFF3C", limeSoft: "#F8FFC2", limeInk: "#445000",
   font: "Inter,'Helvetica Neue',Helvetica,Arial,sans-serif",
   disp: "'Inter Tight',Inter,'Helvetica Neue',Helvetica,Arial,sans-serif",
   mono: "'Space Mono',Menlo,Consolas,'Courier New',monospace",
