@@ -182,7 +182,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
               <span>{e.category ?? "Evento"}</span>
             </nav>
             <div className="m16">
-              <div className="m16-art2"><BannerArt id={e.bannerId} fit="card" /></div>
+              <div className="m16-art2"><BannerArt id={e.bannerId} fit="card" poster={e.bannerId === e.flyerId} /></div>
               <div className="cover-acts">
                 <button className="gbtn" type="button" onClick={onShare} aria-label="Compartilhar">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>

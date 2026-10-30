@@ -62,7 +62,7 @@ export function LaunchScreen({ x, slug, email: initialEmail = "", preview = fals
   return (
     <section className={`ls ls-${p.theme}${preview ? " ls-prev" : ""}${phone ? " ls-pv" : ""}`} aria-label={`${headline} · ${x.title}`}>
       <div className="ls-bg" aria-hidden="true">
-        {p.theme === "arte" && <div className="ls-art"><BannerArt id={x.bannerId} fit="fill" /></div>}
+        {p.theme === "arte" && <div className="ls-art"><BannerArt id={x.bannerId} fit="fill" poster={x.bannerId === x.flyerId} /></div>}
         {p.theme === "foto" && p.image && (
           // eslint-disable-next-line @next/next/no-img-element
           <img className="ls-img" src={p.image} alt="" />

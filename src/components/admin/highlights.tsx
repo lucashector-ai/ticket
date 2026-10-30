@@ -110,7 +110,7 @@ function Preview({ e, html, art }: { e: Ev; html?: string | null; art?: string |
   const h = html !== undefined ? html : e.heroHtml;
   const a = art !== undefined ? art : e.heroArt;
   if (h) return <iframe title={`Prévia de ${e.title}`} srcDoc={h} sandbox="allow-scripts" className="hl-frame" />;
-  return <BannerArt id={a ?? e.bannerId ?? e.flyerId} fit="ratio" />;
+  return <BannerArt id={a ?? e.bannerId ?? e.flyerId} fit="ratio" poster={!a && (e.bannerId ?? e.flyerId) === e.flyerId} />;
 }
 
 function ArtEditor({ e, onDone }: { e: Ev; onDone: () => void }) {

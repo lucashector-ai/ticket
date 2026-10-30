@@ -266,7 +266,7 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
 /* =========================== 7. ARTES =========================== */
 const MEDIA: { id: MediaKey; title: string; ratio: string; w: number; h: number; req: boolean; where: string; mock: string; poster?: boolean }[] = [
   { id: "poster", title: "Cartaz", ratio: "3 / 4", w: 1080, h: 1440, req: true, where: "Card do evento nas listas, na busca e em Meus ingressos", mock: "cd2", poster: true },
-  { id: "banner", title: "Banner", ratio: "16 / 9", w: 1920, h: 1080, req: true, where: "Topo da página do evento e fundo da tela de contagem", mock: "ev" },
+  { id: "banner", title: "Banner", ratio: "16 / 9", w: 1920, h: 1080, req: false, where: "Topo da página do evento e fundo da tela de contagem. Sem banner, montamos um com o cartaz", mock: "ev" },
   { id: "home", title: "Destaque da home", ratio: "21 / 9", w: 2520, h: 1080, req: false, where: "Carrossel de destaques na home (as laterais são cortadas no celular)", mock: "hm" },
   { id: "strip", title: "Faixa promocional", ratio: "5 / 1", w: 2400, h: 480, req: false, where: "Faixa entre as seções da home e nos e-mails", mock: "st" },
   { id: "share", title: "Compartilhamento", ratio: "1.91 / 1", w: 1200, h: 630, req: false, where: "Prévia do link no WhatsApp e nas redes", mock: "wa" },
@@ -287,6 +287,8 @@ function ArtCard({ c, m, i }: { c: Ctx; m: (typeof MEDIA)[number]; i: number }) 
     c.flash(`${m.title} enviado`);
   }
   const art = url ? (m.poster ? <FlyerArt id={url} /> : <BannerArt id={url} fit="fill" />) : null;
+  // banner opcional: sem ele, "Onde aparece" mostra o banner montado com o cartaz
+  const auto = !url && m.id === "banner" && c.d.media.poster ? <BannerArt id={c.d.media.poster} fit="fill" poster /> : null;
   return (
     <div className="cv-art" style={{ animationDelay: `${i * 60}ms` }}>
       <div className="i">
@@ -300,7 +302,7 @@ function ArtCard({ c, m, i }: { c: Ctx; m: (typeof MEDIA)[number]; i: number }) 
       </div>
       <div className="use">
         <span className="k">Onde aparece</span><b>{m.where}</b>
-        <div className={`cv-mk ${m.mock}`}><span className="bar" /><span className="slot">{art}</span><span className="l1" /><span className="l2" /><span className="l3" /></div>
+        <div className={`cv-mk ${m.mock}`}><span className="bar" /><span className="slot">{art ?? auto}</span><span className="l1" /><span className="l2" /><span className="l3" /></div>
       </div>
     </div>
   );
@@ -393,7 +395,7 @@ export function VendasStep({ c }: { c: Ctx }) {
             {THEMES.map((t) => (
               <button key={t.id} className={d.teaser.theme === t.id ? "cv-th on" : "cv-th"} type="button" onClick={() => (t.id === "foto" && !d.teaser.image ? file.current?.click() : setTeaser({ theme: t.id }))} aria-pressed={d.teaser.theme === t.id}>
                 <span className={`pvw ${t.id}`} aria-hidden="true">
-                  {t.id === "arte" && d.media.banner && <BannerArt id={d.media.banner} fit="fill" />}
+                  {t.id === "arte" && (d.media.banner || d.media.poster) && <BannerArt id={(d.media.banner ?? d.media.poster)!} fit="fill" poster={!d.media.banner} />}
                   {t.id === "foto" && d.teaser.image && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={d.teaser.image} alt="" />
@@ -406,7 +408,7 @@ export function VendasStep({ c }: { c: Ctx }) {
           </div>
           <input ref={file} className="sr" type="file" accept="image/jpeg,image/png,image/webp" tabIndex={-1} aria-label="Imagem de fundo da tela de contagem" onChange={(e) => void onImage(e.target.files?.[0])} />
           {d.teaser.theme === "foto" && d.teaser.image && <button className="cv-lnk" type="button" onClick={() => file.current?.click()}>Trocar imagem de fundo</button>}
-          {d.teaser.theme === "arte" && !d.media.banner && <p className="cv-note">Envie o banner na etapa Artes para ele aparecer no fundo.</p>}
+          {d.teaser.theme === "arte" && !d.media.banner && !d.media.poster && <p className="cv-note">Envie o cartaz na etapa Artes para ele aparecer no fundo.</p>}
           <div className="cv-2">
             <label className="cv-fl"><span>Frase acima da contagem</span><input autoComplete="off" className="cv-in" value={d.teaser.headline} maxLength={80} onChange={(e) => setTeaser({ headline: e.target.value })} placeholder={mode === "pre" ? "A pré-venda começa em" : "As vendas abrem em"} /></label>
             <Toggle on={d.teaser.lineup} onClick={() => setTeaser({ lineup: !d.teaser.lineup })} title="Mostrar o line-up" sub={d.lineup.length ? `${d.lineup.length} ${d.lineup.length === 1 ? "artista" : "artistas"}` : "Adicione artistas em Informações"} />
@@ -439,7 +441,7 @@ export function RevisarStep({ c, x }: { c: Ctx; x: Derived }) {
     [3, "Onde", x.tour ? `${new Set(x.sessions.map((s) => s.city)).size} cidades` : d.venue.name ? `${d.venue.name} · ${d.venue.city || "falta a cidade"}` : "Sem local", x.ok[3]],
     [4, "Mapa", d.tmode === "mapa" ? (d.map === "done" ? `Mapa 3D com ${d.plan?.areas.length ?? 0} áreas` : "Mapa ainda não gerado") : "Sem mapa", x.ok[4]],
     [5, "Ingressos", x.nTypes ? `${x.nTypes} tipos · ${x.totalQty.toLocaleString("pt-BR")} ingressos · a partir de ${minPrice ? brMoney(minPrice) : "Grátis"}` : "Nenhum ingresso", x.ok[5]],
-    [6, "Artes", `${["poster", "banner", "home", "strip", "share"].filter((k) => d.media[k as MediaKey]).length} de 5 enviadas${x.ok[6] ? "" : " · faltam cartaz e banner"}`, x.ok[6]],
+    [6, "Artes", `${["poster", "banner", "home", "strip", "share"].filter((k) => d.media[k as MediaKey]).length} de 5 enviadas${x.ok[6] ? "" : " · falta o cartaz"}`, x.ok[6]],
     [7, "Vendas", !d.saleStart.trim() ? "Abrem ao publicar" : `${d.presaleStart.trim() ? `Pré-venda ${d.presaleStart} · ` : ""}abertura ${d.saleStart}`, x.ok[7]],
   ];
   const score = Math.round((rows.filter((r) => r[3]).length / rows.length) * 100);

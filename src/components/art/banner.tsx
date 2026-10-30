@@ -1,4 +1,7 @@
 /* Banners (21:9 / 16:9 / preenchimento) dos eventos — gerados a partir do design Tickets Win. */
+"use client";
+
+import { useState } from "react";
 import { isImageArt } from "./flyer";
 export const BANNER_IDS = ["baile", "sintonia", "terreiro", "marea", "subsolo", "cypher", "noite", "luz", "orquestra", "mesa", "calourada", "guitarra"] as const;
 export type BannerId = (typeof BANNER_IDS)[number];
@@ -20,18 +23,31 @@ export function bannerVals(id: string, fit: BannerFit = "ratio"): BannerVals {
   };
 }
 
-/** Arte do banner de um evento. `fit="fill"` ocupa o container pai (position:absolute). */
-export function BannerArt({ id, fit = "ratio" }: { id: string; fit?: BannerFit }) {
-  if (isImageArt(id)) {
-    const v = bannerVals(id, fit);
-    return (
-      <div aria-hidden="true" style={{ position: v.pos, inset: "0", width: "100%", aspectRatio: v.ar, overflow: "hidden", background: "#111111" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={id} alt="" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-      </div>
-    );
-  }
+/** Arte do banner de um evento. `fit="fill"` ocupa o container pai (position:absolute).
+ *  `poster`: a imagem é o cartaz (3:4) usado no lugar do banner, que é opcional (DM-2). */
+export function BannerArt({ id, fit = "ratio", poster = false }: { id: string; fit?: BannerFit; poster?: boolean }) {
+  if (isImageArt(id)) return <BannerImage id={id} v={bannerVals(id, fit)} poster={poster} />;
   return <BannerTemplate v={bannerVals(id, fit)} />;
+}
+
+/** Imagem enviada pelo produtor. Se for alta (o cartaz no lugar do banner), monta o banner:
+ *  cartaz inteiro no centro sobre um fundo desfocado dele mesmo, em vez de cortar o cartaz.
+ *  Quem não sabe se é cartaz (`poster` falso) descobre pela proporção quando a imagem carrega. */
+function BannerImage({ id, v, poster }: { id: string; v: BannerVals; poster: boolean }) {
+  const [tall, setTall] = useState(poster);
+  const check = (img: HTMLImageElement | null) => {
+    if (img?.complete && img.naturalWidth && img.naturalWidth / img.naturalHeight < 1.3) setTall(true);
+  };
+  const layer = { position: "absolute", inset: 0, width: "100%", height: "100%" } as const;
+  return (
+    <div aria-hidden="true" style={{ position: v.pos, inset: "0", width: "100%", aspectRatio: v.ar, overflow: "hidden", background: "#111111" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {tall && <img src={id} alt="" decoding="async" style={{ ...layer, objectFit: "cover", filter: "blur(28px) saturate(1.15) brightness(.72)", transform: "scale(1.2)" }} />}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img ref={check} onLoad={(ev) => check(ev.currentTarget)} src={id} alt="" decoding="async"
+        style={{ ...layer, objectFit: tall ? "contain" : "cover", filter: tall ? "drop-shadow(0 12px 32px rgba(0,0,0,.45))" : undefined }} />
+    </div>
+  );
 }
 
 

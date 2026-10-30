@@ -177,7 +177,8 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
 
   /* ---- regras para publicar ---- */
   if (!title) return fail("Dê um nome ao evento.", 1);
-  if (publish && (!d.media.poster || !d.media.banner)) return fail("Envie o cartaz (3:4) e o banner (16:9) antes de publicar.", 6);
+  // só o cartaz é obrigatório (DM-2): sem banner, a página monta o banner a partir do cartaz
+  if (publish && !d.media.poster) return fail("Envie o cartaz (3:4) antes de publicar.", 6);
   const sessions = [...(d.mode === "unica" ? d.sessions.slice(0, 1) : d.sessions)].sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1));
   if (publish && !sessions.length) return fail("Adicione pelo menos uma data.", 2);
   const sessRows: { id: string; start: Date; end: Date | null; doors: Date | null; cap: number | null; venue: string; city: { name: string; uf: string } | null; place: VenuePlace | null }[] = [];

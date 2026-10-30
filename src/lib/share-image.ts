@@ -4,9 +4,10 @@ import { createHash } from "node:crypto";
  * Imagem da prévia do link (WhatsApp, Instagram, iMessage...). As artes enviadas são PNG grandes e o WhatsApp
  * ignora imagem pesada, então a prévia sai de /api/og/evento/[slug]: uma cópia em JPG leve, gerada uma vez.
  * Preferência: banner (horizontal, vira o cartão grande); sem banner, o cartaz.
+ * Sem banner enviado, o evento guarda o cartaz como banner (bannerId = flyerId): aí é cartaz, não horizontal.
  */
 export function eventShareArt(e: { flyerId: string; bannerId: string | null }) {
-  if (e.bannerId?.startsWith("/midia/")) return { src: e.bannerId, wide: true };
+  if (e.bannerId?.startsWith("/midia/") && e.bannerId !== e.flyerId) return { src: e.bannerId, wide: true };
   if (e.flyerId.startsWith("/midia/")) return { src: e.flyerId, wide: false };
   return null;
 }

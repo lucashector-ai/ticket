@@ -56,7 +56,7 @@ export function Phone({ d, x, lf, teaser }: { d: Draft; x: Derived; lf: { f: PvF
   return (
     <div className="cv-ph"><div className="sc">
       <div className={`pv-bn${hl("banner")}`}>
-        {d.media.banner ? <BannerArt id={d.media.banner} fit="fill" /> : (
+        {d.media.banner || d.media.poster ? <BannerArt id={(d.media.banner ?? d.media.poster)!} fit="fill" poster={!d.media.banner} /> : (
           <span className="pv-ph"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9A9A92" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" /><circle cx="9" cy="10" r="1.6" /><path d="M21 16l-5-5-8 8" /></svg>O banner do evento entra aqui</span>
         )}
       </div>

@@ -408,7 +408,7 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
  * O HTML roda num iframe isolado (sem acesso ao site, aos cookies nem à navegação); o clique vai para o evento.
  */
 function HeroArt({ b, fit, active }: { b: HomeEvent; fit: "fill" | "card"; active: boolean }) {
-  if (!b.bannerHtml) return <BannerArt id={b.bannerId} fit={fit} />;
+  if (!b.bannerHtml) return <BannerArt id={b.bannerId} fit={fit} poster={b.bannerId === b.flyerId} />;
   return (
     <iframe
       className="bn-html"

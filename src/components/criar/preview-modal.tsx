@@ -72,7 +72,7 @@ function PageMock({ d, x }: { d: Draft; x: Derived }) {
   const paragraphs = d.desc.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
   return (
     <div className="cv-pg">
-      <div className="cv-pg-hero">{d.media.banner ? <BannerArt id={d.media.banner} fit="fill" /> : <span className="ph">O banner do evento entra aqui</span>}</div>
+      <div className="cv-pg-hero">{d.media.banner || d.media.poster ? <BannerArt id={(d.media.banner ?? d.media.poster)!} fit="fill" poster={!d.media.banner} /> : <span className="ph">O banner do evento entra aqui</span>}</div>
       <div className="cv-pg-g">
         <div className="l">
           <div className="tags"><span>{v.cat}</span><span className="dk">{d.age}</span></div>

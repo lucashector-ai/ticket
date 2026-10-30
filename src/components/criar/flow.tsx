@@ -36,7 +36,7 @@ export function derive(d: Draft) {
   const ok = [
     !!d.cat, d.title.trim().length >= 2, sessions.length > 0, placeOk,
     d.tmode !== "mapa" || (d.map === "done" && !!d.plan), nTypes > 0 && priced,
-    !!d.media.poster && !!d.media.banner, saleOk && (d.teaser.theme !== "foto" || !!d.teaser.image),
+    !!d.media.poster, saleOk && (d.teaser.theme !== "foto" || !!d.teaser.image),
   ];
   return { sessions, totalQty, gross, net: d.fee ? gross : gross * 0.9, nTypes, ok, tour };
 }
