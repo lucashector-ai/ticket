@@ -10,6 +10,8 @@ import { CheckinLinks, type CheckinLink } from "./checkin-links";
 
 export type EquipeProps = {
   role: "owner" | "admin" | "portaria";
+  /** produtora ativa (quem não é dono vê "Você é admin de …") */
+  orgName?: string | null;
   owner: { name: string; email: string };
   members: { id: string; email: string; role: "admin" | "portaria"; active: boolean; me: boolean }[];
   events: { id: string; title: string; flyerId: string; when: string; where: string; soon: boolean; links: CheckinLink[] }[];
@@ -29,7 +31,11 @@ export function PainelEquipe(p: EquipeProps) {
 
   return (
     <div className="pane">
-      <div className="pg-h"><div><h1 className="pg-t">{p.role === "portaria" ? "Check-in" : "Equipe e check-in"}</h1><p className="pg-s">{p.role === "portaria" ? "Escolha o evento e abra o app da portaria para validar os ingressos na entrada" : "Quem ajuda a tocar os seus eventos e o check-in na entrada"}</p></div></div>
+      <div className="pg-h"><div><h1 className="pg-t">{p.role === "portaria" ? "Check-in" : "Equipe e check-in"}</h1><p className="pg-s">{p.role === "portaria"
+        ? <>{p.orgName ? <>Você está na portaria de <b>{p.orgName}</b>. </> : null}Escolha o evento e abra o app da portaria para validar os ingressos na entrada</>
+        : p.role === "admin"
+          ? <>Você é admin de <b>{p.orgName ?? "desta produtora"}</b>: cria e edita eventos e acompanha vendas. Equipe, recebimento e configurações ficam com o dono.</>
+          : "Quem ajuda a tocar os seus eventos e o check-in na entrada"}</p></div></div>
 
       <div className="cols">
         <div className="maincol">
@@ -57,14 +63,14 @@ export function PainelEquipe(p: EquipeProps) {
               <div className="card-h"><div><h2 className="card-t">Equipe</h2><span className="card-s">A pessoa entra na Tickets Win com o e-mail convidado e o painel aparece para ela.</span></div></div>
               <div className="mbr">
                 <span className="pp-av" style={{ background: "#EDFF3C" }}>★</span>
-                <span className="pp-i"><b className="pp-n">{p.owner.name}</b><span className="pp-e">{p.owner.email || "Dono da conta"}</span></span>
+                <span className="pp-i"><b className="pp-n">{p.owner.name}</b><span className="pp-e">{p.owner.email || (p.orgName ? `Dono de ${p.orgName}` : "Dono da produtora")}</span></span>
                 <span className="st on">Dono</span>
                 <span />
               </div>
               {p.members.map((m) => (
                 <div className="mbr" key={m.id}>
                   <span className="pp-av" style={{ background: m.active ? "#F8FFC2" : "#F0F0EB" }}>{m.email[0]?.toUpperCase()}</span>
-                  <span className="pp-i"><b className="pp-n">{m.email}</b><span className="pp-e">{m.active ? "Ativo" : "Convite pendente: ainda não entrou com este e-mail"}</span></span>
+                  <span className="pp-i"><b className="pp-n">{m.email}</b><span className="pp-e">{m.me ? "Você" : m.active ? "Ativo" : "Convite enviado: aparece como ativo quando a pessoa entrar na Tickets Win com este e-mail (e confirmar o e-mail)"}</span></span>
                   {owner
                     ? <select value={m.role} disabled={busy} onChange={(e) => run(() => setMemberRole(m.id, e.target.value), "Função atualizada.")} aria-label={`Função de ${m.email}`}><option value="admin">Admin</option><option value="portaria">Portaria</option></select>
                     : <span className="st draft">{m.role === "admin" ? "Admin" : "Portaria"}</span>}
@@ -79,7 +85,7 @@ export function PainelEquipe(p: EquipeProps) {
         <aside className="side2">
           {owner && (
             <section className="cx">
-              <div className="card-h"><div><h2 className="card-t">Convidar admin</h2><span className="card-s">Admin vê vendas, participantes, financeiro e marketing. A portaria é convidada por evento, em “Convidar para a portaria” (QR code ou e-mail).</span></div></div>
+              <div className="card-h"><div><h2 className="card-t">Convidar admin</h2><span className="card-s">Admin cria e edita eventos desta produtora e vê vendas, participantes, financeiro e marketing. A portaria é convidada por evento, em “Convidar para a portaria” (QR code ou e-mail).</span></div></div>
               <div className="frm">
                 <label className="fld"><span>E-mail</span><input autoComplete="off" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@exemplo.com" /></label>
                 <button className="b2 dark block" type="button" disabled={busy || !email.includes("@")} onClick={() => run(async () => { const r = await inviteMember(email, "admin"); if (r.ok) setEmail(""); return r; }, "Convite enviado.")}>Convidar admin</button>
@@ -90,7 +96,7 @@ export function PainelEquipe(p: EquipeProps) {
             <div className="card-h"><h2 className="card-t">O que cada função faz</h2></div>
             <div className="roles">
               <div><b>Dono:</b> tudo, inclusive equipe, conta de repasse e configurações.</div>
-              <div><b>Admin:</b> vê vendas, participantes, financeiro e marketing; cria cupons.</div>
+              <div><b>Admin:</b> cria e edita eventos; vê vendas, participantes, financeiro e marketing; cria cupons.</div>
               <div><b>Portaria:</b> só o check-in de um evento, pelo app da portaria, com um acesso só dela (QR code ou e-mail).</div>
             </div>
           </section>

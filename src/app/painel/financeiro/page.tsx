@@ -48,7 +48,7 @@ export default async function PainelFinanceiro({ searchParams }: { searchParams:
   });
   return (
     <div className="pane">
-      <div className="pg-h"><div><h1 className="pg-t">Financeiro</h1><p className="pg-s">Todos os eventos de {org?.name ?? "você"}</p></div></div>
+      <div className="pg-h"><div><h1 className="pg-t">Financeiro</h1><p className="pg-s">Todos os eventos de {org?.name ? <b>{org.name}</b> : "você"}</p></div></div>
       {wallet && (
         <BancoCard
           url={bankUrl()} hasPassword={!!cred} hasApp={mfa?.method === "totp"} releaseDays={RELEASE_DAYS}

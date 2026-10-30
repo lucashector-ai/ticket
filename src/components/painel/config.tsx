@@ -42,7 +42,7 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
 
   return (
     <div className="pane">
-      <div className="pg-h"><div><h1 className="pg-t">Configurações</h1><p className="pg-s">Dados da sua produtora, conta de repasse e padrões dos eventos</p></div></div>
+      <div className="pg-h"><div><h1 className="pg-t">Configurações</h1><p className="pg-s">{initial.name ? <>Dados de <b>{initial.name}</b>, conta de repasse e padrões dos eventos</> : "Dados da sua produtora, conta de repasse e padrões dos eventos"}</p></div></div>
       <div className="cols">
         <div className="maincol">
           <section className="cx">
@@ -58,7 +58,7 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
           </section>
 
           <section className="cx" id="recebimento">
-            <div className="card-h"><div><h2 className="card-t">Dados de recebimento</h2><span className="card-s">Para onde vão os saques das vendas: conta ou Pix, titular e CPF/CNPJ. Se você vende como empresa, preencha a razão social e o CNPJ. Só o dono vê.</span></div></div>
+            <div className="card-h"><div><h2 className="card-t">Dados de recebimento</h2><span className="card-s">Para onde vão os saques das vendas{initial.name ? <> de <b>{initial.name}</b></> : null}: conta ou Pix, titular e CPF/CNPJ. Se você vende como empresa, preencha a razão social e o CNPJ. Só o dono vê.</span></div></div>
             <div className="frm">
               <div className="frm-2">
                 <label className="fld"><span>Razão social</span><input autoComplete="off" value={f.legalName} maxLength={200} onChange={(e) => set({ legalName: e.target.value })} /></label>

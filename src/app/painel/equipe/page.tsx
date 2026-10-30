@@ -19,9 +19,14 @@ export default async function PainelEquipePage() {
   const links = role !== "portaria" && upcoming.length
     ? await db.select().from(L).where(and(inArray(L.eventId, upcoming.map((e) => e.id)), isNull(L.revokedAt))).orderBy(L.createdAt)
     : [];
+  // admin ou portaria veem a dona da produtora (antes aparecia o próprio nome como "Dono")
+  const ownerProfile = role !== "owner" && org?.ownerUserId
+    ? await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, org.ownerUserId), columns: { name: true } })
+    : null;
   const props: EquipeProps = {
     role,
-    owner: { name: user.name || user.email, email: role === "owner" ? user.email : "" },
+    orgName: org?.name ?? null,
+    owner: role === "owner" ? { name: user.name || user.email, email: user.email } : { name: ownerProfile?.name || "Dono da produtora", email: "" },
     members: members.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()).map((m) => ({ id: m.id, email: m.email, role: m.role === "admin" ? "admin" : "portaria", active: !!m.acceptedAt, me: m.userId === user.id })),
     events: upcoming.map((e) => {
       const days = Math.ceil((e.startAt.getTime() - now) / DAY);

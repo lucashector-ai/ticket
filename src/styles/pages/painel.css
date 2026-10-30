@@ -605,3 +605,43 @@
   .bkc-st.requested,.bkc-st.processing{background:rgba(255,184,77,.14);color:#FFC46B}
   @media (max-width:720px){.bkc{padding:22px 18px 18px}.bkc-a{align-items:stretch;width:100%}.bkc-go{justify-content:center}.bkc-mini{grid-template-columns:minmax(0,1fr)}}
 }
+
+/* Seletor da produtora ativa (topo do painel): botão com nome e papel; lista em cima no computador, folha de baixo no celular */
+.pg-painel {
+  .os{position:relative}
+  .os-b{border:0;background:none;padding:4px 10px 4px 4px;border-radius:999px;cursor:pointer;text-align:left;font:inherit;color:inherit;transition:background .2s}
+  .os-b:hover,.os-b[aria-expanded="true"]{background:#F1F1EC}
+  .os-b:focus-visible{outline:2px solid #111;outline-offset:2px}
+  .os-b .pd-mi{min-width:0;max-width:220px}
+  .os-b .pd-mn,.os-b .pd-ms{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  img.pd-av{object-fit:cover;flex:none}
+  .pd-av{flex:none}
+  .os-chev{flex:none;color:#55554E;transition:transform .2s}
+  .os-b[aria-expanded="true"] .os-chev{transform:rotate(180deg)}
+  .os-scrim{display:none}
+  .os-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:340px;padding:8px;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(17,17,17,.16),0 0 0 1px rgba(17,17,17,.06)}
+  .os-k{display:block;padding:6px 10px 8px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6B6B64}
+  .os-i{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:8px 10px;border:0;border-radius:12px;background:none;text-align:left;font:inherit;color:#111;text-decoration:none;cursor:pointer}
+  .os-i:hover,.os-i:focus-visible{background:#F4F4F1;outline:none}
+  .os-i.on{background:#FAFED4}
+  .os-i:disabled{cursor:progress}
+  .os-t{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+  .os-t b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .os-t small{font-size:12px;color:#63635C}
+  .os-ck{flex:none;color:#111}
+  .os-new{margin-top:4px;border-top:1px solid #F0F0EB;border-radius:0 0 12px 12px;padding-top:12px}
+  .os-plus{flex:none;width:32px;height:32px;border-radius:50%;background:#111;color:#EDFF3C;display:grid;place-items:center;font-size:18px;font-weight:600}
+  .os-lim,.os-err{margin:6px 10px 4px;font-size:12.5px;line-height:1.45;color:#63635C}
+  .os-err{color:#B3261E}
+  @media (max-width:900px){
+    /* no celular o nome da produtora fica à vista (antes só as iniciais) */
+    .os-b .pd-mi{display:flex;max-width:min(42vw,200px)}
+    .os-b .pd-ms{display:none}
+    .os-b{padding-right:6px}
+    .os-scrim{display:block;position:fixed;inset:0;z-index:59;background:rgba(17,17,17,.32)}
+    .os-pop{position:fixed;left:0;right:0;top:auto;bottom:0;width:auto;max-height:80dvh;overflow:auto;padding:12px 12px calc(16px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0}
+    .os-i{min-height:56px}
+  }
+}
+/* folha aberta: a aba de acessibilidade não cobre a lista */
+body:has(.pg-painel .os-pop) .a11y-tab{display:none}

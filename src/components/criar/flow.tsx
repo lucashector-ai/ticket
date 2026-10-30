@@ -15,7 +15,9 @@ import { type Ctx, type PvField } from "./shared";
 type Saved = { eventId: string; slug: string; status: "published" | "draft"; unlisted: boolean; /** já estava no ar antes deste salvar */ wasLive?: boolean };
 type Props = { initial: Draft | null; defaults?: Partial<Draft>; eventId: string | null; slug: string | null; dbMap: DbMap | null; startStep?: number;
   /** situação do evento salvo (editar): no ar ou rascunho */
-  live?: { status: "published" | "draft"; unlisted: boolean } | null };
+  live?: { status: "published" | "draft"; unlisted: boolean } | null;
+  /** produtora em nome de quem o evento é criado/editado (many: a conta tem mais de uma) */
+  org?: { name: string; role: "owner" | "admin" | "portaria"; many: boolean; editing: boolean } | null };
 
 const LOCAL_KEY = "onde:criar-evento:novo";
 const noopSubscribe = () => () => {};
@@ -44,7 +46,7 @@ export function derive(d: Draft) {
 }
 export type Derived = ReturnType<typeof derive>;
 
-export function CriarFlow({ initial, defaults, eventId: initialId, slug: initialSlug, dbMap: initialMap, live = null, startStep = 0 }: Props) {
+export function CriarFlow({ initial, defaults, eventId: initialId, slug: initialSlug, dbMap: initialMap, live = null, startStep = 0, org = null }: Props) {
   const { flash } = useToast();
   const [d, setD] = useState<Draft>(() => initial ?? { ...emptyDraft(), ...defaults });
   const [step, setStep] = useState(startStep);
@@ -156,6 +158,13 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
 
       <div className="cv-grid">
         <main className="cv-l">
+          {/* produtora do evento, sempre à vista (com várias produtoras, troca no painel antes de criar) */}
+          {org && !published && (
+            <p className="cv-org">
+              <span>{org.editing ? "Evento de" : "Criando em"} <b>{org.name}</b>{org.role !== "owner" ? <> · você é {org.role === "admin" ? "admin" : "portaria"} desta produtora</> : null}</span>
+              {org.many && !org.editing && <Link href="/painel">Trocar de produtora</Link>}
+            </p>
+          )}
           {published && saved ? <Done saved={saved} d={d} flash={flash} onEdit={() => go(REVIEW)} /> : stepView}
         </main>
         <aside className="cv-r" aria-label="Prévia da página do evento">

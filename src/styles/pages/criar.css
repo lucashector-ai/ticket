@@ -901,3 +901,10 @@
 @media (max-width:1024px){
   body:has(.pg-criar .cv-act) .a11y-tab{bottom:calc(84px + env(safe-area-inset-bottom))}
 }
+
+/* produtora do evento no topo de cada etapa do criador (várias produtoras por conta) */
+.pg-criar {
+  .cv-org{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;margin:0 0 18px;padding:8px 14px;border-radius:12px;background:#F5F5F1;font-size:13px;color:#55554E}
+  .cv-org b{color:#111;font-weight:600}
+  .cv-org a{font-weight:600;color:#111;text-decoration:underline;text-underline-offset:3px}
+}

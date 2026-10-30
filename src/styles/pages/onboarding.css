@@ -84,3 +84,13 @@
 }
 @keyframes obIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes obSpin{to{transform:rotate(1turn)}}
+
+/* nova produtora (a partir do painel): "Cancelar" volta ao painel */
+.pg-onb {
+  .ob-cancel{flex:none;height:36px;padding:0 14px;border-radius:999px;font-size:13.5px;font-weight:600;color:#3A3A3C;display:inline-flex;align-items:center}
+  .ob-cancel:hover{background:#ECECE6}
+  @media (max-width:640px){
+    .ob-top{position:relative}
+    .ob-cancel{position:absolute;top:18px;right:16px}
+  }
+}

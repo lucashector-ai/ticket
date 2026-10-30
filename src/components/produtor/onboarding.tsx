@@ -7,7 +7,12 @@ import { checkOrganizerName, finishOnboarding } from "@/lib/actions/onboarding";
 import { CitySelect, UfSelect } from "@/components/city-select";
 
 type Init = { name: string; city: string; uf: string; instagram: string; tagline: string };
-type Props = { firstName: string; initial: Init; ufs: readonly string[] };
+type Result = { ok: true; slug: string } | { ok: false; error: string };
+/**
+ * `nova`: segunda (ou terceira) produtora de quem já é produtor, no painel: outros textos, sem os termos (já
+ * aceitos) e a ação que cria e ativa a produtora nova no lugar da que conclui o cadastro.
+ */
+type Props = { firstName: string; initial: Init; ufs: readonly string[]; nova?: { create: (f: Init) => Promise<Result>; owned: number; max: number } };
 
 const initialsOf = (n: string) => n.trim().split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "TW";
 
@@ -15,10 +20,10 @@ const initialsOf = (n: string) => n.trim().split(/\s+/).map((p) => p[0]).filter(
  * Cadastro do produtor aprovado: o nome público e como as pessoas te encontram,
  * com a página do produtor aparecendo ao vivo do lado.
  */
-export function ProducerOnboarding({ firstName, initial }: Props) {
+export function ProducerOnboarding({ firstName, initial, nova }: Props) {
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [f, setF] = useState(initial);
-  const [terms, setTerms] = useState(false);
+  const [terms, setTerms] = useState(!!nova);
   const [check, setCheck] = useState<{ state: "idle" | "checking" | "ok" | "taken"; slug: string }>({ state: "idle", slug: "" });
   const [error, setError] = useState("");
   const [busy, start] = useTransition();
@@ -39,7 +44,7 @@ export function ProducerOnboarding({ firstName, initial }: Props) {
   const nameOk = f.name.trim().length >= 2 && check.state === "ok";
   function finish() {
     start(async () => {
-      const r = await finishOnboarding(f);
+      const r = nova ? await nova.create(f) : await finishOnboarding(f);
       if (!r.ok) { setError(r.error); if (r.error.includes("nome")) setStep(0); return; }
       setCheck((c) => ({ ...c, slug: r.slug }));
       setStep(2);
@@ -49,19 +54,30 @@ export function ProducerOnboarding({ firstName, initial }: Props) {
   return (
     <main className="pg-onb">
       <header className="ob-top">
-        <Link href="/" className="ob-logo" aria-label="Tickets Win"><BrandLogo height={22} /></Link>
+        <Link href={nova ? "/painel" : "/"} className="ob-logo" aria-label={nova ? "Tickets Win: voltar ao painel" : "Tickets Win"}><BrandLogo height={22} /></Link>
         <ol className="ob-steps" aria-label="Etapas">
-          {["Nome público", "Onde te encontrar", "Pronto"].map((s, i) => <li key={s} className={i < step ? "ok" : i === step ? "on" : undefined}><i>{i < step ? "✓" : i + 1}</i>{s}</li>)}
+          {[nova ? "Nome da produtora" : "Nome público", "Onde te encontrar", "Pronto"].map((s, i) => <li key={s} className={i < step ? "ok" : i === step ? "on" : undefined}><i>{i < step ? "✓" : i + 1}</i>{s}</li>)}
         </ol>
+        {nova && step < 2 && <Link className="ob-cancel" href="/painel">Cancelar</Link>}
       </header>
 
       <div className="ob-grid">
         <section className="ob-main" key={step}>
           {step === 0 && (
             <form onSubmit={(e) => { e.preventDefault(); if (nameOk && terms) setStep(1); }}>
-              <span className="ob-tag"><i aria-hidden="true" />Conta de produtor aprovada</span>
-              <h1 className="ob-h">Boas-vindas{firstName ? `, ${firstName}` : ""}! Como o público vai te chamar?</h1>
-              <p className="ob-sub">É o nome que aparece nos seus eventos, nos ingressos e na sua página. Pode ser a produtora, a festa ou a casa de eventos.</p>
+              {nova ? (
+                <>
+                  <span className="ob-tag"><i aria-hidden="true" />Nova produtora · {nova.owned + 1} de {nova.max}</span>
+                  <h1 className="ob-h">Qual o nome da nova produtora?</h1>
+                  <p className="ob-sub">Ela terá página, eventos, equipe e conta de recebimento próprios. No painel, você troca de produtora no topo, ao lado do seu nome.</p>
+                </>
+              ) : (
+                <>
+                  <span className="ob-tag"><i aria-hidden="true" />Conta de produtor aprovada</span>
+                  <h1 className="ob-h">Boas-vindas{firstName ? `, ${firstName}` : ""}! Como o público vai te chamar?</h1>
+                  <p className="ob-sub">É o nome que aparece nos seus eventos, nos ingressos e na sua página. Pode ser a produtora, a festa ou a casa de eventos.</p>
+                </>
+              )}
               <label className="ob-f">
                 <span className="ob-l">Nome do organizador</span>
                 <span className={`ob-in ${check.state === "taken" ? "bad" : nameOk ? "good" : ""}`}>
@@ -71,10 +87,12 @@ export function ProducerOnboarding({ firstName, initial }: Props) {
                 </span>
                 <span className={check.state === "taken" ? "ob-hint bad" : "ob-hint"}>{check.state === "taken" ? "Já existe um produtor com esse nome. Tente uma variação, como o nome da sua cidade junto." : nameOk ? <>Seu endereço: <b>ticketswin.com.br/produtor/{check.slug}</b></> : "Use o nome que o público já conhece."}</span>
               </label>
-              <label className="ob-terms">
-                <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
-                <span>Li e concordo com os <Link href="/legal/termos" target="_blank">Termos de uso</Link> e a <Link href="/legal/privacidade" target="_blank">Política de privacidade</Link>.</span>
-              </label>
+              {!nova && (
+                <label className="ob-terms">
+                  <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
+                  <span>Li e concordo com os <Link href="/legal/termos" target="_blank">Termos de uso</Link> e a <Link href="/legal/privacidade" target="_blank">Política de privacidade</Link>.</span>
+                </label>
+              )}
               {error && <p className="ob-err" role="alert">{error}</p>}
               <button className="ob-go" type="submit" disabled={!nameOk || !terms}>Continuar</button>
             </form>
@@ -93,7 +111,7 @@ export function ProducerOnboarding({ firstName, initial }: Props) {
               {error && <p className="ob-err" role="alert">{error}</p>}
               <div className="ob-row">
                 <button className="ob-back" type="button" onClick={() => setStep(0)} disabled={busy}>Voltar</button>
-                <button className="ob-go" type="submit" disabled={busy}>{busy ? "Criando sua página…" : "Criar minha página"}</button>
+                <button className="ob-go" type="submit" disabled={busy}>{busy ? (nova ? "Criando a produtora…" : "Criando sua página…") : nova ? "Criar produtora" : "Criar minha página"}</button>
               </div>
             </form>
           )}
@@ -101,13 +119,15 @@ export function ProducerOnboarding({ firstName, initial }: Props) {
           {step === 2 && (
             <div>
               <span className="ob-tag"><i aria-hidden="true" />Tudo pronto</span>
-              <h1 className="ob-h">Sua página está no ar, {f.name.trim()}.</h1>
-              <p className="ob-sub">Agora crie o primeiro evento: leva poucos minutos e dá para salvar como rascunho. No painel você acompanha vendas, público e repasses.</p>
+              <h1 className="ob-h">{nova ? `${f.name.trim()} está no ar.` : `Sua página está no ar, ${f.name.trim()}.`}</h1>
+              <p className="ob-sub">{nova
+                ? "Ela já é a produtora ativa no painel: os eventos que você criar agora saem em nome dela. Antes de vender, cadastre a conta de recebimento dela em Configurações."
+                : "Agora crie o primeiro evento: leva poucos minutos e dá para salvar como rascunho. No painel você acompanha vendas, público e repasses."}</p>
               <div className="ob-row">
-                <Link className="ob-go" href="/criar-evento">Criar meu primeiro evento</Link>
+                <Link className="ob-go" href="/criar-evento">{nova ? `Criar evento em ${f.name.trim()}` : "Criar meu primeiro evento"}</Link>
                 <Link className="ob-back" href="/painel">Ir para o painel</Link>
               </div>
-              <Link className="ob-link" href={`/produtor/${check.slug}`} target="_blank">Ver minha página pública ↗</Link>
+              <Link className="ob-link" href={`/produtor/${check.slug}`} target="_blank">{nova ? "Ver a página pública ↗" : "Ver minha página pública ↗"}</Link>
             </div>
           )}
         </section>
