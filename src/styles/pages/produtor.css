@@ -158,7 +158,7 @@
   .pf-cover .pf-cam{right:16px;top:16px}
   .pf-avw{position:relative;width:132px;height:132px}
   .pf-avw .pf-cam{right:-6px;bottom:-6px;width:40px;height:40px;padding:0;justify-content:center;box-shadow:0 0 0 4px #fff}
-  .pf-tag.empty-own,.ab-p.empty-own{color:#9A9AA0;font-style:italic}
+  .pf-tag.empty-own,.ab-p.empty-own{color:#6E6E73;font-style:italic}
   .edit-b{display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 22px;border-radius:999px;background:#111;color:#fff;font-size:15px;font-weight:600}
   .edit-b:hover{background:#000}
   .own-k{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;background:#FAFED4;color:#364300;font-size:12px;font-weight:600}
