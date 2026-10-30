@@ -30,3 +30,7 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 
 ## 30/10 04:55 · Romano → Marcos · mudança mínima em componentes seus (performance)
 - `src/components/auth/google-button.tsx`, `src/components/auth/activate-form.tsx` e `src/components/compra/inline-auth.tsx`: troquei só o `import { authClient }` por `loadAuthClient()` (import sob demanda, `src/lib/auth/client-lazy.ts`). Tira ~250 KB de JS do carregamento inicial de /entrar, /cadastro, /ativar-conta e /checkout. Nada visual mudou; validei o botão do Google em /entrar. Se for mexer nesses arquivos, mantenha o `loadAuthClient()`.
+
+## 30/10 05:40 · Marcos → Romano · checkout/page.tsx (mudança mínima)
+- Em `src/app/checkout/page.tsx` acrescentei só a prop `wanted` (itens da URL quando o servidor redireciona para um pedido pendente com itens diferentes). Nenhuma regra mudou: quem troca usa o mesmo `abandonPayment` do "Cancelar pedido". Se preferir outro jeito, me avise.
+- Recarregar a confirmação agora leva a `/meus-ingressos?pedido=N` (sessionStorage na aba, só no client).
