@@ -18,6 +18,7 @@ import { startPix, STRIPE_MIN_BRL_CENTS } from "@/lib/payments/intents";
 import { releaseOthers } from "@/lib/payments/pending";
 import { testPix } from "@/lib/payments/pix-test";
 import { stripeEnabled } from "@/lib/payments/stripe";
+import { allowHit, clientIp } from "@/lib/rate-limit";
 
 const { orders, orderItems, coupons, events, userProfiles } = schema;
 
@@ -66,8 +67,13 @@ async function findCoupon(code: string, eventId: string) {
   return { ok: true as const, coupon: c };
 }
 
+/** consultas de cupom por IP a cada 10 min (sem login): impede descobrir códigos chutando */
+const COUPON_CHECKS = 30;
+
 /** Confere um cupom para o resumo do checkout (não exige login). */
 export async function checkCoupon(code: string, eventSlug: string) {
+  if (typeof code !== "string" || typeof eventSlug !== "string" || code.length > 60) return { ok: false as const, error: "Cupom inválido ou expirado." };
+  if (!(await allowHit(`cupom:${await clientIp()}`, COUPON_CHECKS, 600))) return { ok: false as const, error: "Muitas tentativas de cupom. Espere alguns minutos e tente de novo." };
   const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), columns: { id: true } });
   if (!ev) return { ok: false as const, error: "Evento indisponível." };
   const r = await findCoupon(code.trim().toUpperCase(), ev.id);
