@@ -1,10 +1,9 @@
 "use client";
 
-import { forwardRef, useRef, useState } from "react";
+import { forwardRef } from "react";
 import { FlyerArt } from "@/components/art/flyer";
 import { BrandMark, BrandWord } from "@/components/brand-logo";
 import type { TicketCardData } from "@/lib/tickets/card";
-import { FONTS } from "@/lib/fonts";
 
 /** O ingresso "de papel" (modelo do PDF): arte, dados do evento, picote e QR code. */
 export const TicketCard = forwardRef<HTMLDivElement, { t: TicketCardData; qrSvg: string }>(function TicketCard({ t, qrSvg }, ref) {
@@ -40,64 +39,10 @@ export const TicketCard = forwardRef<HTMLDivElement, { t: TicketCardData; qrSvg:
 });
 
 /**
- * CSS das fontes com os arquivos embutidos (só o alfabeto latino), para a "foto" do ingresso sair com as
- * fontes do site: o gerador não consegue ler a folha do Google Fonts sozinho.
+ * Baixa o ingresso em PDF. O PDF é gerado no servidor (/api/ingressos/[código]/pdf): montar no aparelho falhava
+ * no Safari do iPhone e nos navegadores do WhatsApp/Instagram. No computador baixa; no celular abre o PDF,
+ * com "Salvar" e "Compartilhar".
  */
-let fontCss: Promise<string> | null = null;
-function embeddedFonts() {
-  fontCss ??= (async () => {
-    const css = await (await fetch(FONTS)).text();
-    const blocks = css.split(/(?=\/\* )/).filter((b) => /^\/\* latin \*\//.test(b));
-    const files = new Map<string, Promise<string>>();
-    const dataUrl = (url: string) => {
-      if (!files.has(url)) files.set(url, fetch(url).then((r) => r.blob()).then((b) => new Promise<string>((ok) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.readAsDataURL(b); })));
-      return files.get(url)!;
-    };
-    const out = await Promise.all(blocks.map(async (b) => {
-      const m = b.match(/url\((https:[^)]+)\)/);
-      return m ? b.replace(m[1], await dataUrl(m[1])) : b;
-    }));
-    return out.join("\n");
-  })().catch(() => { fontCss = null; return ""; });
-  return fontCss;
-}
-
-/** Baixa o ingresso em PDF: desenha o cartão fora da tela, vira imagem e monta o PDF no próprio aparelho. */
-export function TicketPdfButton({ t, qrSvg, className, children }: { t: TicketCardData; qrSvg: string; className?: string; children: React.ReactNode }) {
-  const [busy, setBusy] = useState(false);
-  const [show, setShow] = useState(false);
-  const card = useRef<HTMLDivElement>(null);
-
-  async function make() {
-    if (busy) return;
-    setBusy(true);
-    setShow(true);
-    try {
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      await document.fonts?.ready;
-      const node = card.current;
-      if (!node) throw new Error("card");
-      // imagens do cartaz precisam ter carregado antes de virar foto
-      await Promise.all(Array.from(node.querySelectorAll("img")).map((img) => (img.complete ? null : new Promise((r) => { img.onload = img.onerror = r; }))));
-      const [{ toJpeg }, { jsPDF }, fontEmbedCSS] = await Promise.all([import("html-to-image"), import("jspdf"), embeddedFonts()]);
-      const img = await toJpeg(node, { pixelRatio: 2.5, quality: 0.9, backgroundColor: "#111111", cacheBust: true, fontEmbedCSS: fontEmbedCSS || undefined });
-      const w = node.offsetWidth, h = node.offsetHeight;
-      const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: [w, h], hotfixes: ["px_scaling"], compress: true });
-      pdf.addImage(img, "JPEG", 0, 0, w, h);
-      pdf.save(`ingresso-${t.code}.pdf`);
-    } catch (e) {
-      console.error("pdf", e);
-      alert("Não foi possível gerar o PDF agora. Tente de novo.");
-    } finally {
-      setShow(false);
-      setBusy(false);
-    }
-  }
-
-  return (
-    <>
-      <button className={className} type="button" onClick={() => void make()} disabled={busy} aria-busy={busy}>{busy ? "Gerando PDF…" : children}</button>
-      {show && <div className="tcard-stage" aria-hidden="true"><TicketCard ref={card} t={t} qrSvg={qrSvg} /></div>}
-    </>
-  );
+export function TicketPdfButton({ t, className, children }: { t: TicketCardData; qrSvg?: string; className?: string; children: React.ReactNode }) {
+  return <a className={className} href={`/api/ingressos/${encodeURIComponent(t.code)}/pdf`} download={`ingresso-${t.code}.pdf`}>{children}</a>;
 }
