@@ -20,8 +20,9 @@ export function ErrorScroll() {
       const list = fresh.filter((x) => x.isConnected && x.offsetParent !== null && x.matches(ERR) && !x.closest(".toast, .a11y-root"));
       fresh = [];
       if (!list.length) return;
-      // o primeiro na ordem da página
-      const el = list.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))[0];
+      // o primeiro na ordem da página; havendo campo marcado, vai a ele (e não ao resumo "Falta preencher…")
+      const sorted = list.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+      const el = sorted.find((x) => x.matches("input, select, textarea")) ?? sorted[0];
       const r = el.getBoundingClientRect();
       const margin = 90; // header fixo e barra do navegador
       // campo com erro: já deixa pronto para corrigir (sem abrir o teclado em mensagens), e o leitor de tela

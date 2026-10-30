@@ -102,9 +102,9 @@
   .hold{display:flex;flex-direction:column;gap:12px;padding:18px 20px 20px;border-radius:20px;background:#F7F7F2}
   .hold .in2{background:#FFFFFF}
   .hold-h{display:flex;align-items:center;gap:10px}
-  .hold-n{font-size:15px;font-weight:600}
-  .hold-t{font-size:13.5px;color:#6E6E73}
-  .me{margin-left:auto;height:32px;padding:0 14px;border-radius:999px;background:#FFFFFF;font-size:13px;font-weight:600}
+  .hold-n{flex:none;font-size:15px;font-weight:600;white-space:nowrap}
+  .hold-t{min-width:0;font-size:13.5px;line-height:1.3;color:#6E6E73}
+  .me{flex:none;margin-left:auto;height:32px;padding:0 14px;border-radius:999px;background:#FFFFFF;font-size:13px;font-weight:600;white-space:nowrap}
   .me.on{background:#111;color:#FFFFFF}
   .ckb{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;font-size:14px;color:#3A3A3C;text-align:left}
   .ck-box{flex:none;width:22px;height:22px;border-radius:7px;background:#FFFFFF;display:grid;place-items:center;color:transparent;transition:background .2s,color .2s}

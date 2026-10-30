@@ -298,6 +298,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   /* várias datas: a data de cada linha aparece no resumo */
   const multiDay = event.sessions.length > 0;
   const dayLabel = (id: string) => (multiDay ? event.sessions.find((s) => s.id === event.tiers.find((t) => t.id === id)?.sessionId)?.label ?? null : null);
+  /** data do que foi escolhido (num evento de várias datas, a(s) data(s) dos ingressos, não o período todo) */
+  const pickedDate = [...new Set(lines.map((l) => dayLabel(l.ticketTypeId)).filter(Boolean))].join(" · ") || event.dateNice;
 
   /* validação */
   const blankHold = (h: { n: number }): Hold => ({ name: "", me: h.n === 1, meia: false, email: "" });
@@ -718,7 +720,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   <div className="ck-pick">
                     <div className="ck-pick-i">
                       <b>{lines.map((l) => `${l.quantity}× ${l.name}`).join(" · ")}</b>
-                      <span>{[...new Set(lines.map((l) => dayLabel(l.ticketTypeId)).filter(Boolean))].join(" · ") || event.dateNice}</span>
+                      <span>{pickedDate}</span>
                     </div>
                     <Link href={choiceUrl}>Alterar</Link>
                   </div>
@@ -751,7 +753,6 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                     <input className={bad(cpfValid(cpf))} type="text" inputMode="numeric" placeholder="000.000.000-00" value={cpf} onChange={(e) => setCpf(fmtCpf(e.target.value))} required aria-required="true" autoComplete="off" />
                   </label>
                 </div>
-                {tried && user && dadosErr.length > 0 && <p className="err">Falta preencher: {dadosErr.join(", ")}.</p>}
                 <h2 className="ck-h2">Quem vai usar os ingressos</h2>
                 <p className="ck-p">Cada ingresso é nominal. Quem não for você recebe o ingresso por e-mail e precisa entrar ou criar uma conta para ficar com ele.</p>
                 <div className="holds">
@@ -804,6 +805,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                     );
                   })}
                 </div>
+                {/* resumo no fim da etapa, perto do botão: os campos com problema já ficam marcados onde estão */}
+                {tried && user && dadosErr.length > 0 && <p className="err">Falta preencher: {dadosErr.join(", ")}.</p>}
                 <button className={optIn ? "ckb cd-save ck-optin on" : "ckb cd-save ck-optin"} type="button" role="checkbox" aria-checked={optIn} onClick={() => setOptIn((v) => !v)}>
                   <span className="ck-box" aria-hidden="true">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
@@ -1082,7 +1085,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 <div className="sm-art"><FlyerArt id={event.flyerId} /></div>
                 <div className="sm-ei">
                   <b className="sm-t">{event.title}</b>
-                  <span className="sm-d">{event.dateNice}</span>
+                  <span className="sm-d">{pickedDate}</span>
                   <span className="sm-d">{event.venue} · {event.city}</span>
                 </div>
               </div>
@@ -1149,7 +1152,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
             <div className="ld-main">
               <span className="ld-k">Tickets Win · Ingresso · Pedido #{done.number}</span>
               <b className="ld-t">{event.title}</b>
-              <span className="ld-d">{event.dateNice} · {event.venue}</span>
+              <span className="ld-d">{pickedDate} · {event.venue}</span>
               <span className="dn-q">{done.ticketCount} {done.ticketCount === 1 ? "ingresso" : "ingressos"}</span>
             </div>
             <div className="ld-stub done-stub">
