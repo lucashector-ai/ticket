@@ -528,16 +528,21 @@
     .ck-cta .go2.block .tw-arrow{display:none}
   }
 }
-/* a aba de acessibilidade sobe acima da barra de pagar; o fim do rodapé não fica atrás dela */
+/* aba de acessibilidade na compra: fica dentro da barra fixa, à esquerda do botão (a barra abre espaço para ela),
+   e nunca por cima do conteúdo que rola (antes cobria o rótulo "Validade" do cartão). Com o teclado aberto a barra
+   sai e a aba também. No Pix, o botão "Já fiz o pagamento" vira a barra fixa pelo mesmo motivo. */
 @media (max-width:1024px){
-  body:has(.pg-compra .ck-cta) .a11y-tab{bottom:calc(116px + env(safe-area-inset-bottom))}
+  body:has(.pg-compra .ck-cta) .a11y-tab{bottom:calc(15px + env(safe-area-inset-bottom))}
+  body:has(.pg-compra .ck-cta.kb) .a11y-tab{opacity:0;pointer-events:none}
   body:has(.pg-compra .ck-cta) .ftr{padding-bottom:132px}
+  /* no Pix a ação vai para a barra fixa (.ck-cta-pix); o botão do meio da tela sai */
+  .pg-compra .ck-g.is-pix .pix-i>.go2,.pg-compra .ck-g.is-pix .pix-chk{display:none}
 }
 
 /* Rodada 5 (pedido do dono, referência do celular): formas de pagamento em lista com rádio, resumo em cima no
    pagamento, topo com voltar redondo e "Checkout", botão preto fixo de largura total. Cálculo e lógica intocados. */
 .pg-compra {
-  .ck-bk,.ck-ttl,.pay-sec{display:none}
+  .ck-bk,.ck-ttl,.pay-sec,.ck-cta-pix{display:none}
   /* formas de pagamento: ordem fixa (Pix, cartão); a escolhida em destaque, a outra compacta */
   .pm2{gap:8px}
   .pmc,.pma{gap:12px}
@@ -592,13 +597,14 @@
     .sm-inst{font-size:12.5px}
 
     /* barra fixa: total em cima (quando o botão não traz o valor) e o botão preto de largura total */
-    .ck-cta{left:0;right:0;width:auto;transform:none;bottom:0;flex-direction:column;align-items:stretch;gap:8px;padding:10px max(16px,calc((100vw - 560px) / 2)) calc(10px + env(safe-area-inset-bottom));border-radius:0;background:#FFFFFF;color:#111;box-shadow:0 -1px 0 #EDEDEA,0 -14px 30px -20px rgba(17,17,17,.3)}
+    .ck-cta{left:0;right:0;width:auto;transform:none;bottom:0;flex-direction:column;align-items:stretch;gap:8px;padding:10px max(16px,calc((100vw - 560px) / 2)) calc(10px + env(safe-area-inset-bottom)) max(44px,calc((100vw - 560px) / 2));border-radius:0;background:#FFFFFF;color:#111;box-shadow:0 -1px 0 #EDEDEA,0 -14px 30px -20px rgba(17,17,17,.3)}
     .ck-cta-t{flex-direction:row;align-items:baseline;justify-content:space-between;gap:12px;padding:0 4px}
     .ck-cta-t small{font-size:13px;color:#6E6E73}
     .ck-cta-t b{font-size:17px;color:#111}
     .ck-cta .go2.block{width:100%;max-width:none;height:54px;padding:0 20px;background:#111;color:#fff;font-size:15.5px}
     .ck-cta .go2.block:hover{background:#000}
     .ck-cta.kb{transform:translateY(24px)}
+    .ck-cta.ck-cta-pix{display:flex}
   }
   @media (max-width:640px){
     .ck-top{gap:12px;margin-bottom:18px}
@@ -607,6 +613,6 @@
     .ck-g.is-pagamento .ck-side{margin:0 -2px}
   }
   @media (max-width:360px){
-    .ck-cta{padding-left:12px;padding-right:12px}
+    .ck-cta{padding-right:12px}
   }
 }

@@ -663,9 +663,12 @@
 /* Mobile: a barra fixa de compra (.mbar, 64px a 12px do fundo) ocupa a base da tela;
    o botão de acessibilidade sobe para ficar acima dela em vez de cobrir o preço. */
 @media (max-width:1024px){
-  body:has(.pg-evento .mbar:not(.off)):not(:has(.mpn)) .a11y-tab{bottom:calc(84px + env(safe-area-inset-bottom))}
+  /* a aba de acessibilidade fica ao lado da barra (que abre espaço para ela), sem cobrir o conteúdo que rola */
+  body:has(.pg-evento .mbar:not(.off)):not(:has(.mpn)) .a11y-tab{bottom:calc(19px + env(safe-area-inset-bottom))}
   body:has(.pg-evento .mbar) .ftr{padding-bottom:120px}
-  body.bs-open .a11y-tab{display:none}
+  /* tela cheia de compra: a aba fica no rodapé da folha, à esquerda da barra preta */
+  body.bs-open .a11y-tab{bottom:calc(19px + env(safe-area-inset-bottom))}
+  .pg-evento .bs .bs-f{padding-left:44px}
   body.bs-open .toast{bottom:calc(118px + env(safe-area-inset-bottom))}
 }
 
@@ -679,6 +682,10 @@
     .rsl-m{display:block;margin-top:28px}
     .mbar{display:flex;position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));z-index:70;align-items:center;gap:14px;max-width:calc(100vw - 24px);padding:7px 8px 7px 18px;background:#111;color:#fff;border-radius:999px;box-shadow:0 18px 36px -14px rgba(0,0,0,.55);white-space:nowrap;transform:translateX(-50%);transition:opacity .25s,transform .35s var(--ease)}
     .mbar.off{opacity:0;transform:translate(-50%,18px);pointer-events:none}
+    @media (max-width:640px){
+      .mbar{left:44px;right:12px;max-width:none;justify-content:space-between;transform:none}
+      .mbar.off{transform:translateY(18px)}
+    }
     .mbar>div{min-width:0}
     .mbar span{display:block;font-size:11px;line-height:1.15;color:rgba(255,255,255,.65)}
     .mbar b{display:block;font-size:15px;font-weight:600;line-height:1.25;letter-spacing:-.01em}

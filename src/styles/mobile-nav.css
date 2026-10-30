@@ -88,11 +88,11 @@ body:has(.mpn) .mbar,body:has(.mpn-ov) .a11y-tab{display:none}
   .tbar-i:active svg{transform:scale(.9)}
   /* espaço para o fim da página não ficar embaixo da barra; a aba de acessibilidade sobe acima dela */
   body:has(.tbar){padding-bottom:calc(64px + env(safe-area-inset-bottom))}
-  body:has(.tbar) .a11y-tab{bottom:calc(76px + env(safe-area-inset-bottom))}
+  body:has(.tbar):not(:has(.pg-evento .mbar,.pg-compra .ck-top,.cv-act,.pdl-dock,.bs)) .a11y-tab{bottom:calc(76px + env(safe-area-inset-bottom))}
   /* onde já existe uma barra fixa (compra do evento, pagamento, criar evento, convite de produtor) a de abas sai */
   body:has(.pg-evento .mbar,.pg-compra .ck-top,.cv-act,.pdl-dock,.bs) .tbar{display:none}
   body:has(.tbar):has(.pg-evento .mbar,.pg-compra .ck-top,.cv-act,.pdl-dock,.bs){padding-bottom:0}
-  body:has(.pg-evento .mbar:not(.off)) .a11y-tab,body:has(.cv-act) .a11y-tab,body:has(.pdl-dock.on) .a11y-tab{bottom:calc(84px + env(safe-area-inset-bottom))}
+  body:has(.cv-act) .a11y-tab,body:has(.pdl-dock.on) .a11y-tab{bottom:calc(84px + env(safe-area-inset-bottom))}
   /* avisos e o player de prévia sobem acima da barra de abas */
   body:has(.tbar):not(:has(.pg-evento .mbar,.pg-compra .ck-top,.cv-act,.pdl-dock,.bs)) :is(.toast,.pl){bottom:calc(76px + env(safe-area-inset-bottom))}
   body:has(.pg-evento .mbar.off) .a11y-tab,body:has(.pdl-dock:not(.on)) .a11y-tab{bottom:max(18px,env(safe-area-inset-bottom))}

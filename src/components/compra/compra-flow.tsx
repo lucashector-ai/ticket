@@ -1151,6 +1151,16 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 </button>
                 </div>
               )}
+              {/* Pix no celular: a ação fica na barra fixa, como nas outras etapas (a aba de acessibilidade mora ao lado dela) */}
+              {step === "pix" && order && (
+                <div className="ck-cta ck-cta-pix">
+                  {!order.live
+                    ? <button className="go2 block" type="button" onClick={() => void finish(order.orderId)} disabled={busy || expired}>Já fiz o pagamento</button>
+                    : pixLeft > 0
+                      ? <button className="go2 block" type="button" onClick={() => void checkPixNow()} disabled={busy}>{busy ? "Conferindo…" : "Já paguei"}</button>
+                      : <button className="go2 block" type="button" onClick={prev}>Gerar novo pagamento</button>}
+                </div>
+              )}
               {(step === "dados" || step === "pagamento" || step === "pix") && (
                 <button className="back2" type="button" onClick={prev}>{step === "dados" && !lock ? "Alterar ingressos" : "Voltar"}</button>
               )}
