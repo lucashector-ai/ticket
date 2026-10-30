@@ -40,9 +40,10 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/db/checkout-legacy.test.ts | Página antiga do pedido: paga uma vez, pedido de outra conta, limite por pessoa | conforme | VALIDADO |
 | tests/db/payout.test.ts | Dois saques do saldo inteiro ao mesmo tempo | no máximo um fica (falha sem a correção) | VALIDADO |
 | tests/db/refund.test.ts | Três "reembolsar tudo" ao mesmo tempo | um reembolso, valor = total, estoque volta uma vez | VALIDADO |
+| tests/db/webhook.test.ts | Webhook: assinatura errada, confirmação, repetida, cancelamento fora de ordem, cancelamento de pendente | 400 / emite 1× / sem duplicar / não desfaz / expira | VALIDADO (sem rede) |
 | tests/db/tickets.test.ts | Portaria: QR adulterado, outro evento, dois operadores no mesmo QR, já usado | recusa / uma entrada só | VALIDADO |
 
-Última execução completa: 30/10 madrugada, **45 testes, 45 aprovados, 0 reprovados** (13 arquivos, com `TEST_DATABASE_URL`); sem a variável, os 24 de integração ficam pulados. Build do OpenNext verde depois de cada bloco.
+Última execução completa: 30/10 madrugada, **48 testes, 48 aprovados, 0 reprovados** (14 arquivos, com `TEST_DATABASE_URL`); sem a variável, os 24 de integração ficam pulados. Build do OpenNext verde depois de cada bloco.
 
 ### No navegador (Playwright, servidor local, conta de teste)
 
@@ -72,7 +73,7 @@ E2E versionado: `tests/e2e/checkout.e2e.mjs` (`pnpm test:e2e`, com `E2E_EMAIL`, 
 | Clique duplo / requisição repetida no pagamento | trava por `paid_at` no `fulfillOrder` | VALIDADO (integração) |
 | Várias abas do mesmo evento | um pedido aberto por pessoa e evento (`releaseOthers`) | NÃO TESTADO no navegador |
 | Reserva expira durante o pagamento | `fulfillOrder` (sem cobrança: expira; com cobrança: emite se houver lugar, senão estorna) | VALIDADO (integração) |
-| Webhook duplicado / fora de ordem | KV + `fulfillOrder` idempotente; `canceled` só expira pedido pendente | VALIDADO por leitura de código; sem Stripe local: BLOQUEADO para teste real |
+| Webhook duplicado / fora de ordem | KV + `fulfillOrder` idempotente; `canceled` só expira pedido pendente | VALIDADO (`tests/db/webhook.test.ts`, eventos assinados localmente); com a Stripe de verdade: BLOQUEADO |
 | Pagamento recusado no cartão | pedido segue pendente até a reserva vencer | BLOQUEADO (sem chave de teste da Stripe no local) |
 | Acesso sem login a páginas privadas | cada página chama `getSessionUser`/`painelAccess`/`contaUser`/`adminUser` | VALIDADO por leitura de código (todas as páginas privadas listadas) |
 | Acesso a recurso de outra pessoa (pedido, ingresso, PDF, carteira) | filtros por `userId`/`holderUserId` | VALIDADO por leitura; PDF de código inexistente logado → 404 |
