@@ -79,7 +79,7 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
                 <label className="fld"><span>Código do app autenticador</span>
                   <input ref={codeRef} autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} placeholder="000000"
                     onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} onKeyDown={(e) => { if (e.key === "Enter" && code.length === 6) save(); }} />
-                  <small>Para trocar a conta que recebe os saques, confirme com o código de 6 dígitos do app autenticador e toque em Salvar.</small>
+                  <small>Por segurança, trocar a conta que recebe os saques pede o código de 6 números do seu app autenticador. Digite e toque em Salvar. Sem acesso ao app? <Link href="/ajuda">Fale com a gente</Link>.</small>
                 </label>
               )}
             </div>
@@ -93,7 +93,7 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
               <label className="tg2"><span><b>Comprador paga a taxa</b><small>{f.defaults.buyerPaysFee ? "A taxa de 7,99% vai à parte no checkout." : "Você absorve os 7,99%: o preço já inclui a taxa."}</small></span><input className="sr" type="checkbox" checked={f.defaults.buyerPaysFee} onChange={(e) => def({ buyerPaysFee: e.target.checked })} /><span className="sw" aria-hidden="true" /></label>
               <label className="tg2"><span><b>Meia-entrada automática</b><small>Cria a meia (50%) para cada inteira.</small></span><input className="sr" type="checkbox" checked={f.defaults.autoMeia} onChange={(e) => def({ autoMeia: e.target.checked })} /><span className="sw" aria-hidden="true" /></label>
               <label className="fld"><span>Classificação</span><select value={f.defaults.age} onChange={(e) => def({ age: e.target.value as Form["defaults"]["age"] })}>{AGES.map((a) => <option key={a}>{a}</option>)}</select></label>
-              <label className="fld"><span>Observações padrão (opcional)</span><textarea value={f.defaults.refund} maxLength={300} placeholder="Vem preenchido em cada evento novo. A regra de cancelamento fica em Cancelamentos e reembolsos." onChange={(e) => def({ refund: e.target.value })} /></label>
+              <label className="fld"><span>Observações padrão (opcional)</span><textarea value={f.defaults.refund} maxLength={300} placeholder="Ex.: troca de titular só até 24h antes do evento." onChange={(e) => def({ refund: e.target.value })} /><small>Vem preenchido em cada evento novo. A regra de cancelamento fica em Cancelamentos e reembolsos.</small></label>
             </div>
           </section>
         </aside>
