@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, useEffect, useRef } from "react";
 import { useToast } from "@/components/toast";
 import { FlyerArt } from "@/components/art/flyer";
 import { BrandMark, BrandWord } from "@/components/brand-logo";
@@ -45,7 +45,35 @@ export const TicketCard = forwardRef<HTMLDivElement, { t: TicketCardData; qrSvg:
  */
 export function TicketPdfButton({ t, className, children }: { t: TicketCardData; qrSvg?: string; className?: string; children: React.ReactNode }) {
   const href = `/api/ingressos/${encodeURIComponent(t.code)}/pdf`;
+  const name = `ingresso-${t.code}.pdf`;
   const { flash } = useToast();
+  const ref = useRef<HTMLAnchorElement>(null);
+  const file = useRef<File | null>(null);
+
+  // iPhone/iPad: o Safari decide sozinho o que fazer com um link de download (às vezes só mostra o PDF).
+  // Com o arquivo já no aparelho, o toque abre a folha de compartilhar com "Salvar em Arquivos".
+  useEffect(() => {
+    const el = ref.current;
+    const ua = navigator.userAgent;
+    if (!el || !IOS.test(ua) || IN_APP.test(ua) || typeof navigator.canShare !== "function") return;
+    let done = false;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e?.isIntersecting || done) return;
+      done = true;
+      io.disconnect();
+      void fetch(href, { credentials: "same-origin" })
+        .then((r) => (r.ok && r.headers.get("content-type")?.includes("pdf") ? r.blob() : null))
+        .then((b) => {
+          if (!b) return;
+          const f = new File([b], name, { type: "application/pdf" });
+          if (navigator.canShare({ files: [f] })) file.current = f;
+        })
+        .catch(() => {});
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [href, name]);
+
   function click(e: React.MouseEvent) {
     const ua = navigator.userAgent;
     // navegador de dentro do Instagram/Facebook não baixa arquivo: no Android abre no Chrome; no iPhone, avisa
@@ -55,10 +83,16 @@ export function TicketPdfButton({ t, className, children }: { t: TicketCardData;
       alert("Este navegador do app não deixa baixar arquivos. Toque nos três pontinhos (⋯) e escolha “Abrir no Safari” (ou no navegador), depois toque em Baixar PDF de novo.");
       return;
     }
-    // o servidor manda como download (attachment): a página não muda. O iPhone sempre pede uma confirmação.
-    if (/iPhone|iPad|iPod/i.test(ua)) flash("Toque em “Baixar” na janela do iPhone. O ingresso fica em Arquivos › Downloads.");
+    if (file.current) {
+      // chamado direto no toque (sem esperar nada antes), senão o iPhone bloqueia
+      e.preventDefault();
+      navigator.share({ files: [file.current], title: `Ingresso ${t.code}` }).catch(() => {});
+      flash("Toque em “Salvar em Arquivos” para guardar o ingresso no iPhone.");
+    }
+    // sem o arquivo pronto (ou fora do iPhone): segue o link, que o servidor entrega como download
   }
-  return <a className={className} href={href} download={`ingresso-${t.code}.pdf`} onClick={click}>{children}</a>;
+  return <a ref={ref} className={className} href={href} download={name} onClick={click}>{children}</a>;
 }
 
+const IOS = /iPhone|iPad|iPod/i;
 const IN_APP = /Instagram|FBAN|FBAV|FB_IAB|Line\//i;
