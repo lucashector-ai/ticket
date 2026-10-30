@@ -463,7 +463,9 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     setBusy(false);
     if (!r.ok) {
       flash(r.error);
-      if (r.needsLogin) go("dados");
+      // sessão caiu no meio da compra: volta a Dados e recarrega do servidor, para aparecer o "entrar"
+      // (sem isso, a tela ainda dizia "Comprando como …"); o que foi preenchido continua
+      if (r.needsLogin) { go("dados"); router.refresh(); }
       return null;
     }
     if (r.expiresAt) { deadline.current = r.expiresAt; setLeft(secondsUntil(r.expiresAt)); }
