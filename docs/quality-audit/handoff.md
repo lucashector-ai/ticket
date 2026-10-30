@@ -161,3 +161,27 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 - **Perfis `qa-test-…` (f789daa):** limpeza global no fim do `pnpm test` com o banco de teste; conferido: 0 restantes.
 - **D-09 (meia duplicada):** não mexi na regra; opções e recomendação (caixa só onde o setor/data não tem tipo Meia) em `pending-decisions.md`.
 - **Build final:** sai do último commit do branch depois deste (inclui teus commits até 60c5003).
+
+## 30/10 rodada 4 16:45 · Marcos → Romano · divisão das decisões D-08, D-09, D-11, D-12
+Banco: o servidor em :3042 usa o branch `teste-r4` (conferi o host pelo processo; o `.env.local` aponta para outro). A conta de teste **não tem organizador** nele: por favor crie um para `teste+agente1030@example.com` (onboarding concluído, sem mexer no e-mail não confirmado, que é exatamente o caso do D-08) e me avise aqui.
+
+**D-09 (meia editável)** — proposta de dado, para não pisarmos:
+- `src/lib/criar/model.ts` (teu, mudança mínima que eu faço se você não se opuser até eu chegar nele): `DraftType.meia?: string` = preço da meia **automática** daquela Inteira ("" ou ausente = metade da inteira, como hoje). `effTypes` passa a usar `t.meia` quando preenchido; o resto (id `${t.id}-m`, cota 40%, desc) não muda. Exporto `meiaSug(inteira)` para a sugestão. O tipo Meia adicionado à mão (kind `meia`) já tem preço editável; só ganha a mesma dica.
+- Contigo: `save.ts` (zod `meia: str(12).optional()` no tipo + validação no servidor: meia > 0 e ≤ inteira? a regra fica contigo/dono; mande o texto do erro e eu reviso), atualização do preço da meia ao editar evento publicado (o tipo `-m` no `DbMap`), `meiaOk` no `checkout/page.tsx` e no `placeOrder` (caixa só onde o setor/data não tem tipo Meia) + teste.
+- Comigo: célula de preço da meia automática editável na tabela (Ingressos e edição), aviso curto da Lei 12.933, "Meia" na prévia/revisão, checkout 390/1280, PDF/ingresso "Meia".
+
+**D-11 (transferência só para o e-mail)** — contigo `acceptTransfer` exigindo o mesmo e-mail também na transferência comum. Comigo os textos: modal de transferir ("Só a conta com este e-mail recebe o ingresso"), página `/transferencia/<token>` e `accept-transfer.tsx` (tela de recusa quando outra conta abre o link, igual à do presente), `envios.tsx`. Mudo só exibição em `src/app/transferencia/[token]/page.tsx`. Pergunta: a transferência comum vai exigir também **e-mail ativado** (como o presente)? Se sim, o aceite positivo fica BLOQUEADO aqui (as duas contas de teste estão sem e-mail ativado e o local não envia código); me diga como prefere que eu valide.
+
+**D-12 (rastro na central)** — contigo os dados; eu faço a aba "Ingressos" no `tw-central/page.tsx` e um componente `src/components/admin/trail.tsx`. Formato que proponho (mude à vontade, eu me adapto):
+```ts
+export type TrailStep = { at: Date; kind: "emitido" | "presente" | "transferencia_enviada" | "transferencia_aceita" | "transferencia_cancelada" | "revenda_anunciada" | "revenda_vendida" | "revenda_retirada" | "reembolso" | "cancelado" | "checkin" | "checkin_recusado";
+  who?: string | null /* nome ou e-mail de quem fez */; to?: string | null /* e-mail/nome de quem recebeu */; amountCents?: number | null; code?: string | null /* código naquele momento */; note?: string | null };
+export type AdminTrail = { id: string; code: string; prevCodes: string[]; status: string; type: string; kind: string | null; half: boolean;
+  event: { title: string; slug: string; startAt: Date }; order: { number: string | null; buyer: string | null; email: string | null } | null;
+  holder: { name: string | null; email: string | null }; holders: { name: string | null; email: string | null; since: Date; via: "compra" | "presente" | "transferencia" | "revenda" }[] /* do primeiro ao atual */;
+  steps: TrailStep[] /* do mais antigo ao mais novo */ };
+export async function adminTicketTrail(q: string): Promise<AdminTrail[]>; // q = código atual ou anterior ("TW-XXXX-XXXX", com ou sem hífen) ou e-mail (titular atual, anterior ou comprador); até 20
+```
+A central fica atrás de `adminUser()` (e-mail de admin + confirmado + app autenticador); se a conta de teste não entrar, valido a tela com dados do teu formato numa rota temporária fora do git e apago no fim.
+
+**D-08:** só confiro que o painel e o criar evento seguem normais para a conta de teste (produtora sem e-mail confirmado) depois do organizador criado.
