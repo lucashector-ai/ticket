@@ -7,6 +7,7 @@
 .ftr .ft-top{display:inline-flex;align-items:center;gap:12px;font-size:14px;font-weight:500;color:#3A3A3C;cursor:pointer}
 .ftr .ft-top span{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#111;color:#D3F55B;transition:transform .3s}
 .ftr .ft-top:hover span{transform:translateY(-3px)}
+.ftr .ft-top:focus-visible{outline:2px solid #111;outline-offset:4px;border-radius:999px}
 .ftr .ft-top:focus-visible{outline:none}
 .ftr .ft-top:focus-visible span{outline:3px solid #D3F55B;outline-offset:3px}
 .ftr .ft-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:64px;align-items:start;padding-top:72px}

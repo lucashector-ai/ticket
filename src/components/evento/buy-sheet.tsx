@@ -121,9 +121,25 @@ export function BuySheet({ e, t, s, onMap }: { e: EventoData; t: Tickets; s: Buy
     const prev = html.style.overflow;
     html.style.overflow = "hidden";
     document.body.classList.add("bs-open");
-    const onKey = (ev: KeyboardEvent) => { if (ev.key === "Escape") s.back(); };
+    // quem abriu a tela (para devolver o foco ao fechar)
+    const opener = document.activeElement instanceof HTMLElement && !document.activeElement.closest(".bs") ? document.activeElement : null;
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape") { s.back(); return; }
+      // Tab fica dentro da tela cheia (aria-modal): do último volta ao primeiro e vice-versa
+      if (ev.key !== "Tab") return;
+      const box = document.querySelector<HTMLElement>(".bs");
+      const items = box ? [...box.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter((x) => x.offsetParent !== null) : [];
+      if (!box || !items.length) return;
+      const first = items[0], last = items[items.length - 1], cur = document.activeElement;
+      if (ev.shiftKey && (cur === first || !box.contains(cur))) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && (cur === last || !box.contains(cur))) { ev.preventDefault(); first.focus(); }
+    };
     window.addEventListener("keydown", onKey);
-    return () => { html.style.overflow = prev; document.body.classList.remove("bs-open"); window.removeEventListener("keydown", onKey); };
+    return () => {
+      html.style.overflow = prev; document.body.classList.remove("bs-open"); window.removeEventListener("keydown", onKey);
+      const back = opener?.isConnected ? opener : document.querySelector<HTMLElement>(".et-go");
+      back?.focus({ preventScroll: true });
+    };
   }, [open, s]);
   useEffect(() => { if (step) titleRef.current?.focus({ preventScroll: true }); }, [step]);
 
