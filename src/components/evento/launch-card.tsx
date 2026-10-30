@@ -70,13 +70,13 @@ export function LaunchCard({ e, email: initialEmail, compact = false }: { e: Eve
           </div>
         </div>
       ) : (
-        <form className="ln-f" onSubmit={submit}>
+        <form className="ln-f" onSubmit={submit} noValidate>
           <label className="sr" htmlFor="ln-mail">Seu e-mail</label>
-          <input id="ln-mail" type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(x) => { setEmail(x.target.value); setMsg(null); }} required />
-          <button className="go" type="submit" disabled={pending || !email.trim()}>
+          <input id="ln-mail" type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(x) => { setEmail(x.target.value); setMsg(null); }} required aria-invalid={msg && !msg.ok ? true : undefined} aria-describedby={msg && !msg.ok ? "ln-err" : undefined} />
+          <button className="go" type="submit" disabled={pending}>
             {pending ? "Enviando…" : presaleSignup ? "Quero entrar na pré-venda" : "Me avise na abertura"}
           </button>
-          {msg && !msg.ok && <p className="cupmsg err" role="alert">{msg.text}</p>}
+          {msg && !msg.ok && <p className="cupmsg err" id="ln-err" role="alert">{msg.text}</p>}
           <p className="ln-fine">{presaleSignup ? "Só quem se cadastrar recebe o link secreto para comprar antes de todo mundo." : "Um e-mail só, na hora em que abrir. Sem spam."}</p>
         </form>
       )}

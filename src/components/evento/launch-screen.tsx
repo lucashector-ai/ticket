@@ -90,13 +90,14 @@ export function LaunchScreen({ x, slug, email: initialEmail = "", preview = fals
               <div><b>{presaleSignup ? "Você está na pré-venda" : "Pronto, vamos te avisar"}</b><small>{msg?.text || (presaleSignup ? `O link exclusivo chega em ${email.trim()}.` : `Avisamos em ${email.trim()} assim que abrir.`)}</small></div>
             </div>
           ) : (
-            <form className="ls-f" onSubmit={submit}>
+            /* sem trava no botão vazio: o envio responde "Digite um e-mail válido." (o botão travado parecia ativo e não dizia nada) */
+            <form className="ls-f" onSubmit={submit} noValidate>
               <label className="sr" htmlFor={preview ? undefined : "ls-mail"}>Seu e-mail</label>
-              <input id={preview ? undefined : "ls-mail"} type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => { setEmail(e.target.value); setMsg(null); }} required={!preview} readOnly={preview} tabIndex={preview ? -1 : undefined} />
-              <button type="submit" disabled={pending || (!preview && !email.trim())} tabIndex={preview ? -1 : undefined}>
+              <input id={preview ? undefined : "ls-mail"} type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => { setEmail(e.target.value); setMsg(null); }} required={!preview} aria-invalid={msg && !msg.ok ? true : undefined} aria-describedby={msg && !msg.ok ? "ls-err" : undefined} readOnly={preview} tabIndex={preview ? -1 : undefined} />
+              <button type="submit" disabled={pending} tabIndex={preview ? -1 : undefined}>
                 {pending ? "Enviando…" : presaleSignup ? "Quero a pré-venda" : "Me avise"}
               </button>
-              {msg && !msg.ok && <p className="ls-err" role="alert">{msg.text}</p>}
+              {msg && !msg.ok && <p className="ls-err" id="ls-err" role="alert">{msg.text}</p>}
             </form>
           )}
           <span className="ls-fine">{presaleSignup ? "Só quem se cadastrar recebe o link para comprar antes de todo mundo." : "Um e-mail só, na hora em que abrir. Sem spam."}</span>

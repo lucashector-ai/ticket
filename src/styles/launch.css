@@ -59,7 +59,9 @@
 .ls-lima .ls-f:focus-within{box-shadow:inset 0 0 0 2px #111}
 .ls-lima .ls-f input::placeholder{color:rgba(17,17,17,.45)}
 .ls-lima .ls-f button{background:#111;color:#EDFF3C}
-.ls-err{position:absolute;left:18px;top:100%;margin:8px 0 0;font-size:13px;color:#FF8A7A}
+/* erro embaixo do campo: abre espaço (não cobre a frase de baixo) e tem fundo próprio (a cor do fundo vem do cartaz) */
+.ls-err{position:absolute;left:12px;top:100%;margin:8px 0 0;padding:4px 10px;border-radius:8px;background:rgba(17,17,17,.78);font-size:13px;font-weight:600;color:#FFB4A8}
+.ls-f:has(.ls-err){margin-bottom:38px}
 .ls-fine{margin-top:12px;font-size:12.5px;color:rgba(255,255,255,.5)}
 .ls-lima .ls-fine{color:rgba(17,17,17,.55)}
 .ls-ok{display:flex;align-items:center;gap:14px;margin-top:26px;padding:14px 20px 14px 14px;border-radius:20px;background:rgba(237,255,60,.14);animation:lsUp .5s cubic-bezier(.34,1.56,.64,1) both}
