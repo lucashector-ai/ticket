@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { after } from "next/server";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { dateFull, dateNice, hourLabel, initials, parts, slugify } from "@/lib/format";
@@ -140,6 +140,30 @@ function venueMapOf(d: Draft) {
   };
 }
 
+/**
+ * Pode apagar estes tipos de ingresso? Não, se algum ingresso foi emitido (mesmo reembolsado), se está num grupo
+ * ou na revenda, ou se alguém está pagando agora. Pedidos nunca pagos (cancelados, vencidos) não impedem:
+ * `deadOrderIds` são os pedidos cujos itens deste tipo podem sair junto.
+ */
+export async function dropBlockers(types: { id: string; name: string }[]): Promise<{ ok: true; deadOrderIds: string[] } | { ok: false; error: string }> {
+  const ids = types.map((t) => t.id);
+  const nameOf = (id: string) => types.find((t) => t.id === id)?.name ?? "Ingresso";
+  const { orderItems, orders, tickets, groupShares, resaleListings } = schema;
+  const [issued, shared, listed, items] = await Promise.all([
+    db.selectDistinct({ id: tickets.ticketTypeId }).from(tickets).where(inArray(tickets.ticketTypeId, ids)),
+    db.selectDistinct({ id: groupShares.ticketTypeId }).from(groupShares).where(inArray(groupShares.ticketTypeId, ids)),
+    db.selectDistinct({ id: resaleListings.ticketTypeId }).from(resaleListings).where(inArray(resaleListings.ticketTypeId, ids)),
+    db.select({ type: orderItems.ticketTypeId, orderId: orders.id, status: orders.status, expiresAt: orders.expiresAt, paidAt: orders.paidAt })
+      .from(orderItems).innerJoin(orders, eq(orders.id, orderItems.orderId)).where(inArray(orderItems.ticketTypeId, ids)),
+  ]);
+  const used = issued[0] ?? shared[0] ?? listed[0];
+  if (used) return { ok: false, error: `"${nameOf(used.id)}" já teve ingressos emitidos, compra em grupo ou revenda e não pode ser apagado. Para parar de vender, deixe a quantidade igual à já vendida.` };
+  const now = Date.now();
+  const live = items.find((i) => i.status === "paid" || i.status === "refunded" || i.paidAt || (i.status === "pending" && (!i.expiresAt || i.expiresAt.getTime() > now - 5 * 60_000)));
+  if (live) return { ok: false, error: `Tem gente comprando "${nameOf(live.type)}" agora. Tente apagar de novo em 20 minutos.` };
+  return { ok: true, deadOrderIds: [...new Set(items.map((i) => i.orderId))] };
+}
+
 /** Salva o evento do formulário em nome do produtor: cria na primeira vez, atualiza depois (preços, lotes, datas). */
 export async function saveEventAs(user: Producer, input: { draft: Draft; eventId: string | null; dbMap: DbMap }): Promise<SaveEventResult> {
   const parsed = draftSchema.safeParse(input.draft);
@@ -230,6 +254,11 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
     const t = allTypes.find((x) => x.id === k.split(":")[1])!;
     if (row && num(t.qty) < row.sold) return fail(`${t.name}: já foram vendidos ${row.sold}. A quantidade não pode ser menor.`, 5);
   }
+  // tipo que sai: pedidos, ingressos, grupos e revenda apontam para ele (chave estrangeira sem cascata). Confere
+  // ANTES de gravar qualquer coisa: o erro no meio deixava o evento salvo pela metade (e o reenvio duplicava tipos).
+  const dropping = existing?.ticketTypes.filter((t) => !keepTypes.has(t.id)) ?? [];
+  const deadItems = dropping.length ? await dropBlockers(dropping) : { ok: true as const, deadOrderIds: [] };
+  if (!deadItems.ok) return fail(deadItems.error, 5);
 
   const conflicts = couponRows.length
     ? await db.query.coupons.findMany({ where: inArray(coupons.code, couponRows.map((c) => c.code)) })
@@ -355,6 +384,10 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   }
   if (existing) {
     const dropTypes = existing.ticketTypes.filter((t) => !keepTypes.has(t.id)).map((t) => t.id);
+    // itens de pedidos que nunca foram pagos (carrinho abandonado, reserva vencida) saem junto com o tipo
+    if (dropTypes.length && deadItems.deadOrderIds.length) {
+      await db.delete(schema.orderItems).where(and(inArray(schema.orderItems.ticketTypeId, dropTypes), inArray(schema.orderItems.orderId, deadItems.deadOrderIds)));
+    }
     if (dropTypes.length) await db.delete(ticketTypes).where(inArray(ticketTypes.id, dropTypes));
     const dropSess = existing.sessions.filter((s) => !keepSess.has(s.id)).map((s) => s.id);
     if (dropSess.length) await db.delete(eventSessions).where(inArray(eventSessions.id, dropSess));
