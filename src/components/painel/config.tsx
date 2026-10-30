@@ -48,8 +48,8 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
             </div>
           </section>
 
-          <section className="cx">
-            <div className="card-h"><div><h2 className="card-t">Conta de repasse</h2><span className="card-s">Para onde vão os saques do Banco Tickets Win. Só o dono vê.</span></div></div>
+          <section className="cx" id="recebimento">
+            <div className="card-h"><div><h2 className="card-t">Dados de recebimento</h2><span className="card-s">Para onde vão os saques das vendas: conta ou Pix, titular e CPF/CNPJ. Se você vende como empresa, preencha a razão social e o CNPJ. Só o dono vê.</span></div></div>
             <div className="frm">
               <div className="frm-2">
                 <label className="fld"><span>Razão social</span><input autoComplete="off" value={f.legalName} maxLength={200} onChange={(e) => set({ legalName: e.target.value })} /></label>

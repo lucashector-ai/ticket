@@ -386,6 +386,15 @@
   .ptr{display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:16px;padding:12px 0;border-top:1px solid #F0F0EB}
   /* Equipe e check-in: cada evento com os botões e o quadro de acessos do app da portaria */
   .ptr-ev + .ptr-ev{margin-top:10px}
+  /* aviso: dono sem dados de recebimento */
+  .pd-alert{display:flex;align-items:center;gap:14px;margin:0 0 20px;padding:14px 16px;border-radius:18px;background:#FFF4D6;box-shadow:inset 0 0 0 1px #F3DFA6}
+  .pd-alert-ic{flex:none;width:40px;height:40px;border-radius:12px;background:#111;color:#D3F55B;display:grid;place-items:center}
+  .pd-alert-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .pd-alert-t b{font-size:14.5px}
+  .pd-alert-t span{font-size:13px;line-height:1.45;color:#6B5A2A}
+  .nv-dot{width:8px;height:8px;margin-left:auto;border-radius:50%;background:#E5372A;box-shadow:0 0 0 3px rgba(229,55,42,.15)}
+  #recebimento{scroll-margin-top:90px}
+  @media (max-width:640px){.pd-alert{flex-wrap:wrap}.pd-alert > .b2{width:100%}}
   .ptr-a{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
   .ptr-acc > .cx{margin:0 0 6px;padding:18px 20px;border-radius:20px;background:#F7F7F3;box-shadow:none}
   .ptr-acc .cl-new input{background:#fff;box-shadow:inset 0 0 0 1px #E6E6E0}

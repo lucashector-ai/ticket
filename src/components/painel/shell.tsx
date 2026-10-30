@@ -27,7 +27,7 @@ const NAV: { href: string; label: string; icon: keyof typeof ICON }[] = [
 ];
 
 /** Barra do topo + menu lateral do painel (layout do design "painel do produtor"). */
-export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, children }: { role: "owner" | "admin" | "portaria"; orgName: string; orgInitials: string; orgSlug: string | null; userName: string; children: React.ReactNode }) {
+export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, payoutMissing = false, children }: { role: "owner" | "admin" | "portaria"; orgName: string; orgInitials: string; orgSlug: string | null; userName: string; payoutMissing?: boolean; children: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -52,6 +52,7 @@ export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, chi
           {NAV.filter((n) => role !== "portaria" || n.icon === "team").filter((n) => role === "owner" || n.icon !== "cfg").map((n) => (
             <Link key={n.href} className={cur(n.href) ? "nv cur" : "nv"} href={n.href} aria-current={cur(n.href) ? "page" : undefined}>
               <span className="nvi" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[n.icon]} /></svg></span>{n.label}
+              {payoutMissing && n.icon === "cfg" && <span className="nv-dot" aria-label="Falta preencher os dados de recebimento" />}
             </Link>
           ))}
           <div className="pd-plan">
@@ -60,7 +61,16 @@ export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, chi
             <span className="plan-s">Paga pelo comprador ou absorvida por você, como você escolher em cada evento.</span>
           </div>
         </nav>
-        <main className="pd-main">{children}</main>
+        <main className="pd-main">
+          {payoutMissing && (
+            <div className="pd-alert" role="status">
+              <span className="pd-alert-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10h18M5 10v8M9.5 10v8M14.5 10v8M19 10v8M2 21h20M12 2.5 21 7H3z" /></svg></span>
+              <div className="pd-alert-t"><b>Cadastre onde você vai receber as vendas</b><span>Preencha a conta de recebimento (banco ou Pix), o titular e o CPF ou CNPJ. Sem isso não dá para sacar o dinheiro dos ingressos.</span></div>
+              <Link className="b2 dark" href="/painel/configuracoes#recebimento">Preencher dados de recebimento</Link>
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );
