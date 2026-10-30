@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { brl, dateFull } from "@/lib/format";
+import { brl, dateFullInline } from "@/lib/format";
 import { previewRefund } from "@/lib/payments/refund";
 import { cancelWindow, deadlineLabel, deadlineOpen, EVENT_RULES, hoursLabel, policyOf, policyText } from "@/lib/refund-policy";
 
@@ -55,7 +55,7 @@ export async function meuReembolso(ticketId: string, userId: string): Promise<Me
     if (e.status === "cancelled") base.request = { reason: "cancelamento", until: null, total: brl(o.totalCents - o.refundedCents), tickets: left.length };
     // adiado: quem comprou antes do anúncio pode pedir até o fim do prazo
     else if (e.status === "published" && e.refundRequestsUntil && e.refundRequestsUntil > now && e.postponedAt && (o.paidAt ?? o.createdAt) < e.postponedAt) {
-      base.request = { reason: "adiamento", until: dateFull(e.refundRequestsUntil), total: brl(o.totalCents - o.refundedCents), tickets: left.length };
+      base.request = { reason: "adiamento", until: dateFullInline(e.refundRequestsUntil), total: brl(o.totalCents - o.refundedCents), tickets: left.length };
     }
   }
 
@@ -77,7 +77,7 @@ export async function meuReembolso(ticketId: string, userId: string): Promise<Me
   if ("error" in p) { base.blocked = p.error ?? null; return base; }
   base.cancel = {
     amount: brl(p.amountCents), amountCents: p.amountCents, free, legal: w.legal, keptFee: p.keptFeeCents ? brl(p.keptFeeCents) : null,
-    until: free ? "até o início do evento" : w.legal ? `até ${dateFull(w.until)}` : `até ${hoursLabel(policy.hoursBefore)} antes do evento`, test: p.test,
+    until: free ? "até o início do evento" : w.legal ? `até ${dateFullInline(w.until)}` : `até ${hoursLabel(policy.hoursBefore)} antes do evento`, test: p.test,
   };
   return base;
 }

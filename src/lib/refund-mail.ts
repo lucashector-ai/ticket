@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { emailEnabled, sendEmails, sendTx, siteBase, type Mail } from "@/lib/email";
-import { brl, dateFull } from "@/lib/format";
+import { brl, dateFullInline } from "@/lib/format";
 import { renderTx, type TxBlock } from "@/lib/mail/tx";
 import { userContact } from "@/lib/notify";
 import { eventLabels } from "@/lib/tickets/labels";
@@ -125,11 +125,11 @@ export const mailEventPostponed = safe("postpone", async (eventId: string, from:
     mails.push({
       to, subject: `Nova data: ${e.title}`,
       ...renderTx({
-        preheader: `O evento foi adiado para ${dateFull(e.startAt)}.`, eyebrow: "Evento adiado", title: "O evento mudou de data",
+        preheader: `O evento foi adiado para ${dateFullInline(e.startAt)}.`, eyebrow: "Evento adiado", title: "O evento mudou de data",
         paragraphs: [
-          `${hello(r.name)} ${e.title} foi adiado. A data anterior era ${dateFull(from)}; a nova data está abaixo.`,
+          `${hello(r.name)} ${e.title} foi adiado. A data anterior era ${dateFullInline(from)}; a nova data está abaixo.`,
           r.guest ? "Seu nome continua na lista free para a nova data." : "Seu ingresso continua valendo para a nova data, com o mesmo QR code. Não precisa fazer nada.",
-          ...(!r.guest && until ? [`Se a nova data não der para você, peça o reembolso até ${dateFull(until)} (${POSTPONE_REFUND_DAYS} dias após este aviso): abra o ingresso em Meus ingressos e toque em Pedir reembolso. ${MONEY_BACK}`] : []),
+          ...(!r.guest && until ? [`Se a nova data não der para você, peça o reembolso até ${dateFullInline(until)} (${POSTPONE_REFUND_DAYS} dias após este aviso): abra o ingresso em Meus ingressos e toque em Pedir reembolso. ${MONEY_BACK}`] : []),
         ],
         blocks: [...(note ? [{ kind: "note", text: `Recado do produtor: ${note}` } as TxBlock] : []), eventBlock(e as Ev)],
         cta: { label: r.guest ? "Ver o evento" : "Ver meus ingressos", url: r.guest ? `/eventos/${e.slug}` : "/meus-ingressos" },

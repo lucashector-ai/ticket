@@ -39,6 +39,11 @@ export function dateFull(d: Date) {
   const p = parts(d);
   return `${WDL[p.wd]}, ${p.d} de ${ML[p.m - 1]} de ${p.y}`;
 }
+/** "sábado, 31 de outubro de 2026": no meio da frase ("até sábado, 31 de outubro de 2026") */
+export function dateFullInline(d: Date) {
+  const s = dateFull(d);
+  return s.charAt(0).toLowerCase() + s.slice(1);
+}
 /** "Sábado, 31 de outubro · 22h" */
 export function dateLong(d: Date) {
   const p = parts(d);

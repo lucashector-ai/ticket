@@ -10,7 +10,7 @@ import { getPainelScope } from "@/lib/data/painel";
 import { eventOrderDetail, searchEventOrders, type RefundOrderDetail, type RefundOrderRow } from "@/lib/data/reembolsos";
 import { dateLabels } from "@/lib/criar/save";
 import { spDate } from "@/lib/criar/model";
-import { dateFull, dateNice, hourLabel } from "@/lib/format";
+import { dateFull, dateFullInline, dateNice, hourLabel } from "@/lib/format";
 import { cancelProgress, processCancellation, startCancellation, type CancelProgress } from "@/lib/payments/cancel-event";
 import { previewRefund, refundTickets } from "@/lib/payments/refund";
 import { mailSecurityNotice, userContact } from "@/lib/notify";
@@ -203,7 +203,7 @@ export async function postponeEventAction(input: z.input<typeof postponeSchema>)
   revalidatePath(`/eventos/${ev.slug}`);
   revalidatePath("/painel");
   refresh(ev.id);
-  return { ok: true, until: dateFull(until) };
+  return { ok: true, until: dateFullInline(until) };
 }
 
 /* ---------- pedidos de reembolso dos compradores ---------- */
