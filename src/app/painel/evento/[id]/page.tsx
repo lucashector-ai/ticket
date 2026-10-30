@@ -20,7 +20,7 @@ type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ aba?: st
 const METHOD: Record<string, string> = { pix: "Pix", card: "Cartão", free: "Gratuito", test: "Teste" };
 const TT_STATUS: Record<string, [string, string]> = { open: ["À venda", "st on"], sold_out: ["Esgotado", "st warn"], upcoming: ["Em breve", "st draft"], closed: ["Encerrado", "st end"] };
 const hm = (d: Date) => new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(d);
-/** Date → valor de <input type="datetime-local"> no horário de São Paulo */
+/** Date → valor de <input autoComplete="off" type="datetime-local"> no horário de São Paulo */
 function localInput(d: Date | null) {
   if (!d) return "";
   const o: Record<string, string> = {};

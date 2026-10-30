@@ -49,13 +49,13 @@ export function PainelPromoters({ p, ranked = false }: { p: PromotersProps; rank
       {open && (
         <div className="pr-new">
           <div className="frm-2">
-            <label className="fld"><span>Nome</span><input value={f.name} maxLength={120} onChange={(e) => set({ name: e.target.value })} placeholder="Ex.: Ana Promoter" /></label>
-            <label className="fld"><span>E-mail (opcional)</span><input type="email" value={f.email} maxLength={254} onChange={(e) => set({ email: e.target.value })} placeholder="para você lembrar quem é" /></label>
+            <label className="fld"><span>Nome</span><input autoComplete="off" value={f.name} maxLength={120} onChange={(e) => set({ name: e.target.value })} placeholder="Ex.: Ana Promoter" /></label>
+            <label className="fld"><span>E-mail (opcional)</span><input autoComplete="off" type="email" value={f.email} maxLength={254} onChange={(e) => set({ email: e.target.value })} placeholder="para você lembrar quem é" /></label>
           </div>
           <div className="frm-3">
             <label className="fld"><span>Evento</span><select value={f.eventId} onChange={(e) => set({ eventId: e.target.value })}><option value="">Todos os meus eventos</option>{p.events.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}</select></label>
-            <label className="fld"><span>Comissão</span><span className="pfx"><input type="number" min={1} max={50} value={f.pct} onChange={(e) => set({ pct: e.target.value })} /><em>% das vendas</em></span></label>
-            <label className="fld"><span>Código do link (opcional)</span><span className="pfx"><em>/r/</em><input value={f.code} maxLength={32} onChange={(e) => set({ code: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} placeholder="ana" /></span></label>
+            <label className="fld"><span>Comissão</span><span className="pfx"><input autoComplete="off" type="number" min={1} max={50} value={f.pct} onChange={(e) => set({ pct: e.target.value })} /><em>% das vendas</em></span></label>
+            <label className="fld"><span>Código do link (opcional)</span><span className="pfx"><em>/r/</em><input autoComplete="off" value={f.code} maxLength={32} onChange={(e) => set({ code: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} placeholder="ana" /></span></label>
           </div>
           <div className="pr-go"><small>A comissão é sobre o valor dos ingressos, sem a taxa de serviço.</small><button className="b2 dark" type="button" onClick={create} disabled={busy || f.name.trim().length < 2}>{busy ? "Criando…" : "Criar link"}</button></div>
         </div>

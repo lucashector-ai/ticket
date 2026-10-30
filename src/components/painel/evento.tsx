@@ -128,7 +128,7 @@ function DeleteEvent({ id, title, sold, onClose, onRefunds }: { id: string; titl
               <span className="dl-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg></span>
               <h2 className="card-t">Excluir “{title}”?</h2>
               <p className="dl-p">O evento, os lotes, os cupons, a lista de aviso e os links de divulgação dele somem para sempre. Isso não dá para desfazer.</p>
-              <label className="fld"><span>Para confirmar, digite o nome do evento</span><input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={title} /></label>
+              <label className="fld"><span>Para confirmar, digite o nome do evento</span><input autoComplete="off" autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={title} /></label>
               <div className="dl-a"><button className="b2" type="button" onClick={onClose} disabled={busy}>Cancelar</button><button className="b2 danger" type="submit" disabled={!ok || busy}>{busy ? "Excluindo…" : "Excluir evento"}</button></div>
             </form>
           )}
@@ -245,7 +245,7 @@ function People({ p }: { p: EventoPainelProps }) {
         <div className="card-h wrap2">
           <label className="pd-search in-card">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" /></svg>
-            <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome, e-mail ou pedido" aria-label="Buscar participante" />
+            <input autoComplete="off" type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome, e-mail ou pedido" aria-label="Buscar participante" />
           </label>
           <div className="chips3">{FIL.map(([k, l, c]) => <button key={k} className={f === k ? "chp on" : "chp"} type="button" onClick={() => setF(k)}>{l} <span className="sg-n">{n(c)}</span></button>)}</div>
           <div className="ca"><button className="b2" type="button" onClick={() => exportCsv(p.ev.title, list)}>Exportar CSV</button></div>

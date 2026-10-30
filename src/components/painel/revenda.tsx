@@ -111,7 +111,7 @@ export function PainelRevenda({ p }: { p: RevendaProps }) {
               {f.resaleEnabled && (
                 <label className="fld">
                   <span>Preço máximo na revenda</span>
-                  <span className="pfx"><input type="number" min={50} max={100} step={5} value={f.resaleMaxPct} onChange={(e) => set({ resaleMaxPct: e.target.value })} /><em>% do valor pago</em></span>
+                  <span className="pfx"><input autoComplete="off" type="number" min={50} max={100} step={5} value={f.resaleMaxPct} onChange={(e) => set({ resaleMaxPct: e.target.value })} /><em>% do valor pago</em></span>
                   <small>{pct < 50 || pct > 100 ? "Use de 50% a 100%: pelos Termos, ninguém revende acima do que pagou." : pct === 100 ? "Ninguém revende acima do que pagou." : `Um ingresso de R$ 100 pode ser revendido por até R$ ${pct}.`}</small>
                 </label>
               )}

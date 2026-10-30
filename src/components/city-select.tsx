@@ -48,59 +48,40 @@ export function useCities(uf: string) {
   return state.uf === uf ? state.list : [];
 }
 
-/** Estado: lista com o nome (ou só a sigla, em colunas estreitas). */
-export function UfSelect({ value, onChange, className, short = false, invalid = false, id, autoComplete = "address-level1" }: {
-  value: string; onChange: (uf: string) => void; className?: string; short?: boolean; invalid?: boolean; id?: string; autoComplete?: string;
-}) {
-  return (
-    <select id={id} className={[className, "cs-uf", invalid ? "bad" : ""].filter(Boolean).join(" ")} value={isUf(value) ? value : ""} onChange={(e) => onChange(e.target.value)} aria-label="Estado" aria-invalid={invalid || undefined} autoComplete={autoComplete}>
-      <option value="">{short ? "UF" : "Escolha"}</option>
-      {UF_LIST.map(([u, n]) => <option key={u} value={u}>{short ? u : n}</option>)}
-    </select>
-  );
-}
+type Opt = { value: string; label: string; hint?: string };
 
 /**
- * Cidade: campo com setinha que abre a lista das cidades do estado; digitar filtra.
- * Só fica a cidade escolhida na lista (sair do campo sem escolher volta para a anterior).
- * Trocar o estado apaga a cidade se ela não for daquele estado.
+ * Lista com busca, no visual do site (o mesmo para Estado e Cidade): campo com setinha que abre a lista;
+ * digitar filtra (sem acento/maiúscula). Só fica o que for escolhido na lista: sair sem escolher volta ao anterior.
  */
-export function CitySelect({ uf, value, onChange, className, invalid = false, id }: {
-  uf: string; value: string; onChange: (city: string) => void; className?: string; invalid?: boolean; id?: string;
+function SearchSelect({ options, value, onPick, className, invalid, id, ariaLabel, placeholder, disabled = false, empty, display }: {
+  options: Opt[]; value: string; onPick: (v: string) => void; className?: string; invalid?: boolean; id?: string;
+  ariaLabel: string; placeholder: string; disabled?: boolean; empty: string; display?: (o: Opt) => string;
 }) {
-  const list = useCities(uf);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState<string | null>(null);
   const [hi, setHi] = useState(0);
   const lb = useId();
   const listRef = useRef<HTMLUListElement>(null);
-  const prevUf = useRef(uf);
-
-  // acerta a grafia ("sao paulo" → "São Paulo") e apaga a cidade que não é do estado escolhido
-  const official = useMemo(() => list.find((c) => cityKey(c) === cityKey(value)) ?? null, [list, value]);
-  useEffect(() => {
-    if (!list.length || !value) return;
-    if (official && official !== value) onChange(official);
-    else if (!official && prevUf.current !== uf) onChange("");
-  }, [list, official, value, uf, onChange]);
-  useEffect(() => { if (list.length) prevUf.current = uf; }, [list, uf]);
+  const cur = options.find((o) => o.value === value);
+  const shown = cur ? (display ? display(cur) : cur.label) : value;
 
   const hits = useMemo(() => {
     const k = cityKey(q ?? "");
-    if (!k) return list;
-    const starts = list.filter((c) => cityKey(c).startsWith(k));
-    const has = list.filter((c) => !cityKey(c).startsWith(k) && cityKey(c).includes(k));
+    if (!k) return options;
+    const key = (o: Opt) => cityKey(`${o.label} ${o.value}`);
+    const starts = options.filter((o) => cityKey(o.label).startsWith(k) || cityKey(o.value) === k);
+    const has = options.filter((o) => !starts.includes(o) && key(o).includes(k));
     return [...starts, ...has];
-  }, [list, q]);
+  }, [options, q]);
 
   const close = () => { setOpen(false); setQ(null); };
-  const pick = (c: string) => { onChange(c); close(); };
+  const pick = (v: string) => { onPick(v); close(); };
   const move = (d: number) => {
     const n = Math.max(0, Math.min(hits.length - 1, hi + d));
     setHi(n);
     listRef.current?.children[n]?.scrollIntoView({ block: "nearest" });
   };
-  const disabled = !isUf(uf);
 
   return (
     <div className="cs" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) close(); }}>
@@ -111,31 +92,70 @@ export function CitySelect({ uf, value, onChange, className, invalid = false, id
         aria-expanded={open}
         aria-controls={lb}
         aria-autocomplete="list"
-        aria-label="Cidade"
+        aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
         autoComplete="off"
         disabled={disabled}
-        placeholder={disabled ? "Escolha o estado primeiro" : "Escolha a cidade"}
-        value={q ?? value}
+        placeholder={placeholder}
+        value={q ?? shown}
         onFocus={(e) => e.currentTarget.select()}
         onMouseDown={() => { if (!disabled) setOpen(true); }}
         onChange={(e) => { setQ(e.target.value); setHi(0); setOpen(true); }}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") { e.preventDefault(); if (!open) setOpen(true); else move(1); }
           else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
-          else if (e.key === "Enter" && open) { e.preventDefault(); e.stopPropagation(); if (hits[hi]) pick(hits[hi]); }
+          else if (e.key === "Enter" && open) { e.preventDefault(); e.stopPropagation(); if (hits[hi]) pick(hits[hi].value); }
           else if (e.key === "Escape" && open) { e.stopPropagation(); close(); }
         }}
       />
       {open && !disabled && (
         <ul className="cs-pop" id={lb} role="listbox" ref={listRef} onMouseDown={(e) => e.preventDefault()}>
-          {!list.length && <li className="cs-empty">Carregando cidades…</li>}
-          {list.length > 0 && !hits.length && <li className="cs-empty">Nenhuma cidade com esse nome em {UF_LIST.find(([u]) => u === uf)?.[1]}.</li>}
-          {hits.map((c, i) => (
-            <li key={c} role="option" aria-selected={c === value} className={[i === hi ? "hi" : "", c === value ? "on" : ""].filter(Boolean).join(" ") || undefined} onMouseEnter={() => setHi(i)} onClick={() => pick(c)}>{c}</li>
+          {!options.length && <li className="cs-empty">Carregando…</li>}
+          {options.length > 0 && !hits.length && <li className="cs-empty">{empty}</li>}
+          {hits.map((o, i) => (
+            <li key={o.value} role="option" aria-selected={o.value === value} className={[i === hi ? "hi" : "", o.value === value ? "on" : ""].filter(Boolean).join(" ") || undefined} onMouseEnter={() => setHi(i)} onClick={() => pick(o.value)}>
+              {o.label}{o.hint && <small>{o.hint}</small>}
+            </li>
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+const UF_OPTS: Opt[] = UF_LIST.map(([u, n]) => ({ value: u, label: n, hint: u }));
+
+/** Estado: a mesma lista do site (com busca). `short`: mostra só a sigla no campo (colunas estreitas). */
+export function UfSelect({ value, onChange, className, short = false, invalid = false, id }: {
+  value: string; onChange: (uf: string) => void; className?: string; short?: boolean; invalid?: boolean; id?: string; autoComplete?: string;
+}) {
+  return (
+    <SearchSelect options={UF_OPTS} value={isUf(value) ? value : ""} onPick={onChange} className={[className, short ? "cs-short" : ""].filter(Boolean).join(" ")} invalid={invalid} id={id}
+      ariaLabel="Estado" placeholder={short ? "UF" : "Escolha o estado"} empty="Nenhum estado com esse nome." display={short ? (o) => o.value : undefined} />
+  );
+}
+
+/**
+ * Cidade: lista das cidades do estado (API /api/cidades). Acerta a grafia ("sao paulo" → "São Paulo")
+ * e apaga a cidade se o estado mudar para um em que ela não existe.
+ */
+export function CitySelect({ uf, value, onChange, className, invalid = false, id }: {
+  uf: string; value: string; onChange: (city: string) => void; className?: string; invalid?: boolean; id?: string;
+}) {
+  const list = useCities(uf);
+  const prevUf = useRef(uf);
+  const official = useMemo(() => list.find((c) => cityKey(c) === cityKey(value)) ?? null, [list, value]);
+  useEffect(() => {
+    if (!list.length || !value) return;
+    if (official && official !== value) onChange(official);
+    else if (!official && prevUf.current !== uf) onChange("");
+  }, [list, official, value, uf, onChange]);
+  useEffect(() => { if (list.length) prevUf.current = uf; }, [list, uf]);
+  const options = useMemo(() => list.map((c) => ({ value: c, label: c })), [list]);
+  const disabled = !isUf(uf);
+  return (
+    <SearchSelect options={options} value={official ?? value} onPick={onChange} className={className} invalid={invalid} id={id} disabled={disabled}
+      ariaLabel="Cidade" placeholder={disabled ? "Escolha o estado primeiro" : "Escolha a cidade"}
+      empty={`Nenhuma cidade com esse nome em ${UF_LIST.find(([u]) => u === uf)?.[1] ?? "neste estado"}.`} />
   );
 }

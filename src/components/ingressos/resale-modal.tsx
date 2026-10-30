@@ -32,7 +32,7 @@ export function ResaleModal({ title, ticketId, faceCents, maxCents, onClose, onD
       <form className="mo-f" onSubmit={submit}>
         <label className="fld">
           <span className="fld-l">Preço de venda</span>
-          <span className="rs-in"><em>R$</em><input className="fld-i" inputMode="decimal" value={value} onChange={(e) => { setValue(e.target.value.replace(/[^\d,.]/g, "")); setError(null); }} autoFocus /></span>
+          <span className="rs-in"><em>R$</em><input autoComplete="off" className="fld-i" inputMode="decimal" value={value} onChange={(e) => { setValue(e.target.value.replace(/[^\d,.]/g, "")); setError(null); }} autoFocus /></span>
         </label>
         <div className="rs-sum">
           <span>Você pagou <b>{money(faceCents)}</b> · máximo permitido <b>{money(maxCents)}</b></span>

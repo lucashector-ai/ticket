@@ -163,7 +163,7 @@ function Setup({ p }: { p: CampaignProps }) {
         <div className="mc-tl">
           <Link className="mc-back" href="/painel/emails"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4" /></svg>Campanhas</Link>
           <div className="mc-nr">
-            <input className="mc-name" value={f.name} onChange={(e) => set({ name: e.target.value })} aria-label="Nome da campanha" />
+            <input autoComplete="off" className="mc-name" value={f.name} onChange={(e) => set({ name: e.target.value })} aria-label="Nome da campanha" />
             <span className={scheduled ? "st warn" : "st draft"}><i />{scheduled ? `Agendada · ${p.c.scheduledLabel}` : "Rascunho"}</span>
             <span className="mc-sv" aria-live="polite">{saved === "saving" ? "Salvando…" : saved === "err" ? "Não salvou" : "Salvo"}</span>
           </div>
@@ -189,8 +189,8 @@ function Setup({ p }: { p: CampaignProps }) {
             {open === "from" && (
               <div className="mc-body frm">
                 <div className="mc-2">
-                  <label className="fld"><span>Nome de quem envia</span><input value={f.fromName} maxLength={80} onChange={(e) => set({ fromName: e.target.value })} /><small>É o nome que aparece na caixa de entrada.</small></label>
-                  <label className="fld"><span>Respostas vão para</span><input type="email" value={f.replyTo} onChange={(e) => set({ replyTo: e.target.value })} placeholder="contato@suaprodutora.com" /><small>Quando a pessoa responder o e-mail.</small></label>
+                  <label className="fld"><span>Nome de quem envia</span><input autoComplete="off" value={f.fromName} maxLength={80} onChange={(e) => set({ fromName: e.target.value })} /><small>É o nome que aparece na caixa de entrada.</small></label>
+                  <label className="fld"><span>Respostas vão para</span><input autoComplete="off" type="email" value={f.replyTo} onChange={(e) => set({ replyTo: e.target.value })} placeholder="contato@suaprodutora.com" /><small>Quando a pessoa responder o e-mail.</small></label>
                 </div>
               </div>
             )}
@@ -204,12 +204,12 @@ function Setup({ p }: { p: CampaignProps }) {
               <div className="mc-body frm">
                 <label className="fld"><span>Assunto do e-mail</span>
                   <span className="mc-in">
-                    <input ref={subjRef} autoFocus={!f.subject} value={f.subject} maxLength={150} onChange={(e) => set({ subject: e.target.value })} placeholder="Ex.: {{primeiro_nome}}, vem aí o Halloween" />
+                    <input autoComplete="off" ref={subjRef} autoFocus={!f.subject} value={f.subject} maxLength={150} onChange={(e) => set({ subject: e.target.value })} placeholder="Ex.: {{primeiro_nome}}, vem aí o Halloween" />
                     <span className="mc-cnt">{f.subject.length}</span>
                     <button type="button" className="mc-var" onClick={() => { set({ subject: `${f.subject}{{primeiro_nome}}` }); subjRef.current?.focus(); }}>+ Nome</button>
                   </span>
                 </label>
-                <label className="fld"><span>Pré-cabeçalho</span><input value={f.preheader} maxLength={150} onChange={(e) => set({ preheader: e.target.value })} placeholder="Texto curto que aparece depois do assunto na caixa de entrada" /></label>
+                <label className="fld"><span>Pré-cabeçalho</span><input autoComplete="off" value={f.preheader} maxLength={150} onChange={(e) => set({ preheader: e.target.value })} placeholder="Texto curto que aparece depois do assunto na caixa de entrada" /></label>
                 <small className="mc-hint">Use {"{{primeiro_nome}}"} ou {"{{nome}}"} para personalizar. Sem nome cadastrado, use uma reserva: {"{{primeiro_nome|pessoal}}"}.</small>
                 <div className="mc-inbox" aria-label="Como aparece na caixa de entrada">
                   <span className="mc-av">{(f.fromName || "P").slice(0, 2).toUpperCase()}</span>
@@ -239,7 +239,7 @@ function Setup({ p }: { p: CampaignProps }) {
                   <button className={mode === "now" ? "sg on" : "sg"} type="button" onClick={() => setMode("now")}>Enviar agora</button>
                   <button className={mode === "later" ? "sg on" : "sg"} type="button" onClick={() => setMode("later")}>Agendar</button>
                 </div>
-                {mode === "later" && <label className="fld"><span>Data e hora (Brasília)</span><input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /><small>Bons horários para evento: terça a quinta, entre 11h e 13h ou 18h e 20h.</small></label>}
+                {mode === "later" && <label className="fld"><span>Data e hora (Brasília)</span><input autoComplete="off" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /><small>Bons horários para evento: terça a quinta, entre 11h e 13h ou 18h e 20h.</small></label>}
                 {scheduled && <button className="b2" type="button" onClick={unschedule} disabled={busy}>Cancelar agendamento</button>}
               </div>
             )}

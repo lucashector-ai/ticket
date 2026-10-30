@@ -79,7 +79,7 @@ function EventPick({ value, onChange, events, data, onEvents, label = "Evento" }
       <details className="ep-pt">
         <summary>Evento de outro produtor</summary>
         <form className="ep-ps" onSubmit={(e) => { e.preventDefault(); void search(); }}>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar pelo nome do evento" aria-label="Buscar evento parceiro" />
+          <input autoComplete="off" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar pelo nome do evento" aria-label="Buscar evento parceiro" />
           <button className="b2 sm2" type="submit" disabled={q.trim().length < 2 || searching}>{searching ? "…" : "Buscar"}</button>
         </form>
         {res && (res.length ? <div className="ep-pr">{res.map((x) => <button key={x.id} type="button" onClick={() => void pick(x.id)}>{x.title}</button>)}</div> : <small className="mc-hint">Nenhum evento publicado com esse nome.</small>)}
@@ -107,7 +107,7 @@ function LinkPick({ value, onChange, events }: { value: string; onChange: (v: st
         {opts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
         <option value="custom">Outro endereço…</option>
       </select>
-      {!opts.some(([k]) => k === value) && <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://" />}
+      {!opts.some(([k]) => k === value) && <input autoComplete="off" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://" />}
     </div>
   );
 }
@@ -116,7 +116,7 @@ function LinkPick({ value, onChange, events }: { value: string; onChange: (v: st
 export function BlockProps({ b, update, events, data, coupons, onEvents, onRemove, onDuplicate }: { b: Block; update: Up; events: EvOpt[]; data: EditorData; coupons: CouponOpt[]; onEvents: (e: Record<string, EvInfo>) => void; onRemove: () => void; onDuplicate: () => void }) {
   const ev = (label?: string) => "eventId" in b ? <EventPick label={label} value={b.eventId} onChange={(id) => update({ eventId: id } as Partial<Block>)} events={events} data={data} onEvents={onEvents} /> : null;
   const txt = (k: string, label: string, ph = "", hint?: string) => (
-    <label className="fld"><span>{label}</span><input value={(b as Record<string, unknown>)[k] as string} placeholder={ph} onChange={(e) => update({ [k]: e.target.value } as Partial<Block>, `${b.id}:${k}`)} />{hint && <small>{hint}</small>}</label>
+    <label className="fld"><span>{label}</span><input autoComplete="off" value={(b as Record<string, unknown>)[k] as string} placeholder={ph} onChange={(e) => update({ [k]: e.target.value } as Partial<Block>, `${b.id}:${k}`)} />{hint && <small>{hint}</small>}</label>
   );
   let body: React.ReactNode = null;
   switch (b.t) {

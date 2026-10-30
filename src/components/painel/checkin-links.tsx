@@ -64,7 +64,7 @@ export function CheckinLinks({ eventId, links: links0 }: { eventId: string; link
         <div><h2 className="card-t">Convidar para a portaria</h2><span className="card-s">Cada pessoa da portaria ganha um acesso só dela a este evento, no app da portaria (<b>{appUrl}</b>). Mostre o QR code para ela apontar o celular agora, ou mande o link por e-mail. Você vê quando ela abriu e quantas entradas validou.</span></div>
       </div>
       <form className="cl-new" onSubmit={(e) => { e.preventDefault(); if (!busy) create(!!email.trim()); }}>
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Nome: Maria, Portão A…" aria-label="Nome da pessoa ou do portão" />
+        <input autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Nome: Maria, Portão A…" aria-label="Nome da pessoa ou do portão" />
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} placeholder="E-mail (para enviar o acesso)" aria-label="E-mail da pessoa" autoComplete="off" />
         <button className="b2" type="button" disabled={busy} onClick={() => create(false)}>{busy ? "Criando…" : "Mostrar QR code"}</button>
         <button className="b2 dark" type="button" disabled={busy || !email.trim()} onClick={() => create(true)} title={email.trim() ? undefined : "Digite o e-mail"}>Enviar por e-mail</button>

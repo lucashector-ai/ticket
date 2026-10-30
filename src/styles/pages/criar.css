@@ -229,7 +229,6 @@
   .cv-cty{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:12px;margin-top:12px;align-items:end}
   @media (max-width:560px){.cv-cty{grid-template-columns:minmax(0,1fr)}}
   .cv-tcty{display:grid;grid-template-columns:76px minmax(0,1fr);gap:6px;min-width:0}
-  .cv-in.bad.cs-uf{box-shadow:inset 0 0 0 2px #E5372A}
   .cv-lnk{margin-top:8px;padding:4px 2px;border:0;background:transparent;font-size:13px;font-weight:600;color:var(--cv-ink);text-decoration:underline;text-underline-offset:3px}
   .cv-lnk.mute{color:var(--cv-mut)}
   .cv-rm{flex:none;width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:#9A9A92;font-size:19px;line-height:1;display:grid;place-items:center;transition:background .2s,color .2s,transform .3s var(--cv-spring)}
@@ -479,6 +478,29 @@
   .cv-lim button:hover{background:var(--cv-lime)}
   .cv-lim button:disabled{opacity:.35}
   .cv-lim b{min-width:16px;text-align:center;color:var(--cv-ink);font-variant-numeric:tabular-nums}
+  /* cartão do tipo de ingresso: nome em cima; preço, quantidade e limite numa linha, cada um com título pequeno */
+  .cv-ty{padding:12px 14px 12px 16px}
+  .cv-tyg{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 22px;margin-top:8px}
+  .cv-tyg .f{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .cv-ty .l{display:flex;align-items:center;gap:8px;min-height:22px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8A8A82}
+  .cv-ty .l em{font-style:normal;font-weight:600;text-transform:none;letter-spacing:0;color:#A3A39B}
+  .cv-tyg .cv-mini{height:22px;padding:0 8px 0 2px;gap:6px;font-size:11px;letter-spacing:0;text-transform:none}
+  .cv-tyg .cv-mini .sw{width:28px;height:18px}
+  .cv-tyg .cv-mini .sw::after{width:12px;height:12px}
+  .cv-tyg .cv-mini.on .sw::after{transform:translateX(10px)}
+  .cv-tyg .cv-pz.ro{padding:0 6px}
+  .cv-tyg .cv-free{height:30px;padding:0 14px;font-size:13px}
+  .cv-tyg .cv-lim{display:flex;gap:4px;height:auto;padding:0;background:transparent;font-size:inherit}
+  .cv-tyg .cv-lim button{width:30px;height:30px;background:var(--cv-paper);font-size:15px}
+  .cv-tyg .cv-lim b{display:flex;align-items:baseline;justify-content:center;gap:3px;min-width:64px;font:600 17px 'Inter Tight',sans-serif}
+  .cv-tyg .cv-lim b small{font:600 11.5px Inter,sans-serif;color:var(--cv-mut)}
+  .cv-tyd{display:flex;flex-direction:column;gap:4px;margin-top:10px}
+  .cv-ty .cv-tyd .ds{flex:none;width:100%;height:36px;padding:0 12px;border-radius:10px;background:var(--cv-paper);font-size:13px}
+  .cv-ty .cv-tyd .ds:focus{background:#fff;box-shadow:inset 0 0 0 1.5px var(--cv-ink)}
+  .cv-tyd-add{margin-top:8px;padding:0;border:0;background:none;font-size:12.5px;font-weight:600;color:#77776F;cursor:pointer}
+  .cv-tyd-add:hover{color:var(--cv-ink);text-decoration:underline}
+  .cv-ty .cv-sug{margin-top:8px}
+  @media (max-width:640px){.cv-tyg{gap:10px 16px}.cv-tyg .f{flex:1 1 calc(50% - 8px)}}
   .cv-sug{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;border-radius:999px;background:#F7FCE3;font-size:12px;color:#3D5200}
   .cv-sec .add{display:flex;flex-wrap:wrap;gap:6px;padding:6px 6px 2px}
   .cv-addsec{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:4px 2px}

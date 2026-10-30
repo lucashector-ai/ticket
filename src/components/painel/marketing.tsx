@@ -93,14 +93,14 @@ export function PainelMarketing(p: MarketingProps) {
             {p.events.length ? (
               <div className="frm">
                 <label className="fld"><span>Evento</span><select value={form.eventId} onChange={(e) => set({ eventId: e.target.value })}>{p.events.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}</select></label>
-                <label className="fld"><span>Código</span><input value={form.code} maxLength={40} onChange={(e) => set({ code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "") })} placeholder="PARCEIRO10" /></label>
+                <label className="fld"><span>Código</span><input autoComplete="off" value={form.code} maxLength={40} onChange={(e) => set({ code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "") })} placeholder="PARCEIRO10" /></label>
                 <div className="frm-2">
                   <label className="fld"><span>Tipo</span><select value={form.kind} onChange={(e) => set({ kind: e.target.value as "pct" | "brl" })}><option value="pct">%</option><option value="brl">R$</option></select></label>
-                  <label className="fld"><span>{form.kind === "pct" ? "Desconto (%)" : "Desconto (R$)"}</span><input value={form.value} inputMode="decimal" onChange={(e) => set({ value: e.target.value })} placeholder={form.kind === "pct" ? "10" : "20,00"} /></label>
+                  <label className="fld"><span>{form.kind === "pct" ? "Desconto (%)" : "Desconto (R$)"}</span><input autoComplete="off" value={form.value} inputMode="decimal" onChange={(e) => set({ value: e.target.value })} placeholder={form.kind === "pct" ? "10" : "20,00"} /></label>
                 </div>
                 <div className="frm-2">
-                  <label className="fld"><span>Limite de usos</span><input value={form.limit} inputMode="numeric" onChange={(e) => set({ limit: e.target.value.replace(/\D/g, "") })} placeholder="Sem limite" /></label>
-                  <label className="fld"><span>Válido até</span><input value={form.until} onChange={(e) => set({ until: e.target.value })} placeholder="31/12/2026" /></label>
+                  <label className="fld"><span>Limite de usos</span><input autoComplete="off" value={form.limit} inputMode="numeric" onChange={(e) => set({ limit: e.target.value.replace(/\D/g, "") })} placeholder="Sem limite" /></label>
+                  <label className="fld"><span>Válido até</span><input autoComplete="off" value={form.until} onChange={(e) => set({ until: e.target.value })} placeholder="31/12/2026" /></label>
                 </div>
                 <button className="b2 dark block" type="button" onClick={create} disabled={busy || !form.code || !form.value}>{busy ? "Criando…" : "Criar cupom"}</button>
                 <span className="card-s">Cupons só de um setor são criados na etapa Ingressos do evento.</span>

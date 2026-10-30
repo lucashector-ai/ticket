@@ -105,7 +105,7 @@ export function ProducerApply(p: Props) {
 
             <fieldset>
               <legend>Seus eventos</legend>
-              <label className="ins-f"><span>Nome da produtora</span><input value={f.company} onChange={(e) => set({ company: e.target.value })} placeholder="Se tiver" maxLength={120} /></label>
+              <label className="ins-f"><span>Nome da produtora</span><input autoComplete="off" value={f.company} onChange={(e) => set({ company: e.target.value })} placeholder="Se tiver" maxLength={120} /></label>
               <div className="ins-g2 city">
                 <label className="ins-f"><span>Estado *</span><UfSelect value={f.uf} onChange={(uf) => set({ uf })} /></label>
                 <label className="ins-f"><span>Cidade do evento *</span><CitySelect uf={f.uf} value={f.city} onChange={(city) => set({ city })} /></label>
@@ -117,15 +117,15 @@ export function ProducerApply(p: Props) {
               </div>
               <label className="ins-f"><span>Público-alvo *</span><textarea rows={3} value={f.audience} onChange={(e) => set({ audience: e.target.value })} placeholder="Conte as características do público: idade, estilo, de onde vem, o que curte." maxLength={600} /></label>
               <div className="ins-g2">
-                <label className="ins-f"><span>Ticket médio *</span><span className="ins-pre"><b>R$</b><input inputMode="numeric" value={f.avgTicket} onChange={(e) => set({ avgTicket: moneyMask(e.target.value) })} placeholder="0,00" /></span><small>Valor médio do ingresso</small></label>
-                <label className="ins-f"><span>Público esperado *</span><input inputMode="numeric" value={f.expected} onChange={(e) => set({ expected: intMask(e.target.value) })} placeholder="Ex.: 400" /><small>Pessoas por evento</small></label>
+                <label className="ins-f"><span>Ticket médio *</span><span className="ins-pre"><b>R$</b><input autoComplete="off" inputMode="numeric" value={f.avgTicket} onChange={(e) => set({ avgTicket: moneyMask(e.target.value) })} placeholder="0,00" /></span><small>Valor médio do ingresso</small></label>
+                <label className="ins-f"><span>Público esperado *</span><input autoComplete="off" inputMode="numeric" value={f.expected} onChange={(e) => set({ expected: intMask(e.target.value) })} placeholder="Ex.: 400" /><small>Pessoas por evento</small></label>
               </div>
             </fieldset>
 
             <fieldset>
               <legend>Para fechar</legend>
               <label className="ins-f"><span>Como chegou até a Tickets Win? *</span><select value={f.source} onChange={(e) => set({ source: e.target.value })}><option value="">Escolha uma opção</option>{p.sources.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
-              <label className="ins-f"><span>Instagram da produtora ou do evento</span><span className="ins-pre"><b>@</b><input value={f.instagram.replace(/^@/, "")} onChange={(e) => set({ instagram: e.target.value })} placeholder="suaprodutora" autoCapitalize="off" /></span></label>
+              <label className="ins-f"><span>Instagram da produtora ou do evento</span><span className="ins-pre"><b>@</b><input autoComplete="off" value={f.instagram.replace(/^@/, "")} onChange={(e) => set({ instagram: e.target.value })} placeholder="suaprodutora" autoCapitalize="off" /></span></label>
             </fieldset>
 
             {err && <p className="ins-err" role="alert">{err}</p>}

@@ -65,7 +65,7 @@ export function ProducerOnboarding({ firstName, initial }: Props) {
               <label className="ob-f">
                 <span className="ob-l">Nome do organizador</span>
                 <span className={`ob-in ${check.state === "taken" ? "bad" : nameOk ? "good" : ""}`}>
-                  <input autoFocus value={f.name} maxLength={80} onChange={(e) => { set({ name: e.target.value }); if (e.target.value.trim().length < 2) setCheck({ state: "idle", slug: "" }); }} placeholder="Ex.: Noite Alta Produções" />
+                  <input autoComplete="off" autoFocus value={f.name} maxLength={80} onChange={(e) => { set({ name: e.target.value }); if (e.target.value.trim().length < 2) setCheck({ state: "idle", slug: "" }); }} placeholder="Ex.: Noite Alta Produções" />
                   {check.state === "checking" && <i className="ob-spin" aria-hidden="true" />}
                   {nameOk && <i className="ob-ok" aria-label="Nome disponível"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 8.5l3 3 6-7" /></svg></i>}
                 </span>
@@ -88,8 +88,8 @@ export function ProducerOnboarding({ firstName, initial }: Props) {
                 <label className="ob-f"><span className="ob-l">Estado</span><span className="ob-in"><UfSelect value={f.uf} onChange={(uf) => set({ uf })} /></span></label>
                 <label className="ob-f"><span className="ob-l">Cidade principal</span><span className="ob-in"><CitySelect uf={f.uf} value={f.city} onChange={(city) => set({ city })} /></span></label>
               </div>
-              <label className="ob-f"><span className="ob-l">Instagram</span><span className="ob-in pre"><b>@</b><input value={f.instagram.replace(/^@/, "")} onChange={(e) => set({ instagram: e.target.value })} placeholder="suaprodutora" autoCapitalize="off" maxLength={60} /></span></label>
-              <label className="ob-f"><span className="ob-l">Uma frase sobre vocês <em>opcional</em></span><span className="ob-in"><input value={f.tagline} onChange={(e) => set({ tagline: e.target.value })} placeholder="Ex.: Festas de música eletrônica em galpões desde 2019" maxLength={140} /></span><span className="ob-hint">{f.tagline.length}/140</span></label>
+              <label className="ob-f"><span className="ob-l">Instagram</span><span className="ob-in pre"><b>@</b><input autoComplete="off" value={f.instagram.replace(/^@/, "")} onChange={(e) => set({ instagram: e.target.value })} placeholder="suaprodutora" autoCapitalize="off" maxLength={60} /></span></label>
+              <label className="ob-f"><span className="ob-l">Uma frase sobre vocês <em>opcional</em></span><span className="ob-in"><input autoComplete="off" value={f.tagline} onChange={(e) => set({ tagline: e.target.value })} placeholder="Ex.: Festas de música eletrônica em galpões desde 2019" maxLength={140} /></span><span className="ob-hint">{f.tagline.length}/140</span></label>
               {error && <p className="ob-err" role="alert">{error}</p>}
               <div className="ob-row">
                 <button className="ob-back" type="button" onClick={() => setStep(0)} disabled={busy}>Voltar</button>

@@ -75,7 +75,7 @@ export default async function Central({ searchParams }: { searchParams: Promise<
           <section className="ad-card">
             <form className="ad-search" action={ADMIN_PATH}>
               <input type="hidden" name="aba" value="produtores" />
-              <input name="q" defaultValue={q} placeholder="Buscar por nome, e-mail, cidade ou Instagram" aria-label="Buscar produtores" />
+              <input autoComplete="off" name="q" defaultValue={q} placeholder="Buscar por nome, e-mail, cidade ou Instagram" aria-label="Buscar produtores" />
               <button type="submit">Buscar</button>
             </form>
             <div className="ad-tbl">
@@ -104,7 +104,7 @@ export default async function Central({ searchParams }: { searchParams: Promise<
           <section className="ad-card">
             <form className="ad-search" action={ADMIN_PATH}>
               <input type="hidden" name="aba" value="contas" />
-              <input name="q" defaultValue={q} placeholder="Buscar por nome ou e-mail" aria-label="Buscar contas" />
+              <input autoComplete="off" name="q" defaultValue={q} placeholder="Buscar por nome ou e-mail" aria-label="Buscar contas" />
               <button type="submit">Buscar</button>
             </form>
             <div className="ad-tbl">

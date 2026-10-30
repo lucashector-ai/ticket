@@ -120,7 +120,7 @@ export function EventSetup({ p }: { p: CampaignProps }) {
         <div className="mc-tl">
           <Link className="mc-back" href="/painel/emails"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4" /></svg>E-mails</Link>
           <div className="mc-nr">
-            <input className="mc-name" value={f.name} onChange={(e) => set({ name: e.target.value })} aria-label="Nome do e-mail (só você vê)" />
+            <input autoComplete="off" className="mc-name" value={f.name} onChange={(e) => set({ name: e.target.value })} aria-label="Nome do e-mail (só você vê)" />
             <span className={scheduled ? "st warn" : "st draft"}><i />{scheduled ? `Agendado · ${p.c.scheduledLabel}` : "Rascunho"}</span>
             <span className="mc-sv" aria-live="polite">{saved === "saving" ? "Salvando…" : saved === "err" ? "Não salvou" : "Salvo"}</span>
           </div>
@@ -175,7 +175,7 @@ export function EventSetup({ p }: { p: CampaignProps }) {
             <div className="es-h"><span className="es-n">3</span><div><b>Assunto</b><span>É o que a pessoa lê na caixa de entrada.</span></div></div>
             <div className="es-b frm">
               <label className="fld"><span className="sr">Assunto</span>
-                <span className="mc-in"><input value={f.subject} maxLength={150} onChange={(e) => set({ subject: e.target.value })} placeholder="Assunto do e-mail" /><span className="mc-cnt">{f.subject.length}</span><button type="button" className="mc-var" onClick={() => set({ subject: `{{primeiro_nome}}, ${f.subject}` })}>+ Nome</button></span>
+                <span className="mc-in"><input autoComplete="off" value={f.subject} maxLength={150} onChange={(e) => set({ subject: e.target.value })} placeholder="Assunto do e-mail" /><span className="mc-cnt">{f.subject.length}</span><button type="button" className="mc-var" onClick={() => set({ subject: `{{primeiro_nome}}, ${f.subject}` })}>+ Nome</button></span>
               </label>
               <div className="mc-inbox" aria-label="Como aparece na caixa de entrada">
                 <span className="mc-av">{(f.fromName || "P").split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()}</span>
@@ -199,8 +199,8 @@ export function EventSetup({ p }: { p: CampaignProps }) {
             {openFrom && (
               <div className="mc-body frm">
                 <div className="mc-2">
-                  <label className="fld"><span>Nome de quem envia</span><input value={f.fromName} maxLength={80} onChange={(e) => set({ fromName: e.target.value })} /></label>
-                  <label className="fld"><span>Respostas vão para</span><input type="email" value={f.replyTo} onChange={(e) => set({ replyTo: e.target.value })} placeholder="contato@suaprodutora.com" /></label>
+                  <label className="fld"><span>Nome de quem envia</span><input autoComplete="off" value={f.fromName} maxLength={80} onChange={(e) => set({ fromName: e.target.value })} /></label>
+                  <label className="fld"><span>Respostas vão para</span><input autoComplete="off" type="email" value={f.replyTo} onChange={(e) => set({ replyTo: e.target.value })} placeholder="contato@suaprodutora.com" /></label>
                 </div>
               </div>
             )}
@@ -226,7 +226,7 @@ export function EventSetup({ p }: { p: CampaignProps }) {
               <button className={mode === "now" ? "sg on" : "sg"} type="button" onClick={() => setMode("now")}>Enviar agora</button>
               <button className={mode === "later" ? "sg on" : "sg"} type="button" onClick={() => setMode("later")}>Agendar</button>
             </div>
-            {mode === "later" && <label className="fld"><span>Data e hora (Brasília)</span><input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /></label>}
+            {mode === "later" && <label className="fld"><span>Data e hora (Brasília)</span><input autoComplete="off" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /></label>}
             {scheduled && <button className="b2" type="button" onClick={unschedule} disabled={busy}>Cancelar agendamento</button>}
             <button className="b2 block" type="button" onClick={test} disabled={busy || !ev}><Ico d="M9 3h6M10 3v6L5 18a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3" />Enviar teste para mim</button>
             {!confirm ? (

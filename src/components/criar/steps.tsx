@@ -67,7 +67,7 @@ export function TipoStep({ c }: { c: Ctx }) {
         })}
       </div>
       {d.cat === "Outros" && (
-        <input className="cv-in cv-pop" type="text" value={d.catOther} maxLength={60} onChange={(e) => set({ catOther: e.target.value }, "type")} placeholder="Qual é a categoria? Ex.: Stand-up, Feira, Exposição" aria-label="Outra categoria" autoFocus />
+        <input autoComplete="off" className="cv-in cv-pop" type="text" value={d.catOther} maxLength={60} onChange={(e) => set({ catOther: e.target.value }, "type")} placeholder="Qual é a categoria? Ex.: Stand-up, Feira, Exposição" aria-label="Outra categoria" autoFocus />
       )}
       <label className="cv-lb">Acontece em… <span>(dá para mudar depois)</span></label>
       <div className="cv-seg" role="radiogroup" aria-label="Formato">
@@ -133,7 +133,7 @@ export function InfoStep({ c, x }: { c: Ctx; x: Derived }) {
     <section className="cv-st">
       <StepHead n={2} k="informações" q="Como o evento se chama?" />
       <div className="cv-b">
-        <input className="cv-big" type="text" value={d.title} onChange={(e) => set({ title: e.target.value }, "name")} placeholder="Ex.: Baile do Futuro" maxLength={80} aria-label="Nome do evento" autoFocus />
+        <input autoComplete="off" className="cv-big" type="text" value={d.title} onChange={(e) => set({ title: e.target.value }, "name")} placeholder="Ex.: Baile do Futuro" maxLength={80} aria-label="Nome do evento" autoFocus />
         <div className="cv-cnt"><span>Nomes curtos vendem mais: aparecem inteiros no celular.</span><span>{d.title.length}/80</span></div>
       </div>
       {d.title.trim().length < 2 && (
@@ -167,10 +167,10 @@ export function InfoStep({ c, x }: { c: Ctx; x: Derived }) {
                 <img src={a.image} alt="" /><SpotifyIcon size={13} />
               </span>
             ) : <span className="av" style={{ background: AV_BG[i % AV_BG.length] }} aria-hidden="true">{initials(a.name) || "?"}</span>}
-            <input className="nm" type="text" value={a.name} onChange={(e) => setArt(a.id, { name: e.target.value, spotifyId: undefined, image: undefined })} placeholder="Nome do artista" aria-label="Nome do artista" />
+            <input autoComplete="off" className="nm" type="text" value={a.name} onChange={(e) => setArt(a.id, { name: e.target.value, spotifyId: undefined, image: undefined })} placeholder="Nome do artista" aria-label="Nome do artista" />
             <div className="rl">{ROLES.map((r) => <button key={r} className={a.role === r ? "on" : ""} type="button" onClick={() => setArt(a.id, { role: r })}>{r}</button>)}</div>
-            <label className="tm"><span>Início</span><input type="time" value={a.time} onChange={(e) => setArt(a.id, { time: e.target.value })} aria-label={`Horário de ${a.name}`} /></label>
-            <label className="tm"><span>Fim</span><input type="time" value={a.end} onChange={(e) => setArt(a.id, { end: e.target.value })} aria-label={`Fim de ${a.name}`} /></label>
+            <label className="tm"><span>Início</span><input autoComplete="off" type="time" value={a.time} onChange={(e) => setArt(a.id, { time: e.target.value })} aria-label={`Horário de ${a.name}`} /></label>
+            <label className="tm"><span>Fim</span><input autoComplete="off" type="time" value={a.end} onChange={(e) => setArt(a.id, { end: e.target.value })} aria-label={`Fim de ${a.name}`} /></label>
             <button className="cv-rm" type="button" onClick={() => upd((o) => ({ ...o, lineup: o.lineup.filter((b) => b.id !== a.id) }))} aria-label={`Remover ${a.name}`}>×</button>
             {x.sessions.length > 1 && (
               <div className="dy">
@@ -211,7 +211,7 @@ function TimeBox({ label, value, onChange }: { label: string; value: string; onC
     <div className="cv-tmb">
       <small>{label}</small>
       <div className="r">
-        <input type="time" value={value} onChange={(e) => e.target.value && onChange(e.target.value)} aria-label={label} />
+        <input autoComplete="off" type="time" value={value} onChange={(e) => e.target.value && onChange(e.target.value)} aria-label={label} />
         <span className="cv-stp"><button type="button" onClick={() => onChange(fromMin(toMin(value) - 30))} aria-label={`${label} mais cedo`}>−</button><button type="button" onClick={() => onChange(fromMin(toMin(value) + 30))} aria-label={`${label} mais tarde`}>+</button></span>
       </div>
     </div>
@@ -291,9 +291,9 @@ export function QuandoStep({ c, x }: { c: Ctx; x: Derived }) {
             return (
               <div key={s.id} className="row" style={{ animationDelay: `${i * 30}ms` }}>
                 <span className="dd"><small>{WD[dt.getDay()]}</small><b>{dt.getDate()}</b><small>{MO[dt.getMonth()]}</small></span>
-                <label><span>Portões</span><input type="time" value={s.doors} onChange={(e) => setOne(s.id, { doors: e.target.value })} /></label>
-                <label><span>Começa</span><input type="time" value={s.time} onChange={(e) => setOne(s.id, { time: e.target.value })} /></label>
-                <label><span>Termina</span><input type="time" value={s.end ?? ""} onChange={(e) => setOne(s.id, { end: e.target.value })} /></label>
+                <label><span>Portões</span><input autoComplete="off" type="time" value={s.doors} onChange={(e) => setOne(s.id, { doors: e.target.value })} /></label>
+                <label><span>Começa</span><input autoComplete="off" type="time" value={s.time} onChange={(e) => setOne(s.id, { time: e.target.value })} /></label>
+                <label><span>Termina</span><input autoComplete="off" type="time" value={s.end ?? ""} onChange={(e) => setOne(s.id, { end: e.target.value })} /></label>
                 <button className="cv-rm" type="button" onClick={() => upd((o) => ({ ...o, sessions: o.sessions.filter((y) => y.id !== s.id) }), "when")} aria-label={`Remover ${dt.getDate()} de ${MONTHS[dt.getMonth()]}`}>×</button>
               </div>
             );
@@ -395,7 +395,7 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
                 <span className="dd"><small>{WD[dt.getDay()]}</small><b>{dt.getDate()}</b><small>{MO[dt.getMonth()]}</small></span>
                 <TourVenue s={s} label={`Local de ${dt.getDate()}/${dt.getMonth() + 1}`} onChange={(p) => setOne(s.id, p)} />
                 <CityField value={s.city} onChange={(v) => setOne(s.id, { city: v, place: undefined })} label={`Cidade de ${dt.getDate()}/${dt.getMonth() + 1}`} />
-                <input className="cv-in cap" inputMode="numeric" value={s.cap} onChange={(e) => setOne(s.id, { cap: e.target.value.replace(/\D/g, "") })} aria-label="Lotação" title="Lotação" />
+                <input autoComplete="off" className="cv-in cap" inputMode="numeric" value={s.cap} onChange={(e) => setOne(s.id, { cap: e.target.value.replace(/\D/g, "") })} aria-label="Lotação" title="Lotação" />
               </div>
             );
           })}
@@ -413,7 +413,7 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
           <>
             <label className="cv-srch">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" /></svg>
-              <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busque pelo nome do lugar ou da cidade" aria-label="Buscar local" autoFocus />
+              <input autoComplete="off" type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busque pelo nome do lugar ou da cidade" aria-label="Buscar local" autoFocus />
             </label>
             <VenueHits hits={hits} busy={busy} onPick={(v) => { void pick(v).then((p) => setVenue(p.name, p.city, p.cap, p.place)); }}>
               {q.trim().length > 1 && (
@@ -431,12 +431,12 @@ export function OndeStep({ c, x }: { c: Ctx; x: Derived }) {
               <svg className="mp" width="44" height="54" viewBox="0 0 44 54" aria-hidden="true"><path d="M22 54S2 34 2 21a20 20 0 0 1 40 0c0 13-20 33-20 33z" fill="#111" /><circle cx="22" cy="21" r="8" fill="#D3F55B" /></svg>
               <div className="cv-mcard"><span className="tx"><b>{d.venue.name}</b><span className="s">{d.venue.place?.addr || d.venue.city || "Falta a cidade"}</span></span><button className="chg" type="button" onClick={() => { setQ(""); setEditing(true); }}>Trocar</button></div>
             </div>
-            <label className="cv-fl cv-nm"><span>Nome do local</span><input className="cv-in" value={d.venue.name} onChange={(e) => setVenue(e.target.value, d.venue.city)} /></label>
+            <label className="cv-fl cv-nm"><span>Nome do local</span><input autoComplete="off" className="cv-in" value={d.venue.name} onChange={(e) => setVenue(e.target.value, d.venue.city)} /></label>
             <CityStatePicker value={d.venue.city} onChange={(v, auto) => setVenue(d.venue.name, v, null, auto ? undefined : null)} />
             <div className="cv-tmb cap">
               <small>Lotação do local</small>
               <div className="r">
-                <input inputMode="numeric" value={cap} onChange={(e) => setCap(num(e.target.value.replace(/\D/g, "")))} aria-label="Lotação" />
+                <input autoComplete="off" inputMode="numeric" value={cap} onChange={(e) => setCap(num(e.target.value.replace(/\D/g, "")))} aria-label="Lotação" />
                 <span className="cv-stp"><button type="button" onClick={() => setCap(num(cap) - 50)} aria-label="Menos 50">−</button><button type="button" onClick={() => setCap(num(cap) + 50)} aria-label="Mais 50">+</button></span>
               </div>
             </div>

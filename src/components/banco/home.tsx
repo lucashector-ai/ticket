@@ -89,7 +89,7 @@ export function BancoHome({ base, name, email, configUrl, wallet, rules }: Props
           <h2 className="bk-h" id="wd-t">Quanto você quer sacar?</h2>
           <label className="bk-amt">
             <span>R$</span>
-            <input inputMode="numeric" value={fmtInput(amount)} onChange={(e) => setAmount(Math.min(toCents(e.target.value), w.available))} aria-label="Valor do saque" autoFocus />
+            <input autoComplete="off" inputMode="numeric" value={fmtInput(amount)} onChange={(e) => setAmount(Math.min(toCents(e.target.value), w.available))} aria-label="Valor do saque" autoFocus />
           </label>
           <div className="bk-chips">
             {[0.25, 0.5, 1].map((f) => <button key={f} type="button" className={amount === Math.floor(w.available * f) ? "on" : undefined} onClick={() => setAmount(Math.floor(w.available * f))}>{f === 1 ? "Tudo" : `${f * 100}%`}</button>)}

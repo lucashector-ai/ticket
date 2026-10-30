@@ -3,6 +3,7 @@ import "./globals.css";
 import { ToastProvider } from "@/components/toast";
 import { FONTS } from "@/lib/fonts";
 import { A11yWidget } from "@/components/a11y/a11y-widget";
+import { ErrorScroll } from "@/components/error-scroll";
 
 export const metadata: Metadata = {
   title: { default: "Tickets Win · Descubra eventos", template: "%s · Tickets Win" },
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </ToastProvider>
         <A11yWidget />
+        <ErrorScroll />
       </body>
     </html>
   );

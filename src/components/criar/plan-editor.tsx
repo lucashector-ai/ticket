@@ -202,7 +202,7 @@ export function PlanEditor({ c, plan, look, ticketsOf, sel, setSel, setPlan }: {
           <button className={floorOpen ? "pe-sg on" : "pe-sg"} type="button" onClick={() => setFloorOpen((v) => !v)} aria-expanded={floorOpen}><i style={{ background: plan.floor ?? DEFAULT_FLOOR }} />Cor do fundo</button>
           {floorOpen && <div className="pe-pop"><ColorPick label="Cor do fundo" value={plan.floor ?? DEFAULT_FLOOR} onChange={(hex) => { checkpoint(); setPlan((p) => ({ ...p, floor: hex })); }} /></div>}
         </div>
-        <label className="pe-dim">Local <input className="in sm2" inputMode="decimal" value={plan.width} onFocus={checkpoint} onChange={(e) => setPlan((p) => ({ ...p, width: Math.max(5, num(e.target.value)) }))} aria-label="Largura do local em metros" /> × <input className="in sm2" inputMode="decimal" value={plan.depth} onFocus={checkpoint} onChange={(e) => setPlan((p) => ({ ...p, depth: Math.max(5, num(e.target.value)) }))} aria-label="Profundidade do local em metros" /> m</label>
+        <label className="pe-dim">Local <input autoComplete="off" className="in sm2" inputMode="decimal" value={plan.width} onFocus={checkpoint} onChange={(e) => setPlan((p) => ({ ...p, width: Math.max(5, num(e.target.value)) }))} aria-label="Largura do local em metros" /> × <input autoComplete="off" className="in sm2" inputMode="decimal" value={plan.depth} onFocus={checkpoint} onChange={(e) => setPlan((p) => ({ ...p, depth: Math.max(5, num(e.target.value)) }))} aria-label="Profundidade do local em metros" /> m</label>
       </div>
 
       <div className="pe-c" ref={box} tabIndex={0} onKeyDown={onKey} aria-label="Planta do local. Setas movem a área selecionada; Delete remove; Ctrl+D duplica; Ctrl+Z desfaz."
@@ -239,7 +239,7 @@ export function PlanEditor({ c, plan, look, ticketsOf, sel, setSel, setPlan }: {
       {area ? (
         <div className="pe-f">
           <div className="pe-r">
-            <label className="lf"><span className="tl-l2">Nome</span><input className="in sm2" value={area.name} maxLength={60} onFocus={checkpoint} onChange={(e) => setArea(area.id, { name: e.target.value })} /></label>
+            <label className="lf"><span className="tl-l2">Nome</span><input autoComplete="off" className="in sm2" value={area.name} maxLength={60} onFocus={checkpoint} onChange={(e) => setArea(area.id, { name: e.target.value })} /></label>
             <label className="lf"><span className="tl-l2">Tipo</span>
               <select className="in sm2" value={area.kind} onChange={(e) => { const kind = e.target.value as AreaKind; change(area.id, { kind, sector: kind === "setor" ? area.sector ?? d.sectors[0]?.id ?? null : null }); }}>
                 {AREA_KINDS.map((k) => <option key={k} value={k}>{KIND_NAME[k]}</option>)}
@@ -266,7 +266,7 @@ export function PlanEditor({ c, plan, look, ticketsOf, sel, setSel, setPlan }: {
           <div className="pe-r">
             {([["x", "X (m)"], ["y", "Y (m)"], ["w", "Largura (m)"], ["d", "Profundidade (m)"]] as const).map(([key, label]) => (
               <label key={key} className="lf"><span className="tl-l2">{label}</span>
-                <input className="in sm2" inputMode="decimal" value={area[key]} onFocus={checkpoint} onChange={(e) => {
+                <input autoComplete="off" className="in sm2" inputMode="decimal" value={area[key]} onFocus={checkpoint} onChange={(e) => {
                   const v = num(e.target.value);
                   const lim = { x: plan.width - area.w, y: plan.depth - area.d, w: plan.width - area.x, d: plan.depth - area.y }[key];
                   const min = key === "x" || key === "y" ? 0 : 1;

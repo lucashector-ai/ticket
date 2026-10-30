@@ -68,7 +68,7 @@ function Stepper({ value, onChange, step, prefix, suffix, label, wide }: { value
   return (
     <div className={wide ? "cv-pz cv-pzw" : "cv-pz"}>
       <button type="button" onClick={() => onChange(money(num(value) - step))} aria-label={`Diminuir ${label}`}>−</button>
-      <label>{prefix && <small>{prefix}</small>}<input inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value.replace(/[^\d,]/g, ""))} placeholder="0" aria-label={label} />{suffix && <small>{suffix}</small>}</label>
+      <label>{prefix && <small>{prefix}</small>}<input autoComplete="off" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value.replace(/[^\d,]/g, ""))} placeholder="0" aria-label={label} />{suffix && <small>{suffix}</small>}</label>
       <button type="button" onClick={() => onChange(money(num(value) + step))} aria-label={`Aumentar ${label}`}>+</button>
     </div>
   );
@@ -82,12 +82,13 @@ function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many
   let cap = 0, inteira = 0;
   for (const t of types) { cap += num(t.qty); if (t.kind === "inteira" && !t.free) inteira = num(t.price); }
   const ro = () => c.flash("Esta meia é gerada da Inteira. Desligue a meia automática para editar.");
+  const [openDesc, setOpenDesc] = useState<string[]>([]);
   const nextColor = () => setSector((z) => ({ ...z, color: PALETTE[(PALETTE.indexOf(z.color) + 1) % PALETTE.length] }));
   return (
     <div className="cv-sec" style={{ animationDelay: `${i * 60}ms` }}>
       <div className="h">
         <button className="cv-dot" type="button" style={{ background: k.color }} onClick={nextColor} aria-label="Trocar a cor do setor" title="Trocar a cor" />
-        {many ? <input className="nm" value={k.name} maxLength={80} onChange={(e) => setSector((z) => ({ ...z, name: e.target.value }))} aria-label="Nome do setor" /> : <b className="nm">Ingressos</b>}
+        {many ? <input autoComplete="off" className="nm" value={k.name} maxLength={80} onChange={(e) => setSector((z) => ({ ...z, name: e.target.value }))} aria-label="Nome do setor" /> : <b className="nm">Ingressos</b>}
         <span className="s">{types.length} {types.length === 1 ? "tipo" : "tipos"} · {cap.toLocaleString("pt-BR")} lugares</span>
         {many && d.sectors.length > 1 && <button className="cv-rm" type="button" onClick={() => upd((o) => ({ ...o, sectors: o.sectors.filter((z) => z.id !== k.id) }), "tk")} aria-label={`Remover ${k.name}`}>×</button>}
         <button className={k.open ? "cv-chev o" : "cv-chev"} type="button" onClick={() => setSector((z) => ({ ...z, open: !z.open }))} aria-expanded={k.open} aria-label={`Abrir ${k.name}`}><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4" /></svg></button>
@@ -100,24 +101,38 @@ function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many
               <div key={t.id} className={t.auto ? "cv-ty auto" : "cv-ty"}>
                 <div className="r1">
                   <span className={TAG[t.kind]}>{t.free ? "GRÁTIS" : KIND_LABEL[t.kind].toUpperCase()}</span>
-                  <input className="tn" value={t.name} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { name: e.target.value })} aria-label="Nome do tipo" />
-                  {t.free
-                    ? <button className="cv-free" type="button" onClick={() => setType(t.id, { free: false })} title="Clique para cobrar">Grátis</button>
-                    : t.auto ? <span className="cv-pz ro" onClick={ro}><label><small>R$</small><b>{num(t.price).toLocaleString("pt-BR", { minimumFractionDigits: num(t.price) % 1 ? 2 : 0, maximumFractionDigits: 2 })}</b></label></span>
-                      : <Stepper value={t.price} onChange={(v) => setType(t.id, { price: v })} step={5} prefix="R$" label={`preço de ${t.name}`} wide />}
-                  {t.auto ? <span className="cv-pz ro" onClick={ro}><label><b>{t.qty}</b><small>un.</small></label></span>
-                    : <Stepper value={t.qty} onChange={(v) => setType(t.id, { qty: v.replace(/\D/g, "") })} step={50} suffix="un." label={`quantidade de ${t.name}`} />}
+                  <input autoComplete="off" className="tn" value={t.name} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { name: e.target.value })} aria-label="Nome do tipo" />
                   <button className="cv-rm" type="button" onClick={t.auto ? ro : () => setSector((z) => ({ ...z, types: z.types.filter((u) => u.id !== t.id) }))} aria-label={`Remover ${t.name}`}>×</button>
                 </div>
-                <div className="r2">
-                  <input className="ds" value={t.desc} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { desc: e.target.value })} placeholder="Descrição (opcional): quem pode comprar, o que inclui" aria-label={`Descrição de ${t.name}`} />
-                  {!t.auto && <button className={t.free ? "cv-mini on" : "cv-mini"} type="button" role="switch" aria-checked={!!t.free} onClick={() => setType(t.id, { free: !t.free })}><span className="sw" aria-hidden="true" />Grátis</button>}
-                  <span className="cv-lim">Limite por pessoa
-                    <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.max(1, lim - 1)) })} disabled={!t.auto && lim <= 1} aria-label={`Diminuir limite de ${t.name}`}>−</button>
-                    <b>{lim}</b>
-                    <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.min(MAX_LIMIT, lim + 1)) })} disabled={!t.auto && lim >= MAX_LIMIT} aria-label={`Aumentar limite de ${t.name}`}>+</button>
-                  </span>
+                {/* preço, quantidade e limite por pessoa: cada um na sua caixa, com título */}
+                <div className="cv-tyg">
+                  <div className="f">
+                    <span className="l">Preço
+                      {!t.auto && <button className={t.free ? "cv-mini on" : "cv-mini"} type="button" role="switch" aria-checked={!!t.free} onClick={() => setType(t.id, { free: !t.free })}><span className="sw" aria-hidden="true" />Grátis</button>}
+                    </span>
+                    {t.free
+                      ? <button className="cv-free" type="button" onClick={() => setType(t.id, { free: false })} title="Clique para cobrar">Grátis</button>
+                      : t.auto ? <span className="cv-pz ro" onClick={ro}><label><small>R$</small><b>{num(t.price).toLocaleString("pt-BR", { minimumFractionDigits: num(t.price) % 1 ? 2 : 0, maximumFractionDigits: 2 })}</b></label></span>
+                        : <Stepper value={t.price} onChange={(v) => setType(t.id, { price: v })} step={5} prefix="R$" label={`preço de ${t.name}`} wide />}
+                  </div>
+                  <div className="f">
+                    <span className="l">Quantidade</span>
+                    {t.auto ? <span className="cv-pz ro" onClick={ro}><label><b>{t.qty}</b><small>un.</small></label></span>
+                      : <Stepper value={t.qty} onChange={(v) => setType(t.id, { qty: v.replace(/\D/g, "") })} step={50} suffix="un." label={`quantidade de ${t.name}`} />}
+                  </div>
+                  <div className="f">
+                    <span className="l">Limite por pessoa</span>
+                    <span className="cv-lim">
+                      <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.max(1, lim - 1)) })} disabled={!t.auto && lim <= 1} aria-label={`Diminuir limite de ${t.name}`}>−</button>
+                      <b>{lim}<small>{lim === 1 ? "ingresso" : "ingressos"}</small></b>
+                      <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.min(MAX_LIMIT, lim + 1)) })} disabled={!t.auto && lim >= MAX_LIMIT} aria-label={`Aumentar limite de ${t.name}`}>+</button>
+                    </span>
+                  </div>
                 </div>
+                {t.desc || openDesc.includes(t.id)
+                  ? <label className="cv-tyd"><span className="l">Descrição <em>opcional</em></span>
+                    <input autoComplete="off" className="ds" value={t.desc} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { desc: e.target.value })} placeholder="Quem pode comprar, o que inclui" aria-label={`Descrição de ${t.name}`} autoFocus={!t.desc} /></label>
+                  : !t.auto && <button className="cv-tyd-add" type="button" onClick={() => setOpenDesc((x) => [...x, t.id])}>+ Descrição</button>}
                 {t.kind === "social" && inteira > 0 && !t.free && <span className="cv-sug"><Spark size={12} />Sugestão: {brMoney(Math.round(inteira * 0.6))}, entre a meia e a inteira</span>}
               </div>
             );
@@ -209,11 +224,11 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
           <div className="b">
             {d.coupons.map((cp) => (
               <div key={cp.id} className="cp">
-                <input className="code" value={cp.code} maxLength={40} placeholder="CODIGO10" onChange={(e) => setCp(cp.id, { code: e.target.value.toUpperCase().replace(/\s/g, "") })} aria-label="Código do cupom" />
+                <input autoComplete="off" className="code" value={cp.code} maxLength={40} placeholder="CODIGO10" onChange={(e) => setCp(cp.id, { code: e.target.value.toUpperCase().replace(/\s/g, "") })} aria-label="Código do cupom" />
                 <div className="cv-seg sm"><button className={cp.kind === "pct" ? "sg on" : "sg"} type="button" onClick={() => setCp(cp.id, { kind: "pct" })}>%</button><button className={cp.kind === "brl" ? "sg on" : "sg"} type="button" onClick={() => setCp(cp.id, { kind: "brl" })}>R$</button></div>
-                <label className="f"><span>Desconto</span><input inputMode="decimal" value={cp.value} onChange={(e) => setCp(cp.id, { value: e.target.value.replace(/[^\d,]/g, "") })} /></label>
-                <label className="f"><span>Usos</span><input inputMode="numeric" value={cp.limit} onChange={(e) => setCp(cp.id, { limit: e.target.value.replace(/\D/g, "") })} /></label>
-                <label className="f"><span>Válido até</span><input value={cp.until} onChange={(e) => setCp(cp.id, { until: e.target.value })} placeholder="dd/mm/aaaa" /></label>
+                <label className="f"><span>Desconto</span><input autoComplete="off" inputMode="decimal" value={cp.value} onChange={(e) => setCp(cp.id, { value: e.target.value.replace(/[^\d,]/g, "") })} /></label>
+                <label className="f"><span>Usos</span><input autoComplete="off" inputMode="numeric" value={cp.limit} onChange={(e) => setCp(cp.id, { limit: e.target.value.replace(/\D/g, "") })} /></label>
+                <label className="f"><span>Válido até</span><input autoComplete="off" value={cp.until} onChange={(e) => setCp(cp.id, { until: e.target.value })} placeholder="dd/mm/aaaa" /></label>
                 <select value={cp.scope} onChange={(e) => setCp(cp.id, { scope: e.target.value })} aria-label="Vale para">
                   <option value="all">Todos os ingressos</option>
                   {d.sectors.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
@@ -337,16 +352,16 @@ export function VendasStep({ c }: { c: Ctx }) {
             <div className="w">
               <span className="k"><i className="pre" />Pré-venda para cadastrados</span>
               <div className="r">
-                <input type="date" value={pre.date} onChange={(e) => set({ presaleStart: joinBr(e.target.value, pre.time || "12:00") }, "sale")} aria-label="Dia da pré-venda" />
-                <input type="time" value={pre.time} onChange={(e) => set({ presaleStart: joinBr(pre.date, e.target.value) }, "sale")} aria-label="Hora da pré-venda" />
+                <input autoComplete="off" type="date" value={pre.date} onChange={(e) => set({ presaleStart: joinBr(e.target.value, pre.time || "12:00") }, "sale")} aria-label="Dia da pré-venda" />
+                <input autoComplete="off" type="time" value={pre.time} onChange={(e) => set({ presaleStart: joinBr(pre.date, e.target.value) }, "sale")} aria-label="Hora da pré-venda" />
               </div>
             </div>
           )}
           <div className="w">
             <span className="k"><i />{mode === "pre" ? "Venda geral para todos" : "Abertura das vendas"}</span>
             <div className="r">
-              <input type="date" value={open.date} onChange={(e) => set({ saleStart: joinBr(e.target.value, open.time || "12:00") }, "sale")} aria-label="Dia da abertura" />
-              <input type="time" value={open.time} onChange={(e) => set({ saleStart: joinBr(open.date, e.target.value) }, "sale")} aria-label="Hora da abertura" />
+              <input autoComplete="off" type="date" value={open.date} onChange={(e) => set({ saleStart: joinBr(e.target.value, open.time || "12:00") }, "sale")} aria-label="Dia da abertura" />
+              <input autoComplete="off" type="time" value={open.time} onChange={(e) => set({ saleStart: joinBr(open.date, e.target.value) }, "sale")} aria-label="Hora da abertura" />
             </div>
           </div>
           <p className="cv-note" style={{ gridColumn: "1 / -1" }}>Horário de Brasília. {mode === "pre" ? "Os links da pré-venda saem por e-mail na hora em que ela começa; na venda geral, avisamos toda a lista." : "Quem deixar o e-mail recebe um aviso na hora em que abrir."}</p>
@@ -374,7 +389,7 @@ export function VendasStep({ c }: { c: Ctx }) {
           {d.teaser.theme === "foto" && d.teaser.image && <button className="cv-lnk" type="button" onClick={() => file.current?.click()}>Trocar imagem de fundo</button>}
           {d.teaser.theme === "arte" && !d.media.banner && <p className="cv-note">Envie o banner na etapa Artes para ele aparecer no fundo.</p>}
           <div className="cv-2">
-            <label className="cv-fl"><span>Frase acima da contagem</span><input className="cv-in" value={d.teaser.headline} maxLength={80} onChange={(e) => setTeaser({ headline: e.target.value })} placeholder={mode === "pre" ? "A pré-venda começa em" : "As vendas abrem em"} /></label>
+            <label className="cv-fl"><span>Frase acima da contagem</span><input autoComplete="off" className="cv-in" value={d.teaser.headline} maxLength={80} onChange={(e) => setTeaser({ headline: e.target.value })} placeholder={mode === "pre" ? "A pré-venda começa em" : "As vendas abrem em"} /></label>
             <Toggle on={d.teaser.lineup} onClick={() => setTeaser({ lineup: !d.teaser.lineup })} title="Mostrar o line-up" sub={d.lineup.length ? `${d.lineup.length} ${d.lineup.length === 1 ? "artista" : "artistas"}` : "Adicione artistas em Informações"} />
           </div>
           <label className="cv-fl"><span>Recado para o público <small>(opcional)</small></span><textarea className="cv-in ta" rows={3} maxLength={280} value={d.teaser.message} onChange={(e) => setTeaser({ message: e.target.value })} placeholder="Ex.: Primeiro lote limitado. Quem entrar na lista recebe o aviso antes." /></label>
@@ -433,7 +448,7 @@ export function RevisarStep({ c, x }: { c: Ctx; x: Derived }) {
         <div className="cv-seg big">
           {VIS.map((v) => <button key={v.id} className={d.vis === v.id ? "sg on" : "sg"} type="button" onClick={() => set({ vis: v.id })}>{v.t}<small>{v.s}</small></button>)}
         </div>
-        <label className="cv-fl" style={{ marginTop: 20 }}><span>Política de cancelamento</span><input className="cv-in" value={d.refund} onChange={(e) => set({ refund: e.target.value })} /></label>
+        <label className="cv-fl" style={{ marginTop: 20 }}><span>Política de cancelamento</span><input autoComplete="off" className="cv-in" value={d.refund} onChange={(e) => set({ refund: e.target.value })} /></label>
       </div>
     </section>
   );

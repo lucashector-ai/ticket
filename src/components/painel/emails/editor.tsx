@@ -200,7 +200,7 @@ export function EmailEditor(p: Props) {
         <div className="ed-ta">
           {tplName !== null ? (
             <form className="ed-tpl" onSubmit={async (e) => { e.preventDefault(); const r = await saveTemplate(tplName, d); flash(r.ok ? "Modelo salvo. Ele aparece em Nova campanha." : r.error); if (r.ok) setTplName(null); }}>
-              <input autoFocus value={tplName} onChange={(e) => setTplName(e.target.value)} placeholder="Nome do modelo" aria-label="Nome do modelo" />
+              <input autoComplete="off" autoFocus value={tplName} onChange={(e) => setTplName(e.target.value)} placeholder="Nome do modelo" aria-label="Nome do modelo" />
               <button className="b2 dark" type="submit" disabled={!tplName.trim()}>Salvar</button>
               <button className="b2" type="button" onClick={() => setTplName(null)}>Cancelar</button>
             </form>
@@ -362,7 +362,7 @@ function BlockView(p: BVProps) {
             </>
           ) : (
             <form onSubmit={(e) => { e.preventDefault(); applyLink(); }} className="ed-fl">
-              <input autoFocus value={link} onChange={(e) => setLink(e.target.value)} aria-label="Endereço do link" />
+              <input autoComplete="off" autoFocus value={link} onChange={(e) => setLink(e.target.value)} aria-label="Endereço do link" />
               <button type="submit">OK</button>
               <button type="button" onClick={() => setLink(null)}>×</button>
             </form>

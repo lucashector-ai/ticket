@@ -44,7 +44,7 @@ export function PainelPublico(p: PublicoProps) {
           <div className="card-h wrap2">
             <label className="pd-search in-card">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" /></svg>
-              <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome ou e-mail" aria-label="Buscar comprador" />
+              <input autoComplete="off" type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome ou e-mail" aria-label="Buscar comprador" />
             </label>
             <div className="chips3">{FIL.map(([k, l, c]) => <button key={k} className={f === k ? "chp on" : "chp"} type="button" onClick={() => setF(k)}>{l} <span className="sg-n">{c}</span></button>)}</div>
             <div className="ca"><button className="b2" type="button" onClick={csv} disabled={!list.length}>Exportar CSV</button></div>

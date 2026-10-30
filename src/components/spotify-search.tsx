@@ -58,7 +58,7 @@ export function SpotifyArtistSearch({ value, onChange, onPick, onPlain, placehol
 
   return (
     <div className="spx">
-      <input className="in" type="text" value={value} placeholder={placeholder} autoFocus={autoFocus}
+      <input autoComplete="off" className="in" type="text" value={value} placeholder={placeholder} autoFocus={autoFocus}
         role="combobox" aria-expanded={open && opts > 0} aria-controls="spx-l" aria-autocomplete="list"
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}

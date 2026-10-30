@@ -38,7 +38,7 @@ export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, chi
         <Link className="pd-logo" href="/painel" aria-label="Tickets Win · painel do produtor"><BrandLogo height={20} /><span className="pd-tag">Produtor</span></Link>
         <form className="pd-search" role="search" onSubmit={(e) => { e.preventDefault(); if (q.trim()) router.push(`/painel?q=${encodeURIComponent(q.trim())}`); }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" /></svg>
-          <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar evento" aria-label="Buscar evento" />
+          <input autoComplete="off" type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar evento" aria-label="Buscar evento" />
         </form>
         <div className="pd-tr">
           {orgSlug && <Link className="pd-site" href={`/produtor/${orgSlug}`}>Ver minha página</Link>}

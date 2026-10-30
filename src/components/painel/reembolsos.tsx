@@ -100,7 +100,7 @@ function Orders({ p, onOpen }: { p: RefundTab; onOpen: (id: string) => void }) {
       </div>
       <label className="pd-search in-card rr-q">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" /></svg>
-        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome, e-mail, nº do pedido ou código do ingresso" aria-label="Buscar pedido" />
+        <input autoComplete="off" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome, e-mail, nº do pedido ou código do ingresso" aria-label="Buscar pedido" />
       </label>
       <div className="tbl" aria-busy={loading}>
         <div className="rr-or thd"><span>Pedido</span><span>Comprador</span><span>Pago</span><span>Situação</span><span /></div>
@@ -416,7 +416,7 @@ function Postpone({ p }: { p: RefundTab }) {
               <form onSubmit={(e) => { e.preventDefault(); go(); }}>
                 <h2 className="card-t">Adiar “{p.title}”</h2>
                 <p className="dl-p">Hoje: {p.startLabel}. Todas as datas e horários do evento andam junto. Os ingressos continuam valendo, com o mesmo QR code.</p>
-                <label className="fld"><span>Nova data e horário de início</span><input type="datetime-local" required value={start} onChange={(e) => setStart(e.target.value)} /></label>
+                <label className="fld"><span>Nova data e horário de início</span><input autoComplete="off" type="datetime-local" required value={start} onChange={(e) => setStart(e.target.value)} /></label>
                 <label className="fld"><span>Recado para os compradores (opcional)</span><textarea maxLength={600} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex.: Por causa da chuva, o show passou para o próximo sábado." /></label>
                 <ul className="rv-how">
                   <li>Todos que compraram e a lista free recebem um e-mail com a nova data.</li>

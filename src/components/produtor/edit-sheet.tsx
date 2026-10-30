@@ -51,8 +51,8 @@ export function EditSheet({ orgId, initial, onClose, onSaved }: { orgId: string;
             <Pic label="Foto" cls="av" url={f.avatarUrl} onChange={(u) => set({ avatarUrl: u })} />
             <Pic label="Capa (1920 × 520)" cls="cv" url={f.coverUrl} onChange={(u) => set({ coverUrl: u })} />
           </div>
-          <Field label="Nome"><input value={f.name} maxLength={160} onChange={(e) => set({ name: e.target.value })} /></Field>
-          <Field label="Frase de apresentação" hint={`${f.tagline.length}/200 · aparece embaixo do nome`}><input value={f.tagline} maxLength={200} onChange={(e) => set({ tagline: e.target.value })} placeholder="Festas de house e techno no centro de SP desde 2019." /></Field>
+          <Field label="Nome"><input autoComplete="off" value={f.name} maxLength={160} onChange={(e) => set({ name: e.target.value })} /></Field>
+          <Field label="Frase de apresentação" hint={`${f.tagline.length}/200 · aparece embaixo do nome`}><input autoComplete="off" value={f.tagline} maxLength={200} onChange={(e) => set({ tagline: e.target.value })} placeholder="Festas de house e techno no centro de SP desde 2019." /></Field>
           <Field label="Sobre" hint="Separe os parágrafos com uma linha em branco."><textarea value={f.bio} maxLength={4000} onChange={(e) => set({ bio: e.target.value })} placeholder="Conte a história, o estilo dos eventos e o que o público pode esperar." /></Field>
           <div className="pe-cu">
             <Field label="Estado"><UfSelect value={f.uf} onChange={(uf) => set({ uf })} /></Field>
@@ -61,22 +61,22 @@ export function EditSheet({ orgId, initial, onClose, onSaved }: { orgId: string;
 
           <span className="pe-sec">Contato e redes</span>
           <div className="pe-two">
-            <Field label="Instagram"><input value={f.instagram} maxLength={120} onChange={(e) => set({ instagram: e.target.value })} placeholder="@seuperfil" /></Field>
-            <Field label="Site"><input value={f.website} maxLength={200} onChange={(e) => set({ website: e.target.value })} placeholder="seusite.com.br" /></Field>
-            <Field label="E-mail de contato"><input type="email" value={f.contactEmail} maxLength={254} onChange={(e) => set({ contactEmail: e.target.value })} placeholder="contato@…" /></Field>
-            <Field label="WhatsApp"><input value={f.whatsapp} maxLength={32} inputMode="tel" onChange={(e) => set({ whatsapp: e.target.value })} placeholder="(11) 90000-0000" /></Field>
+            <Field label="Instagram"><input autoComplete="off" value={f.instagram} maxLength={120} onChange={(e) => set({ instagram: e.target.value })} placeholder="@seuperfil" /></Field>
+            <Field label="Site"><input autoComplete="off" value={f.website} maxLength={200} onChange={(e) => set({ website: e.target.value })} placeholder="seusite.com.br" /></Field>
+            <Field label="E-mail de contato"><input autoComplete="off" type="email" value={f.contactEmail} maxLength={254} onChange={(e) => set({ contactEmail: e.target.value })} placeholder="contato@…" /></Field>
+            <Field label="WhatsApp"><input autoComplete="off" value={f.whatsapp} maxLength={32} inputMode="tel" onChange={(e) => set({ whatsapp: e.target.value })} placeholder="(11) 90000-0000" /></Field>
           </div>
 
           <span className="pe-sec">Políticas padrão</span>
-          <Field label="Cancelamento"><input value={f.policies.cancel} maxLength={400} onChange={(e) => setPol("cancel", e.target.value)} placeholder="Até 7 dias após a compra, com 48h de antecedência." /></Field>
-          <Field label="Meia-entrada"><input value={f.policies.meia} maxLength={400} onChange={(e) => setPol("meia", e.target.value)} placeholder="Conforme a Lei 12.933. Documento na entrada." /></Field>
-          <Field label="Transferência"><input value={f.policies.transfer} maxLength={400} onChange={(e) => setPol("transfer", e.target.value)} placeholder="Liberada em Meus ingressos até 2h antes." /></Field>
-          <Field label="Acessibilidade"><input value={f.policies.access} maxLength={400} onChange={(e) => setPol("access", e.target.value)} placeholder="Rampas, banheiro adaptado e área reservada." /></Field>
+          <Field label="Cancelamento"><input autoComplete="off" value={f.policies.cancel} maxLength={400} onChange={(e) => setPol("cancel", e.target.value)} placeholder="Até 7 dias após a compra, com 48h de antecedência." /></Field>
+          <Field label="Meia-entrada"><input autoComplete="off" value={f.policies.meia} maxLength={400} onChange={(e) => setPol("meia", e.target.value)} placeholder="Conforme a Lei 12.933. Documento na entrada." /></Field>
+          <Field label="Transferência"><input autoComplete="off" value={f.policies.transfer} maxLength={400} onChange={(e) => setPol("transfer", e.target.value)} placeholder="Liberada em Meus ingressos até 2h antes." /></Field>
+          <Field label="Acessibilidade"><input autoComplete="off" value={f.policies.access} maxLength={400} onChange={(e) => setPol("access", e.target.value)} placeholder="Rampas, banheiro adaptado e área reservada." /></Field>
 
           <span className="pe-sec">Empresa</span>
           <div className="pe-two">
-            <Field label="Razão social"><input value={f.legalName} maxLength={200} onChange={(e) => set({ legalName: e.target.value })} /></Field>
-            <Field label="CNPJ"><input value={f.cnpj} maxLength={20} inputMode="numeric" onChange={(e) => set({ cnpj: e.target.value })} placeholder="00.000.000/0001-00" /></Field>
+            <Field label="Razão social"><input autoComplete="off" value={f.legalName} maxLength={200} onChange={(e) => set({ legalName: e.target.value })} /></Field>
+            <Field label="CNPJ"><input autoComplete="off" value={f.cnpj} maxLength={20} inputMode="numeric" onChange={(e) => set({ cnpj: e.target.value })} placeholder="00.000.000/0001-00" /></Field>
           </div>
         </div>
         <div className="pe-ft">

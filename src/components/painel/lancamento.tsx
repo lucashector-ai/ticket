@@ -82,9 +82,9 @@ export function PainelLancamento({ p }: { p: LaunchProps }) {
           <section className="cx">
             <div className="card-h"><div><h2 className="card-t">Abertura das vendas</h2><span className="card-s">Até a data, a página do evento vira uma tela cheia de contagem regressiva com um campo para a pessoa deixar o e-mail.</span></div><Link className="b2" href={`/criar-evento?editar=${p.eventId}&etapa=vendas`}>Personalizar a tela</Link></div>
             <div className="frm">
-              <label className="fld"><span>Venda geral abre em</span><input type="datetime-local" value={f.salesOpenAt} onChange={(e) => set({ salesOpenAt: e.target.value })} /><small>Horário de Brasília. Vazio: o evento vende assim que é publicado.</small></label>
+              <label className="fld"><span>Venda geral abre em</span><input autoComplete="off" type="datetime-local" value={f.salesOpenAt} onChange={(e) => set({ salesOpenAt: e.target.value })} /><small>Horário de Brasília. Vazio: o evento vende assim que é publicado.</small></label>
               <label className="tg2"><span><b>Pré-venda para cadastrados</b><small>Quem se cadastrar recebe um link secreto e compra antes da venda geral.</small></span><input className="sr" type="checkbox" checked={f.hasPresale} onChange={(e) => set({ hasPresale: e.target.checked })} /><span className="sw" aria-hidden="true" /></label>
-              {f.hasPresale && <label className="fld"><span>Pré-venda começa em</span><input type="datetime-local" value={f.presaleAt} onChange={(e) => set({ presaleAt: e.target.value })} /><small>Nessa hora o link de cada pessoa sai por e-mail. Cada link vale para uma compra.</small></label>}
+              {f.hasPresale && <label className="fld"><span>Pré-venda começa em</span><input autoComplete="off" type="datetime-local" value={f.presaleAt} onChange={(e) => set({ presaleAt: e.target.value })} /><small>Nessa hora o link de cada pessoa sai por e-mail. Cada link vale para uma compra.</small></label>}
               <div className="ln-acts">
                 {p.presaleAt && <button className="b2" type="button" disabled={busy || p.phase !== "presale"} onClick={() => sendNow("presale")}>Reenviar links da pré-venda</button>}
                 {p.salesOpenAt && <button className="b2" type="button" disabled={busy || p.phase !== "open"} onClick={() => sendNow("abertura")}>Avisar a lista agora</button>}
@@ -128,7 +128,7 @@ export function PainelLancamento({ p }: { p: LaunchProps }) {
               <div className="seg2">
                 {([["auto", "Automática"], ["on", "Sempre"], ["off", "Desligada"]] as const).map(([k, l]) => <button key={k} className={f.queueMode === k ? "sg on" : "sg"} type="button" onClick={() => set({ queueMode: k })}>{l}</button>)}
               </div>
-              {f.queueMode !== "off" && <label className="fld"><span>Pessoas comprando ao mesmo tempo</span><input type="number" min={10} max={100000} value={f.queueLimit} onChange={(e) => set({ queueLimit: e.target.value })} /><small>{f.queueMode === "auto" ? "Passou disso, a fila liga sozinha e desliga quando o movimento cai." : "A fila fica ligada e libera essa quantidade de cada vez."}</small></label>}
+              {f.queueMode !== "off" && <label className="fld"><span>Pessoas comprando ao mesmo tempo</span><input autoComplete="off" type="number" min={10} max={100000} value={f.queueLimit} onChange={(e) => set({ queueLimit: e.target.value })} /><small>{f.queueMode === "auto" ? "Passou disso, a fila liga sozinha e desliga quando o movimento cai." : "A fila fica ligada e libera essa quantidade de cada vez."}</small></label>}
             </div>
           </section>
         </aside>

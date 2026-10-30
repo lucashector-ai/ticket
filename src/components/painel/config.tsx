@@ -39,12 +39,12 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
           <section className="cx">
             <div className="card-h"><div><h2 className="card-t">Perfil</h2><span className="card-s">Foto, capa, sobre e redes você edita direto na sua página.</span></div>{hasOrg && <Link className="b2" href={`/produtor/${initial.slug}`}>Ver minha página</Link>}</div>
             <div className="frm">
-              <label className="fld"><span>Nome da produtora</span><input value={f.name} maxLength={160} onChange={(e) => set({ name: e.target.value })} /></label>
+              <label className="fld"><span>Nome da produtora</span><input autoComplete="off" value={f.name} maxLength={160} onChange={(e) => set({ name: e.target.value })} /></label>
               <label className="fld"><span>Endereço da página</span>
-                <span className="pfx"><em>{host}/produtor/</em><input value={f.slug} maxLength={60} onChange={(e) => set({ slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} /></span>
+                <span className="pfx"><em>{host}/produtor/</em><input autoComplete="off" value={f.slug} maxLength={60} onChange={(e) => set({ slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} /></span>
                 <small>Trocar o endereço quebra links antigos que você já divulgou.</small>
               </label>
-              <label className="fld"><span>E-mail de contato</span><input type="email" value={f.contactEmail} maxLength={254} onChange={(e) => set({ contactEmail: e.target.value })} /></label>
+              <label className="fld"><span>E-mail de contato</span><input autoComplete="off" type="email" value={f.contactEmail} maxLength={254} onChange={(e) => set({ contactEmail: e.target.value })} /></label>
             </div>
           </section>
 
@@ -52,20 +52,20 @@ export function PainelConfig({ initial, hasOrg }: { initial: Form; hasOrg: boole
             <div className="card-h"><div><h2 className="card-t">Conta de repasse</h2><span className="card-s">Para onde vão os saques do Banco Tickets Win. Só o dono vê.</span></div></div>
             <div className="frm">
               <div className="frm-2">
-                <label className="fld"><span>Razão social</span><input value={f.legalName} maxLength={200} onChange={(e) => set({ legalName: e.target.value })} /></label>
-                <label className="fld"><span>CNPJ</span><input value={f.cnpj} maxLength={20} inputMode="numeric" onChange={(e) => set({ cnpj: e.target.value })} placeholder="00.000.000/0001-00" /></label>
+                <label className="fld"><span>Razão social</span><input autoComplete="off" value={f.legalName} maxLength={200} onChange={(e) => set({ legalName: e.target.value })} /></label>
+                <label className="fld"><span>CNPJ</span><input autoComplete="off" value={f.cnpj} maxLength={20} inputMode="numeric" onChange={(e) => set({ cnpj: e.target.value })} placeholder="00.000.000/0001-00" /></label>
               </div>
               <div className="frm-3">
-                <label className="fld"><span>Banco</span><input value={f.payout.bank} maxLength={80} onChange={(e) => pay({ bank: e.target.value })} placeholder="Itaú, Nubank, Inter…" /></label>
-                <label className="fld"><span>Agência</span><input value={f.payout.agency} maxLength={12} inputMode="numeric" onChange={(e) => pay({ agency: e.target.value })} /></label>
-                <label className="fld"><span>Conta</span><input value={f.payout.account} maxLength={24} onChange={(e) => pay({ account: e.target.value })} /></label>
+                <label className="fld"><span>Banco</span><input autoComplete="off" value={f.payout.bank} maxLength={80} onChange={(e) => pay({ bank: e.target.value })} placeholder="Itaú, Nubank, Inter…" /></label>
+                <label className="fld"><span>Agência</span><input autoComplete="off" value={f.payout.agency} maxLength={12} inputMode="numeric" onChange={(e) => pay({ agency: e.target.value })} /></label>
+                <label className="fld"><span>Conta</span><input autoComplete="off" value={f.payout.account} maxLength={24} onChange={(e) => pay({ account: e.target.value })} /></label>
               </div>
               <div className="frm-3">
                 <label className="fld"><span>Tipo</span><select value={f.payout.kind} onChange={(e) => pay({ kind: e.target.value as "corrente" | "poupanca" })}><option value="corrente">Corrente</option><option value="poupanca">Poupança</option></select></label>
-                <label className="fld"><span>Titular</span><input value={f.payout.holder} maxLength={160} onChange={(e) => pay({ holder: e.target.value })} /></label>
-                <label className="fld"><span>CPF ou CNPJ do titular</span><input value={f.payout.doc} maxLength={20} inputMode="numeric" onChange={(e) => pay({ doc: e.target.value })} /></label>
+                <label className="fld"><span>Titular</span><input autoComplete="off" value={f.payout.holder} maxLength={160} onChange={(e) => pay({ holder: e.target.value })} /></label>
+                <label className="fld"><span>CPF ou CNPJ do titular</span><input autoComplete="off" value={f.payout.doc} maxLength={20} inputMode="numeric" onChange={(e) => pay({ doc: e.target.value })} /></label>
               </div>
-              <label className="fld"><span>Chave Pix (opcional)</span><input value={f.payout.pixKey} maxLength={140} onChange={(e) => pay({ pixKey: e.target.value })} placeholder="E-mail, celular, CPF/CNPJ ou chave aleatória" /></label>
+              <label className="fld"><span>Chave Pix (opcional)</span><input autoComplete="off" value={f.payout.pixKey} maxLength={140} onChange={(e) => pay({ pixKey: e.target.value })} placeholder="E-mail, celular, CPF/CNPJ ou chave aleatória" /></label>
             </div>
           </section>
         </div>

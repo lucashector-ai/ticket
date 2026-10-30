@@ -81,7 +81,7 @@ export function PainelEquipe(p: EquipeProps) {
             <section className="cx">
               <div className="card-h"><div><h2 className="card-t">Convidar admin</h2><span className="card-s">Admin vê vendas, participantes, financeiro e marketing. A portaria é convidada por evento, em “Convidar para a portaria” (QR code ou e-mail).</span></div></div>
               <div className="frm">
-                <label className="fld"><span>E-mail</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@exemplo.com" /></label>
+                <label className="fld"><span>E-mail</span><input autoComplete="off" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@exemplo.com" /></label>
                 <button className="b2 dark block" type="button" disabled={busy || !email.includes("@")} onClick={() => run(async () => { const r = await inviteMember(email, "admin"); if (r.ok) setEmail(""); return r; }, "Convite enviado.")}>Convidar admin</button>
               </div>
             </section>

@@ -780,7 +780,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   <span className="cup-i" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12V4h8l9 9-8 8z" /><circle cx="7.5" cy="8.5" r="1.3" /></svg>
                   </span>
-                  <input className="cup-in" type="text" placeholder="Cupom de desconto" value={couponInput} onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCupErr(null); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void applyCoupon(); } }} aria-label="Cupom de desconto" />
+                  <input autoComplete="off" className="cup-in" type="text" placeholder="Cupom de desconto" value={couponInput} onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCupErr(null); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void applyCoupon(); } }} aria-label="Cupom de desconto" />
                   <button className="cup-b" type="button" onClick={() => void applyCoupon()}>Aplicar</button>
                 </div>}
                 {(coupon || cupErr) && (

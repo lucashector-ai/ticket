@@ -98,7 +98,7 @@ function MfaCard({ mfa, email }: Props) {
     <div className="ct-sub">
       <p className="ct-note">{label}</p>
       {rec
-        ? <input className="ct-in ct-rec" value={code} onChange={(e) => { setCode(e.target.value.toUpperCase().slice(0, 9)); setErr(null); }} placeholder="XXXX-XXXX" autoFocus aria-label="Código de recuperação" />
+        ? <input autoComplete="off" className="ct-in ct-rec" value={code} onChange={(e) => { setCode(e.target.value.toUpperCase().slice(0, 9)); setErr(null); }} placeholder="XXXX-XXXX" autoFocus aria-label="Código de recuperação" />
         : <CodeBoxes value={code} onChange={(v) => { setCode(v); setErr(null); }} onDone={(v) => void confirm(v)} disabled={busy} />}
       {(mode === "email" || (mode === "off" && mfa.method === "email")) && (
         <ResendButton className="ct-link" key={mode} onResend={async () => { const r = await resendMfaCode(mode === "email" ? "setup" : "off"); if (!r.ok) setErr(r.error ?? null); return r.ok; }} />
