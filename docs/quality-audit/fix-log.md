@@ -89,6 +89,21 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 rodada 2 | f2f1ee1 | Editar evento no ar: "Publicado", "Salvar alterações", "Alterações salvas" | Playwright 1280: salvar evento publicado | VALIDADO |
 | 30/10 rodada 2 | 3aa8503 | Ingresso usado/cancelado com textos ≥ 4,5:1 | axe /ingressos e /meus-ingressos 390 | VALIDADO |
 
+| 30/10 rodada 3 | 3bf1ac1 | `BrokenImages` esconde imagem quebrada pela folha de estilo (aviso de hidratação no /explorar) | Firefox /explorar sem aviso | VALIDADO |
+| 30/10 rodada 3 | 6bcd126 | Checkout: foco no campo vazio do titular, resumo perto do botão, data escolhida no resumo e na confirmação | Firefox/WebKit/Chromium 390 e 1280 | VALIDADO |
+| 30/10 rodada 3 | 4003678 · 07f95b3 | Várias datas: ingresso, Meus ingressos, PDF e .ics com a data da sessão; PDF "Meia" pelo tipo (mudança mínima em arquivos do Romano) | Firefox/WebKit 390: pedido #50121 (2 ingressos de sábado) | VALIDADO |
+| 30/10 rodada 3 | 4e504d9 | Página offline do app da portaria na cor nova | print | VALIDADO |
+| 30/10 rodada 3 | 346dbf5 | Link do evento no painel com reticências | 3 motores 390/1024/1280 | VALIDADO |
+| 30/10 rodada 3 | df47d66 | App da portaria: próximo passo para QR inválido × código não encontrado | WebKit 390 código digitado | VALIDADO |
+| 30/10 rodada 3 | 34d544c | Ativar conta vindo de Criar evento: 1 parágrafo, "Enviar um novo" sem esperar 30 s | Chromium/WebKit 390 e 1280; 1 código pedido | VALIDADO |
+| 30/10 rodada 3 | 8591446 | Fila virtual: cartão inteiro no celular, foco preso, texto certo sobre recarregar | fila simulada no banco de teste, 3 motores × 320/390/1280 | VALIDADO |
+| 30/10 rodada 3 | 58d5854 | Contagem da abertura: "Me avise" vazio responde; erro sem cobrir o texto | Chromium/WebKit 390 | VALIDADO |
+| 30/10 rodada 3 | ea522cb | Página do produtor: dica com contraste 5,1:1 | varredura de contraste | VALIDADO |
+| 30/10 rodada 3 | 2e4142a | Revenda: motivo do botão travado; "Valor do ingresso" | Chromium 390, duas contas | VALIDADO |
+| 30/10 rodada 3 | a2df9f7 · b75d11f | Checkout da revenda/grupo e página da transferência com a data do ingresso | Chromium 390; `curl` da página da transferência | VALIDADO |
+| 30/10 rodada 3 | 33a229d | E-mails do produtor sem nome de fornecedor; nome da campanha com reticências | Firefox/WebKit 390 e 1280 | VALIDADO |
+| 30/10 rodada 3 | de26b76 | Banco: diz o saque mínimo | tsc/eslint | CORRIGIDO, NÃO VALIDADO |
+
 ### Dados de teste criados pelo Marcos (banco de teste)
 - 2 eventos publicados "QA Marcos · Show de teste (não comprar)" (`/eventos/qa-marcos-show-de-teste-nao-comprar` e `…-2`), conta de teste existente, Casa Tangente, 7/11. Apagar depois.
 - Compras de teste (Pix de teste, sem cobrança) na conta de teste: 6 pedidos de Aurora Ao Vivo (#48307, #48317–#48322) e pedidos pendentes/cancelados de Marea Festival (#48350, #48351).
@@ -96,6 +111,8 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 - Imagens enviadas ao R2 local (cartaz e banner de teste). Nenhuma conta nova criada.
 - **Rodada 2:** evento publicado "QA Marcos · Só cartaz (não comprar)" (`/eventos/qa-marcos-so-cartaz-nao-comprar`, id f9454f65-…) da conta de teste, só com cartaz (imagem no R2 local). Pedidos Pix de teste na conta de teste: #49031 (TW-AFH9-QDXL, usado na portaria), #49034 (TW-QNLX-7J8K, usado na portaria), #49261 e #49262 (regressão 320/1280). Uma rodada do e2e da câmera do Romano (cria e usa ingressos no `qa-romano-checkout`).
 - **Conta nova (rodada 2):** `teste+marcos-produtor@example.com` (login do Neon Auth, compartilhado com a produção; e-mail **não ativado**) com 1 inscrição de produtor "em análise" (São Paulo – SP, Show) no banco de teste. Apagar a conta e a inscrição depois.
+
+- **Rodada 3 (banco de teste, conta de teste e `teste+marcos-produtor@example.com`; nenhuma conta nova):** eventos "QA Marcos · Festival firefox/webkit … (não comprar)" (criados pela interface: `qa-marcos-festival-firefox-nao-comprar`, `…-firefox-1280-…`, `…-webkit-390-…` e 5 tentativas `…-webkit-1280-…` a `…-5`). Pedidos Pix de teste: #50121–#50128 (compras nos 3 motores), #50895 (revenda comprada pela segunda conta; o ingresso foi depois transferido para a conta de teste, hoje TW-R3KC-FJJN), #50896/#50897 (grupo `b87mzyatph`, completo), #50898–#50900 (cancelamento e reembolso: #50898 e #49261/#49262 cancelados pelo comprador, #50899 reembolsado pelo produtor, #50900 com 1 ingresso enviado a `teste+qa-convidado1@example.com`, sem conta). Revenda: 1 anúncio vendido, 1 retirado. 4 cadastros "me avise"/pré-venda `teste+marcos-lanc-*@example.com` no `qa-marcos-show-de-teste-nao-comprar` (lançamento voltou ao padrão: sem data, fila automática 300; a fila simulada foi apagada). 1 rascunho de e-mail "Divulgar o evento · QA Marcos · Só cartaz" (não enviado). 1 código de ativação pedido para a conta de teste.
 
 ## Marca
 

@@ -185,9 +185,10 @@
   .ehero{color:#111;background:#FFFFFF;padding:92px 0 24px}
   .ebg{bottom:auto;height:min(980px,100%)}
   .ebg-in{width:max(130%,1300px);filter:blur(80px) saturate(1.5);top:30%}
-  .ebg-tint{background:linear-gradient(180deg,rgba(0,0,0,.35) 0px,rgba(0,0,0,0) 220px,rgba(255,255,255,0) 40%,rgba(255,255,255,.75) 70%,#FFFFFF 92%)}
+  /* topo mais escuro: "Voltar · Eventos / Show" em branco ficava ~2:1 sobre cartaz claro (lima, amarelo) */
+  .ebg-tint{background:linear-gradient(180deg,rgba(0,0,0,.55) 0px,rgba(0,0,0,.48) 140px,rgba(0,0,0,0) 280px,rgba(255,255,255,0) 40%,rgba(255,255,255,.75) 70%,#FFFFFF 92%)}
   .ehero-in{position:relative;width:100%;max-width:1200px;margin:0 auto;padding:0 40px}
-  .crumb2{color:rgba(255,255,255,.85)}
+  .crumb2{color:#FFFFFF}
   .m16{position:relative;margin-top:24px;aspect-ratio:16/9;border-radius:28px;overflow:hidden;background:#111;box-shadow:0 60px 120px -50px rgba(0,0,0,.55);animation:artIn 1s .1s var(--ease) both}
   .m16-bg{position:absolute;left:50%;top:50%;width:120%;transform:translate(-50%,-50%);filter:blur(36px) saturate(1.3) brightness(.85)}
   .m16-art{position:absolute;left:50%;top:50%;height:86%;aspect-ratio:3/4;transform:translate(-50%,-50%);border-radius:16px;overflow:hidden;box-shadow:0 40px 70px -30px rgba(0,0,0,.6);transition:transform .9s var(--ease)}
