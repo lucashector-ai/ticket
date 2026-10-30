@@ -397,3 +397,8 @@ Não copiado: o topo escuro fixo (#161616) e a fonte itálica do protótipo (man
 
 ### U-73 · Compra aceita para evento encerrado · P1 · HANDOFF (Romano)
 - `/checkout?evento=calourada&…` (evento terminou 30/10 às 05h) abriu e pagou (#48256). Home e Explorar já escondem o evento, o servidor não confere o fim. Detalhes em `handoff.md` (30/10 rodada 5 21:05).
+
+### U-74 · Aba de acessibilidade por cima de campos nas telas de compra · P2 · VALIDADO
+- **Achado da coordenação** (print `depois/ck-chromium-390-pag-card.png`): no celular a aba ficava acima da barra fixa, por cima do conteúdo que rola, e cobria o rótulo "Validade" do cartão; na tela cheia de compra ela ficava escondida.
+- **Correção (bb55bea + ajuste a 320):** a aba mora dentro da barra fixa, à esquerda do botão, e a barra abre espaço para ela (44 px; 40 px até 360 px). Vale no checkout (Dados, Pagamento), no Pix (a ação "Já fiz o pagamento" / "Já paguei" / "Gerar novo pagamento" foi para a barra fixa, como nas outras etapas), na página do evento (ao lado da barra de compra) e na tela cheia de compra (no rodapé da folha; a 320 os textos da barra ficam numa linha só). Com o teclado aberto, a barra e a aba saem juntas.
+- **Validação:** varredura automática do que fica por baixo da aba em várias posições de rolagem (Dados, Pagamento/cartão, Pix, evento, tela cheia) nos três motores a 320/390/430: nada coberto (117 posições). Pix de teste pela barra nova até "Pedido confirmado" (#48852, WebKit 390). Prints `depois/tab-*`, `depois/bs-*`, `depois/pixbar.png`.
