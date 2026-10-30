@@ -1,6 +1,7 @@
 "use client";
 
-import { forwardRef, useEffect, useRef } from "react";
+import { forwardRef } from "react";
+import { useToast } from "@/components/toast";
 import { FlyerArt } from "@/components/art/flyer";
 import { BrandMark, BrandWord } from "@/components/brand-logo";
 import type { TicketCardData } from "@/lib/tickets/card";
@@ -44,30 +45,7 @@ export const TicketCard = forwardRef<HTMLDivElement, { t: TicketCardData; qrSvg:
  */
 export function TicketPdfButton({ t, className, children }: { t: TicketCardData; qrSvg?: string; className?: string; children: React.ReactNode }) {
   const href = `/api/ingressos/${encodeURIComponent(t.code)}/pdf`;
-  const name = `ingresso-${t.code}.pdf`;
-  const ref = useRef<HTMLAnchorElement>(null);
-  const blob = useRef<Blob | null>(null);
-
-  // iPhone/iPad: link do servidor sempre pergunta ou abre a visualização. Com o arquivo já no aparelho,
-  // o toque salva direto em Arquivos › Downloads. Busca o PDF quando o botão aparece na tela.
-  useEffect(() => {
-    const el = ref.current;
-    const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    if (!el || !ios || IN_APP.test(navigator.userAgent)) return;
-    let done = false;
-    const io = new IntersectionObserver(([e]) => {
-      if (!e?.isIntersecting || done) return;
-      done = true;
-      io.disconnect();
-      void fetch(href, { credentials: "same-origin" })
-        .then((r) => (r.ok && r.headers.get("content-type")?.includes("pdf") ? r.blob() : null))
-        .then((b) => { blob.current = b; })
-        .catch(() => {});
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [href]);
-
+  const { flash } = useToast();
   function click(e: React.MouseEvent) {
     const ua = navigator.userAgent;
     // navegador de dentro do Instagram/Facebook não baixa arquivo: no Android abre no Chrome; no iPhone, avisa
@@ -77,15 +55,10 @@ export function TicketPdfButton({ t, className, children }: { t: TicketCardData;
       alert("Este navegador do app não deixa baixar arquivos. Toque nos três pontinhos (⋯) e escolha “Abrir no Safari” (ou no navegador), depois toque em Baixar PDF de novo.");
       return;
     }
-    if (!blob.current) return; // ainda não chegou: segue o link normal
-    e.preventDefault();
-    const url = URL.createObjectURL(new File([blob.current], name, { type: "application/pdf" }));
-    const a = document.createElement("a");
-    a.href = url; a.download = name; a.rel = "noopener";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    // o servidor manda como download (attachment): a página não muda. O iPhone sempre pede uma confirmação.
+    if (/iPhone|iPad|iPod/i.test(ua)) flash("Toque em “Baixar” na janela do iPhone. O ingresso fica em Arquivos › Downloads.");
   }
-  return <a ref={ref} className={className} href={href} download={name} onClick={click}>{children}</a>;
+  return <a className={className} href={href} download={`ingresso-${t.code}.pdf`} onClick={click}>{children}</a>;
 }
 
 const IN_APP = /Instagram|FBAN|FBAV|FB_IAB|Line\//i;
