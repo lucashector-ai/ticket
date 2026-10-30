@@ -105,6 +105,8 @@ type Props = {
   stripeKey?: string | null;
   /** pedido criado e ainda não pago (recarregou a página, voltou de Meus ingressos): continua nele */
   resume?: ResumeData | null;
+  /** escolha nova feita na página do evento enquanto havia este pedido aberto (dá para trocar por ela) */
+  wanted?: { itens: string; label: string } | null;
   /** aviso no topo (ex.: a reserva do pedido anterior acabou) */
   notice?: string | null;
   /** a conta já salvou cartão alguma vez: a etapa do cartão busca os cartões salvos */
@@ -120,7 +122,7 @@ const UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "
 const PAID_KEY = "twPaid";
 let booted = false;
 
-export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, apple = false, stripeKey, resume, notice, hasSavedCards }: Props) {
+export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, apple = false, stripeKey, resume, wanted, notice, hasSavedCards }: Props) {
   const live = !!stripeKey;
   const router = useRouter();
   const { flash } = useToast();
@@ -584,8 +586,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     if (step === "dados") { router.push(choiceUrl); return; }
     go(step === "pagamento" ? "dados" : "pagamento");
   };
-  /** Desiste do pedido retomado: cancela e volta para a escolha com os mesmos ingressos. */
-  async function dropResume() {
+  /** Desiste do pedido retomado: cancela e volta para a escolha com os mesmos ingressos (ou com a escolha nova). */
+  async function dropResume(itens?: string) {
     const id = pendingRef.current?.orderId;
     if (!id || busy) return;
     setBusy(true);
@@ -594,7 +596,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     if (r.paying) { setBusy(false); flash("O pagamento deste pedido já está sendo confirmado. Confira em Meus ingressos em instantes."); return; }
     setPending(null);
     setOrder(null);
-    window.location.assign(`${urlFor()}&aviso=cancelado`);
+    window.location.assign(itens ? `/checkout?${new URLSearchParams({ evento: event.slug, itens }).toString()}` : `${urlFor()}&aviso=cancelado`);
   }
   /** Já paguei: confere na hora (o checkout também confere sozinho a cada 3 s). */
   async function checkPixNow() {
@@ -670,9 +672,13 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
           </span>
           <span className="rsm-t">
             <b>Pedido #{resume.number} aguardando pagamento</b>
-            <span>Continuamos de onde você parou: mesmos ingressos, titulares e valor. A reserva vale enquanto o tempo não acabar.</span>
+            {wanted
+              ? <span>Você já tinha este pedido aberto, com outros ingressos. Agora você escolheu: <b>{wanted.label}</b>. Continue este ou troque pela escolha nova (este pedido é cancelado, nada é cobrado).</span>
+              : <span>Continuamos de onde você parou: mesmos ingressos, titulares e valor. A reserva vale enquanto o tempo não acabar.</span>}
           </span>
-          <button className="rsm-x" type="button" onClick={() => void dropResume()} disabled={busy}>Cancelar pedido</button>
+          {wanted
+            ? <button className="rsm-x rsm-sw" type="button" onClick={() => void dropResume(wanted.itens)} disabled={busy}>Trocar pela escolha nova</button>
+            : <button className="rsm-x" type="button" onClick={() => void dropResume()} disabled={busy}>Cancelar pedido</button>}
         </div>
       )}
 

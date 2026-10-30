@@ -40,6 +40,8 @@ export function limitNote(tiers: TierItem[], maxPerOrder: number): { head: strin
   const cap = open.reduce((s, x) => s + x.limit, 0) > maxPerOrder ? `no máximo ${maxPerOrder} por compra` : null;
   if (limits.size === 1) {
     const l = [...limits][0];
+    // o limite do tipo não aperta antes do máximo da compra: uma frase só
+    if (open.length > 1 && l >= maxPerOrder) return { head: `Até ${maxPerOrder} ingressos por compra`, perRow: false };
     const base = open.length === 1 ? `Até ${l} ${l === 1 ? "ingresso" : "ingressos"} por pessoa` : `Até ${l} de cada tipo por pessoa`;
     return { head: cap && open.length > 1 ? `${base}, ${cap}` : base, perRow: false };
   }

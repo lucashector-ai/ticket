@@ -71,6 +71,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   // voltou ao checkout do evento com um pedido deste evento ainda não pago: continua nele
   if (!order && user) order = await pendingOrderFor(user.id, e.id, ref);
   const resume: ResumeData | null = order ? await resumeView(order) : null;
+  // caiu no pedido aberto vindo da página do evento com outra escolha: a tela oferece trocar por ela
+  const wantedItens = !pedido && resume && !special ? one("itens") : "";
+  const norm = (raw: string) => raw.split(",").filter(Boolean).sort().join(",");
+  const wanted = wantedItens && norm(wantedItens) !== norm(resume!.items.map((i) => `${i.ticketTypeId}:${i.quantity}`).join(","))
+    ? { itens: wantedItens, label: wantedItens.split(",").map((part) => { const [id, q] = part.split(":"); const t = e.ticketTypes.find((x) => x.id === id); return t ? `${q}× ${t.sector ? `${t.sector} · ${t.name}` : t.name}` : null; }).filter(Boolean).join(", ") }
+    : null;
   // pedido já criado passou pela abertura das vendas e pela fila
   if (!special && !resume && (!(await canBuy(e)).ok || !(await queueAllows(e)))) redirect(`/eventos/${e.slug}`);
   const held = special ? new Map<string, number>() : await heldByType(e.id, { exceptUserId: user?.id });
@@ -138,6 +144,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         initialCoupon={resume ? null : one("cupom").toUpperCase() || null}
         initialStep="dados"
         resume={resume}
+        wanted={wanted && wanted.label ? wanted : null}
         notice={notice}
         queueEventId={!special && e.queueMode !== "off" ? e.id : null}
         human={turnstileSiteKey()}
