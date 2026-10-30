@@ -7,14 +7,14 @@
   .lf-n{display:flex;flex-direction:column;gap:2px;min-width:0}
   .lf-n b{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lf-n small{font-size:12.5px;color:#6B6B64;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .lf-plus{flex:none;padding:2px 7px;border-radius:6px;background:#111;color:#D3F55B;font-size:11px;font-weight:700}
+  .lf-plus{flex:none;padding:2px 7px;border-radius:6px;background:#111;color:#EDFF3C;font-size:11px;font-weight:700}
   .lf-doc{font-size:13px;white-space:nowrap}
   .lf-doc a{color:#111;font-weight:600;text-underline-offset:3px}
   .lf-hint{font-size:12px;line-height:1.45;color:#6B6B64}
   .lf-st{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
   .lf-st small{font-size:12px;color:#6B6B64;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lf-a{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-  .b2.lf-arm{background:#111;color:#D3F55B}
+  .b2.lf-arm{background:#111;color:#EDFF3C}
   .x-b.lf-arm{color:#A3290F;font-weight:600}
   .lf-seg{margin-bottom:14px}
   .lf-ck{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:#F6F6F2;font-size:13.5px;color:#33332F;cursor:pointer}
@@ -40,7 +40,7 @@
   .lf-dn{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
   .lf-dn b{display:flex;align-items:center;gap:6px;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lf-dn small{font-size:12px;color:#6B6B64;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .lf-in{flex:none;font-size:12px;font-weight:700;color:#3D5200}
+  .lf-in{flex:none;font-size:12px;font-weight:700;color:#445000}
   .lf-e{justify-content:center;padding:18px 0 !important;font-size:13px;color:#6B6B64}
   @media (max-width:760px){
     .lf-row{grid-template-columns:minmax(0,1fr) auto;row-gap:8px}
@@ -56,12 +56,12 @@
   .pt-kind{display:inline-flex;gap:4px;padding:4px;border-radius:14px;background:#000}
   .pt-kind button{height:38px;padding:0 14px;border-radius:10px;background:none;color:#A1A1A6;font-size:15px;font-weight:700}
   .pt-kind button.on{background:#2C2C2E;color:#fff}
-  .pt-free-n{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;padding:12px 14px;border-radius:16px;background:rgba(211,245,91,.1);box-shadow:inset 0 0 0 1px rgba(211,245,91,.22)}
+  .pt-free-n{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;padding:12px 14px;border-radius:16px;background:rgba(237,255,60,.1);box-shadow:inset 0 0 0 1px rgba(237,255,60,.22)}
   .pt-free-n span{font-size:13.5px;color:#C7C7CC}
-  .pt-free-n b{font:600 22px 'Inter Tight',sans-serif;letter-spacing:-.02em;color:#D3F55B;font-variant-numeric:tabular-nums}
+  .pt-free-n b{font:600 22px 'Inter Tight',sans-serif;letter-spacing:-.02em;color:#EDFF3C;font-variant-numeric:tabular-nums}
   .pt-free-n small{flex-basis:100%;font-size:12px;color:#6E6E73}
-  .pt-av.free{background:#D3F55B;color:#111}
-  .pt-plus{margin-left:6px;padding:1px 6px;border-radius:6px;background:#D3F55B;color:#111;font-size:11.5px;font-style:normal;font-weight:800;vertical-align:2px}
+  .pt-av.free{background:#EDFF3C;color:#111}
+  .pt-plus{margin-left:6px;padding:1px 6px;border-radius:6px;background:#EDFF3C;color:#111;font-size:11.5px;font-style:normal;font-weight:800;vertical-align:2px}
 }
 
 /* ---------- convite da lista free (/lista/<token>) ---------- */
@@ -73,7 +73,7 @@
   .lf-who{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
   .lf-who b{font:600 24px/1.15 'Inter Tight',sans-serif;letter-spacing:-.02em;overflow-wrap:anywhere}
   .lf-who > span:not(.lf-tag){font-size:14px;color:#55554E}
-  .lf-tag{height:24px;padding:0 10px;display:inline-flex;align-items:center;border-radius:999px;background:#111;color:#D3F55B;font-size:12px;font-weight:700}
+  .lf-tag{height:24px;padding:0 10px;display:inline-flex;align-items:center;border-radius:999px;background:#111;color:#EDFF3C;font-size:12px;font-weight:700}
   .lf-inv .gp-st.off{background:#FFE7E0}
   .lf-fine{margin:14px 0 0;font-size:12.5px;line-height:1.5;color:#6B6B64}
   @media (max-width:560px){

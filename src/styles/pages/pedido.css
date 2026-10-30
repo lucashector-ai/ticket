@@ -53,7 +53,7 @@
   .od-sum dt{display:flex;flex-direction:column;gap:1px;min-width:0;color:#3A3A3C}
   .od-sum dt small{font-size:12.5px;color:#6E6E73}
   .od-sum dd{margin:0;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .od-sum .disc dd{color:#2D6A00}
+  .od-sum .disc dd{color:#3E6700}
   .od-sum .tot{border-top:1px solid #E4E4DE;padding-top:12px;margin-top:4px;font:600 17px 'Inter Tight',sans-serif;letter-spacing:-.02em}
   .od-sum .tot dt{color:#111}
   .od-sum .ref dd{color:#1F4FB3}
@@ -73,7 +73,7 @@
   .od-tl li::before{content:"";position:absolute;left:0;top:5px;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #C9C9C2}
   .od-tl li::after{content:"";position:absolute;left:5px;top:19px;bottom:-1px;width:2px;background:#EDEDE7}
   .od-tl li:last-child::after{display:none}
-  .od-tl li.ok::before{border-color:#2D6A00;background:#D3F55B}
+  .od-tl li.ok::before{border-color:#3E6700;background:#EDFF3C}
   .od-tl li.warn::before{border-color:#C97800;background:#FFE2B0}
   .od-tl li.bad::before{border-color:#B3261E;background:#FFD9D5}
   .od-tl li.azul::before{border-color:#1F4FB3;background:#DCE7FF}
@@ -102,7 +102,7 @@
   .od-conf-v{font:600 30px 'Inter Tight',sans-serif;letter-spacing:-.03em}
   .od-conf .ct-note{margin:0}
   .od-ta{height:auto;min-height:88px;padding:12px 14px;resize:vertical;font:inherit;font-size:15px}
-  .od-ok{margin:0;padding:10px 14px;border-radius:12px;background:#E7F8D2;color:#2D6A00;font-size:13.5px;font-weight:600}
+  .od-ok{margin:0;padding:10px 14px;border-radius:12px;background:#F1FED2;color:#3E6700;font-size:13.5px;font-weight:600}
 
   .od-help{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
   .od-help-t{min-width:0;flex:1 1 280px}

@@ -4,16 +4,16 @@
   .ad-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:24px;height:64px;padding:0 24px;background:#111;color:#fff}
   .ad-brand{display:flex;align-items:center;gap:10px;color:#fff}
   .ad-brand svg{display:block;flex:none}
-  .ad-brand span{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#D3F55B}
+  .ad-brand span{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#EDFF3C}
   .ad-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
   .ad-tabs a{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;font-size:14px;font-weight:500;color:#C9CBC2;white-space:nowrap}
   .ad-tabs a:hover{color:#fff;background:#1E1F1B}
-  .ad-tabs a.on{background:#D3F55B;color:#111}
+  .ad-tabs a.on{background:#EDFF3C;color:#111}
   .ad-tabs i{font-style:normal;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#FF5C5C;color:#fff;font-size:11.5px;font-weight:700;display:inline-grid;place-items:center}
   .ad-me{margin-left:auto;font-size:12.5px;color:#8E9186;white-space:nowrap}
   .ad-main{max-width:1240px;margin:0 auto;padding:28px 24px 80px;display:flex;flex-direction:column;gap:16px}
   .ad-warn,.ad-msg{margin:0;padding:12px 16px;border-radius:14px;background:#FFF4DE;color:#7A4A00;font-size:14px}
-  .ad-msg{background:#EDF9D9;color:#2D5A00}
+  .ad-msg{background:#F5FED9;color:#395700}
   .ad-warn a{font-weight:600;text-decoration:underline}
   .ad-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
   .ad-kpi{display:flex;flex-direction:column;gap:8px;padding:20px;border-radius:18px;background:#fff}
@@ -41,7 +41,7 @@
   .ad-btns{flex-direction:row !important;flex-wrap:wrap;gap:6px !important}
   .ad-st{display:inline-flex;align-self:flex-start;align-items:center;height:24px;padding:0 10px;border-radius:999px;background:#F0F0EA;font-size:12px;font-weight:600;color:#55555A}
   .ad-st.pending,.ad-st.requested,.ad-st.processing{background:#FFF0DB;color:#9A5300}
-  .ad-st.approved,.ad-st.paid{background:#E7F8D2;color:#2D6A00}
+  .ad-st.approved,.ad-st.paid{background:#F1FED2;color:#3E6700}
   .ad-st.rejected{background:#FFE7E7;color:#B3261E}
   .ad-b{height:34px;padding:0 14px;border-radius:999px;background:#F0F0EA;font-size:13px;font-weight:600}
   .ad-b:hover{background:#E6E6DF}
@@ -88,7 +88,7 @@
   .hl-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
   .hl-item{border:1px solid #EFEFEA;border-radius:16px;background:#FCFCFA}
   .hl-row{display:grid;grid-template-columns:28px auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 12px}
-  .hl-n{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#111;color:#D3F55B;font-size:13px;font-weight:700}
+  .hl-n{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#111;color:#EDFF3C;font-size:13px;font-weight:700}
   .hl-thumb{display:block;width:168px;border-radius:10px;overflow:hidden;background:#111}
   .hl-thumb .hl-frame{width:100%;aspect-ratio:21 / 9;pointer-events:none}
   .hl-t{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -111,7 +111,7 @@
   .hl-up{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
   .hl-up small,.hl-html small{font-size:12.5px;line-height:1.5;color:#6E6E73}
   .hl-html{display:flex;flex-direction:column;gap:8px}
-  .hl-html textarea{width:100%;min-height:220px;padding:12px 14px;border:1.5px solid #E4E4DE;border-radius:12px;background:#111;color:#E9F5C8;font:13px/1.55 'Space Mono',ui-monospace,monospace;resize:vertical}
+  .hl-html textarea{width:100%;min-height:220px;padding:12px 14px;border:1.5px solid #E4E4DE;border-radius:12px;background:#111;color:#F5FCC8;font:13px/1.55 'Space Mono',ui-monospace,monospace;resize:vertical}
   .hl-html-a{display:flex;align-items:flex-start;gap:10px}
   .hl-prev{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr);gap:12px;align-items:end}
   .hl-prev > span{display:flex;flex-direction:column;gap:6px}
