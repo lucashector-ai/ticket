@@ -26,6 +26,21 @@ const moneyMask = (v: string) => {
   const d = v.replace(/\D/g, "").slice(0, 7);
   return d ? (Number(d) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
 };
+/** Campos obrigatórios na ordem da tela, com a mesma regra do servidor (que continua conferindo). */
+type F = { firstName: string; lastName: string; phone: string; company: string; city: string; uf: string; audience: string; category: string; avgTicket: string; expected: string; source: string; instagram: string };
+const REQ: [keyof F, string, (f: F) => boolean][] = [
+  ["firstName", "Digite seu nome.", (f) => f.firstName.trim().length >= 2],
+  ["lastName", "Digite seu sobrenome.", (f) => f.lastName.trim().length >= 2],
+  ["phone", "Digite o telefone com DDD.", (f) => f.phone.replace(/\D/g, "").length >= 10],
+  ["uf", "Escolha o estado.", (f) => !!f.uf],
+  ["city", "Escolha a cidade do evento.", (f) => f.city.trim().length >= 2],
+  ["category", "Escolha a categoria.", (f) => !!f.category],
+  ["audience", "Conte um pouco sobre o público (pelo menos uma frase).", (f) => f.audience.trim().length >= 10],
+  ["avgTicket", "Digite o valor médio do ingresso.", (f) => !!f.avgTicket],
+  ["expected", "Digite quantas pessoas você espera (a partir de 10).", (f) => Number(f.expected.replace(/\D/g, "")) >= 10],
+  ["source", "Conte como chegou até a Tickets Win.", (f) => !!f.source],
+];
+
 const intMask = (v: string) => { const d = v.replace(/\D/g, "").slice(0, 6); return d ? Number(d).toLocaleString("pt-BR") : ""; };
 
 /** /criar-evento para quem ainda não é produtor: como funciona, a inscrição e o status da análise. */
@@ -33,16 +48,34 @@ export function ProducerApply(p: Props) {
   const router = useRouter();
   const [form, setForm] = useState(p.app?.status !== "pending" && !p.app);
   const [done, setDone] = useState(false);
-  const [f, setF] = useState({
+  const [f, setF] = useState<F>({
     firstName: p.firstName, lastName: p.lastName, phone: p.phone, company: "", city: "", uf: "", audience: "", category: "",
     avgTicket: "", expected: "", source: "", instagram: "",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const set = (patch: Partial<typeof f>) => { setF((o) => ({ ...o, ...patch })); setErr(null); };
+  const [bad, setBad] = useState<Partial<Record<keyof F, string>>>({});
+  const set = (patch: Partial<F>) => {
+    setF((o) => ({ ...o, ...patch })); setErr(null);
+    setBad((o) => { const n = { ...o }; for (const k of Object.keys(patch) as (keyof F)[]) delete n[k]; return n; });
+  };
+  /** marca o campo e mostra o motivo embaixo dele */
+  const fe = (k: keyof F) => (bad[k] ? <small className="ins-fe" id={`ins-e-${k}`}>{bad[k]}</small> : null);
+  const cls = (k: keyof F) => (bad[k] ? "ins-f bad" : "ins-f");
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
+    // tudo o que falta de uma vez (antes, um erro por envio), com o foco no primeiro campo
+    const miss = REQ.filter(([, , ok]) => !ok(f));
+    if (miss.length) {
+      setBad(Object.fromEntries(miss.map(([k, m]) => [k, m])));
+      setErr(miss.length === 1 ? miss[0][1] : `Faltam ${miss.length} campos. Eles estão marcados em vermelho.`);
+      const el = document.querySelector<HTMLElement>(`[data-f="${miss[0][0]}"]`);
+      const target = el?.querySelector<HTMLElement>("input:not([type=hidden]),select,textarea,button") ?? el;
+      target?.focus({ preventScroll: true });
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     setBusy(true); setErr(null);
     const r = await submitApplication(f as AppInput).catch(() => ({ ok: false, error: "Não foi possível enviar agora. Tente de novo." }));
     setBusy(false);
@@ -97,34 +130,35 @@ export function ProducerApply(p: Props) {
             <fieldset>
               <legend>Sobre você</legend>
               <div className="ins-g2">
-                <label className="ins-f"><span>Nome *</span><input value={f.firstName} onChange={(e) => set({ firstName: e.target.value })} autoComplete="given-name" /></label>
-                <label className="ins-f"><span>Sobrenome *</span><input value={f.lastName} onChange={(e) => set({ lastName: e.target.value })} autoComplete="family-name" /></label>
+                <label className={cls("firstName")} data-f="firstName"><span>Nome *</span><input aria-invalid={!!bad.firstName} value={f.firstName} onChange={(e) => set({ firstName: e.target.value })} autoComplete="given-name" />{fe("firstName")}</label>
+                <label className={cls("lastName")} data-f="lastName"><span>Sobrenome *</span><input aria-invalid={!!bad.lastName} value={f.lastName} onChange={(e) => set({ lastName: e.target.value })} autoComplete="family-name" />{fe("lastName")}</label>
               </div>
-              <div className="ins-f"><span>Telefone (WhatsApp) *</span><PhoneField value={f.phone} onChange={(v) => set({ phone: v })} /></div>
+              <div className={cls("phone")} data-f="phone"><span>Telefone (WhatsApp) *</span><PhoneField value={f.phone} onChange={(v) => set({ phone: v })} invalid={!!bad.phone} />{fe("phone")}</div>
             </fieldset>
 
             <fieldset>
               <legend>Seus eventos</legend>
               <label className="ins-f"><span>Nome da produtora</span><input autoComplete="off" value={f.company} onChange={(e) => set({ company: e.target.value })} placeholder="Se tiver" maxLength={120} /></label>
               <div className="ins-g2 city">
-                <label className="ins-f"><span>Estado *</span><UfSelect value={f.uf} onChange={(uf) => set({ uf })} /></label>
-                <label className="ins-f"><span>Cidade do evento *</span><CitySelect uf={f.uf} value={f.city} onChange={(city) => set({ city })} /></label>
+                <label className={cls("uf")} data-f="uf"><span>Estado *</span><UfSelect value={f.uf} onChange={(uf) => set({ uf })} invalid={!!bad.uf} />{fe("uf")}</label>
+                <label className={cls("city")} data-f="city"><span>Cidade do evento *</span><CitySelect uf={f.uf} value={f.city} onChange={(city) => set({ city })} invalid={!!bad.city} />{fe("city")}</label>
               </div>
-              <div className="ins-f"><span>Categoria do evento *</span>
-                <div className="ins-chips" role="radiogroup" aria-label="Categoria do evento">
+              <div className={cls("category")} data-f="category"><span>Categoria do evento *</span>
+                <div className="ins-chips" role="radiogroup" aria-label="Categoria do evento" aria-invalid={!!bad.category}>
                   {p.categories.map((c) => <button key={c} type="button" role="radio" aria-checked={f.category === c} className={f.category === c ? "on" : undefined} onClick={() => set({ category: c })}>{c}</button>)}
                 </div>
+                {fe("category")}
               </div>
-              <label className="ins-f"><span>Público-alvo *</span><textarea rows={3} value={f.audience} onChange={(e) => set({ audience: e.target.value })} placeholder="Conte as características do público: idade, estilo, de onde vem, o que curte." maxLength={600} /></label>
+              <label className={cls("audience")} data-f="audience"><span>Público-alvo *</span><textarea aria-invalid={!!bad.audience} rows={3} value={f.audience} onChange={(e) => set({ audience: e.target.value })} placeholder="Conte as características do público: idade, estilo, de onde vem, o que curte." maxLength={600} />{fe("audience")}</label>
               <div className="ins-g2">
-                <label className="ins-f"><span>Ticket médio *</span><span className="ins-pre"><b>R$</b><input autoComplete="off" inputMode="numeric" value={f.avgTicket} onChange={(e) => set({ avgTicket: moneyMask(e.target.value) })} placeholder="0,00" /></span><small>Valor médio do ingresso</small></label>
-                <label className="ins-f"><span>Público esperado *</span><input autoComplete="off" inputMode="numeric" value={f.expected} onChange={(e) => set({ expected: intMask(e.target.value) })} placeholder="Ex.: 400" /><small>Pessoas por evento</small></label>
+                <label className={cls("avgTicket")} data-f="avgTicket"><span>Ticket médio *</span><span className="ins-pre"><b>R$</b><input aria-invalid={!!bad.avgTicket} autoComplete="off" inputMode="numeric" value={f.avgTicket} onChange={(e) => set({ avgTicket: moneyMask(e.target.value) })} placeholder="0,00" /></span>{fe("avgTicket") ?? <small>Valor médio do ingresso</small>}</label>
+                <label className={cls("expected")} data-f="expected"><span>Público esperado *</span><input aria-invalid={!!bad.expected} autoComplete="off" inputMode="numeric" value={f.expected} onChange={(e) => set({ expected: intMask(e.target.value) })} placeholder="Ex.: 400" />{fe("expected") ?? <small>Pessoas por evento</small>}</label>
               </div>
             </fieldset>
 
             <fieldset>
               <legend>Para fechar</legend>
-              <label className="ins-f"><span>Como chegou até a Tickets Win? *</span><select value={f.source} onChange={(e) => set({ source: e.target.value })}><option value="">Escolha uma opção</option>{p.sources.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+              <label className={cls("source")} data-f="source"><span>Como chegou até a Tickets Win? *</span><select aria-invalid={!!bad.source} value={f.source} onChange={(e) => set({ source: e.target.value })}><option value="">Escolha uma opção</option>{p.sources.map((s) => <option key={s} value={s}>{s}</option>)}</select>{fe("source")}</label>
               <label className="ins-f"><span>Instagram da produtora ou do evento</span><span className="ins-pre"><b>@</b><input autoComplete="off" value={f.instagram.replace(/^@/, "")} onChange={(e) => set({ instagram: e.target.value })} placeholder="suaprodutora" autoCapitalize="off" /></span></label>
             </fieldset>
 
