@@ -384,6 +384,12 @@
   .x-b{font-size:13px;color:#8A8A82;text-decoration:underline;text-underline-offset:3px;background:none;border:0;cursor:pointer}
   .x-b:hover{color:#A3290F}
   .ptr{display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:16px;padding:12px 0;border-top:1px solid #F0F0EB}
+  /* Equipe e check-in: cada evento com os botões e o quadro de acessos do app da portaria */
+  .ptr-ev + .ptr-ev{margin-top:10px}
+  .ptr-a{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+  .ptr-acc > .cx{margin:0 0 6px;padding:18px 20px;border-radius:20px;background:#F7F7F3;box-shadow:none}
+  .ptr-acc .cl-new input{background:#fff}
+  @media (max-width:640px){.ptr{grid-template-columns:54px minmax(0,1fr)}.ptr-a{grid-column:1/-1;justify-content:stretch}.ptr-a > *{flex:1}}
   .ptr:first-of-type{border-top:0}
   .roles{display:grid;gap:8px;margin-top:4px}
   .roles div{font-size:13px;color:#55554E;line-height:1.45}

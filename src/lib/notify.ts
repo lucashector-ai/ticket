@@ -447,9 +447,15 @@ export const mailTeamInvite = safe("team", async (email: string, role: string, o
   await sendTx(email, `Convite para a equipe de ${orgName}`, {
     preheader: `${inviter || orgName} chamou você para a equipe na Tickets Win.`,
     eyebrow: "Convite de equipe", title: `Entre para a equipe de ${orgName}`,
-    paragraphs: [`${inviter || orgName} adicionou este e-mail à equipe de ${orgName} na Tickets Win.`, "Entre (ou crie a conta) com este mesmo e-mail e o painel do produtor já abre com o seu acesso."],
-    blocks: [{ kind: "rows", rows: [["Produtor", orgName], ["Função", ROLE_LABEL[role] ?? role]] }],
-    cta: { label: "Abrir o painel", url: "/painel" },
+    paragraphs: role === "portaria"
+      ? [`${inviter || orgName} adicionou este e-mail à equipe de ${orgName} na Tickets Win para fazer o check-in na entrada dos eventos.`,
+        "Entre (ou crie a conta) com este mesmo e-mail pelo celular. Na tela de Check-in, toque em “Abrir app da portaria” no evento: o seu acesso é criado na hora e a câmera já abre para ler os QR codes dos ingressos."]
+      : [`${inviter || orgName} adicionou este e-mail à equipe de ${orgName} na Tickets Win.`, "Entre (ou crie a conta) com este mesmo e-mail e o painel do produtor já abre com o seu acesso."],
+    blocks: [
+      { kind: "rows", rows: [["Produtor", orgName], ["Função", ROLE_LABEL[role] ?? role]] },
+      ...(role === "portaria" ? [{ kind: "note" as const, text: "Dica: no celular, depois de abrir o app da portaria, use “Adicionar à tela de início” para abrir como um aplicativo no dia do evento." }] : []),
+    ],
+    cta: role === "portaria" ? { label: "Abrir o check-in", url: "/painel/equipe" } : { label: "Abrir o painel", url: "/painel" },
     reason: `Você recebeu este e-mail porque ${orgName} convidou ${email} para a equipe na Tickets Win.`,
   });
 });
