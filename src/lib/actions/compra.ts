@@ -67,6 +67,9 @@ async function findCoupon(code: string, eventId: string) {
   return { ok: true as const, coupon: c };
 }
 
+/** pedidos por conta a cada 10 min (trocar a forma de pagamento cria outro; uso normal fica bem abaixo) */
+const ORDERS_PER_10MIN = 12;
+
 /** consultas de cupom por IP a cada 10 min (sem login): impede descobrir códigos chutando */
 const COUPON_CHECKS = 30;
 
@@ -110,6 +113,8 @@ function checkHolders(holders: PlaceOrderInput["holders"], own: string[], limits
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Entre na sua conta para finalizar a compra.", needsLogin: true };
+  // cada pedido segura os ingressos por 15 min: criar pedidos em sequência viraria um jeito de travar o estoque
+  if (!(await allowHit(`pedido:${user.id}`, ORDERS_PER_10MIN, 600))) return { ok: false, error: "Muitos pedidos em pouco tempo. Espere alguns minutos e tente de novo." };
   const parsed = placeSchema.safeParse(input);
   if (!parsed.success) {
     const missing = Array.from(new Set(parsed.error.issues.map((i) => i.message)));
