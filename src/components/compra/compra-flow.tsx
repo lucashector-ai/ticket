@@ -15,6 +15,7 @@ import { StripeCard, type BillingAddress, type StripeCardApi } from "./stripe-ca
 import { CardBrand, expLabel } from "./card-brand";
 import { QueueGate } from "@/components/queue-gate";
 import { installmentOptions, money, priceOrder } from "@/lib/pricing";
+import { InstSelect } from "./inst-select";
 import { InlineAuth } from "./inline-auth";
 import { cardBrand, expOk, fmtCard, fmtCep, fmtCpf, fmtExp, isEmail, isFullName, mmss, onlyDigits, printedNameOk } from "./format";
 import { cpfValid } from "@/lib/cpf";
@@ -204,6 +205,15 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   /** botão de pagar: processando (lima, com a barra) → aprovado (check) → cortina */
   const [payPhase, setPayPhase] = useState<"idle" | "paying" | "approved">("idle");
   const ctaRef = useRef<HTMLButtonElement>(null);
+  /* teclado do celular aberto (a área visível encolhe): a barra de pagar sai da frente do campo e volta ao fechar */
+  const [kb, setKb] = useState(false);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const on = () => setKb(document.documentElement.clientHeight - vv.height * vv.scale > 120);
+    vv.addEventListener("resize", on);
+    return () => vv.removeEventListener("resize", on);
+  }, []);
   const [authNudge, setAuthNudge] = useState(false);
   const authRef = useRef<HTMLDivElement>(null);
   /* cronômetros da reserva e do Pix: com pedido criado, contam até o prazo dele (pelo relógio do aparelho) */
@@ -824,22 +834,28 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               <div className="pane" hidden={step !== "pagamento"}>
                 <h1 className="ck-h">Pagamento</h1>
                 <p className="ck-p">Escolha como prefere pagar. Os ingressos chegam no seu e-mail assim que o pagamento é aprovado.</p>
-                <div className="pm" role="radiogroup" aria-label="Forma de pagamento">
-                  <button className={pay === "pix" ? "pmo on" : "pmo"} type="button" role="radio" aria-checked={pay === "pix"} onClick={() => { setPay("pix"); setTried(false); setPayErr(null); }}>
-                    <span className="pm-r" aria-hidden="true" />
-                    <span className="pm-ic" aria-hidden="true">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M12 2.8l4.2 4.2-4.2 4.2L7.8 7z" /><path d="M12 12.8l4.2 4.2-4.2 4.2-4.2-4.2z" /><path d="M2.8 12l4.2-4.2 4.2 4.2-4.2 4.2z" /><path d="M12.8 12l4.2-4.2 4.2 4.2-4.2 4.2z" /></svg>
-                    </span>
-                    <span className="pm-i"><b className="pm-t">Pix</b><span className="pm-s">Aprovação na hora</span></span>
-                    <span className="pm-tag">Recomendado</span>
-                  </button>
-                  <button className={pay === "card" ? "pmo on" : "pmo"} type="button" role="radio" aria-checked={pay === "card"} onClick={() => { setPay("card"); setTried(false); setPayErr(null); }}>
-                    <span className="pm-r" aria-hidden="true" />
-                    <span className="pm-ic" aria-hidden="true">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3" /><path d="M2.5 10h19M6.5 15h4" /></svg>
-                    </span>
-                    <span className="pm-i"><b className="pm-t">Cartão de crédito</b><span className="pm-s">Em até 6x</span></span>
-                  </button>
+                {/* a forma escolhida ocupa o espaço; a outra vira uma caixa pequena em cima (as duas são opções do mesmo grupo) */}
+                <div className="pm2" role="radiogroup" aria-label="Forma de pagamento">
+                  {(pay === "pix" ? ["card", "pix"] as const : ["pix", "card"] as const).map((m) => {
+                    const on = pay === m;
+                    const pick = () => { if (on) return; setPay(m); setTried(false); setPayErr(null); };
+                    const ic = m === "pix"
+                      ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M12 2.8l4.2 4.2-4.2 4.2L7.8 7z" /><path d="M12 12.8l4.2 4.2-4.2 4.2-4.2-4.2z" /><path d="M2.8 12l4.2-4.2 4.2 4.2-4.2 4.2z" /><path d="M12.8 12l4.2-4.2 4.2 4.2-4.2 4.2z" /></svg>
+                      : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2.5" y="5" width="19" height="14" rx="3" /><path d="M2.5 10h19M6.5 15h4" /></svg>;
+                    return on ? (
+                      <button key={m} className="pmc" type="button" role="radio" aria-checked="true" onClick={pick}>
+                        <span className="pm-ic" aria-hidden="true">{ic}</span>
+                        <span className="pm-i"><b className="pm-t">{m === "pix" ? "Pix" : "Cartão de crédito"}</b><span className="pm-s">{m === "pix" ? "Aprovação na hora" : "Em até 6x"}</span></span>
+                        {m === "pix" && <span className="pm-tag">Recomendado</span>}
+                      </button>
+                    ) : (
+                      <button key={m} className="pma" type="button" role="radio" aria-checked="false" onClick={pick}>
+                        <span className="pm-ic" aria-hidden="true">{ic}</span>
+                        <span className="pma-t">{m === "pix" ? <><b>Prefere Pix?</b> Aprovação na hora</> : <><b>Prefere cartão?</b> Em até 6x</>}</span>
+                        <svg className="pma-go" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
+                      </button>
+                    );
+                  })}
                 </div>
                 {pay === "pix" ? (
                   <div className="pixinfo">
@@ -902,6 +918,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                         <input className={`${bad(ccOk.name)} cd-up`} type="text" placeholder="Como aparece no cartão" value={cardName ?? (other ? "" : name)} onChange={(e) => setCardName(e.target.value.replace(/[^\p{L}' .-]/gu, "").slice(0, 80))} autoComplete="cc-name" autoCapitalize="characters" spellCheck={false} aria-invalid={tried && !ccOk.name} />
                       </label>
 
+                      <div className="cd-opts">
                       <label className={other ? "cd-tg on" : "cd-tg"}>
                         <input className="sr" type="checkbox" role="switch" checked={other} onChange={(e) => {
                           const on = e.target.checked;
@@ -912,7 +929,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                         }} />
                         <span className="cd-tg-t">
                           <b>O cartão é de outra pessoa?</b>
-                          <small>Por exemplo, de um familiar. Os ingressos continuam no seu nome e na sua conta.</small>
+                          <small>De um familiar, por exemplo. Os ingressos continuam com você.</small>
                         </span>
                         <span className="cd-sw" aria-hidden="true" />
                       </label>
@@ -977,30 +994,15 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                           <span className="ck-box" aria-hidden="true">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
                           </span>
-                          <span className="ck-t">Salvar este cartão para as próximas compras<span className="ck-sub">Na sua conta aparecem só a bandeira e os 4 últimos dígitos.</span></span>
+                          <span className="ck-t">Salvar para as próximas compras<span className="ck-sub">Só a bandeira e os 4 últimos dígitos ficam visíveis.</span></span>
                         </button>
                       )}
+                      </div>
                       {tried && !cardValid && <p className="err" role="alert">Confira: {cardErr.join(", ")}.</p>}
                     </div>
 
-                    <h2 className="ck-h3">Parcelas</h2>
-                    <div className="inst" role="radiogroup" aria-label="Parcelas">
-                      {installments.map((o) => {
-                        // o banco disse quais parcelas este cartão aceita: as outras ficam marcadas (ainda dá para trocar de cartão)
-                        const no = !!cardInst && o.n > 1 && !cardInst.includes(o.n);
-                        return (
-                          <button key={o.n} className={`ino${o.n === inst ? " on" : ""}${no ? " off" : ""}`} type="button" role="radio" aria-checked={o.n === inst} onClick={() => { setInst(o.n); setPayErr(null); }}>
-                            <b className="in-n">{o.n}x <span className="in-v">{money(o.eachCents)}</span></b>
-                            <span className="in-s">{no ? "indisponível neste cartão" : o.interestFree ? "sem juros" : `com juros · total ${money(o.totalCents)}`}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="cd-tot" aria-live="polite">
-                      <span className="cd-tot-k">Total no cartão</span>
-                      <b className="cd-tot-v">{money(price.total)}</b>
-                      <span className="cd-tot-s">{inst === 1 ? "à vista, em 1x" : `${inst}x de ${money(installments.find((o) => o.n === inst)?.eachCents ?? Math.round(price.total / inst))} ${inst <= 3 ? "sem juros" : `com juros (${money(price.interest)})`}`}</span>
-                    </div>
+                    <label className="ck-h3 is-l" htmlFor="ck-inst">Parcelas</label>
+                    <InstSelect id="ck-inst" options={installments} value={inst} blocked={cardInst} onChange={(n) => { setInst(n); setPayErr(null); }} />
                   </div>
                 )}
                 {payErr && <p className="err pay-err" role="alert">{payErr}</p>}
@@ -1116,6 +1118,11 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 <span className="sm-inst">{price.installments}x de {money(Math.round(price.total / price.installments))}{price.installments <= 3 ? " sem juros" : ""}</span>
               )}
               {(step === "dados" || step === "pagamento") && (
+                <div className={kb ? "ck-cta kb" : "ck-cta"}>
+                <span className="ck-cta-t" aria-hidden="true">
+                  <small>Total</small><b>{totalLabel}</b>
+                  {step === "pagamento" && pay === "card" && <small>{price.installments === 1 ? "à vista no cartão" : `${price.installments}x de ${money(Math.round(price.total / price.installments))}${price.installments <= 3 ? " sem juros" : " com juros"}`}</small>}
+                </span>
                 <button
                   ref={ctaRef}
                   className={`go2 block tw-pay-btn${payPhase === "paying" ? " is-paying" : payPhase === "approved" ? " is-paying is-approved" : ""}`}
@@ -1126,6 +1133,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                   <span data-label>{payPhase === "paying" ? "Processando pagamento" : payPhase === "approved" ? "Pagamento aprovado" : busy ? "Aguarde…" : ctaLabel}</span>
                   <svg className="tw-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
                 </button>
+                </div>
               )}
               {(step === "dados" || step === "pagamento" || step === "pix") && (
                 <button className="back2" type="button" onClick={prev}>{step === "dados" && !lock ? "Alterar ingressos" : "Voltar"}</button>

@@ -93,7 +93,8 @@ export function StripeCard({ publishableKey, amountCents, hidden, ref }: Props) 
     void (async () => {
       try {
         const { loadStripe } = await import("@stripe/stripe-js");
-        const stripe = await loadStripe(publishableKey, { locale: "pt-BR" });
+        // sem o assistente de testes da Stripe (botão flutuante no canto, por cima da barra de pagar no celular)
+        const stripe = await loadStripe(publishableKey, { locale: "pt-BR", developerTools: { assistant: { enabled: false } } });
         if (!alive || !box.current) return;
         if (!stripe) { fail(); return; }
         const elements = stripe.elements({

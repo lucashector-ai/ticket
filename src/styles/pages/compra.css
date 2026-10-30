@@ -460,3 +460,76 @@
   .cbr.diners{background:#0079BE;color:#FFFFFF;box-shadow:none;font-size:9px}
   .cbr.gen,.cbr.add{color:#3A3A3C}
 }
+
+/* Pagamento compacto (pedido do dono, 30/10): a forma escolhida ocupa o espaço e a outra vira uma caixa pequena
+   em cima; parcelas num menu; "outra pessoa" e "salvar" num bloco só; no celular/tablet, barra fixa com o total
+   e o botão de pagar (como a barra de compra da página do evento). */
+.pg-compra {
+  .pm2{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+  .pmc{position:relative;display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border-radius:18px;background:#FFFFFF;box-shadow:0 0 0 2px #111 inset;text-align:left;cursor:default}
+  .pmc .pm-ic{width:40px;height:40px;border-radius:12px;background:#F4F4F1}
+  .pmc .pm-tag{position:static;margin-left:auto}
+  .pma{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:6px 14px 6px 6px;border-radius:14px;background:#F7F7F2;text-align:left;font-size:14px;color:#3A3A3C;transition:background .2s}
+  .pma:hover{background:#F0F0EA}
+  .pma:focus-visible,.pmc:focus-visible{outline:2px solid #111;outline-offset:2px}
+  .pma .pm-ic{width:36px;height:36px;border-radius:10px}
+  .pma-t{flex:1;min-width:0}
+  .pma-t b{font-weight:600;color:#111}
+  .pma-go{flex:none;color:#111;transition:transform .3s var(--ease)}
+  .pma:hover .pma-go{transform:translateX(3px)}
+  .pixinfo .ck-p{margin:0}
+  .cardf{margin-top:20px}
+  .cd-opts{display:flex;flex-direction:column;border-radius:18px;background:#F7F7F2;overflow:hidden}
+  .cd-opts .cd-tg,.cd-opts .cd-tg.on{border-radius:0;background:transparent;padding:14px 16px}
+  .cd-opts .cd-tg.on{background:#FAFED4}
+  .cd-opts .cd-hold{margin-top:0;border-radius:0}
+  .cd-opts .cd-save{padding:14px 16px;border-top:1px solid #EAEAE4}
+  .cd-opts .cd-tg-t small,.cd-opts .cd-save .ck-sub{font-size:12.5px}
+  .is-l{display:block}
+  .is-b{display:flex;align-items:center;width:100%;min-height:52px;padding:8px 44px 8px 16px;border-radius:14px;background:#F7F7F2 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 16px center/14px;text-align:left;font-size:15px;color:#111;cursor:pointer;transition:background-color .2s,box-shadow .2s}
+  .is-b:hover{background-color:#F0F0EA}
+  .is-b:focus-visible,.is-b[aria-expanded="true"]{outline:none;background-color:#FFFFFF;box-shadow:0 0 0 2px #111 inset}
+  .is-v{min-width:0}
+  .is-v b{font-weight:600;font-variant-numeric:tabular-nums}
+  .is-s{color:#465800;font-size:13.5px}
+  .is-s.bad{color:#B3261E}
+  .is-pop{min-width:0;max-height:320px}
+  .is-pop.up{top:auto;bottom:calc(100% + 6px)}
+  .is-pop li{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .is-pop li b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .is-pop li small{margin:0;font-size:12.5px;font-weight:500;color:#6E6E73;text-align:right}
+  .is-pop li.on::after{display:none}
+  .is-pop li.on small{color:#465800}
+  .is-pop li.no small{color:#B3261E}
+  /* a lista das parcelas abre por cima do resumo (que vem depois na página no celular) */
+  .ck-main{position:relative;z-index:2}
+  .ck-cta-t{display:none}
+  @media (max-width:1024px){
+    .ck{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+    .ck-cta{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));z-index:70;display:flex;align-items:center;gap:12px;width:min(560px,calc(100vw - 24px));padding:7px 7px 7px 18px;border-radius:999px;background:#111;color:#fff;box-shadow:0 18px 36px -14px rgba(0,0,0,.55);transform:translateX(-50%);transition:opacity .2s,transform .3s var(--ease);box-sizing:border-box}
+    .ck-cta-t{display:flex;flex-direction:column;min-width:0;flex:1}
+    .ck-cta-t small{font-size:11px;line-height:1.2;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ck-cta-t b{font:600 17px/1.2 'Inter Tight',sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .ck-cta .go2.block{flex:none;width:auto;max-width:62%;height:46px;margin:0;padding:0 18px;background:#EDFF3C;color:#111;font-size:14.5px}
+    .ck-cta .go2.block span[data-label]{overflow:hidden;text-overflow:ellipsis}
+    .ck-cta .go2.block:disabled{opacity:.75}
+  }
+  /* teclado do celular aberto (compra-flow marca .kb pela área visível): a barra sai da frente do campo */
+  @media (max-width:1024px){
+    .ck-cta.kb{opacity:0;transform:translate(-50%,24px);pointer-events:none}
+  }
+  @media (max-width:420px){
+    .is-pop li{flex-direction:column;align-items:flex-start;gap:1px}
+    .is-pop li small{text-align:left}
+  }
+  @media (max-width:360px){
+    .ck-cta{gap:8px;padding-left:14px}
+    .ck-cta .go2.block{padding:0 14px;font-size:14px}
+    .ck-cta .go2.block .tw-arrow{display:none}
+  }
+}
+/* a aba de acessibilidade sobe acima da barra de pagar; o fim do rodapé não fica atrás dela */
+@media (max-width:1024px){
+  body:has(.pg-compra .ck-cta) .a11y-tab{bottom:calc(84px + env(safe-area-inset-bottom))}
+  body:has(.pg-compra .ck-cta) .ftr{padding-bottom:120px}
+}
