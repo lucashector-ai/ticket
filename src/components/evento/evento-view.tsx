@@ -24,6 +24,7 @@ import { VenueMap } from "./venue-map";
 import { brl } from "@/lib/format";
 import { BuySheet, firstStep, useBuySheet } from "./buy-sheet";
 import { ResaleCard } from "./resale-card";
+import { LD_KEY, LD_SEEN_SCRIPT } from "@/lib/inline-scripts";
 
 type Props = {
   e: EventoData;
@@ -38,8 +39,6 @@ type Props = {
   openBuy?: boolean;
 };
 
-/** marca na sessão que o loader de entrada do evento já apareceu */
-const LD_KEY = "tw:ld";
 
 /** Carga direta (link, recarregar, voltar do checkout): esconde o loader antes da primeira pintura
  *  se ele já apareceu nesta sessão. Na navegação interna quem esconde é o useLayoutEffect.
@@ -49,7 +48,7 @@ function LdSeenScript() {
     <script
       type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
       suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem("${LD_KEY}")==="1"){var l=document.currentScript.previousElementSibling;if(l)l.style.display="none"}}catch(e){}` }}
+      dangerouslySetInnerHTML={{ __html: LD_SEEN_SCRIPT }}
     />
   );
 }

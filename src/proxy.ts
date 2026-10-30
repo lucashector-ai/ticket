@@ -1,5 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
+import { contentSecurityPolicy, cspHeaderName, newNonce } from "@/lib/csp";
 
 type Middleware = ReturnType<typeof auth.middleware>;
 let middleware: Middleware | undefined;
@@ -9,6 +10,26 @@ const PROTECTED = ["/meus-ingressos", "/conta", "/ingressos", "/criar-evento", "
 
 /** Parâmetro com que o Neon Auth volta do Google; precisa ser trocado pela sessão. */
 const OAUTH_VERIFIER = "neon_auth_session_verifier";
+
+/**
+ * CSP com nonce novo a cada página: vai no pedido (o Next lê o nonce dali e coloca nos scripts dele) e na resposta
+ * (o navegador aplica). Ver src/lib/csp.ts.
+ */
+function withCsp(request: NextRequest) {
+  const nonce = newNonce();
+  const policy = contentSecurityPolicy(nonce);
+  const headers = new Headers(request.headers);
+  headers.set(cspHeaderName().toLowerCase(), policy);
+  headers.set("x-nonce", nonce);
+  const sign = <T extends Response>(res: T) => {
+    try {
+      res.headers.set(cspHeaderName(), policy);
+      res.headers.set("Reporting-Endpoints", 'csp="/api/csp-report"');
+    } catch { /* cabeçalho imutável (redirecionamento pronto): segue sem */ }
+    return res;
+  };
+  return { headers, sign };
+}
 
 export default async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
@@ -29,7 +50,8 @@ export default async function proxy(request: NextRequest) {
     }
     const url = request.nextUrl.clone();
     url.pathname = `/banco${pathname === "/" ? "" : pathname}`;
-    return NextResponse.rewrite(url);
+    const csp = withCsp(request);
+    return csp.sign(NextResponse.rewrite(url, { request: { headers: csp.headers } }));
   }
   // com o subdomínio configurado (BANK_URL), /banco no domínio principal leva para ele; sem ele, o banco fica em /banco
   if ((pathname === "/banco" || pathname.startsWith("/banco/")) && process.env.BANK_URL?.startsWith("https://")) {
@@ -37,9 +59,11 @@ export default async function proxy(request: NextRequest) {
   }
   const isProtected = PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`)) || pathname.startsWith("/checkout/");
   const returningFromOAuth = searchParams.has(OAUTH_VERIFIER);
-  if (!isProtected && !returningFromOAuth) return NextResponse.next();
+  const csp = withCsp(request);
+  if (!isProtected && !returningFromOAuth) return csp.sign(NextResponse.next({ request: { headers: csp.headers } }));
   middleware ??= auth.middleware({ loginUrl: "/entrar" });
-  return withNext(await middleware(request), request);
+  // o middleware do login repassa os cabeçalhos do pedido que recebe (com a CSP e o nonce)
+  return csp.sign(withNext(await middleware(new NextRequest(request, { headers: csp.headers })), request));
 }
 
 /**

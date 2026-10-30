@@ -11,20 +11,25 @@
  *   válido → liberado · o mesmo de novo → "Já entrou às HH:MM" · de outro evento · reembolsado · cancelado ·
  *   QR adulterado (assinatura trocada) → "QR code inválido…".
  * E2E_KEEP=1 mantém os vídeos .y4m e os prints na pasta E2E_OUT (padrão: pasta temporária).
+ * E2E_BROWSER=firefox|webkit: esses navegadores não leem vídeo de arquivo como câmera; a câmera vira um <canvas>
+ * com a mesma imagem do QR (getUserMedia → canvas.captureStream), e o resto do caminho (vídeo → leitor de QR →
+ * servidor) é o mesmo. Validado no Firefox; no WebKit sem tela o vídeo do canvas não chega ao <video> e a leitura
+ * não acontece (limite do WebKit headless, também sem a CSP). E2E_STATE (sessão salva no lugar da senha) e
+ * E2E_CSP=enforce: ver tests/e2e/browser.mjs.
  */
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
-import { grayFromSvg, grayFromText, readGray, writeY4m } from "./qr-y4m.mjs";
+import { grayFromSvg, grayFromText, H, readGray, W, writeY4m } from "./qr-y4m.mjs";
 
-const require = createRequire(import.meta.url);
-const { chromium } = require("playwright");
+import { browserName, browserType, launchOpts, login, missingLogin, stateOpt, watchCsp } from "./browser.mjs";
+
 const { neon } = createRequire(new URL("../../package.json", import.meta.url))("@neondatabase/serverless");
 
 const base = process.env.E2E_BASE ?? "http://localhost:3042";
-const need = ["E2E_EMAIL", "E2E_PASSWORD", "E2E_EVENT", "TEST_DATABASE_URL"].filter((k) => !process.env[k]);
+const need = [...missingLogin(), ...["E2E_EVENT", "TEST_DATABASE_URL"].filter((k) => !process.env[k])];
 if (need.length) { console.error("faltam:", need.join(", ")); process.exit(2); }
 if (!/^http:\/\/(localhost|127\.0\.0\.1)/.test(base)) { console.error("só contra o servidor local"); process.exit(2); }
 if (process.env.DATABASE_URL_PROD && process.env.DATABASE_URL_PROD === process.env.TEST_DATABASE_URL) { console.error("TEST_DATABASE_URL é a produção: recusado"); process.exit(2); }
@@ -38,7 +43,9 @@ const [ev] = await sql`select e.id, e.title, e.organizer_id, coalesce(g.owner_us
   from events e left join organizers g on g.id = e.organizer_id where e.slug = ${process.env.E2E_EVENT}`;
 if (!ev?.tt) { console.error("evento sem tipo de ingresso"); process.exit(2); }
 const created = { events: [], orders: [] };
-const b = await chromium.launch();
+console.log(`navegador: ${browserName}${process.env.E2E_CSP === "enforce" ? " · CSP bloqueando" : ""}`);
+const b = await browserType().launch(launchOpts());
+const csp = [];
 try {
   // evento "outro" do mesmo produtor e um pedido de teste com 4 ingressos na conta (A, B no outro evento, C, D)
   const [other] = await sql`insert into events (slug, title, status, start_at, organizer_id, created_by_user_id)
@@ -58,15 +65,13 @@ try {
   };
   const T = { valido: await mk(oMain, ev.id, ev.tt), outro: await mk(oOther, other.id, ott.id), reembolsado: await mk(oMain, ev.id, ev.tt), cancelado: await mk(oMain, ev.id, ev.tt) };
 
-  const ctx = await b.newContext({ baseURL: base, viewport: { width: 390, height: 844 } });
+  const ctx = await b.newContext({ baseURL: base, viewport: { width: 390, height: 844 }, ...stateOpt() });
+  await watchCsp(ctx, csp);
   const p = await ctx.newPage();
-  await p.goto("/entrar", { waitUntil: "networkidle" });
-  await p.fill('input[type="email"]', process.env.E2E_EMAIL);
-  await p.fill('input[type="password"]', process.env.E2E_PASSWORD);
-  await p.keyboard.press("Enter");
-  await p.waitForURL((u) => !u.pathname.startsWith("/entrar"), { timeout: 20_000 });
+  await login(p);
   const state = join(out, "state.json");
   await ctx.storageState({ path: state });
+  const gray = {};
 
   // o QR de verdade de cada ingresso, como a pessoa vê na página do ingresso
   const video = {};
@@ -76,22 +81,46 @@ try {
     const text = readGray(g);
     ok(!!text && text.startsWith(`ONDE|${c}|`), `QR da página do ingresso ${k} lido (${c})`);
     video[k] = writeY4m(join(out, `${k}.y4m`), g);
+    gray[k] = g;
     if (k === "valido") {
       // adulterado: o mesmo ingresso com a assinatura trocada (último caractere)
       const sig = text.split("|")[2];
       const fake = `ONDE|${c}|${sig.slice(0, -1)}${sig.endsWith("A") ? "B" : "A"}`;
-      video.adulterado = writeY4m(join(out, "adulterado.y4m"), grayFromText(fake));
+      gray.adulterado = grayFromText(fake);
+      video.adulterado = writeY4m(join(out, "adulterado.y4m"), gray.adulterado);
     }
   }
   await ctx.close();
   await sql`update tickets set status = 'refunded' where code = ${T.reembolsado}`;
   await sql`update tickets set status = 'cancelled' where code = ${T.cancelado}`;
 
-  /** Abre a portaria do evento com a câmera falsa mostrando `file` e devolve o resultado na tela. */
-  async function scan(name, file) {
-    const br = await chromium.launch({ args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-video-capture=${file}`] });
+  /**
+   * Firefox e WebKit: a câmera é um <canvas> com o cinza do QR (W×H), entregue por getUserMedia. Roda antes da página.
+   */
+  const canvasCamera = (g) => ({ b64: Buffer.from(g).toString("base64"), w: W, h: H });
+  function fakeCamera({ b64, w, h }) {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const img = new ImageData(w, h);
+    for (let i = 0; i < w * h; i++) { img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = bytes[i]; img.data[i * 4 + 3] = 255; }
+    const ctx = c.getContext("2d");
+    // redesenha sempre: alguns navegadores só mandam quadro novo quando o canvas muda
+    setInterval(() => ctx.putImageData(img, 0, 0), 100);
+    ctx.putImageData(img, 0, 0);
+    const stream = c.captureStream(10);
+    navigator.mediaDevices.getUserMedia = async () => stream;
+    navigator.mediaDevices.enumerateDevices = async () => [{ kind: "videoinput", deviceId: "qa", label: "câmera de teste", groupId: "qa", toJSON() { return this; } }];
+  }
+
+  /** Abre a portaria do evento com a câmera falsa mostrando o QR `name` e devolve o resultado na tela. */
+  async function scan(name, file, g) {
+    const chromiumCam = browserName === "chromium";
+    const br = chromiumCam ? await browserType().launch(launchOpts(["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-video-capture=${file}`])) : b;
     try {
-      const c = await br.newContext({ baseURL: base, storageState: state, permissions: ["camera"], viewport: { width: 390, height: 844 } });
+      const c = await br.newContext({ baseURL: base, storageState: state, viewport: { width: 390, height: 844 }, ...(chromiumCam ? { permissions: ["camera"] } : {}) });
+      await watchCsp(c, csp);
+      if (!chromiumCam) await c.addInitScript(fakeCamera, canvasCamera(g));
       const pg = await c.newPage();
       const errs = []; pg.on("pageerror", (e) => errs.push(e.message));
       await pg.goto(`/painel/portaria/${ev.id}`, { waitUntil: "networkidle" });
@@ -99,30 +128,32 @@ try {
       const res = pg.locator(".prt-res[role=status]");
       await res.waitFor({ timeout: 25_000 });
       const shot = { ok: await pg.locator(".prt-cam.ok").count() === 1, text: (await res.innerText()).replace(/\s+/g, " ").trim(), errs };
-      await pg.screenshot({ path: join(out, `${name}.png`) });
+      await pg.screenshot({ path: join(out, `${browserName}-${name}.png`) });
+      await c.close();
       return shot;
-    } finally { await br.close(); }
+    } finally { if (chromiumCam) await br.close(); }
   }
 
-  const r1 = await scan("1-valido", video.valido);
+  const r1 = await scan("1-valido", video.valido, gray.valido);
   ok(r1.ok && /Pessoa Teste QA/.test(r1.text) && r1.text.includes(T.valido), `válido: entrada liberada, tela verde (${r1.text})`);
   const [st] = await sql`select status, checked_in_at is not null as dentro from tickets where code = ${T.valido}`;
   ok(st.status === "used" && st.dentro, "válido: marcado como usado no banco");
-  const r2 = await scan("2-ja-usado", video.valido);
+  const r2 = await scan("2-ja-usado", video.valido, gray.valido);
   // a tela mostra a hora da primeira entrada e o nome ("Já entrou às 08:27 · Pessoa Teste QA …")
   ok(!r2.ok && /Já entrou às \d{2}:\d{2}/.test(r2.text) && /Pessoa Teste QA/.test(r2.text), `já usado: ${r2.text}`);
-  const r3 = await scan("3-outro-evento", video.outro);
+  const r3 = await scan("3-outro-evento", video.outro, gray.outro);
   ok(!r3.ok && r3.text.includes("Este ingresso é de outro evento (QA outro evento (e2e portaria))."), `outro evento: ${r3.text}`);
-  const r4 = await scan("4-reembolsado", video.reembolsado);
+  const r4 = await scan("4-reembolsado", video.reembolsado, gray.reembolsado);
   ok(!r4.ok && r4.text.includes("Ingresso reembolsado."), `reembolsado: ${r4.text}`);
-  const r5 = await scan("5-cancelado", video.cancelado);
+  const r5 = await scan("5-cancelado", video.cancelado, gray.cancelado);
   ok(!r5.ok && r5.text.includes("Ingresso cancelado."), `cancelado: ${r5.text}`);
-  const r6 = await scan("6-adulterado", video.adulterado);
+  const r6 = await scan("6-adulterado", video.adulterado, gray.adulterado);
   ok(!r6.ok && r6.text.includes("QR code inválido"), `adulterado: ${r6.text}`);
   const [st2] = await sql`select count(*) filter (where status = 'used') as usados from tickets where code in (${T.reembolsado}, ${T.cancelado}, ${T.outro})`;
   ok(Number(st2.usados) === 0, "nenhum ingresso recusado foi marcado como usado");
   const errs = [r1, r2, r3, r4, r5, r6].flatMap((r) => r.errs);
   ok(errs.length === 0, `sem erro de JavaScript${errs.length ? `: ${errs.join("; ")}` : ""}`);
+  ok(csp.length === 0, `sem violação da CSP${csp.length ? `: ${[...new Set(csp)].join("; ")}` : ""}`);
 } catch (e) {
   ok(false, `fluxo interrompido: ${String(e.message).split("\n")[0]}`);
 } finally {

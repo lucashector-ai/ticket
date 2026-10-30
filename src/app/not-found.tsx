@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
 export const metadata: Metadata = { title: "Página não encontrada" };
 
-// Sem leitura de sessão: a 404 é gerada estaticamente e precisa funcionar sem cookies.
-export default function NotFound() {
+// Sem leitura de sessão (funciona sem cookies). Gerada a cada pedido, e não no build: os scripts da página
+// precisam do nonce da CSP do pedido (src/lib/csp.ts), que uma página estática não tem.
+export default async function NotFound() {
+  await connection();
   return (
     <div className="pg-inst">
       <SiteHeader user={null} variant="default" />

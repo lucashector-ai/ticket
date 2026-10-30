@@ -2,9 +2,8 @@ import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 /*
- * Cabeçalhos de segurança em todas as respostas. Sem CSP de scripts por enquanto (Turnstile, login do
- * Google, VLibras, Spotify e os banners em HTML precisariam de uma lista cuidadosa); estes não quebram nada:
- * o site só pode ser emoldurado por ele mesmo, a câmera fica só para a portaria do próprio site.
+ * Cabeçalhos de segurança em todas as respostas: o site só pode ser emoldurado por ele mesmo, a câmera fica só
+ * para a portaria do próprio site. A CSP de scripts tem nonce por pedido e por isso sai do proxy (src/lib/csp.ts).
  */
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
