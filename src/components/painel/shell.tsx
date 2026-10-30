@@ -54,7 +54,7 @@ export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, pay
           <input autoComplete="off" type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar evento" aria-label="Buscar evento" />
         </form>
         <div className="pd-tr">
-          {orgSlug && <Link className="pd-site" href={`/produtor/${orgSlug}`}>Ver minha página</Link>}
+          {orgSlug && <Link className="pd-site" href={`/produtor/${orgSlug}`}>{role === "owner" ? "Ver minha página" : "Ver página da produtora"}</Link>}
           <Link className="pd-site" href="/">Ir para o site</Link>
           {orgs.length && activeId
             ? <OrgSwitch orgs={orgs} activeId={activeId} userName={userName} canCreate={canCreateOrg} max={maxOrgs} />
