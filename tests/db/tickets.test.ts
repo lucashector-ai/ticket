@@ -46,6 +46,9 @@ describe.skipIf(!TEST_DB)("ingresso: troca de dono e portaria (banco de teste)",
     await db.delete(schema.tickets).where(inArray(schema.tickets.eventId, created));
     await db.delete(schema.orders).where(inArray(schema.orders.eventId, created));
     await db.delete(schema.events).where(inArray(schema.events.id, created));
+    // o aceite cria o perfil de quem recebeu (contas fictícias "qa-test-…" deste arquivo)
+    const { like } = await import("drizzle-orm");
+    await db.delete(schema.userProfiles).where(like(schema.userProfiles.userId, "qa-test-recebe-%"));
   });
 
   it("ingresso enviado na compra: ao aceitar, código e QR mudam; o código antigo não entra mais", async () => {
