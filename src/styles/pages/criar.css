@@ -867,6 +867,14 @@
     .cv-pg-g{grid-template-columns:minmax(0,1fr)}
     .cv-pg h1{font-size:36px}
   }
+  /* 320–360: Voltar, o botão principal e a prévia cabem na barra (antes a prévia saía da tela) */
+  @media (max-width:360px){
+    .cv-act{gap:8px;padding:12px 12px 16px}
+    .cv-bk{padding:0 8px}
+    .cv-go{min-width:0;padding:0 12px;font-size:15px}
+    .cv-go svg{display:none}
+    .cv-pvm{width:48px;height:48px}
+  }
 }
 @keyframes cvFade{from{opacity:0}to{opacity:1}}
 @keyframes cvUp{from{opacity:0;transform:translateY(30px) scale(.98)}to{opacity:1;transform:none}}

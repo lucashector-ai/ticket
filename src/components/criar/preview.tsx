@@ -54,7 +54,7 @@ export function Phone({ d, x, lf, teaser }: { d: Draft; x: Derived; lf: { f: PvF
   const plan = d.tmode === "mapa" && d.map === "done" ? d.plan : null;
   const color = (sid: string | null, kind: string, own?: string) => (sid ? d.sectors.find((k) => k.id === sid)?.color : null) ?? own ?? (kind === "setor" ? "#8A8A90" : KIND_COLOR[kind as keyof typeof KIND_COLOR] ?? "#555");
   return (
-    <div className="cv-ph"><div className="sc">
+    <div className="cv-ph"><div className="sc" tabIndex={0} role="region" aria-label="Prévia ao vivo da página do evento">
       <div className={`pv-bn${hl("banner")}`}>
         {d.media.banner || d.media.poster ? <BannerArt id={(d.media.banner ?? d.media.poster)!} fit="fill" poster={!d.media.banner} /> : (
           <span className="pv-ph"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9A9A92" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" /><circle cx="9" cy="10" r="1.6" /><path d="M21 16l-5-5-8 8" /></svg>O banner do evento entra aqui</span>

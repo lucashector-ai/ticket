@@ -137,7 +137,8 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
           {STEP_LABELS.map((l, i) => {
             const cur = !published && step === i, done = x.ok[i] && (i < step || published);
             return (
-              <button key={l} className={cur ? "cv-sb cur" : done ? "cv-sb ok" : "cv-sb"} type="button" onClick={() => go(i)} aria-current={cur ? "step" : undefined}>
+              <button key={l} className={cur ? "cv-sb cur" : done ? "cv-sb ok" : "cv-sb"} type="button" onClick={() => go(i)} aria-current={cur ? "step" : undefined}
+                aria-label={`${i + 1}. ${l}${done ? " (concluída)" : ""}`}>
                 <span className="n">{done ? <Check size={12} /> : i + 1}</span><span className="l">{l}</span>
               </button>
             );
