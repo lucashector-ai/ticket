@@ -57,6 +57,11 @@ export function ActivateForm({ initialEmail, known, verified, next }: { initialE
     setBusy(false);
   }
 
+  async function otherEmail() {
+    try { await (await loadAuthClient()).signOut(); } catch { /* segue para o cadastro mesmo assim */ }
+    window.location.href = next === "/" ? "/cadastro" : `/cadastro?next=${encodeURIComponent(next)}`;
+  }
+
   async function resend() {
     if (!isEmail(email)) { setErrEmail(true); return false; }
     setErr(null);
@@ -89,6 +94,8 @@ export function ActivateForm({ initialEmail, known, verified, next }: { initialE
       <button className="lx-btn" type="submit" disabled={busy || code.length !== 6} aria-busy={busy}>{busy ? "Confirmando…" : "Ativar conta"}</button>
       <div className="vf-alt"><ResendButton onResend={resend} /></div>
       <p className="lx-sw">Não chegou? Veja a caixa de spam ou promoções.</p>
+      {/* digitou o e-mail errado no cadastro: o código nunca chega; sai da conta pendente e recomeça */}
+      {known && !verified && <p className="lx-sw">E-mail errado? <button className="au-lk" type="button" onClick={() => void otherEmail()}>Cadastrar com outro e-mail</button></p>}
     </form>
   );
 }
