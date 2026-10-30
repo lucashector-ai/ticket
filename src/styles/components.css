@@ -52,12 +52,19 @@
   body .grid .cfx-l{display:none}
   body .grid .pill-w,body .grid .ctag{left:8px;top:8px;height:24px;padding:0 9px;font-size:11px}
 }
+/* card de evento: a pílula "Ver ingressos" só abre com mouse e com espaço. No toque o :hover fica preso depois do
+   toque e a pílula (sem o texto, que some no celular) passava da borda do card, por cima do card ao lado. */
+@media (hover:none),(max-width:640px){
+  .cfx,.cgo{max-width:44px}
+  body .grid .cfx{max-width:36px}
+  .cfx-l,.cgo em{display:none}
+}
 /* no celular, ações do header ficam só no menu (algumas páginas reescrevem .blk) */
 @media (max-width:900px){ body .hdr .hide-m{display:none} }
 
 /* menu do celular: botão "Criar evento" com tamanho normal e nada por cima do menu */
 .mm .btn-p{display:inline-flex;justify-content:center;width:100%;height:56px;padding:0 24px;border-bottom:0;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;letter-spacing:0}
-body:has(.mm) .mbar{display:none}
+body:has(.mpn) .mbar{display:none}
 /* menu da conta na barra de busca da home (fixo no topo, fora da barra) */
 .acct-pop{position:fixed;z-index:90;min-width:230px}
 .acct-who{display:flex;flex-direction:column;gap:2px;padding:10px 12px 12px;margin-bottom:4px;border-bottom:1px solid #F0F0EB;font-size:14.5px;font-weight:600;color:#111}
