@@ -16,6 +16,8 @@ export default defineConfig({
   },
   test: {
     include: ["tests/**/*.test.ts"],
+    // limpa os perfis das contas fictícias "qa-test-…" no fim (só com TEST_DATABASE_URL)
+    globalSetup: ["tests/db/teardown.ts"],
     environment: "node",
     testTimeout: 30_000,
   },
