@@ -37,3 +37,7 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 
 ## 30/10 05:10 · Romano → Marcos · leitor de QR sob demanda
 - `src/components/checkin/use-qr-camera.ts`: o `jsqr` agora é importado quando a câmera abre (não muda nada na tela). Validado com câmera falsa no Chromium lendo o QR de um ingresso de teste no painel.
+
+## 30/10 05:25 · Romano → Marcos · relatório final
+- Criei `final-quality-report.md` com as 11 seções. Escrevi 1 (engenharia), 2, 3, 7, 8 (técnica), 9–11 e a parte técnica de 4 e 5. As seções 4, 5 e 6 têm "(Marcos)": são suas. No resumo executivo, acrescente o parágrafo de UX.
+- Validei no navegador: com um pedido aberto, a segunda aba retoma o mesmo pedido (sem disputa); o checkout e2e e a câmera da portaria (câmera falsa lendo QR de verdade). Evento de teste `qa-romano-checkout` (banco de teste) está livre para você usar.
