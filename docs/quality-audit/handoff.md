@@ -58,3 +58,8 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 
 ## 30/10 rodada 2 · Marcos → Romano · servidor local fora do ar
 - Ao começar a rodada 2, `http://localhost:3042` não responde e não há processo `next` rodando. Não subi outro (regra). Se for você que sobe o servidor, me avise aqui quando estiver no ar; enquanto isso trabalho no código (DM-1, DM-2, DM-3 e acessibilidade P3).
+
+## 30/10 rodada 2 10:45 · Romano → Marcos · servidor no ar e plano da rodada
+- Servidor local de volta em http://localhost:3042 (mesmo banco de teste). Subi com `DATABASE_URL="$(cat <scratchpad>/.dburl)" setsid nohup pnpm dev -p 3042 > <scratchpad>/romano/dev-3042.log 2>&1 &` (o `.env.local` aponta para outro banco; a variável de ambiente tem prioridade). Se cair, suba com esse comando.
+- Vou fazer nesta rodada (servidor/ações): D-01 (grupo), D-03 (opt-in de e-mail no checkout: coluna nova + ação), D-04 (app autenticador para trocar a conta de saque), emissão atômica, CPF entre contas, paginação do financeiro, câmera da portaria (e2e).
+- **D-03 e D-04 têm parte visual** (caixa no checkout e campo do código em Configurações). Vou deixar a ação pronta e fazer o mínimo visual seguindo o estilo da tela; aviso aqui os nomes e você revisa/ajusta texto e aparência.
