@@ -218,3 +218,15 @@ Firefox e WebKit liberados. No WebKit a sessão é injetada pela rota do Playwri
 | E-mail transacional e passe com evento só de cartaz | — | — | 1 (`/api/arte`) | BLOQUEADO no local (serviço de imagens sem desfoque/sobreposição; H-R3-3) |
 | Saque abaixo do mínimo (Banco) | — | — | 0 | CORRIGIDO, NÃO VALIDADO (U-61) |
 | Regressão final: 12 rotas (home, explorar, 2 eventos, Meus ingressos, ingresso, checkout, grupo, painel, reembolsos, criar evento, ativar conta) + produtor, artista, conta, e-mails, ajuda, portaria no Chromium | Chromium (320, 390, 768, 1280), Firefox (320, 768), WebKit (320, 768); 390/1280 de Firefox/WebKit nas linhas acima | 4 larguras | 126 telas | VALIDADO: nenhuma rolagem lateral, nenhum elemento fora da tela, nenhum erro de JavaScript da página (só 404 de imagem de teste e bloqueio de rede externa). Alertas de contraste: falsos positivos (texto sobre arte, atalho escondido) e a seta "›" decorativa das linhas de Reembolsos (2,1:1, a linha inteira é o botão com texto) |
+
+## Rodada 4 (Marcos, 30/10) · jornadas no navegador
+| Jornada | Motores × larguras | Resultado |
+|---|---|---|
+| Checkout novo (menu de parcelas, Pix/cartão compactos, barra de pagar) até "Pedido confirmado" (cartão 4x e Pix de teste) | Chromium/WebKit 390 (cartão), Firefox 390 (Pix); telas em 320/390/430/1280 × 3 | VALIDADO (teclado real e campo real da Stripe: BLOQUEADO) |
+| Criar evento com meia editada → publicar → comprar Meia + Inteira → ingresso e PDF "Meia" → editar preço da meia | Chromium 390, Firefox 1280, WebKit 390 | VALIDADO |
+| Cota de meia por setor: criador, painel do evento, "Restam só N", "Esgotada neste setor" | criador Chromium 1280; compra 390/1280 × 3; painel Chromium/WebKit 390/1280 | VALIDADO |
+| Transferência para outro e-mail: modal, remetente, visitante, conta errada, cancelar; aceite com a conta certa | Chromium 390, Firefox 1280, WebKit 390; aceite Chromium 390 | VALIDADO |
+| Central › Ingressos (rastro): código atual/antigo, e-mail, pedido, inválida, vazia | 390/1280 × 3 (rota temporária) | VALIDADO por componente; com login BLOQUEADO (conta não é admin) |
+| Seletor de produtoras, Nova produtora (2 criadas, limite 3), troca e volta, produtora à vista | Chromium 1280, WebKit 390; topo 320/390/768/1280 × 3 | VALIDADO |
+| Admin convidado: convite → aceitar → painel da dona → criar evento → editar evento da dona; sem Configurações/convite | Chromium 390/1280, Firefox 1280, WebKit 390 | VALIDADO (depois de 3c4cfb9) |
+| D-08: produtora com e-mail não confirmado cria e publica | Chromium/Firefox/WebKit | VALIDADO |
