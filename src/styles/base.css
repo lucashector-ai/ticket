@@ -236,9 +236,11 @@ input,select{font:inherit;color:inherit}
   .bnx-i{padding-top:64px}
   .bnx .bn-arr2{display:none}
   .bnx-i .cfh-w{display:block}
-  .bnm-dots{position:absolute;right:28px;top:calc(96px + (100vw - 32px) * 9 / 16 - 36px);z-index:7;display:flex;gap:6px;padding:7px 9px;border-radius:999px;background:rgba(17,17,17,.45);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-  .bnm-dots button{width:7px;height:7px;padding:0;border-radius:999px;background:rgba(255,255,255,.45);transition:width .35s var(--ease),background .35s}
-  .bnm-dots button.on{width:20px;background:#D3F55B}
+  .bnm-dots{position:absolute;right:28px;top:calc(96px + (100vw - 32px) * 9 / 16 - 40px);z-index:7;display:flex;gap:0;padding:1px 3px;border-radius:999px;background:rgba(17,17,17,.45);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .bnm-dots button{width:24px;height:24px;padding:0;border-radius:999px;background:none;transition:width .35s var(--ease)}
+  .bnm-dots button::after{content:"";position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.45);transform:translate(-50%,-50%);transition:width .35s var(--ease),background .35s}
+  .bnm-dots button.on{width:30px}
+  .bnm-dots button.on::after{width:20px;background:#D3F55B}
   .bnx .bn-dots2{bottom:56px}
 }
 @media (prefers-reduced-motion:reduce){
@@ -323,10 +325,9 @@ input,select{font:inherit;color:inherit}
 .sheet-up~section,main~footer{position:relative;z-index:4;background:#FFFFFF}
 .grab{position:absolute;left:50%;top:14px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#DADAD5}
 .cfh-m,.bnm-dots{display:none}
-/* pontos do banner no celular: o ponto continua com 7px, mas a área de toque cresce para ~35px */
+/* pontos do banner no celular: o ponto continua com 7px, mas cada botão tem 24×24 (WCAG 2.5.8) */
 .bnm-dots button{position:relative}
-.bnm-dots button::before{content:"";position:absolute;inset:-14px -3px}
-.bnm-dots button:focus-visible{outline:2px solid #D3F55B;outline-offset:3px}
+.bnm-dots button:focus-visible{outline:2px solid #D3F55B;outline-offset:-2px}
 @media (max-width:760px){
   /* capa no celular: banner 16:9 nítido, o mesmo banner desfocado ao fundo e as infos do evento */
   .bnx{height:calc(96px + (100vw - 32px) * 9 / 16 + 300px)}
@@ -343,9 +344,11 @@ input,select{font:inherit;color:inherit}
   .cfh-mi>span:last-child{font-size:14.5px;color:rgba(255,255,255,.75)}
   .bnx .bn-arr2{display:none}
   .bnx-i .cfh-w{display:block}
-  .bnm-dots{position:absolute;right:28px;top:calc(96px + (100vw - 32px) * 9 / 16 - 36px);z-index:7;display:flex;gap:6px;padding:7px 9px;border-radius:999px;background:rgba(17,17,17,.45);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-  .bnm-dots button{width:7px;height:7px;padding:0;border-radius:999px;background:rgba(255,255,255,.45);transition:width .35s var(--ease),background .35s}
-  .bnm-dots button.on{width:20px;background:#D3F55B}
+  .bnm-dots{position:absolute;right:28px;top:calc(96px + (100vw - 32px) * 9 / 16 - 40px);z-index:7;display:flex;gap:0;padding:1px 3px;border-radius:999px;background:rgba(17,17,17,.45);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .bnm-dots button{width:24px;height:24px;padding:0;border-radius:999px;background:none;transition:width .35s var(--ease)}
+  .bnm-dots button::after{content:"";position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.45);transform:translate(-50%,-50%);transition:width .35s var(--ease),background .35s}
+  .bnm-dots button.on{width:30px}
+  .bnm-dots button.on::after{width:20px;background:#D3F55B}
   .bnx .bn-dots2{bottom:178px}
   .cue{display:none}
   .qwrap{margin-top:-160px;height:auto}
