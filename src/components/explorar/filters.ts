@@ -105,10 +105,28 @@ export function overlaps(e: Pick<EventCard, "startAt" | "endAt">, r: Range) {
   return s <= r[1] && en >= r[0];
 }
 
+/** Distância de edição até 1 (uma letra trocada, a mais ou a menos), sem calcular a matriz toda. */
+function near(a: string, b: string) {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, diff = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++diff > 1) return false;
+    if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; }
+  }
+  return diff + (a.length - i) + (b.length - j) <= 1;
+}
+
+/**
+ * Busca: cada palavra precisa aparecer no nome, local, cidade, line-up, categoria ou chamada do evento.
+ * Palavras de 4+ letras aceitam um erro de digitação ("aurra" acha "Aurora").
+ */
 export function matchesQuery(e: EventCard, q: string) {
   if (!q.trim()) return true;
-  const hay = normalize([e.title, e.venue, e.city, e.uf, e.lineup.join(" ")].join(" "));
-  return normalize(q).split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
+  const hay = normalize([e.title, e.venue, e.city, e.uf, e.lineup.join(" "), e.categoryLabel ?? "", e.kinds.join(" "), e.tagline ?? ""].join(" "));
+  const tokens = hay.split(/[^a-z0-9]+/).filter(Boolean);
+  return normalize(q).split(/\s+/).filter(Boolean).every((w) => hay.includes(w) || (w.length >= 4 && tokens.some((t) => near(w, t) || near(w, t.slice(0, w.length)))));
 }
 
 /** Slug da cidade do evento, igual ao do seed (`slugify("São Paulo-SP")`). */

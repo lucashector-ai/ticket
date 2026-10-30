@@ -120,7 +120,7 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     age: e.ageRating,
     halfPrice: e.halfPriceInfo,
     // política estruturada (painel → Cancelamentos e reembolsos) + o texto livre do produtor, se houver
-    refund: e.status === "cancelled" ? "Evento cancelado pelo produtor. Quem comprou recebe o reembolso integral, com a taxa de serviço, automaticamente." : [policyText(policyOf(e)), e.refundPolicy?.trim(), EVENT_RULES].filter(Boolean).join(" "),
+    refund: e.status === "cancelled" ? "Evento cancelado pelo produtor. Quem comprou recebe o reembolso integral, com a taxa de serviço, automaticamente." : [policyText(policyOf(e)), e.refundPolicy?.trim() ? `Observação do produtor: ${e.refundPolicy.trim()}` : null, EVENT_RULES].filter(Boolean).join(" "),
     lineup,
     organizer,
     tiers,
