@@ -1,6 +1,6 @@
 "use server";
 
-import { createHmac, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { and, eq, inArray, lt } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
@@ -10,16 +10,9 @@ import { getSessionUser } from "@/lib/auth/server";
 import { mailTransferAccepted, mailTransferCancelled, mailTransferSent } from "@/lib/notify";
 import { deadlineLabel, deadlineOpen } from "@/lib/refund-policy";
 import { ticketCode } from "@/lib/tickets/code";
-import { signingSecret } from "@/lib/signing-secret";
 import { allowHit } from "@/lib/rate-limit";
 
 const { tickets, ticketTransfers } = schema;
-
-/** Payload assinado do QR: ONDE|código|assinatura (HMAC do segredo do ingresso). */
-export async function qrPayload(code: string, secret: string) {
-  const sig = createHmac("sha256", signingSecret()).update(`${code}:${secret}`).digest("base64url").slice(0, 16);
-  return `ONDE|${code}|${sig}`;
-}
 
 /** Transfere um ingresso para outro e-mail. O QR antigo é cancelado na hora (segredo rotacionado);
  *  o ingresso vai para a conta de quem recebe quando a pessoa aceita pelo link do e-mail. */

@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import QRCode from "qrcode";
 import { and, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { qrPayload } from "@/lib/actions/tickets";
+import { qrPayload } from "@/lib/tickets/qr";
 import { heldSql } from "@/lib/holds";
 import { settleShare, shareStillHeld } from "@/lib/special";
 import { mailGroupSharePaid, mailOrderConfirmed, mailResaleSold, mailTransferSent } from "@/lib/notify";

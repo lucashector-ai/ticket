@@ -1,7 +1,7 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { qrPayload } from "@/lib/actions/tickets";
+import { qrPayload } from "@/lib/tickets/qr";
 import { dateFull, dateNice } from "@/lib/format";
 import type { getTicketByCode } from "@/lib/data/ingressos";
 import { eventLabels } from "@/lib/tickets/labels";

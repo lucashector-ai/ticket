@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
-import { qrPayload } from "@/lib/actions/tickets";
+import { qrPayload } from "@/lib/tickets/qr";
 import { getSessionUser } from "@/lib/auth/server";
 import { getTicketByCode } from "@/lib/data/ingressos";
 import { mediaJpeg } from "@/lib/media-jpeg";

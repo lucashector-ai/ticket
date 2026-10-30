@@ -95,7 +95,7 @@ describe.skipIf(!TEST_DB)("ingresso: troca de dono e portaria (banco de teste)",
   it("portaria: QR adulterado, outro evento, e dois operadores no mesmo ingresso", async () => {
     const { ev, tks } = await paidOrder([{ name: "Titular", me: true, email: null }]);
     const t = tks[0];
-    const { qrPayload } = T;
+    const { qrPayload } = await import("@/lib/tickets/qr");
     const good = await qrPayload(t.code, t.secret);
     expect((await C.checkinTicket(good.slice(0, -1) + (good.endsWith("A") ? "B" : "A"), new Set([ev.id]))).ok).toBe(false);
     const other = await C.checkinTicket(good, new Set(["00000000-0000-0000-0000-000000000000"]));
