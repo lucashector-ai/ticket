@@ -29,7 +29,8 @@ export function isAdminEmail(email: string | null | undefined) {
 /** Admin logado (ou null). `secure`: já tem o app autenticador, exigido para ver e mexer em qualquer coisa. */
 export async function adminUser() {
   const user = await getSessionUser();
-  if (!user?.email || !isAdminEmail(user.email)) return null;
+  // e-mail confirmado: a central nunca vale para uma conta que só digitou o e-mail de um admin
+  if (!user?.email || !user.emailVerified || !isAdminEmail(user.email)) return null;
   const mfa = await mfaSettings(user.id);
   return { ...user, secure: mfa.method === "totp" };
 }

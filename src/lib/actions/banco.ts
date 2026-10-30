@@ -155,6 +155,13 @@ export async function requestPayout(amountCents: number, code: string): Promise<
   if (!ok.ok) return ok;
   if (ok.how !== "totp") return { ok: false, error: NEED_APP };
   const [row] = await db.insert(schema.payoutRequests).values({ userId, organizerId: w.org?.id ?? null, amountCents: amount, destination: w.destination }).returning({ id: schema.payoutRequests.id });
+  // dois pedidos ao mesmo tempo (dois cliques, duas abas) passam juntos pela conferência do saldo: confere de novo
+  // com este saque já contado e desfaz se passou do disponível (sem transação no driver HTTP do Neon)
+  const recheck = await walletFor(userId);
+  if (!recheck || recheck.available < 0) {
+    await db.update(schema.payoutRequests).set({ status: "cancelled" }).where(and(eq(schema.payoutRequests.id, row.id), eq(schema.payoutRequests.status, "requested")));
+    return { ok: false, error: "Outro saque foi pedido ao mesmo tempo. Confira o saldo e tente de novo." };
+  }
   await logSecurity(userId, "payout", `Saque de ${brl(amount)} pedido`);
   const c = await userContact(userId);
   if (c) after(() => mailPayoutRequested(c.email, c.name, amount, destLabel(w.destination), row.id));
