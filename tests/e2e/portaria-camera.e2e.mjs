@@ -8,7 +8,7 @@
  *
  * A conta precisa ser dona (ou da equipe) do evento. O teste cria no banco de teste um pedido de teste com
  * 4 ingressos na conta (e um evento "outro" do mesmo produtor), lê cada QR pela câmera e apaga tudo no fim:
- *   válido → liberado · o mesmo de novo → "Ingresso já utilizado." · de outro evento · reembolsado · cancelado ·
+ *   válido → liberado · o mesmo de novo → "Já entrou às HH:MM" · de outro evento · reembolsado · cancelado ·
  *   QR adulterado (assinatura trocada) → "QR code inválido…".
  * E2E_KEEP=1 mantém os vídeos .y4m e os prints na pasta E2E_OUT (padrão: pasta temporária).
  */
@@ -109,7 +109,8 @@ try {
   const [st] = await sql`select status, checked_in_at is not null as dentro from tickets where code = ${T.valido}`;
   ok(st.status === "used" && st.dentro, "válido: marcado como usado no banco");
   const r2 = await scan("2-ja-usado", video.valido);
-  ok(!r2.ok && r2.text.includes("Ingresso já utilizado."), `já usado: ${r2.text}`);
+  // a tela mostra a hora da primeira entrada e o nome ("Já entrou às 08:27 · Pessoa Teste QA …")
+  ok(!r2.ok && /Já entrou às \d{2}:\d{2}/.test(r2.text) && /Pessoa Teste QA/.test(r2.text), `já usado: ${r2.text}`);
   const r3 = await scan("3-outro-evento", video.outro);
   ok(!r3.ok && r3.text.includes("Este ingresso é de outro evento (QA outro evento (e2e portaria))."), `outro evento: ${r3.text}`);
   const r4 = await scan("4-reembolsado", video.reembolsado);
