@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 const TABS = [
   { href: "/conta", label: "Meus dados", icon: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0" /> },
@@ -13,6 +14,14 @@ const TABS = [
 /** Menu lateral de Minha conta (vira abas roláveis no celular). */
 export function ContaShell({ name, email, avatar, mfa, children }: { name: string; email: string; avatar: string | null; mfa: boolean; children: React.ReactNode }) {
   const path = usePathname();
+  // celular: a aba atual sempre à vista na faixa rolável (em "Minhas compras" ela aparecia cortada)
+  const nav = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const n = nav.current, on = n?.querySelector<HTMLElement>("a.on");
+    if (!n || !on || n.scrollWidth <= n.clientWidth) return;
+    const a = n.getBoundingClientRect(), r = on.getBoundingClientRect();
+    if (r.left < a.left || r.right > a.right) n.scrollBy({ left: r.left - a.left - 16 });
+  }, [path]);
   const initials = name.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "TW";
   return (
     <main className="wrap ct">
@@ -24,7 +33,7 @@ export function ContaShell({ name, email, avatar, mfa, children }: { name: strin
           </span>
           <span className="ct-me-t"><b>{name || "Sua conta"}</b><span>{email}</span></span>
         </div>
-        <nav className="ct-nav" aria-label="Minha conta">
+        <nav className="ct-nav" aria-label="Minha conta" ref={nav}>
           {TABS.map((t) => {
             const on = t.href === "/conta" ? path === "/conta" : path.startsWith(t.href);
             return (

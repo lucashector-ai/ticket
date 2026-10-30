@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 
 const ICON = {
@@ -31,6 +31,14 @@ export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, pay
   const path = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
+  // celular: o menu vira uma faixa rolável; a página atual sempre à vista (ex.: "Equipe e check-in" ficava fora)
+  const side = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const n = side.current, on = n?.querySelector<HTMLElement>(".nv.cur");
+    if (!n || !on || n.scrollWidth <= n.clientWidth) return;
+    const a = n.getBoundingClientRect(), r = on.getBoundingClientRect();
+    if (r.left < a.left || r.right > a.right) n.scrollBy({ left: r.left - a.left - (a.width - r.width) / 2 });
+  }, [path]);
   const cur = (href: string) => (href === "/painel" ? path === "/painel" || path.startsWith("/painel/evento") : path.startsWith(href));
   return (
     <div className="pd">
@@ -47,7 +55,7 @@ export function PainelShell({ role, orgName, orgInitials, orgSlug, userName, pay
         </div>
       </header>
       <div className="pd-shell">
-        <nav className="pd-side" aria-label="Menu do produtor">
+        <nav className="pd-side" aria-label="Menu do produtor" ref={side}>
           {role !== "portaria" && <Link className="pd-new" href="/criar-evento"><svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" /></svg>Criar evento</Link>}
           {NAV.filter((n) => role !== "portaria" || n.icon === "team").filter((n) => role === "owner" || n.icon !== "cfg").map((n) => (
             <Link key={n.href} className={cur(n.href) ? "nv cur" : "nv"} href={n.href} aria-current={cur(n.href) ? "page" : undefined}>
