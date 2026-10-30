@@ -38,9 +38,10 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/db/edit-types.test.ts | Apagar tipo citado em carrinho abandonado, com pagamento em andamento, com ingresso emitido | libera / bloqueia / bloqueia; sem a limpeza a FK quebra | VALIDADO |
 | tests/db/checkout-legacy.test.ts | Página antiga do pedido: paga uma vez, pedido de outra conta, limite por pessoa | conforme | VALIDADO |
 | tests/db/payout.test.ts | Dois saques do saldo inteiro ao mesmo tempo | no máximo um fica (falha sem a correção) | VALIDADO |
+| tests/db/refund.test.ts | Três "reembolsar tudo" ao mesmo tempo | um reembolso, valor = total, estoque volta uma vez | VALIDADO |
 | tests/db/tickets.test.ts | Portaria: QR adulterado, outro evento, dois operadores no mesmo QR, já usado | recusa / uma entrada só | VALIDADO |
 
-Última execução completa: 30/10 madrugada, **42 testes, 42 aprovados, 0 reprovados** (11 arquivos, com `TEST_DATABASE_URL`); sem a variável, os 23 de integração ficam pulados. Build do OpenNext verde depois de cada bloco.
+Última execução completa: 30/10 madrugada, **43 testes, 43 aprovados, 0 reprovados** (12 arquivos, com `TEST_DATABASE_URL`); sem a variável, os 24 de integração ficam pulados. Build do OpenNext verde depois de cada bloco.
 
 ### No navegador (Playwright, servidor local, conta de teste)
 
