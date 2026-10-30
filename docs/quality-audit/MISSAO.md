@@ -1,7 +1,7 @@
 # Missão da equipe de qualidade — Tickets Win
 
 Equipe: **Romano** (Engenheiro Principal e Arquiteto de Segurança) e **Marcos** (Product Designer Principal, UX Researcher e CRO).
-Este arquivo é a missão compartilhada. Cada agente tem seu papel em `.claude/agents/romano.md` e `.claude/agents/marcos.md`.
+Este arquivo é a missão compartilhada, com as regras deste projeto. O pedido original do dono, na íntegra e com o escopo completo, está em `PROMPT-MESTRE.md` (ordem: primeiro `qa-inicial.md`, depois tudo do prompt mestre). Cada agente tem seu papel em `.claude/agents/romano.md` e `.claude/agents/marcos.md`.
 
 ## 1. Objetivo
 
