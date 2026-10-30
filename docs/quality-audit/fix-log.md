@@ -58,6 +58,18 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 12:25 | 003a4e1 | E2E da portaria pela câmera (câmera falsa do Chromium, QR real do ingresso): válido, já usado, outro evento, reembolsado, cancelado, adulterado | `pnpm test:e2e:portaria`: 13/13 ok | VALIDADO |
 | 30/10 12:35 | 85e8bff | Testes da central admin (S-05) e do limite de 12 pedidos por conta a cada 10 min | `tests/unit/admin-guard.test.ts`, `tests/db/order-rate.test.ts` | VALIDADO |
 
+### Romano · rodada 3 (30/10)
+
+| Data/hora | Commit | Correção | Validação | Status |
+|---|---|---|---|---|
+| 30/10 12:40 | c7f6a39 | Conta sem e-mail ativado não vira produtor (inscrição e página do produtor pedem a ativação); comprar segue liberado; produtores antigos: D-08 | `tests/db/activation.test.ts` (falha sem a correção); Chromium 390: `/criar-evento` sem ativar leva a `/ativar-conta` com a frase nova | VALIDADO |
+| 30/10 12:50 | 10e931b | DM-2 no e-mail, no aviso e no passe: evento só com cartaz usa um banner montado (cartaz sobre ele mesmo desfocado, 16:9 no e-mail e 3:1 na faixa do Google Wallet; `/api/arte/<slug>`, gerado uma vez e guardado no R2) | `tests/unit/event-art.test.ts` (qual arte vai em cada caso); HTML do e-mail de publicação e de campanha abertos no Chromium. A composição (desfoque + cartaz desenhado por cima) foi conferida só por emulação com sharp: o serviço de imagens local recorta, mas ignora `blur` e `draw` (H-R3-3 do Marcos); conferir numa prévia com o serviço de verdade | CORRIGIDO, NÃO VALIDADO (composição) |
+| 30/10 13:05 | 9088be7 | Reembolso e saque numa transação (como a emissão): linha concluída, ingressos, lugares e totais do pedido num lote só; um reembolso pendente por pedido (índice único parcial, SQL no topo do `pending-decisions.md`); saque com trava por pessoa e conferência de saldo na mesma transação | `tests/db/refund-atomic.test.ts` e `tests/db/payout.test.ts` (falham sem a correção) | VALIDADO (integração) |
+| 30/10 13:15 | aaabf87 | Início do painel, Público e Marketing somados no banco (sem trazer todos os pedidos) | `tests/db/painel-sums.test.ts` (paridade centavo a centavo: indicadores dos 3 períodos, minilinhas, líquido por evento, compradores e cupons); Chromium nas 3 telas | VALIDADO |
+| 30/10 13:45 | 334f10d | Abertura de vendas: pedido + itens + conferência do estoque num lote só com trava por tipo. Antes, com muitos pedidos ao mesmo tempo, todos se viam e se recusavam: 50 pessoas por 30 lugares davam 21 reservas; 100 por 60, 36 (sobrava lugar). Agora os primeiros ficam com todos os lugares, sem passar | `tests/db/stock-fair.test.ts` (falha sem a correção); teste de carga `pnpm test:load` (números no `performance-report.md`) | VALIDADO |
+| 30/10 13:50 | 58f7dc1 | Portaria: marcar como usado e tirar da revenda num comando só (uma ida ao banco a menos por leitura) | carga da portaria com dois operadores (números no `performance-report.md`): cada ingresso entra uma vez | VALIDADO |
+| 30/10 14:15 | 5c4e43b | **P1 (achado do Marcos):** evento de várias datas, a portaria não conferia o dia; ingresso de sábado entrava na sexta/domingo e ficava "usado". Agora recusa com "Ingresso para sábado, 7/11: vale só nesse dia." (duas sessões no mesmo dia: diz o horário) e não marca como usado. A portaria está na última sessão que já abriu (portões − 2 h); a madrugada ainda é do dia anterior | `tests/db/checkin-day.test.ts` (falha sem a correção) e `tests/unit/checkin-day.test.ts`; Chromium 390 e 1280 na portaria do painel com o pedido #50121 (sábado) do evento do Marcos: vermelho com o dia certo, ingresso segue válido no banco | VALIDADO |
+
 ## Marcos
 
 | Data/hora | Commit | Correção | Validação | Status |

@@ -53,8 +53,19 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/db/order-rate.test.ts | 13 pedidos seguidos da mesma conta; erro de preenchimento; outra conta | 12 passam, 13º recusado; erro não conta; outra conta livre | VALIDADO (rodada 2) |
 | tests/unit/password-throttle.test.ts | S-23: "esqueci a senha" (login simulado): 30 s, 6 por hora, maiúsculas, outro e-mail, depois de 1 h | conforme (falha sem 3271b9e) | VALIDADO (rodada 2) |
 | tests/unit/admin-guard.test.ts | S-05: central com e-mail confirmado, domínio, ADMIN_EMAILS fora do domínio, `secure` só com app | conforme | VALIDADO (rodada 2) |
+| tests/db/activation.test.ts | Conta sem e-mail ativado: inscrição de produtor, ativada, aprovado sem ativar, produtor antigo, sessão desatualizada | recusa e pede ativação / segue / recusa / segue / confere no banco do login (falha sem a correção) | VALIDADO (rodada 3) |
+| tests/unit/event-art.test.ts | DM-2: arte do e-mail/aviso/passe com banner, só cartaz, evento de demonstração, versão muda com a arte | endereço certo em cada caso | VALIDADO (rodada 3; composição da imagem: só com o serviço real) |
+| tests/db/refund-atomic.test.ts | Queda no meio do reembolso; dois reembolsos diferentes do mesmo pedido ao mesmo tempo; estorno automático com queda | nada pela metade; nunca devolve mais que o pago; pedido, ingressos e lugares juntos (falham sem a correção) | VALIDADO (rodada 3) |
+| tests/db/payout.test.ts | Queda logo depois de gravar com dois saques juntos; reembolso entrando enquanto a pessoa digita o código | nunca saque acima do saldo; nada gravado (falham sem a correção) | VALIDADO (rodada 3) |
+| tests/db/painel-sums.test.ts | Início do painel, Público e Marketing somados no banco × cálculo antigo | idêntico, centavo a centavo | VALIDADO (rodada 3) |
+| tests/db/stock-fair.test.ts | 25 pessoas ao mesmo tempo por 15 lugares | 15 reservas exatas (antes: menos, sobrava lugar) | VALIDADO (rodada 3) |
+| tests/db/checkin-day.test.ts | Evento de 3 datas: ingresso de ontem e de daqui a 3 dias lidos hoje; o de hoje; tipo sem data | recusados com o dia e seguem válidos / entra / entra (falha sem a correção) | VALIDADO (rodada 3) |
+| tests/unit/checkin-day.test.ts | Em que data a portaria está: madrugada, 2 h antes dos portões, antes da 1ª e depois da última, duas sessões no mesmo dia | conforme; mensagem com dia (ou horário) | VALIDADO (rodada 3) |
+| tests/unit/csp.test.ts | CSP: nonce + strict-dynamic, hash do script da página, sem eval na produção, terceiros liberados, modo só avisar × bloquear | conforme | VALIDADO (rodada 3) |
+| tests/unit/format.test.ts | Data por extenso no meio da frase (H-R3-4) | "até quinta, 5 de novembro de 2026" | VALIDADO (rodada 3) |
+| tests/load/*.load.ts (`pnpm test:load`) | Carga 10 → 50 → 100: abertura de vendas e portaria com dois operadores | sem venda acima, ingressos = pagos, cada QR entra uma vez (números no `performance-report.md`) | VALIDADO (rodada 3, antes e depois) |
 
-Última execução completa: 30/10 rodada 2, **71 testes, 71 aprovados, 0 reprovados** (23 arquivos: 27 unitários + 44 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 99aed9b); e2e da câmera repetido depois das mudanças de portaria do Marcos (13/13).
+Última execução completa: 30/10 rodada 3, **103 testes, 103 aprovados, 0 reprovados** (32 arquivos, com `TEST_DATABASE_URL`; perfis `qa-test-…` apagados no fim pela limpeza global). Rodada 2: 71 testes, 71 aprovados (23 arquivos: 27 unitários + 44 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 99aed9b); e2e da câmera repetido depois das mudanças de portaria do Marcos (13/13).
 
 ### No navegador (Playwright, servidor local, conta de teste)
 
@@ -79,8 +90,14 @@ E2E da portaria pela câmera: `tests/e2e/portaria-camera.e2e.mjs` (`pnpm test:e2
 | Portaria pela câmera (câmera falsa, QR real): válido, já usado, outro evento, reembolsado, cancelado, adulterado | VALIDADO (rodada 2, 13/13; mensagens com o Marcos) |
 | Configurações: trocar conta de recebimento com app autenticador (D-04) | VALIDADO (rodada 2) |
 | Financeiro do painel com somas no banco e paginação (`?p=`, valor inválido/fora do intervalo) | VALIDADO (rodada 2; mais de 25 eventos: só por leitura, a conta de teste tem 5) |
-| Firefox e WebKit/Safari | BLOQUEADO (rede não baixa os navegadores) |
+| Firefox e WebKit/Safari (rodadas 1 e 2) | BLOQUEADO (rede não baixava os navegadores; resolvido na rodada 3) |
 | Login com Google/Apple | BLOQUEADO no local (rodada 2: nada mudou no login) |
+| Firefox e WebKit/Safari (rodada 3) | Instalados: e2e com `E2E_BROWSER=firefox|webkit` |
+| CSP bloqueando (`E2E_CSP=enforce`), páginas principais, visitante e logado, 1280 e 390 (folha de compra) | VALIDADO: Chromium, Firefox e WebKit sem violação nem erro de JS, todas hidratadas (WebKit pela política Report-Only do servidor, com controle positivo; ver D-10) |
+| Bancada da CSP com os terceiros reais (Turnstile com a chave pública de teste, cartão, Spotify; `<script>` e `onerror` injetados) | VALIDADO nos 3: token do Turnstile, cartão pronto, Spotify abre; injeções barradas. VLibras: BLOQUEADO (domínio fora do alcance do sandbox) |
+| Checkout e2e com a CSP bloqueando | VALIDADO: Chromium, Firefox, WebKit (7/7 cada) |
+| Portaria pela câmera com a CSP bloqueando | VALIDADO: Chromium e Firefox (13/13 cada); WebKit: BLOQUEADO (câmera de canvas não chega ao vídeo no WebKit sem tela, também sem a CSP) |
+| Portaria por dia (evento de 2 datas do Marcos, pedido #50121 de sábado, código digitado antes da 1ª data) | VALIDADO (Chromium 390 e 1280): vermelho "Ingresso para sábado, 7/11: vale só nesse dia.", ingresso segue válido |
 
 ### Matriz de cenários do produto (técnico)
 
@@ -97,6 +114,10 @@ E2E da portaria pela câmera: `tests/e2e/portaria-camera.e2e.mjs` (`pnpm test:e2
 | Acesso sem login a páginas privadas | cada página chama `getSessionUser`/`painelAccess`/`contaUser`/`adminUser` | VALIDADO por leitura de código (todas as páginas privadas listadas) |
 | Acesso a recurso de outra pessoa (pedido, ingresso, PDF, carteira) | filtros por `userId`/`holderUserId` | VALIDADO por leitura; PDF de código inexistente logado → 404 |
 | Produtor mexendo em evento de outro | `getPainelScope` + `events.find(id)` em cada ação | VALIDADO por leitura |
+| Restam poucos e muitos compram ao mesmo tempo (10/50/100) | trava por tipo + conferência no mesmo lote (`placeOrder`) | VALIDADO (carga, rodada 3: vende exatamente o estoque) |
+| Ingresso de outra data do mesmo evento na portaria | `sessionRefusal` no `checkinTicket` | VALIDADO (integração e tela, rodada 3) |
+| Queda no meio do reembolso ou do saque | transação única (`tx.ts`) | VALIDADO (integração, rodada 3) |
+| Meia pela caixa da Inteira com tipo Meia esgotado | não protegido: regra comercial em D-09 | aberto (decisão do dono) |
 
 ## Parte de experiência (Marcos)
 

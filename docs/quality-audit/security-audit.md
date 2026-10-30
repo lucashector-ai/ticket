@@ -34,6 +34,11 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 | S-24 | P1 | Integridade (emissão) | Emissão em várias etapas sem transação: queda do Worker no meio deixava estoque baixado sem ingresso e a nova tentativa baixava de novo (reproduzido: estoque 3 com 1 ingresso) | VALIDADO (`tests/db/fulfill-atomic.test.ts`, falha sem a correção) | 1c12a57 |
 | S-25 | P2 | Limite por pessoa | Mesmo CPF em contas diferentes (ou a mesma conta com dois pedidos) confirmando ao mesmo tempo passava do limite (reproduzido 3/3) | VALIDADO (`tests/db/fulfill-atomic.test.ts`, falha sem a correção) | 1c12a57 |
 | S-26 | P3 | Dependências | fflate 0.8.2 (aviso moderado do `unzipSync`; usamos só `zipSync`/`zlibSync`) | VALIDADO (0.8.3) | ver fix-log |
+| S-27 | P1 | Portaria (várias datas) | Ingresso de uma data entrava em outra data do mesmo evento e ficava "usado" (achado do Marcos) | VALIDADO (`tests/db/checkin-day.test.ts`, falha sem a correção; tela da portaria) | 5c4e43b |
+| S-28 | P1 | Integridade (reembolso e saque) | Reembolso e saque em várias etapas sem transação: queda no meio deixava ingresso cancelado sem baixa nos totais (ou o contrário); dois reembolsos diferentes do mesmo pedido ao mesmo tempo chegavam os dois à Stripe | VALIDADO (`tests/db/refund-atomic.test.ts`, `tests/db/payout.test.ts`, falham sem a correção) | 9088be7 |
+| S-29 | P2 | Estoque (abertura de vendas) | Com muitos pedidos ao mesmo tempo a reconferência depois de gravar recusava pedidos demais: sobrava lugar (50 por 30 → 21 reservas). Nunca vendeu acima | VALIDADO (`tests/db/stock-fair.test.ts` + carga) | 334f10d |
+| S-30 | P2 | Navegador (XSS) | Sem CSP de scripts: um script injetado rodaria com a sessão da pessoa | CORRIGIDO em Report-Only, VALIDADO bloqueando nos 3 navegadores (ligar o bloqueio: D-10) | ver fix-log |
+| S-31 | P2 | Cadastro de produtor | Conta com e-mail não confirmado enviava inscrição de produtor (achado do Marcos, rodada 2) | VALIDADO (`tests/db/activation.test.ts`) | c7f6a39 |
 
 ## Detalhes
 
@@ -87,13 +92,28 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 - **Causa:** a conferência do limite na confirmação lia os pedidos pagos antes de gravar; duas confirmações ao mesmo tempo não viam uma à outra.
 - **Correção:** trava por pessoa até o fim da transação (`pg_advisory_xact_lock` com chave da conta e do CPF, em ordem fixa) e conferência do limite dentro da transação, já contando o pedido atual. A mesma trava serializa as partes de grupo da mesma conta (D-01).
 
+### S-27 · Portaria não conferia o dia em evento de várias datas (P1) · rodada 3
+- **Reprodução:** evento `qa-marcos-festival-firefox-nao-comprar` (2 datas), pedido #50121 com ingressos de sábado; lidos na portaria antes do sábado → "Entrada liberada" e status `used`. Teste: `tests/db/checkin-day.test.ts` (ingresso de ontem entrava hoje).
+- **Causa:** `checkinTicket` (`src/lib/checkin.ts`) conferia assinatura, evento e status; a data do ingresso fica na sessão do tipo (`ticket_types.session_id`) e não era lida.
+- **Correção:** `src/lib/checkin-day.ts`: a portaria está sempre na última sessão que já abriu (portões, ou início, menos 2 h; antes da primeira, a primeira). Ingresso de outra sessão é recusado sem ser marcado: "Ingresso para sábado, 7/11: vale só nesse dia." (duas sessões no mesmo dia: "Ingresso para a sessão das 21h de sábado, 7/11: vale só nessa sessão."). Tipo sem sessão (evento de data única) segue igual.
+- **Limite conhecido:** entre o fim de uma data e 2 h antes dos portões da seguinte (ex.: domingo de manhã), a portaria ainda está na data anterior. A contagem "X de Y entraram" soma todas as datas.
+
+### S-28 · Reembolso e saque sem transação (P1) · rodada 3
+- **Causa:** mesmo padrão da S-24: várias gravações em sequência (linha do reembolso, ingressos, lugares, totais do pedido; saque e saldo) sem transação, e o saldo do saque lido antes da gravação.
+- **Correção:** `src/lib/payments/tx.ts` (lote numa transação, como a emissão); reembolso concluído num lote só, novo cálculo depois da trava e índice único parcial (um reembolso pendente por pedido; SQL no topo do `pending-decisions.md`); saque com trava por pessoa, conferência de que nada entrou desde o saldo e gravação na mesma transação.
+
+### S-30 · CSP de scripts (P2) · rodada 3
+- **Antes:** sem `Content-Security-Policy` de scripts (só os cabeçalhos de segurança básicos no `next.config.ts`).
+- **Agora:** nonce por pedido + `'strict-dynamic'` (`src/lib/csp.ts`, `src/proxy.ts`), hash para o único script escrito na página, `object-src 'none'`, `base-uri`/`form-action`/`frame-ancestors 'self'`, terceiros por diretiva, avisos em `/api/csp-report` (log resumido, sem dado pessoal). Publicado em **Report-Only**; `CSP_MODE=enforce` liga o bloqueio. Evidência e recomendação em `pending-decisions.md` D-10.
+
 ### Outros pontos de atenção (não corrigidos, baixo risco)
 - Fila virtual por cookie: um robô com muitos cookies aumenta a chance de ser liberado (normal em fila virtual; o limite por pessoa e a reserva continuam valendo).
 - Transferência comum (não o envio da compra): quem tem o link do e-mail aceita com qualquer conta; o envio da compra exige a conta do e-mail. Avaliar exigir o mesmo e-mail também na transferência comum (decisão de produto).
 - Página do artista é compartilhada: qualquer produtor com evento daquele artista edita a biografia e o Spotify (escolha de produto).
 - Clique rastreado do e-mail (`/e/c/…`) redireciona para links escritos pelo produtor (aprovado); possível vetor de phishing a partir do domínio. Recomendação: mostrar aviso de saída para domínios externos.
 - Alterar a quantidade de um lote no mesmo instante de uma venda pode deixar `sold > quantity` por um momento (sem venda acima: a baixa do estoque é condicional).
-- Sem CSP de scripts (documentado no `next.config.ts`); HTML de terceiros (banner da home, e-mail) roda em iframe com `sandbox`.
+- CSP de scripts em Report-Only até a decisão D-10 (S-30); HTML de terceiros (banner da home, e-mail) roda em iframe com `sandbox`.
+- Meia-entrada por dois caminhos (tipo Meia com cota + caixa na Inteira) contorna a cota do tipo Meia: regra comercial, D-09.
 - LGPD: exclusão de conta e cópia dos dados são por pedido no formulário de contato (artigo de ajuda), sem fluxo automático; base legal do e-mail marketing em D-03.
 
 ## Verificado e sem problema (amostra do que foi lido)
