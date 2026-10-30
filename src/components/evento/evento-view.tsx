@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BannerArt } from "@/components/art/banner";
 import { FlyerArt } from "@/components/art/flyer";
 import { EventCard } from "@/components/event-card";
@@ -38,6 +38,22 @@ type Props = {
   openBuy?: boolean;
 };
 
+/** marca na sessão que o loader de entrada do evento já apareceu */
+const LD_KEY = "tw:ld";
+
+/** Carga direta (link, recarregar, voltar do checkout): esconde o loader antes da primeira pintura
+ *  se ele já apareceu nesta sessão. Na navegação interna quem esconde é o useLayoutEffect.
+ *  No cliente vira text/plain (não executa e não gera aviso do React), como no guia do Next. */
+function LdSeenScript() {
+  return (
+    <script
+      type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
+      suppressHydrationWarning
+      dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem("${LD_KEY}")==="1"){var l=document.currentScript.previousElementSibling;if(l)l.style.display="none"}}catch(e){}` }}
+    />
+  );
+}
+
 /** celular e tablet: a escolha de ingressos abre em tela cheia em vez do cartão ao lado */
 const narrow = () => window.matchMedia("(max-width: 1024px)").matches;
 
@@ -49,11 +65,19 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
   const player = usePlayer();
   const [ld, setLd] = useState<"on" | "out" | "">("on");
 
-  // Loader de entrada ("Preparando seus ingressos"), como no design.
-  useEffect(() => {
+  // Loader de entrada ("Preparando seus ingressos"), como no design: só na primeira página de
+  // evento da sessão (decisão DM-1). Voltar do checkout ou abrir outro evento não espera de novo.
+  // Na carga direta, o LdSeenScript já esconde o loader antes da primeira pintura.
+  const ldSeen = useRef<boolean | null>(null);
+  useLayoutEffect(() => {
+    if (ldSeen.current === null) {
+      ldSeen.current = false;
+      try { ldSeen.current = sessionStorage.getItem(LD_KEY) === "1"; sessionStorage.setItem(LD_KEY, "1"); } catch { /* sem storage: mostra */ }
+    }
+    if (ldSeen.current) { setLd(""); return; }
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const t1 = setTimeout(() => setLd("out"), reduce ? 50 : 1000);
-    const t2 = setTimeout(() => setLd(""), reduce ? 100 : 1450);
+    const t1 = setTimeout(() => setLd("out"), reduce ? 50 : 600);
+    const t2 = setTimeout(() => setLd(""), reduce ? 100 : 900);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
@@ -296,7 +320,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
       </div>
 
       {ld && (
-        <div className={ld === "out" ? "ld out" : "ld"} role="status" aria-live="polite" aria-label={`Carregando ingressos de ${e.title}`}>
+        <div className={ld === "out" ? "ld out" : "ld"} suppressHydrationWarning role="status" aria-live="polite" aria-label={`Carregando ingressos de ${e.title}`}>
           <div className="ld-in">
             <div className="ld-tk">
               <div className="ld-main">
@@ -311,6 +335,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
           </div>
         </div>
       )}
+      {ld === "on" && <LdSeenScript />}
 
       {!waiting && (
         <BuySheet e={e} t={tickets} s={sheet} onMap={() => {
