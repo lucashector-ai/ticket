@@ -20,7 +20,7 @@ export default async function AtivarContaPage({ searchParams }: { searchParams: 
   const next = safeNextParam(sp.next);
   const verified = known && (await emailConfirmed(user!));
   // veio do caminho de produtor: diz por que a ativação é pedida agora
-  const why = /^\/(criar-evento|produtores\/cadastro|painel)/.test(next) ? "Para criar eventos na Tickets Win, confirme seu e-mail primeiro." : null;
+  const why = /^\/(criar-evento|produtores\/cadastro|painel)/.test(next) ? "Para criar eventos, confirme seu e-mail primeiro." : null;
   return (
     <div className="pg-entrar">
       <SiteHeader user={headerUser} variant="default" />
