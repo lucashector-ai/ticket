@@ -89,6 +89,31 @@ describe.skipIf(!TEST_DB)("emissão atômica e limite por CPF (banco de teste)",
     }
   });
 
+  it("30 confirmações ao mesmo tempo com dois tipos em ordens diferentes: sem impasse de trava e sem vender acima", async () => {
+    const { db, schema } = D;
+    const { ev, tt: a } = await makeEvent(7, 6);
+    const [b] = await db.insert(schema.ticketTypes).values({ eventId: ev.id, name: "Camarote", priceCents: 9000, quantity: 5, maxPerOrder: 6 }).returning();
+    const os = await Promise.all(Array.from({ length: 30 }, async (_, i) => {
+      const [o] = await db.insert(schema.orders).values({
+        userId: qaId("user"), eventId: ev.id, status: "pending", totalCents: 14_000, paymentMethod: "pix", expiresAt: new Date(Date.now() + 15 * 60_000),
+        holders: [{ ticketTypeId: a.id, name: "Pessoa Teste", meia: false, me: true, email: null }, { ticketTypeId: b.id, name: "Pessoa Teste", meia: false, me: true, email: null }],
+      }).returning();
+      // metade dos pedidos lista os tipos na ordem inversa
+      const items = [{ orderId: o.id, ticketTypeId: a.id, quantity: 1, unitPriceCents: 5000 }, { orderId: o.id, ticketTypeId: b.id, quantity: 1, unitPriceCents: 9000 }];
+      await db.insert(schema.orderItems).values(i % 2 ? items.reverse() : items);
+      return o;
+    }));
+    const rs = await Promise.all(os.map((o) => F.fulfillOrder(o.id, { ref: `TEST-s-${o.number}`, charged: false })));
+    const { eq } = await import("drizzle-orm");
+    const [ta, tb] = await Promise.all([a.id, b.id].map((id) => db.query.ticketTypes.findFirst({ where: eq(schema.ticketTypes.id, id) })));
+    const tks = await db.query.tickets.findMany({ where: eq(schema.tickets.eventId, ev.id) });
+    expect(rs.filter((r) => r.ok).length).toBe(5);
+    expect(ta!.sold).toBe(5);
+    expect(tb!.sold).toBe(5);
+    expect(tks.length).toBe(10);
+    expect(rs.filter((r) => !r.ok).every((r) => !r.ok && /esgotaram/.test(r.error))).toBe(true);
+  }, 120_000);
+
   it("mesma conta com dois pedidos confirmando ao mesmo tempo: o limite vale", async () => {
     const { ev, tt } = await makeEvent(20, 2);
     const userId = qaId("user");
