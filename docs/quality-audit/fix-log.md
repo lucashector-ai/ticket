@@ -36,6 +36,8 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 05:45 | d72c91c | `placeOrder`: no máximo 12 pedidos por conta a cada 10 min (reserva não vira trava de estoque) | tsc/eslint; testes | CORRIGIDO, NÃO VALIDADO no navegador |
 | 30/10 05:50 | 9175056 | Prévia OG não expõe arte de rascunho (S-20) | curl local: publicado 200, rascunho 404 | VALIDADO |
 | 30/10 05:55 | ce0d18c | CSV do painel sem fórmula de planilha (S-21) | `tests/unit/csv.test.ts`; download de compradores no Playwright | VALIDADO |
+| 30/10 06:05 | c0c7d61 | `qrPayload` fora de "use server"; `checkin-link.ts` (morto) removido (S-22) | 45 testes; Meus ingressos/ingresso com QR; PDF 200 | VALIDADO |
+| 30/10 06:00 | 0e456dd | E2E do checkout versionado (`pnpm test:e2e`) | 4/4 passos ok | VALIDADO |
 
 ## Marcos
 

@@ -29,6 +29,7 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 | S-19 | P2 | Abuso de e-mail | "Me avise" (sem login) e transferências mandavam e-mail para qualquer endereço sem limite | VALIDADO (15 cadastros, 16º recusado) | ver fix-log |
 | S-20 | P3 | Exposição de dados | Prévia OG servia a arte de evento em rascunho | VALIDADO (publicado 200, rascunho 404) | 9175056 |
 | S-21 | P3 | Injeção em CSV | Exportações de compradores, participantes e lançamento sem neutralizar fórmulas | VALIDADO (teste + download) | ce0d18c |
+| S-22 | P3 | Superfície de ataque | Assinador do QR exportado de arquivo "use server" (endpoint público); ação de check-in por link sem uso | VALIDADO (QR, PDF e testes) | c0c7d61 |
 
 ## Detalhes
 
