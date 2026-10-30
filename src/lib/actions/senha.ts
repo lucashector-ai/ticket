@@ -12,7 +12,7 @@ type R = { ok: boolean; error?: string };
 
 /** Pede ao Neon Auth o código de "esqueci a senha"; o nosso webhook transforma em link e manda o e-mail. */
 async function sendLink(email: string): Promise<R> {
-  if (await linkThrottled(email)) return { ok: false, error: "Aguarde alguns segundos para pedir outro link." };
+  if (await linkThrottled(email)) return { ok: false, error: "Aguarde um pouco antes de pedir outro link." };
   try {
     const r = await auth.emailOtp.sendVerificationOtp({ email, type: "forget-password" });
     if (r?.error) await logEmails("neon-otp", [{ to: email, subject: "forget-password" }], false, JSON.stringify(r.error).slice(0, 400));

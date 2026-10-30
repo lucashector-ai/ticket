@@ -148,7 +148,7 @@ async function requestActivationCode(email: string) {
 export async function resendActivation(email: string): Promise<{ ok: boolean; error?: string }> {
   const p = z.string().email().safeParse(email.trim().toLowerCase());
   if (!p.success) return { ok: false, error: "Digite um e-mail válido." };
-  if (await linkThrottled(`ativ:${p.data}`)) return { ok: false, error: "Aguarde alguns segundos para pedir outro código." };
+  if (await linkThrottled(`ativ:${p.data}`)) return { ok: false, error: "Aguarde um pouco antes de pedir outro código." };
   await requestActivationCode(p.data);
   return { ok: true };
 }
