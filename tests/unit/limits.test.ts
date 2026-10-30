@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { overLimit, roomFor, type LimitTier } from "@/lib/tickets/limits";
+import { MEIA_OUT, meiaOut, overLimit, roomFor, type LimitTier } from "@/lib/tickets/limits";
 
 const tiers: LimitTier[] = [
   { id: "int", name: "Inteira", status: "open", available: 100, limit: 6 },
@@ -41,5 +41,27 @@ describe("overLimit (conferido no servidor ao criar e ao confirmar o pedido)", (
   it("explica quando a conta vem do mesmo CPF em outra conta", () => {
     const msg = overLimit([{ ticketTypeId: "int", quantity: 1 }], types, new Map([["int", { all: 4, mine: 0 }]]));
     expect(msg).toMatch(/com o CPF informado, em outra conta/);
+  });
+});
+
+describe("roomFor com a cota de meia do setor (40% dos lugares)", () => {
+  // duas Meias no mesmo setor e data dividem a mesma cota
+  const m: LimitTier[] = [
+    { id: "m1", name: "Meia · 1º lote", status: "open", available: 3, limit: 6, meiaGroup: "Pista|", meiaLeft: 3 },
+    { id: "m2", name: "Meia · 2º lote", status: "open", available: 3, limit: 6, meiaGroup: "Pista|", meiaLeft: 3 },
+    { id: "i", name: "Inteira", status: "open", available: 50, limit: 6 },
+  ];
+  it("a soma das Meias do setor para na cota e explica", () => {
+    expect(roomFor(m, 8, { m1: 2 }, "m2").left).toBe(1);
+    const r = roomFor(m, 8, { m1: 2, m2: 1 }, "m2");
+    expect(r.left).toBe(0);
+    expect(r.reason).toBe("Restam só 3 meias-entradas neste setor.");
+    expect(roomFor(m, 8, { m1: 2, m2: 1 }, "i").left).toBe(5);
+  });
+  it("cota esgotada: texto do dono e a Meia aparece esgotada neste setor", () => {
+    const out = m.map((t) => (t.meiaGroup ? { ...t, available: 0, meiaLeft: 0 } : t));
+    expect(meiaOut(out[0])).toBe(true);
+    expect(meiaOut(out[2])).toBe(false);
+    expect(roomFor(out, 8, {}, "m1").reason).toBe(MEIA_OUT);
   });
 });

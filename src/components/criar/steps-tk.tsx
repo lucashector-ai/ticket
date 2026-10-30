@@ -8,6 +8,7 @@ import {
   type DraftSector, type DraftType, type MediaKey, type Teaser, type TypeKind, type Visibility,
 } from "@/lib/criar/model";
 import type { Derived } from "./flow";
+import { sectorMeia } from "@/lib/criar/meia";
 import { MapaPane } from "./mapa";
 import { brMoney, MO, parseIso, shortMoney, Spark, uploadImage, WD, type Ctx } from "./shared";
 import { Ico, StepHead, Toggle } from "./steps";
@@ -149,6 +150,14 @@ function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many
               </div>
             );
           })}
+          {/* cota de meia do setor (40% dos lugares do setor, decisão do dono; o servidor confere na venda) */}
+          {types.some((t) => !t.free && (t.kind === "meia" || t.kind === "inteira")) && (() => {
+            const m = sectorMeia(k, d.autoMeia);
+            if (!m.seats) return null;
+            return m.meiaQty > m.cap
+              ? <p className="cv-mq off">A venda de meia para em {m.cap.toLocaleString("pt-BR")}, mesmo com {m.meiaQty.toLocaleString("pt-BR")} no tipo Meia (40% dos {m.seats.toLocaleString("pt-BR")} lugares{many ? " do setor" : ""}).</p>
+              : <p className="cv-mq">Meia-entrada: até {m.cap.toLocaleString("pt-BR")} de {m.seats.toLocaleString("pt-BR")} lugares{many ? " do setor" : ""} (40%, Lei 12.933).</p>;
+          })()}
           <div className="cv-addw" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setAdding(false); }}>
             <button className="cv-addb" type="button" onClick={() => setAdding((v) => !v)} aria-expanded={adding}><span>+</span>Adicionar tipo de ingresso</button>
             {adding && (

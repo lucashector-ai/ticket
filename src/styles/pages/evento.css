@@ -771,3 +771,13 @@
   }
   @media (max-width:1024px) and (prefers-reduced-motion:reduce){.bs,.bs-b{animation:none}}
 }
+
+/* meia esgotada só neste setor (cota de 40%): a linha fica apagada, mas o aviso de que a inteira continua é legível */
+.pg-evento {
+  .tier.so .tdesc.mo{color:#55555A}
+  @media (max-width:1024px){
+    .bs-t.so.mo{opacity:1}
+    .bs-t.so.mo .bs-tn,.bs-t.so.mo .bs-p,.bs-t.so.mo .bs-so{opacity:.55}
+    .bs-t.so.mo .bs-td{color:#55555A}
+  }
+}

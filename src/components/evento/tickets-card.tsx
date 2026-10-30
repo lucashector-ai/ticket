@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { brl } from "@/lib/format";
+import { MEIA_OUT, meiaOut } from "@/lib/tickets/limits";
 import type { EventoData, TierItem } from "./types";
 import type { Tickets } from "./use-tickets";
 import { ResaleCard } from "./resale-card";
@@ -147,7 +148,8 @@ function TierRow({ tier, t, inGroup = false, delay, showLimit }: { tier: TierIte
     <div className={cls} style={delay !== undefined ? ({ "--i": delay } as React.CSSProperties) : undefined}>
       <div className="tn">
         <b>{tier.sector && !inGroup && <i className="sec-sw" style={{ background: tier.sectorColor ?? "#111" }} aria-hidden="true" />}{label}</b>
-        {tier.desc && <small className="tdesc">{tier.desc}</small>}
+        {tier.desc && !meiaOut(tier) && <small className="tdesc">{tier.desc}</small>}
+        {meiaOut(tier) && <small className="tdesc mo">{MEIA_OUT}</small>}
         <span className={tier.priceCents ? "pr" : "pr free"}>{price(tier.priceCents)}{showLimit && open && <small className="plim">Até {tier.limit} por pessoa</small>}{owned > 0 && <small className="plim">Você já tem {owned}</small>}</span>
       </div>
       {open && (
@@ -161,7 +163,7 @@ function TierRow({ tier, t, inGroup = false, delay, showLimit }: { tier: TierIte
           </button>
         </div>
       )}
-      {sold && <span className="soldt">{tier.status === "closed" ? "Encerrado" : "Esgotado"}</span>}
+      {sold && <span className="soldt">{tier.status === "closed" ? "Encerrado" : meiaOut(tier) ? "Esgotada neste setor" : "Esgotado"}</span>}
       {upcoming && <span className="soldt up">{tier.note ?? "Próxima virada de lote"}</span>}
     </div>
   );

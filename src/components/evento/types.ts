@@ -35,6 +35,9 @@ export type TierItem = {
   sector: string | null;
   sectorColor: string | null;
   sessionId: string | null;
+  /** só nos tipos Meia: setor+data da cota de meia (40% dos lugares) e quanto ainda resta dela */
+  meiaGroup?: string;
+  meiaLeft?: number | null;
 };
 
 /** Uma data de um evento com várias datas ou turnê. */

@@ -908,3 +908,9 @@
   .cv-org b{color:#111;font-weight:600}
   .cv-org a{font-weight:600;color:#111;text-decoration:underline;text-underline-offset:3px}
 }
+
+/* cota de meia do setor, embaixo da tabela de ingressos */
+.pg-criar {
+  .cv-mq{margin:6px 4px 0 16px;font-size:12.5px;line-height:1.45;color:#55554E}
+  .cv-mq.off{padding:6px 10px;border-radius:10px;background:#FFF1D9;color:#6B4A10}
+}

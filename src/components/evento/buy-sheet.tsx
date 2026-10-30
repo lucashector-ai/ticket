@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { brl } from "@/lib/format";
+import { MEIA_OUT, meiaOut } from "@/lib/tickets/limits";
 import { feeShares, MAX_INSTALLMENTS, money } from "@/lib/pricing";
 import { ResaleCard } from "./resale-card";
 import type { EventoData, SessionItem, TierItem } from "./types";
@@ -301,9 +302,9 @@ function Row({ x, t, fee, showLimit }: { x: TierItem; t: Tickets; fee: number; s
   // no limite (por pessoa, por compra ou estoque) o "+" fica apagado, mas o toque ainda explica o motivo
   const full = open && !t.canInc(x.id);
   const owned = x.owned ?? 0;
-  const extra = [x.desc, showLimit && open ? `Até ${x.limit} por pessoa` : null, owned > 0 ? `Você já tem ${owned}` : null].filter(Boolean).join(" · ");
+  const extra = meiaOut(x) ? MEIA_OUT : [x.desc, showLimit && open ? `Até ${x.limit} por pessoa` : null, owned > 0 ? `Você já tem ${owned}` : null].filter(Boolean).join(" · ");
   return (
-    <div className={!open && !upcoming ? "bs-t so" : q > 0 ? "bs-t sel" : "bs-t"}>
+    <div className={!open && !upcoming ? (meiaOut(x) ? "bs-t so mo" : "bs-t so") : q > 0 ? "bs-t sel" : "bs-t"}>
       <span className="bs-tn">{label}{open && x.note && x.note.length <= 22 && <em>{x.note}</em>}</span>
       {open ? (
         <span className="bs-q">
@@ -316,7 +317,7 @@ function Row({ x, t, fee, showLimit }: { x: TierItem; t: Tickets; fee: number; s
           </button>
         </span>
       ) : (
-        <span className="bs-so">{upcoming ? x.note ?? "Em breve" : x.status === "closed" ? "Encerrado" : "Esgotado"}</span>
+        <span className="bs-so">{upcoming ? x.note ?? "Em breve" : x.status === "closed" ? "Encerrado" : meiaOut(x) ? "Esgotada neste setor" : "Esgotado"}</span>
       )}
       <span className="bs-p">{q > 1 && x.priceCents > 0 && `${q} × `}{x.priceCents ? money(x.priceCents) : "Grátis"}{x.priceCents > 0 && fee > 0 && <small>+ {money(fee)} taxa</small>}</span>
       {extra && <span className="bs-td">{extra}</span>}

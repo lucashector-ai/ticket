@@ -87,6 +87,8 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
       // limite por pessoa já usado em compras pagas (conta e CPF), a mesma conta que o checkout faz
       owned: bought.get(t.id)?.all ?? 0,
       sector: t.sector, sectorColor: t.sectorColor, sessionId: t.sessionId,
+      // cota de meia do setor e data, somada entre os tipos Meia do mesmo grupo (texto "esgotada neste setor")
+      ...(t.kind === "meia" ? { meiaGroup: groupKey(t), meiaLeft: meiaLeft.get(groupKey(t)) ?? null } : {}),
     };
   });
   const plan = e.ticketMode === "mapa" && e.venueMap?.plan?.areas?.length ? e.venueMap.plan : null;
@@ -101,7 +103,8 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
       return { id: s.id, wd: WD[p.wd], day: `${p.d} ${MS[p.m - 1]}`, sub };
     })
     : [];
-  const open = tiers.filter((t) => t.status === "open");
+  // "a partir de" só com o que ainda dá para comprar (sem a Meia de um setor com a cota esgotada)
+  const open = tiers.filter((t) => t.status === "open" && t.available > 0);
   const paragraphs = e.descriptionParagraphs?.length ? e.descriptionParagraphs : e.description ? [e.description] : [];
   return {
     id: e.id,

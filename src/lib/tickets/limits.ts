@@ -7,7 +7,11 @@
  * Puro (sem banco), para a página do evento e para os testes.
  */
 
-export type LimitTier = { id: string; name: string; status: string; available: number; limit: number; owned?: number };
+export type LimitTier = { id: string; name: string; status: string; available: number; limit: number; owned?: number; meiaGroup?: string; meiaLeft?: number | null };
+
+/** A cota de meia do setor acabou (tipo Meia ainda com estoque, mas sem meia para vender naquele setor e data). */
+export const meiaOut = (t: Pick<LimitTier, "meiaGroup" | "meiaLeft">) => !!t.meiaGroup && t.meiaLeft != null && t.meiaLeft <= 0;
+export const MEIA_OUT = "A meia-entrada deste setor esgotou. A inteira continua disponível.";
 
 /** `left`: quantos deste tipo ainda cabem na escolha; `reason`: por que não cabe mais nenhum (null se cabe). */
 export function roomFor(tiers: LimitTier[], maxPerOrder: number, qty: Record<string, number>, id: string): { left: number; reason: string | null } {
@@ -19,8 +23,12 @@ export function roomFor(tiers: LimitTier[], maxPerOrder: number, qty: Record<str
   const personLeft = Math.max(0, tier.limit - owned - cur);
   const orderLeft = Math.max(0, maxPerOrder - sum);
   const stockLeft = Math.max(0, tier.available - cur);
-  const left = Math.min(personLeft, orderLeft, stockLeft);
+  // cota de meia do setor: soma de todas as Meias do mesmo setor e data na escolha
+  const meiaUsed = tier.meiaGroup ? tiers.filter((t) => t.meiaGroup === tier.meiaGroup).reduce((s, t) => s + (qty[t.id] ?? 0), 0) : 0;
+  const meiaRoom = tier.meiaGroup && tier.meiaLeft != null ? Math.max(0, tier.meiaLeft - meiaUsed) : Infinity;
+  const left = Math.min(personLeft, orderLeft, stockLeft, meiaRoom);
   if (left > 0) return { left, reason: null };
+  if (meiaRoom === 0) return { left, reason: tier.meiaLeft! > 0 ? `Restam só ${tier.meiaLeft} ${tier.meiaLeft === 1 ? "meia-entrada" : "meias-entradas"} neste setor.` : MEIA_OUT };
   if (stockLeft === 0) return { left, reason: tier.available > 0 ? `Restam só ${tier.available} ${tier.available === 1 ? "ingresso" : "ingressos"} em ${tier.name}.` : `${tier.name} esgotou.` };
   if (personLeft === 0) {
     const lim = `O limite é ${tier.limit} ${tier.limit === 1 ? "ingresso" : "ingressos"} de ${tier.name} por pessoa.`;
