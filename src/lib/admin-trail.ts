@@ -125,7 +125,7 @@ const OWNER_CHANGE = new Set<TrailKind>(["presente_aceito", "transferencia_aceit
 const VIA: Partial<Record<TrailKind, TrailHolder["via"]>> = { presente_aceito: "presente", transferencia_aceita: "transferencia", revenda_vendida: "revenda" };
 
 /** Passo com as contas ainda como id (viram nome/e-mail no fim). */
-type Raw = Omit<TrailStep, "who" | "to"> & { whoId?: string | null; whoText?: string | null; toId?: string | null; toText?: string | null };
+type Raw = Omit<TrailStep, "who" | "to"> & { whoId?: string | null; whoText?: string | null; whoFallback?: string | null; toId?: string | null; toText?: string | null };
 
 /** Rastro dos ingressos achados pela busca (código atual ou anterior, e-mail ou número do pedido), até 20. */
 export async function adminTicketTrail(q: string): Promise<AdminTrail[]> {
@@ -189,6 +189,8 @@ export async function adminTicketTrail(q: string): Promise<AdminTrail[]> {
       const p = original ? t.orderItem?.unitPriceCents ?? null : null;
       steps.push({
         at: t.createdAt, kind: "emitido", whoId: keep(original?.userId ?? firstOwner), rebuilt: true,
+        // conta antiga sem perfil: o nome e o e-mail do pedido
+        whoFallback: original ? [original.buyerName, original.buyerEmail].filter(Boolean).join(" · ") || null : null,
         amountCents: p == null ? null : p - (t.halfPrice ? Math.round(p / 2) : 0), note: original?.number ? `Pedido #${original.number}` : null,
       });
     }
@@ -227,18 +229,18 @@ export async function adminTicketTrail(q: string): Promise<AdminTrail[]> {
   }
 
   const who = await people([...userIds]);
-  const label = (id: string | null | undefined) => {
-    if (!id) return null;
+  const label = (id: string | null | undefined, fallback?: string | null) => {
+    if (!id) return fallback ?? null;
     const p = who.get(id);
-    return p ? [p.name, p.email].filter(Boolean).join(" · ") || "Conta sem nome" : "Conta sem perfil";
+    return p ? [p.name, p.email].filter(Boolean).join(" · ") || fallback || "Conta sem nome" : fallback || "Conta sem perfil";
   };
 
   return ts
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .map((t) => {
       const raw = raws.get(t.id) ?? [];
-      const steps: TrailStep[] = raw.map(({ whoId, whoText, toId, toText, ...s }) => ({
-        ...s, who: whoText ?? label(whoId), to: toId ? (label(toId) ?? toText ?? null) : toText ?? null,
+      const steps: TrailStep[] = raw.map(({ whoId, whoText, whoFallback, toId, toText, ...s }) => ({
+        ...s, who: whoText ?? label(whoId, whoFallback), to: toId ? (label(toId) ?? toText ?? null) : toText ?? null,
       }));
       // titulares: quem comprou (ou o primeiro dono conhecido) e cada troca de dono, na ordem
       const first = raw.find((s) => s.kind === "emitido")?.whoId ?? t.holderUserId;

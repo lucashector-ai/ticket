@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, ne } from "drizzle-orm";
+import { and, asc, eq, ne, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { ACTIVATE_PRODUCER, emailConfirmed } from "@/lib/auth/verified";
@@ -12,16 +12,25 @@ const { organizers } = schema;
 type R<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
 
-/** O nome público já é de outro produtor? Devolve o endereço que a página vai ter. */
-export async function checkOrganizerName(name: string): Promise<R<{ available: boolean; slug: string }>> {
+/**
+ * O nome público já é de outro produtor? Devolve o endereço que a página vai ter.
+ * `para`: "minha" = a primeira produtora da conta (o cadastro do produtor aprovado: o próprio nome dela não conta);
+ * "nova" = uma produtora nova da mesma conta (nenhum nome existente vale, nem os das outras produtoras da conta).
+ */
+export async function checkOrganizerName(name: string, para: "minha" | "nova" = "minha"): Promise<R<{ available: boolean; slug: string }>> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Entre na sua conta." };
   const slug = slugify(name.trim());
   if (slug.length < 2) return { ok: true, available: false, slug };
-  const hit = await db.query.organizers.findFirst({ where: and(eq(organizers.slug, slug), ne(organizers.ownerUserId, user.id)), columns: { id: true } });
-  const sameName = await db.query.organizers.findFirst({ where: and(eq(organizers.name, name.trim()), ne(organizers.ownerUserId, user.id)), columns: { id: true } });
+  const mine = para === "minha" ? await firstOwned(user.id) : null;
+  const other = (w: SQL) => (mine ? and(w, ne(organizers.id, mine.id)) : w);
+  const hit = await db.query.organizers.findFirst({ where: other(eq(organizers.slug, slug)), columns: { id: true } });
+  const sameName = await db.query.organizers.findFirst({ where: other(eq(organizers.name, name.trim())), columns: { id: true } });
   return { ok: true, available: !hit && !sameName, slug };
 }
+
+/** A primeira produtora da conta (a do cadastro de produtor). */
+const firstOwned = (userId: string) => db.query.organizers.findFirst({ where: eq(organizers.ownerUserId, userId), orderBy: [asc(organizers.createdAt)] });
 
 /** Categoria da inscrição → tipo de evento do cadastro. */
 function kindOf(category: string) {
@@ -52,7 +61,7 @@ export async function finishOnboarding(input: { name: string; city: string; uf: 
   const onboarding = {
     kind: app ? kindOf(app.category) : "outro", perYear: "ate10", audience: app ? audienceOf(app.expected) : "ate300", doneAt: new Date().toISOString(),
   };
-  const own = await db.query.organizers.findFirst({ where: eq(organizers.ownerUserId, user.id) });
+  const own = await firstOwned(user.id);
   const values = {
     name, slug: check.slug, initials: initials(name) || name.slice(0, 2).toUpperCase(), onboarding,
     cityName: input.city.trim().slice(0, 120) || null, uf, instagram: ig ? `@${ig}` : null, tagline: input.tagline.trim().slice(0, 140) || null,

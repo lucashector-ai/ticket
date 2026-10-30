@@ -3,7 +3,7 @@ import { cache } from "react";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
-import { chosenOrgId, orgAccessList, pickActive, type PainelRole } from "@/lib/data/org-access";
+import { chosenOrgId, MAX_ORGS_PER_ACCOUNT, orgAccessList, pickActive, type PainelRole } from "@/lib/data/org-access";
 
 const { organizerMembers, events, orders, orderItems, ticketTypes, tickets, coupons } = schema;
 
@@ -44,7 +44,10 @@ export const getPainelScope = cache(async (user: { id: string; email?: string | 
     with: { venue: { with: { city: true } }, ticketTypes: true },
     orderBy: [desc(events.startAt)],
   });
-  return { org, role, events: evs, orgs: list };
+  // nova produtora: dona de alguma com o cadastro concluído e ainda abaixo do limite
+  const owned = list.filter((x) => x.role === "owner");
+  const canCreateOrg = owned.some((x) => !!x.org.onboarding) && owned.length < MAX_ORGS_PER_ACCOUNT;
+  return { org, role, events: evs, orgs: list, canCreateOrg };
 });
 export type PainelEvent = Awaited<ReturnType<typeof getPainelScope>>["events"][number];
 
