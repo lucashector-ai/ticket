@@ -97,6 +97,15 @@
   .evl{display:flex;flex-direction:column}
   .evr{display:grid;grid-template-columns:54px minmax(0,1fr) 170px 120px auto;align-items:center;gap:20px;padding:14px 0;border-top:1px solid #F0F0EB}
   .evr:first-child{border-top:0;padding-top:4px}
+  /* 1181–1500px: a coluna do nome ficava com ~70px (uma palavra por linha); vendidos desce para a 2ª linha */
+  @media (min-width:1181px) and (max-width:1500px){
+    .evr{grid-template-columns:54px minmax(0,1fr) 110px auto;row-gap:10px}
+    .evr>.evr-art{grid-row:1/3}
+    .evr>.evr-i{grid-column:2;grid-row:1}
+    .evr>.evr-r{grid-column:3;grid-row:1}
+    .evr>.evr-p{grid-column:2/4;grid-row:2}
+    .evr>:last-child{grid-column:4;grid-row:1/3}
+  }
   .evr-art{width:54px;height:72px;border-radius:10px;overflow:hidden;background:#EEE;box-shadow:0 2px 8px rgba(17,17,17,.08)}
   .evr-i{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
   .evr-t{font:600 16px 'Inter Tight',sans-serif;letter-spacing:-.01em}

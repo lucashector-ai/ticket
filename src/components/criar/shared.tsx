@@ -51,7 +51,7 @@ export async function uploadImage(file: File, want?: { w: number; h: number; lab
     });
     if (!dim) return { ok: false, error: "Não consegui ler essa imagem." };
     const ratio = dim.w / dim.h, target = want.w / want.h;
-    if (Math.abs(ratio - target) / target > 0.02) return { ok: false, error: `${want.label} precisa ser ${want.w} × ${want.h} px (a sua tem ${dim.w} × ${dim.h}).` };
+    if (Math.abs(ratio - target) / target > 0.02) return { ok: false, error: `${want.label} precisa ter a proporção de ${want.w} × ${want.h} px (pode ser maior, na mesma proporção). A sua tem ${dim.w} × ${dim.h}: recorte nessa proporção e envie de novo.` };
     if (dim.w < want.w * 0.6) return { ok: false, error: `${want.label}: imagem pequena demais (${dim.w} × ${dim.h}). Use ${want.w} × ${want.h} px.` };
   }
   const fd = new FormData();
