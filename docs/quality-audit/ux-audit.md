@@ -62,3 +62,48 @@ Status: NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VALID
 
 ### U-13 · Aviso (toast) preso a meia tela · P3 · VALIDADO
 - `left:50%` sem largura: o aviso ocupava só a metade direita e quebrava em 4–5 linhas no celular (QA: `t8-02-qr.png`). Agora largura pelo texto até 560px, com margem para a aba de acessibilidade. M: `depois-09-equipe-qr-390.png`. Commit cffe40f.
+
+## Parte 2 · Auditoria completa
+
+Varredura automática: 38 rotas (20 públicas + 18 logadas) × 8 larguras (320×568, 375×667, 390×844, 430×932, 768×1024, 1280×800, 1440×900, 1920×1080) = 304 telas, medindo rolagem horizontal, elementos fora da tela, alvos de toque < 24px e erros de JS; axe-core (WCAG 2.0/2.1/2.2 A e AA) em 390 e 1280. Script: `scratchpad/marcos/sweep.js`, resultado `scratchpad/marcos/sweep/result.json`.
+
+### Jornada do comprador (celular 390, conta de teste, Pix de teste) · executada 5 vezes
+Evento → tela cheia (setor → ingresso) → Continuar (3,1–3,5 s até o checkout) → Seus dados (nome, e-mail e celular já preenchidos; CPF obrigatório) → Ir para pagamento (2,6 s) → Pix ou cartão → Gerar código Pix (3,1 s) → "Já fiz o pagamento" (teste) → Pedido confirmado (5,6–9,5 s com a animação) → Meus ingressos. Total, taxa e subtotal batem em todas as telas (R$ 550,00 + R$ 43,95 = R$ 593,95).
+
+### U-14 · Recarregar "Pedido confirmado" abria um checkout novo · P1 · VALIDADO
+- **Tela:** `/checkout` depois do pagamento. **Objetivo:** rever a confirmação.
+- **Antes:** a URL voltava para `/checkout?evento=…&itens=…`; recarregar mostrava "Seus dados" com os mesmos itens e um cronômetro novo de 15 min, como se nada tivesse sido comprado. Risco real de compra em dobro (quem recarrega para "ter certeza").
+- **Solução:** a aba guarda que essa URL terminou no pedido N; recarregar (ou voltar pelo histórico) até 3 h depois leva a `/meus-ingressos?pedido=N`. Navegar para o checkout de novo (comprar mais) continua normal.
+- **Depois:** testado 3 vezes: confirmação aparece normalmente; recarregar → Meus ingressos com "Pedido #N confirmado!". Commit 1da30aa.
+
+### U-15 · Meus ingressos depois da compra destacava outro evento · P2 · VALIDADO
+- **Antes:** vindo de "Ver meus ingressos", o banner dizia "Pedido #48321 confirmado!", mas o ingresso grande era de **outro** evento (o próximo da agenda); o comprado ficava num cartão pequeno com o nome cortado. M: `j2-05-meus-ingressos.png`.
+- **Solução:** com `?pedido=N`, o evento desse pedido vem primeiro, com o selo "Compra confirmada". Commit bf6b171.
+
+### U-16 · Ingresso da confirmação com nome cortado · P3 · VALIDADO
+- "Aurora A…" e "Qui, 19 Nov · 21h · Ar…" a 390px. Agora até 2 linhas para o nome e a data/local inteiros. M: `j2-04-confirmacao.png` → `j3-04-confirmacao-top.png`. Commit bf6b171.
+
+### U-17 · Com pedido aberto, a escolha nova era ignorada em silêncio · P2 · VALIDADO
+- **Antes:** havia um pedido Pix não pago (1× Pista); a pessoa voltou ao evento, escolheu 2× e tocou Continuar: caiu no pedido antigo de 1 ingresso com "Continuamos de onde você parou: mesmos ingressos". Ela pagaria 1 achando que eram 2.
+- **Solução:** o aviso agora diz "Você já tinha este pedido aberto, com outros ingressos. Agora você escolheu: 2× Pista — 2º lote" e oferece "Trocar pela escolha nova" (cancela o aberto, nada cobrado, abre o checkout com 2). Sem escolha diferente, continua como antes.
+- **Depois:** testado de ponta a ponta em `/eventos/marea`. M: `p1-pendente-nova-escolha.png`, `p1-trocado.png`. Commit c5e0768.
+
+### U-18 · Rolagem lateral em 320–390px · P2 · VALIDADO
+- `/eventos/*` a 320px: botão "Comprar ingressos" 5px fora da tela (e por isso a tela cheia de compra também rolava). Agora desce para baixo do preço.
+- `/painel/evento/[id]` a 320–390px: link do evento, "Copiar link" e o balão do gráfico saíam da tela; cartaz largo apertava o título; "Criar evento" sem respiro interno. M: `sweep/_painel_evento_…-390.png` → `depois-painel-evento-320.png`.
+- Novo teste: `scrollWidth = largura` em 320 e 390 nas duas telas.
+
+### U-19 · Contraste de textos secundários · P2 · VALIDADO
+- axe: > 500 ocorrências de texto cinza entre 2,8:1 e 4,1:1 (rodapé, metadados de cards, KPIs e menu do painel, lineup, datas). Troca só da cor do texto para tons do mesmo cinza um pouco mais escuros (identidade mantida). Depois: sobram só artes decorativas (`aria-hidden`), o texto animado de /sobre (fica escuro ao rolar) e ingressos inativos. Commit 71e2206.
+
+### U-20 · Nomes acessíveis e estrutura · P2 · VALIDADO (axe) / leitor de tela real: BLOQUEADO
+- Card de evento com 3 links para o mesmo lugar (imagem "Ver X", título, seta "Ingressos para X") → 1 link no teclado e no leitor de tela.
+- `label-content-name-mismatch` (WCAG 2.5.3) em lineup, artistas parecidos, avatar do produtor, pilha de ingressos e menu da conta; `nested-interactive` no mapa do local; `aria-controls` apontando para elemento inexistente na busca da ajuda; `aria-label` proibido em `div`/`i`.
+- Portaria bloqueava o zoom (`maximum-scale=1`, WCAG 1.4.4): liberado o zoom de pinça, mantendo os botões sem zoom de toque duplo.
+- Leitor de tela (NVDA/VoiceOver): BLOQUEADO nesta máquina; só verificação por árvore de acessibilidade e axe. Commit 805d704.
+
+### U-21 · "Esgotado" × "Encerrado" para o mesmo lote · P3 · VALIDADO
+- Celular dizia "Esgotado" e desktop "Encerrado" para o mesmo lote esgotado. Agora "Esgotado" nos dois; "Encerrado" só quando o produtor encerrou a venda. Lote esgotado/"próxima virada" sem a opacidade que deixava o aviso ilegível. M: `depois-marea-card.png`.
+
+### U-22 · Texto do limite repetido · P3 · VALIDADO
+- `/eventos/marea`: "Até 8 de cada tipo por pessoa, no máximo 8 por compra". Quando o limite do tipo é igual ao máximo da compra, fica só "Até 8 ingressos por compra".

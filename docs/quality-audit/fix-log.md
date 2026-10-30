@@ -42,3 +42,9 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 04:50 | bdba77b | Lista de Estado/Cidade não passa da tela; /conta com Estado e Cidade sem corte (QA 7) | Playwright 320/390/768 + teste forçando a coluna estreita | VALIDADO |
 | 30/10 04:50 | 554fb4c | Equipe: campos 42px, QR em coluna no celular, campos ≥200px no desktop, nome sem corte, "Desligar" com confirmação (QA 8, 9, 10) | Playwright 320/390/1280; criado e desligado 1 acesso de portaria de teste ("QA Marcos") | VALIDADO |
 | 30/10 04:50 | cffe40f | Foco no primeiro campo com erro (QA 12); toast com largura certa | Playwright /cadastro e /entrar em 320/390/1280 | VALIDADO |
+| 30/10 05:20 | 1da30aa | Recarregar a confirmação leva a Meus ingressos (U-14) | Playwright: compra Pix de teste + reload, 3× | VALIDADO |
+| 30/10 05:30 | bf6b171 | Ingresso da confirmação sem corte; Meus ingressos destaca o evento comprado (U-15, U-16) | Playwright 390 | VALIDADO |
+| 30/10 05:40 | c5e0768 | Pedido aberto × escolha nova: "Trocar pela escolha nova"; texto do limite sem redundância (U-17, U-22) | Playwright 390 em /eventos/marea | VALIDADO |
+| 30/10 05:50 | (ver git) | Sem rolagem lateral em /eventos e /painel/evento a 320–390 (U-18) | Playwright 320/390 | VALIDADO |
+| 30/10 06:10 | 71e2206 | Contraste dos cinzas de texto (U-19) | axe em 30 telas × 390/1280, antes/depois | VALIDADO |
+| 30/10 06:10 | 805d704 | Nomes acessíveis, 1 link por card, zoom na portaria, Esgotado/Encerrado (U-20, U-21) | axe + Playwright | VALIDADO |
