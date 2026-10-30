@@ -15,6 +15,7 @@ import { tierStatus } from "@/lib/tickets/status";
 import { canBuy } from "@/lib/launch";
 import { queueAllows } from "@/lib/queue";
 import { heldByType } from "@/lib/holds";
+import { groupKey, meiaLeftByGroup } from "@/lib/meia-quota";
 import { lookupSpecial } from "@/lib/special";
 import { stripeEnabled, stripePublishableKey } from "@/lib/payments/stripe";
 import { pendingOrderFor, resumeView, type ResumeData } from "@/lib/payments/pending";
@@ -80,6 +81,9 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   // pedido já criado passou pela abertura das vendas e pela fila
   if (!special && !resume && (!(await canBuy(e)).ok || !(await queueAllows(e)))) redirect(`/eventos/${e.slug}`);
   const held = special ? new Map<string, number>() : await heldByType(e.id, { exceptUserId: user?.id });
+  // cota de meia do setor (40%): sem meia sobrando, o tipo Meia aparece esgotado e a caixa da Inteira some
+  const meiaLeft = special ? new Map<string, number>() : await meiaLeftByGroup(e.id, e.ticketTypes);
+  const meiaOpen = (t: (typeof e.ticketTypes)[number]) => (meiaLeft.get(groupKey(t)) ?? 1) > 0;
   const resumed = new Map((resume?.items ?? []).map((i) => [i.ticketTypeId, i]));
 
   const qty: Record<string, number> = {};
@@ -123,8 +127,9 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
       return {
         id: t.id, name: t.sector ? `${t.sector} · ${t.name}` : t.name, type: t.name, note: t.note ?? "", desc: t.description,
         priceCents: r ? r.unitPriceCents : special ? special.priceCents : t.priceCents,
-        open: special || r ? true : tierStatus(t) === "open" && left > 0, sold: special || r ? false : t.status === "sold_out" || left <= 0,
-        sector: t.sector, sectorColor: t.sectorColor, sessionId: special ? null : t.sessionId, meiaOk: special ? false : meiaBoxOk(t, e.ticketTypes),
+        open: special || r ? true : tierStatus(t) === "open" && left > 0 && (t.kind !== "meia" || meiaOpen(t)),
+        sold: special || r ? false : t.status === "sold_out" || left <= 0 || (t.kind === "meia" && !meiaOpen(t)),
+        sector: t.sector, sectorColor: t.sectorColor, sessionId: special ? null : t.sessionId, meiaOk: special ? false : meiaBoxOk(t, e.ticketTypes) && meiaOpen(t),
         limit: special ? 1 : Math.max(r?.quantity ?? 0, Math.min(t.maxPerOrder, e.maxPerOrder)),
       };
     }),

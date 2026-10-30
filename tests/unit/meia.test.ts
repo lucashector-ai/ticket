@@ -53,3 +53,17 @@ describe("meia automática com preço editável (effTypes + meiaPriceError)", ()
     for (const v of ["30", "40", "80"]) expect(meiaPriceError({ autoMeia: true, sectors: [sector([{ id: "t1", kind: "inteira", name: "Inteira", price: "80", qty: "100", desc: "", meia: v }])] })).toBeNull();
   });
 });
+
+describe("cota de meia do setor (40%)", () => {
+  it("40% dos lugares do setor (todos os tipos), arredondado para baixo", async () => {
+    const { meiaCap } = await import("@/lib/meia-share");
+    const { sectorMeia } = await import("@/lib/criar/meia");
+    expect(meiaCap(100)).toBe(40);
+    expect(meiaCap(7)).toBe(2);
+    expect(meiaCap(0)).toBe(0);
+    // Inteira 100 + meia automática (40) = 140 lugares → até 56 meias; o tipo Meia tem 40
+    expect(sectorMeia(sector([{ id: "t1", kind: "inteira", name: "Inteira", price: "80", qty: "100", desc: "" }]), true)).toEqual({ seats: 140, cap: 56, meiaQty: 40 });
+    // sem meia automática nem tipo Meia: a caixa da Inteira vende até 40
+    expect(sectorMeia(sector([{ id: "t1", kind: "inteira", name: "Inteira", price: "80", qty: "100", desc: "" }]), false)).toEqual({ seats: 100, cap: 40, meiaQty: 0 });
+  });
+});

@@ -8,6 +8,7 @@ import { cpfValid } from "@/lib/cpf";
 import { normalizePhone, phoneValid } from "@/lib/phone";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
+import { meiaInOrder, meiaLockKey, meiaQuotaOkSql, MEIA_SOLD_OUT } from "@/lib/meia-quota";
 import { meiaBoxOk, priceOrder, SERVICE_FEE_RATE } from "@/lib/pricing";
 import { tierStatus } from "@/lib/tickets/status";
 import { canBuy } from "@/lib/launch";
@@ -202,8 +203,11 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   // (sai antes de gerar Pix ou cobrar). Parte de grupo e revenda não usam o estoque.
   const orderId = randomUUID();
   const typeIds = [...new Set(lines.map((l) => l.ticketTypeId))];
+  // cota de meia (40% por setor e data): trava do setor junto com as do estoque, conferência depois de gravar
+  const meiaUse = special ? new Map() : meiaInOrder(ev.ticketTypes, lines, cleanHolders);
+  const meiaGroups = [...meiaUse.values()].map((x) => x.group);
   const steps: BatchItem<"pg">[] = [];
-  if (!special) steps.push(lockKeys(stockLockKeys(typeIds)));
+  if (!special) steps.push(lockKeys([...stockLockKeys(typeIds), ...meiaGroups.map((g) => meiaLockKey(ev.id, g))]));
   const at = steps.length;
   steps.push(db.insert(orders).values({
     id: orderId, userId: user.id, eventId: ev.id, status: "pending",
@@ -224,12 +228,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     unitFeeCents: Math.round(l.priceCents * feeRate),
   }))));
   if (!special) steps.push(ensure(capacityOkSql(ev.id, typeIds), "stock"));
+  if (meiaGroups.length) steps.push(ensure(meiaQuotaOkSql(ev.id, meiaGroups), "meia"));
   let order: typeof orders.$inferSelect;
   try {
     const res = await runBatch(steps);
     order = (res[at] as (typeof orders.$inferSelect)[])[0];
   } catch (e) {
     if (abortOf(e) === "stock") return { ok: false, error: "Outra pessoa acabou de reservar os últimos ingressos deste tipo. Confira o que ainda resta e tente de novo." };
+    if (abortOf(e) === "meia") return { ok: false, error: MEIA_SOLD_OUT };
     throw e;
   }
 

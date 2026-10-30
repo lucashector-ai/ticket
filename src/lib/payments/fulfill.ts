@@ -14,6 +14,7 @@ import { ticketCode } from "@/lib/tickets/code";
 import { overLimit, type Bought } from "@/lib/tickets/limits";
 import { abortOf as abortTx, ensure as ensureTx, lockKeys, runBatch } from "@/lib/payments/tx";
 import { trailInsert } from "@/lib/tickets/trail";
+import { meiaInOrder, meiaLockKey, meiaQuotaPaidOkSql, MEIA_SOLD_OUT } from "@/lib/meia-quota";
 
 /*
  * Emissão dos ingressos de um pedido pago: a MESMA rotina para o webhook da Stripe, para a conferência
@@ -99,7 +100,7 @@ export async function paidView(orderId: string): Promise<FulfillOk | null> {
  * grupo) viram comandos `ensure` dentro da transação: quando não passam, provocam um erro proposital
  * (TW_ABORT:<motivo>) que desfaz tudo e diz o motivo.
  */
-type Abort = "order" | "presale" | "share" | "share_one" | "stock" | "limit" | "listing" | "ticket";
+type Abort = "order" | "presale" | "share" | "share_one" | "stock" | "limit" | "listing" | "ticket" | "meia";
 const ensure = (ok: SQL, why: Abort, withClause?: SQL) => ensureTx(ok, why, withClause);
 const abortOf = (e: unknown) => abortTx(e) as Abort | null;
 
@@ -224,9 +225,14 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
   const gifts = giftRows(order.userId, rows.filter((t) => giftTo.has(t.id)).map((t) => ({ ticketId: t.id, email: giftTo.get(t.id)!.email })));
   const shareId = order.groupShareId;
 
+  // cota de meia (40% por setor e data): conferida de novo na emissão, com os ingressos deste pedido já gravados
+  const meiaTypes = await db.query.ticketTypes.findMany({ where: inArray(ticketTypes.id, typeIds), columns: { id: true, kind: true, sector: true, sessionId: true, quantity: true } });
+  const meiaGroups = [...meiaInOrder(meiaTypes, order.items, order.holders ?? []).values()].map((x) => x.group);
+
   const steps: BatchItem<"pg">[] = [];
-  // limite por pessoa (compra normal) e "uma parte por conta" (grupo): a mesma pessoa, uma confirmação por vez
-  steps.push(lockPeople([`u:${order.userId}`, ...(normal && cpf ? [`c:${cpf}`] : [])]));
+  // limite por pessoa (compra normal) e "uma parte por conta" (grupo): a mesma pessoa, uma confirmação por vez;
+  // a meia do setor também, uma confirmação por vez (numa chamada só com as pessoas: ordem fixa, sem impasse)
+  steps.push(lockPeople([`u:${order.userId}`, ...(normal && cpf ? [`c:${cpf}`] : []), ...meiaGroups.map((g) => meiaLockKey(order.eventId, g))]));
   steps.push(markPaid(order.id, pay.ref, allowed));
   // link da pré-venda vale para uma compra só
   if (order.presaleSignupId) {
@@ -272,6 +278,7 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
       select 1 from ${ticketTypes} where ${ticketTypes.id} in (${sql.join(typeIds.map((id) => sql`${id}`), sql`, `)})
       and ${ticketTypes.sold} + ${heldSql(ticketTypes.id)} > ${ticketTypes.quantity})`, "stock"));
   }
+  if (meiaGroups.length) steps.push(ensure(meiaQuotaPaidOkSql(order.eventId, meiaGroups), "meia"));
   // limite por pessoa com este pedido já pago (conta e CPF), conferido com a trava acima
   if (normal) {
     steps.push(ensure(sql`not exists (
@@ -293,6 +300,7 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
     if (why === "share") return fail("Esta parte do grupo já foi paga ou passou para outra pessoa.");
     if (why === "share_one") return fail(ONE_SHARE);
     if (why === "limit") return fail((await limitMsg()) ?? "Você chegou ao limite de ingressos por pessoa deste evento.");
+    if (why === "meia") return fail(MEIA_SOLD_OUT);
     return fail(pay.charged && order.expiresAt && order.expiresAt < new Date()
       ? "A reserva venceu antes da confirmação do pagamento e os ingressos esgotaram."
       : "Os ingressos esgotaram enquanto você pagava.");

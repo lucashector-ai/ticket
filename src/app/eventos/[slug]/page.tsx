@@ -13,6 +13,7 @@ import { dateFull, hourLabel, initials, parts, timeLabel } from "@/lib/format";
 import { salesStartNote, tierStatus } from "@/lib/tickets/status";
 import { presaleAccess, salePhase } from "@/lib/launch";
 import { heldByType } from "@/lib/holds";
+import { groupKey, meiaLeftByGroup } from "@/lib/meia-quota";
 import { and, asc, eq, lt, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
@@ -49,7 +50,7 @@ async function viewerBought(userId: string, typeIds: string[]): Promise<Bought> 
 const PAL = ["#1E1E22", "#EDFF3C", "#E9E7E0", "#2C55F5", "#FF4FD8", "#C4532B"];
 
 type Offer = { id: string; ticketTypeId: string; priceCents: number; sellerUserId: string };
-function toData(e: EventDetail, access: boolean, held: Map<string, number>, offers: Offer[], viewerId: string | null, bought: Bought): EventoData {
+function toData(e: EventDetail, access: boolean, held: Map<string, number>, offers: Offer[], viewerId: string | null, bought: Bought, meiaLeft: Map<string, number>): EventoData {
   const venueName = e.venueNameOverride ?? e.venue?.name ?? "";
   const city = e.venue?.city.name ?? "";
   const uf = e.venue?.city.uf ?? "";
@@ -80,7 +81,9 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     const status = e.status === "cancelled" ? "closed" : tierStatus(t);
     return {
       id: t.id, name: t.name, note: status === "upcoming" && t.salesStart ? salesStartNote(t.salesStart) : t.note, desc: t.description,
-      priceCents: t.priceCents, limit: Math.min(t.maxPerOrder, e.maxPerOrder), status, available: Math.max(0, t.quantity - t.sold - (held.get(t.id) ?? 0)),
+      priceCents: t.priceCents, limit: Math.min(t.maxPerOrder, e.maxPerOrder), status,
+      // tipo Meia: também limitado pela cota de meia do setor (40% dos lugares do setor e data)
+      available: Math.max(0, Math.min(t.quantity - t.sold - (held.get(t.id) ?? 0), t.kind === "meia" ? meiaLeft.get(groupKey(t)) ?? Infinity : Infinity)),
       // limite por pessoa já usado em compras pagas (conta e CPF), a mesma conta que o checkout faz
       owned: bought.get(t.id)?.all ?? 0,
       sector: t.sector, sectorColor: t.sectorColor, sessionId: t.sessionId,
@@ -154,7 +157,7 @@ export default async function EventoPage({ params, searchParams }: Params) {
   // rascunho: só quem pode editar vê a prévia (quem criou, o dono e os admins da produtora)
   if (!ev || (ev.status === "draft" && !(user && (ev.createdByUserId === user.id || (await canEditEvent(user.id, ev)))))) notFound();
   // tudo o que depende só do evento e de quem vê sai numa rodada só (antes eram três, uma depois da outra)
-  const [similar, following, access, offers, held, bought] = await Promise.all([
+  const [similar, following, access, offers, held, bought, meiaLeft] = await Promise.all([
     listSimilarEvents(ev.id, ev.primaryCategoryLabel),
     ev.organizerId ? isFollowing(user?.id, "organizer", ev.organizerId) : Promise.resolve(false),
     salePhase(ev) === "presale" ? presaleAccess(ev.id).then((a) => !!a) : Promise.resolve(false),
@@ -165,8 +168,9 @@ export default async function EventoPage({ params, searchParams }: Params) {
     // a reserva de quem está vendo (pedido aberto dele) não tira lugar dele mesmo
     heldByType(ev.id, { exceptUserId: user?.id }),
     user ? viewerBought(user.id, ev.ticketTypes.map((t) => t.id)) : Promise.resolve<Bought>(new Map()),
+    meiaLeftByGroup(ev.id, ev.ticketTypes),
   ]);
-  const data = toData(ev, access, held, offers, user?.id ?? null, bought);
+  const data = toData(ev, access, held, offers, user?.id ?? null, bought, meiaLeft);
   const headerUser = user ? { id: user.id, name: user.name, email: user.email, image: user.image } : null;
 
   return (
