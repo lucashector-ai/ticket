@@ -112,3 +112,76 @@ Troca da logo (arte nova do dono, `ticketswin-logo.svg` 1394 × 265). Paths usad
 | 30/10 13:00 | (este bloco) | Carteira: Apple (`wallet/images.ts`: `icon` 29/58/87 opaco, `logo` 106×20/212×40/318×60 transparente com logotipo branco) e Google (`public/wallet/google-logo.png` 660×660, `google.ts` com `?v=2`) | Imagens do passe extraídas do `images.ts` e conferidas; teste `wallet-sign` passando | VALIDADO |
 
 Gerador (Playwright/Chromium, sem dependência nova) e as variantes em SVG (completa escura/branca, logotipo escuro/branco, isotipo) ficaram fora do repositório, na pasta de trabalho da marca. Sem logo para trocar: tela "Preparando seus ingressos" (só o texto "Tickets Win · Ingresso"), `schema.ts`/`holds.ts`/`auth.ts` (a palavra "logo" ali é "logo depois"), logo do produtor nos e-mails (é a foto do produtor). O site não tem manifest próprio (só a portaria).
+
+### Cor de destaque `#D3F55B` → `#EDFF3C`
+
+Pedido do dono: o destaque do site inteiro passa a ser o lima da logo, `#EDFF3C` (houve um pedido intermediário de `#3CFF63`, cancelado; nada ficou em `#3CFF63`, conferido com `grep -ri 3cff63`). Tons derivados recalculados em OKLCH: o matiz acompanha o destaque (120,7° → 115,0°) e cada tom mantém a própria luminosidade (fundo claro continua claro, texto escuro continua com o mesmo contraste: `#3D5200` 8,73:1 → `#445000` 8,77:1 no branco); só os tons colados ao destaque (hover e variações) sobem junto com ele. Tons quase neutros (cinzas-gelo como `#F5F7EC`) e as artes prontas de evento (`art/banner.tsx`, `art/flyer.tsx`, `db/seed.ts`, lima `#CBFF3D`) ficaram como estavam: são conteúdo, não o destaque. `theme-color` do site (`#111111`) e da portaria (`#000000`) não usam o lima.
+
+| Antes | Depois |
+|---|---|
+| `#D3F55B` | `#EDFF3C` |
+| `#DCF568` | `#EDFF3C` |
+| `#3D5200` | `#445000` |
+| `#EEFBC4` | `#F8FFC2` |
+| `#F2FBD6` | `#FAFED4` |
+| `#2F4500` | `#364300` |
+| `#7BC70A` | `#90C200` |
+| `#2D6A00` | `#3E6700` |
+| `#3E5A00` | `#465800` |
+| `#E7F8D2` | `#F1FED2` |
+| `#F1FAD2` | `#F9FED0` |
+| `#E0FA82` | `#F4FF8F` |
+| `#B9E23A` | `#CAE100` |
+| `#C6E84A` | `#DAEB05` |
+| `#2E3D00` | `#333B00` |
+| `#E6FA84` | `#F9FF84` |
+| `#F6FFD2` | `#FCFFDD` |
+| `#D7F264` | `#F0FC4D` |
+| `#F1FBD3` | `#F9FFD1` |
+| `#B9DC3A` | `#C7D900` |
+| `#F4FBD9` | `#FBFED7` |
+| `#E0F2A0` | `#F3FB9C` |
+| `#2C3A06` | `#313900` |
+| `#4A6100` | `#525F00` |
+| `#1D2704` | `#202600` |
+| `#F2FBD2` | `#FAFED0` |
+| `#EDF9D9` | `#F5FED9` |
+| `#2D5A00` | `#395700` |
+| `#E9F5C8` | `#F5FCC8` |
+| `#4E5E1F` | `#545D0A` |
+| `#C3E84A` | `#D6EB01` |
+| `#7FB800` | `#90B400` |
+| `#E4F3B8` | `#F3FBB7` |
+| `#9BCB3C` | `#A8C800` |
+| `#D5E8C4` | `#E3F3C9` |
+| `#F3FBD6` | `#FAFED4` |
+| `#7BC043` | `#86BF03` |
+| `#F5FBE0` | `#FBFEDF` |
+| `#3A4A10` | `#3F4900` |
+| `#E6EFC4` | `#F4F8C7` |
+| `#B9D94A` | `#C5D606` |
+| `#7CC42B` | `#8DC000` |
+| `#EEF8C6` | `#F9FDC4` |
+| `#4A5A10` | `#505800` |
+| `#4E9A1B` | `#609700` |
+| `#E2FF7A` | `#F5FFAD` |
+| `rgb(211,245,91)` | `rgb(237,255,60)` |
+| `rgb(220,245,104)` | `rgb(237,255,60)` |
+| `rgb(123,199,10)` | `rgb(144,194,0)` |
+| `rgb(160,200,40)` | `rgb(173,196,0)` |
+| `rgb(140,180,20)` | `rgb(153,176,0)` |
+| `rgb(70,140,0)` | `rgb(89,136,0)` |
+| `rgb(127,184,0)` | `rgb(144,180,0)` |
+| `rgb(230,255,150)` | `rgb(246,255,188)` |
+| `rgb(140,170,20)` | `rgb(152,166,0)` |
+
+| Data/hora | Commit | O que | Validação | Status |
+|---|---|---|---|---|
+| 30/10 13:30 | 9508041 | CSS geral (globals `--color-acc`, base, componentes, rodapé, acessibilidade, lançamento, mapa 3D, animação de pagamento) | prints antes/depois | VALIDADO |
+| 30/10 13:35 | 7021dc2 | CSS de todas as páginas | prints antes/depois | VALIDADO |
+| 30/10 13:40 | c939c9a | Componentes/dados: paletas de setor/avatar/cartaz/artista, gráficos do painel, mapa 3D da landing, check do pagamento, foco do cartão | tsc/eslint; prints | VALIDADO |
+| 30/10 13:45 | cb3318a | E-mails (`brand.ts`, estilo padrão e predefinições do editor, ícones de rede recoloridos), PDF (destaque = isotipo), carteira (rótulos do passe) | HTML de compra, código e campanha (com cupom) gerados e abertos no Chromium; PDF rasterizado; 33 testes unitários | VALIDADO |
+
+**Contraste:** varredura no navegador (14 páginas públicas + folha de compra + prévia do painel/ingresso/comprovante, 390 e 1280) procurando texto, ícone ou borda fina no lima sobre fundo claro abaixo de 3:1. Achados só decorativos ou intencionais: os números grandes do "Top 5" da home (lima com contorno preto de 1,5 px, como antes) e o isotipo da logo no branco (mesmo tratamento da marca anterior, sem contorno). Lima sobre preto e texto preto sobre lima seguem iguais. O lima novo é mais claro (1,11:1 no branco contra 1,24:1 do antigo), então **não usar o lima como texto em fundo claro**: para isso há o tom escuro `#445000`.
+
+**Prints:** antes/depois em Chromium, Firefox e WebKit, 390 e 1280: home, evento, folha de compra, login, portaria, banco, sobre, produtores, explorar, ajuda e a prévia (painel, ingresso, comprovante, fila). Checkout, criar evento e painel real exigem login (não tenho as credenciais de teste); conferidos pela prévia dos mesmos componentes e pela troca no CSS.
