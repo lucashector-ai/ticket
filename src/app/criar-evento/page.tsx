@@ -45,9 +45,10 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
   }
 
   let initial: Draft | null = null, dbMap: DbMap | null = null, slug: string | null = null;
+  let live: { status: "published" | "draft"; unlisted: boolean } | null = null;
   if (editId) {
     if (!/^[0-9a-f-]{36}$/.test(editId)) notFound();
-    const ev = await db.query.events.findFirst({ where: eq(schema.events.id, editId), columns: { id: true, slug: true, createdByUserId: true, draft: true, transferEnabled: true, resaleEnabled: true, salesOpenAt: true, presaleAt: true, launchPage: true } });
+    const ev = await db.query.events.findFirst({ where: eq(schema.events.id, editId), columns: { id: true, slug: true, status: true, unlisted: true, createdByUserId: true, draft: true, transferEnabled: true, resaleEnabled: true, salesOpenAt: true, presaleAt: true, launchPage: true } });
     if (!ev || ev.createdByUserId !== user.id) notFound();
     const saved = ev.draft as { form?: Draft; dbMap?: DbMap } | null;
     // transferência, revenda, abertura e pré-venda também mudam pelo painel: vale o que está no evento
@@ -60,6 +61,8 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
     // texto pronto do antigo campo "Política de cancelamento": hoje é "Observações (opcional)" e começa vazio
     if (isDefaultRefund(initial.refund)) initial.refund = "";
     dbMap = saved?.dbMap ?? null;
+    // evento já no ar: o criador mostra "Publicado" e "Salvar alterações", não "Rascunho" e "Publicar evento"
+    live = { status: ev.status === "draft" ? "draft" : "published", unlisted: ev.unlisted };
     slug = ev.slug;
   }
   // evento novo: começa com os padrões das Configurações do painel
@@ -74,7 +77,7 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
 
   return (
     <div className="pg-criar">
-      <CriarFlow key={editId ?? "novo"} initial={initial} defaults={defaults} eventId={editId} slug={slug} dbMap={dbMap} startStep={etapa >= 0 ? etapa : editId ? STEP_LABELS.length : 0} />
+      <CriarFlow key={editId ?? "novo"} initial={initial} defaults={defaults} eventId={editId} slug={slug} dbMap={dbMap} live={live} startStep={etapa >= 0 ? etapa : editId ? STEP_LABELS.length : 0} />
     </div>
   );
 }

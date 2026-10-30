@@ -12,8 +12,10 @@ import { InfoStep, OndeStep, QuandoStep, TipoStep } from "./steps";
 import { ArtesStep, IngressosStep, MapaStep, RevisarStep, VendasStep } from "./steps-tk";
 import { type Ctx, type PvField } from "./shared";
 
-type Saved = { eventId: string; slug: string; status: "published" | "draft"; unlisted: boolean };
-type Props = { initial: Draft | null; defaults?: Partial<Draft>; eventId: string | null; slug: string | null; dbMap: DbMap | null; startStep?: number };
+type Saved = { eventId: string; slug: string; status: "published" | "draft"; unlisted: boolean; /** já estava no ar antes deste salvar */ wasLive?: boolean };
+type Props = { initial: Draft | null; defaults?: Partial<Draft>; eventId: string | null; slug: string | null; dbMap: DbMap | null; startStep?: number;
+  /** situação do evento salvo (editar): no ar ou rascunho */
+  live?: { status: "published" | "draft"; unlisted: boolean } | null };
 
 const LOCAL_KEY = "onde:criar-evento:novo";
 const noopSubscribe = () => () => {};
@@ -42,11 +44,11 @@ export function derive(d: Draft) {
 }
 export type Derived = ReturnType<typeof derive>;
 
-export function CriarFlow({ initial, defaults, eventId: initialId, slug: initialSlug, dbMap: initialMap, startStep = 0 }: Props) {
+export function CriarFlow({ initial, defaults, eventId: initialId, slug: initialSlug, dbMap: initialMap, live = null, startStep = 0 }: Props) {
   const { flash } = useToast();
   const [d, setD] = useState<Draft>(() => initial ?? { ...emptyDraft(), ...defaults });
   const [step, setStep] = useState(startStep);
-  const [saved, setSaved] = useState<Saved | null>(initialId && initialSlug ? { eventId: initialId, slug: initialSlug, status: "draft", unlisted: false } : null);
+  const [saved, setSaved] = useState<Saved | null>(initialId && initialSlug ? { eventId: initialId, slug: initialSlug, status: live?.status ?? "draft", unlisted: live?.unlisted ?? false } : null);
   const [dbMap, setDbMap] = useState<DbMap>(initialMap ?? { sessions: {}, types: {} });
   const [published, setPublished] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -93,10 +95,11 @@ export function CriarFlow({ initial, defaults, eventId: initialId, slug: initial
     const r = await saveEvent({ draft: d, eventId: saved?.eventId ?? null, dbMap });
     setBusy(false);
     if (!r.ok) { flash(r.error); if (r.step != null) go(r.step); return; }
-    setSaved({ eventId: r.eventId, slug: r.slug, status: r.status, unlisted: r.unlisted });
+    const wasLive = saved?.status === "published";
+    setSaved({ eventId: r.eventId, slug: r.slug, status: r.status, unlisted: r.unlisted, wasLive });
     setDbMap(r.dbMap);
     setPublished(true);
-    if (r.status === "published") { setConfetti(true); setTimeout(() => setConfetti(false), 3600); }
+    if (r.status === "published" && !wasLive) { setConfetti(true); setTimeout(() => setConfetti(false), 3600); }
     try { localStorage.removeItem(LOCAL_KEY); } catch { /* ok */ }
     window.history.replaceState(null, "", `/criar-evento?editar=${r.eventId}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -202,10 +205,10 @@ function Done({ saved, d, flash, onEdit }: { saved: Saved; d: Draft; flash: (m: 
   return (
     <section className="cv-done">
       <span className="cv-bd" aria-hidden="true"><Check size={44} /></span>
-      <h1 className="cv-q" style={{ marginTop: 28 }}>{draft ? "Rascunho salvo" : "Seu evento está no ar!"}</h1>
+      <h1 className="cv-q" style={{ marginTop: 28 }}>{draft ? "Rascunho salvo" : saved.wasLive ? "Alterações salvas" : "Seu evento está no ar!"}</h1>
       <p className="cv-s">
         {draft ? "Só você vê este evento. Publique quando estiver pronto."
-          : `Publicamos ${d.title}.${saved.unlisted ? " Ele fica fora da busca: só entra quem tiver o link." : ""}${d.saleStart.trim() ? ` A página mostra a contagem até as vendas abrirem (${d.saleStart}).` : " A página já pode receber vendas."}`}
+          : `${saved.wasLive ? `${d.title} continua no ar, já com as mudanças.` : `Publicamos ${d.title}.`}${saved.unlisted ? " Ele fica fora da busca: só entra quem tiver o link." : ""}${d.saleStart.trim() ? ` A página mostra a contagem até as vendas abrirem (${d.saleStart}).` : " A página já pode receber vendas."}`}
       </p>
       <div className="cv-lk"><span>{url.replace(/^https?:\/\//, "")}</span><button type="button" onClick={() => void copy()}>Copiar link</button></div>
       <div className="cv-nx">
