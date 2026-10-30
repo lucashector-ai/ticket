@@ -110,11 +110,11 @@ function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many
                       : <label className="pr"><span className="cur">R$</span><input autoComplete="off" inputMode="decimal" value={t.price} onChange={(e) => setType(t.id, { price: e.target.value.replace(/[^\d,]/g, "") })} placeholder="0" aria-label={`Preço de ${t.name}`} />
                         <button className="fr" type="button" onClick={() => setType(t.id, { free: true })} title="Deixar grátis">grátis</button></label>}
                 </div>
-                <div className="cell" data-l="Quantidade">
+                <div className="cell" data-l="Qtd.">
                   {t.auto ? <span className="qt2 ro" onClick={ro}><b>{t.qty}</b><span>un.</span></span>
                     : <label className="qt2"><input autoComplete="off" inputMode="numeric" value={t.qty} onChange={(e) => setType(t.id, { qty: e.target.value.replace(/\D/g, "").slice(0, 6) })} placeholder="0" aria-label={`Quantidade de ${t.name}`} /><span>un.</span></label>}
                 </div>
-                <div className="cell" data-l="Limite por pessoa">
+                <div className="cell" data-l="Por pessoa">
                   <div className="lm">
                     <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.max(1, lim - 1)) })} disabled={!t.auto && lim <= 1} aria-label={`Diminuir limite de ${t.name}`}>−</button>
                     <b>{lim}</b>
