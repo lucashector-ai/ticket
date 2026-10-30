@@ -7,7 +7,7 @@ export type TicketCardData = {
 };
 
 type EventLike = Parameters<typeof eventLabels>[0] & { title: string; flyerId: string; ageRating?: string | null; organizer?: { name: string } | null };
-type TicketLike = { code: string; holderName: string | null; halfPrice: boolean; status: string; ticketType: { name: string; sector: string | null }; order?: { number: number | null } | null };
+type TicketLike = { code: string; holderName: string | null; halfPrice: boolean; status: string; ticketType: { name: string; sector: string | null; kind?: string | null }; order?: { number: number | null } | null };
 
 /** "23h59 · até 8h" → "23:59"; sem horário, "—". */
 function gatesOf(doors: string) {
@@ -24,7 +24,8 @@ export function ticketCard(t: TicketLike, e: EventLike): TicketCardData {
     placeLine: [L.venue, L.addr].filter(Boolean).join(" · "),
     gates: gatesOf(L.doors),
     sector: t.ticketType.sector || t.ticketType.name.split(/\s+[—–-]\s+/)[0] || t.ticketType.name,
-    type: t.halfPrice ? "Meia" : "Inteira",
+    // meia marcada no checkout ou tipo próprio de meia/social (o titular apresenta o documento na entrada)
+    type: t.halfPrice || t.ticketType.kind === "meia" ? "Meia" : t.ticketType.kind === "social" ? "Social" : "Inteira",
     holder: t.holderName ?? "",
     orderNumber: t.order?.number ?? null,
     age: (e.ageRating ?? "").split(/[\s·,]/)[0] ?? "",
