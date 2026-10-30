@@ -54,7 +54,7 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/unit/password-throttle.test.ts | S-23: "esqueci a senha" (login simulado): 30 s, 6 por hora, maiúsculas, outro e-mail, depois de 1 h | conforme (falha sem 3271b9e) | VALIDADO (rodada 2) |
 | tests/unit/admin-guard.test.ts | S-05: central com e-mail confirmado, domínio, ADMIN_EMAILS fora do domínio, `secure` só com app | conforme | VALIDADO (rodada 2) |
 
-Última execução completa: 30/10 rodada 2, **71 testes, 71 aprovados, 0 reprovados** (23 arquivos: 27 unitários + 44 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 85e8bff).
+Última execução completa: 30/10 rodada 2, **71 testes, 71 aprovados, 0 reprovados** (23 arquivos: 27 unitários + 44 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 99aed9b); e2e da câmera repetido depois das mudanças de portaria do Marcos (13/13).
 
 ### No navegador (Playwright, servidor local, conta de teste)
 

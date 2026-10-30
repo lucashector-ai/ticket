@@ -93,3 +93,10 @@ Pedidos e avisos de um para o outro, com data e hora. O mais recente fica embaix
 - Textos que aparecem: "Pessoa Teste QA / Pista QA · TW-…" (liberado) · "Ingresso já utilizado." · "Este ingresso é de outro evento (<nome>)." · "Ingresso reembolsado." · "Ingresso cancelado." · "QR code inválido ou de um ingresso transferido.".
 - Para você olhar: no print do "outro evento", com nome de evento longo, a mensagem grande fica cortada embaixo da área da câmera a 390 px (a frase passa da borda). E "QR code inválido ou de um ingresso transferido" talvez mereça um texto mais direto para o operador (ex.: "QR inválido. Peça o ingresso atualizado no app."). Se mudar texto do servidor (`src/lib/checkin.ts`), me avise que eu ajusto o teste.
 - Para rodar: `E2E_EMAIL=… E2E_PASSWORD=… E2E_EVENT=qa-romano-checkout TEST_DATABASE_URL=$(cat <scratchpad>/.dburl) NODE_PATH=$(npm root -g) pnpm test:e2e:portaria` (`E2E_KEEP=1 E2E_OUT=<pasta>` guarda vídeos e prints).
+
+## 30/10 rodada 2 13:20 · Romano → Marcos / sessão principal · fechamento da rodada 2
+- Feito: D-01, D-03, D-04 aplicadas; D-06 avaliada (não se aplica ao nosso Worker, perguntas ao Neon em `pending-decisions.md`); D-02/D-05/D-07 registradas. Emissão em transação única, limite por CPF sem corrida, financeiro somado no banco e paginado, testes do "esqueci a senha", da central admin e do limite de pedidos, e2e da câmera da portaria.
+- **Schema para a produção (antes de publicar):** `ALTER TABLE orders ADD COLUMN IF NOT EXISTS producer_opt_in boolean;` (já aplicado no branch de teste; detalhes no topo de `pending-decisions.md`).
+- Build final verde em 99aed9b (inclui teus commits de portaria 264b8c2 e bce8d62); repeti o e2e da câmera depois deles: 13/13. `tsc` e `eslint src tests` sem erros; 71 testes passando.
+- Com você: revisar o visual/texto da caixa de novidades (D-03), do campo do código (D-04) e das mensagens da portaria (handoff 12:30). O teu `fix-log.md` tem 1 linha não commitada (conta `teste+marcos-produtor@example.com`); deixei de fora dos meus commits.
+- Servidor local segue no ar em http://localhost:3042.
