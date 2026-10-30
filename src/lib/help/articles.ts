@@ -106,7 +106,7 @@ export const ARTICLES: HelpArticle[] = [
         "**Limite por pessoa de cada tipo:** por exemplo, até 4 ingressos de Pista Inteira por pessoa. Esse limite soma as compras já pagas **na sua conta e no seu CPF**: comprar por outra conta com o mesmo CPF não aumenta o limite.",
       ),
       p("Se passar do limite, o checkout avisa quantos você já tem e qual é o máximo. O limite é conferido de novo na confirmação do pagamento. Os limites existem para mais gente conseguir comprar e para dificultar a ação de cambistas."),
-      tip("Ingressos que você recebe por transferência, compra na revenda oficial ou parte de compra em grupo não contam para o seu limite de compra."),
+      tip("Ingressos que você recebe por transferência, compra na revenda oficial ou parte de compra em grupo não contam para o seu limite de compra. Na compra em grupo, cada conta paga uma parte só de cada grupo."),
     ],
     related: ["cpf-na-compra"],
   },
@@ -527,6 +527,7 @@ export const ARTICLES: HelpArticle[] = [
       ),
       ul(
         "O grupo segue o máximo de ingressos por compra do evento.",
+        "Cada conta paga **uma parte só** de cada grupo, e cada pessoa pode ter **um grupo aberto** por evento. Para montar outro, cancele o que está aberto.",
         "Cada parte custa o preço do ingresso mais a taxa de serviço. Na parte do grupo não há cupom nem meia-entrada.",
         "Ingressos gratuitos não entram em grupo: cada pessoa garante o seu.",
       ),
