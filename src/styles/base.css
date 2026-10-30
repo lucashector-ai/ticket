@@ -362,11 +362,10 @@ input,select{font:inherit;color:inherit}
 }
 /* banner livre do carrossel (não é evento): arte de palco fixo (ex.: 1440×800) escalada pelo HeroStage.
    Computador: preenche a largura, centralizada entre o cabeçalho (69px) e a busca (168px do fim).
-   Celular: a arte inteira no cartão 16:9 (como o banner de evento) e, embaixo, o rótulo e o botão legíveis. */
+   Celular: a arte inteira no cartão 16:9 (como o banner de evento). */
 .bnx{
   .bnf-box{position:absolute;inset:0;z-index:0;display:block;overflow:hidden;--bnf-fit:width;--bnf-top:69px;--bnf-bot:168px}
   .bnf-art{position:absolute;left:0;top:0;display:block;transform-origin:0 0}
-  .bnf-cap{display:none}
   /* setas na borda: em telas largas elas ficam na coluna do conteúdo, por cima do texto da arte */
   &.bnx-free .bn-prev{left:20px}
   &.bnx-free .bn-next{right:20px}
@@ -374,13 +373,12 @@ input,select{font:inherit;color:inherit}
     .bnf{background:#111}
     .bnf-box{left:16px;right:16px;top:96px;bottom:auto;height:calc((100vw - 32px) * 9 / 16);border-radius:18px;box-shadow:0 0 0 1px rgba(255,255,255,.16),0 30px 60px -24px rgba(0,0,0,.7);--bnf-fit:contain;--bnf-top:0px;--bnf-bot:0px}
     .bnf.on .bnf-box{animation:rise .7s var(--ease) both}
-    .bnf-cap{position:absolute;left:16px;right:16px;top:calc(96px + (100vw - 32px) * 9 / 16 + 18px);z-index:2;display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:0 4px;color:#FFFFFF}
-    .bnf.on .bnf-cap{animation:rise .7s .08s var(--ease) both}
-    .bnf-cap b{font-family:'Inter Tight',sans-serif;font-size:22px;line-height:1.15;font-weight:600;letter-spacing:-.02em}
-    .bnf-cta{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:999px;background:var(--color-acc);color:#111111;font-size:14px;font-weight:700}
+    /* sem texto embaixo da arte: o cartão desce para ficar no meio entre o topo e a busca (e os pontos vão junto) */
+    .bnf-box{top:144px}
+    &.bnx-free .bnm-dots{top:calc(144px + (100vw - 32px) * 9 / 16 - 40px)}
   }
   @media (prefers-reduced-motion:reduce){
-    .bnf.on .bnf-box,.bnf.on .bnf-cap{animation:none}
+    .bnf.on .bnf-box{animation:none}
   }
 }
 .bnx .bn-arr2{width:58px;height:58px;margin-top:-90px;color:#FFFFFF;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 10px 30px -12px rgba(0,0,0,.35);opacity:.85;transition:background .35s,opacity .35s,transform .5s var(--ease)}

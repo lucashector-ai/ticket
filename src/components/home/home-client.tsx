@@ -195,13 +195,6 @@ export function HomeClient({ user, events, hero, categories, cityOpts, spotify }
             {hero.map((it, i) => it.kind === "free" ? (
               <div key={it.key} className={i === heroIdx ? "bnx-i bnf on" : "bnx-i bnf"} aria-hidden={i !== heroIdx}>
                 <HeroStage html={it.slide.html} image={it.slide.image} w={it.slide.w} h={it.slide.h} bg={it.slide.bg} active={i === heroIdx} title={it.slide.label} />
-                {/* celular: a arte inteira fica pequena; o rótulo e o botão embaixo dela ficam legíveis */}
-                <span className="bnf-cap">
-                  <b>{it.slide.label}</b>
-                  {it.slide.cta && (
-                    <span className="bnf-cta">{it.slide.cta}<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg></span>
-                  )}
-                </span>
               </div>
             ) : (
               <EventSlide key={it.key} b={it.ev} on={i === heroIdx} />
