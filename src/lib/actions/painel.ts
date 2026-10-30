@@ -13,7 +13,7 @@ import { getPainelScope, type PainelRole } from "@/lib/data/painel";
 import { isProducer } from "@/lib/data/producer";
 import { mailPortariaAccess, mailSecurityNotice, mailTeamInvite, userContact } from "@/lib/notify";
 import { destLabel } from "@/lib/bank";
-import { logSecurity } from "@/lib/mfa";
+import { checkSecondFactor, logSecurity, mfaSettings } from "@/lib/mfa";
 import { newAccessCode } from "@/lib/portaria";
 import { AGES, parseBrDateTime } from "@/lib/criar/model";
 
@@ -206,10 +206,16 @@ const settingsSchema = z.object({
   legalName: opt(200), cnpj: opt(20),
   payout: z.object({ bank: opt(80), agency: opt(12), account: opt(24), kind: z.enum(["corrente", "poupanca"]), holder: opt(160), doc: opt(20), pixKey: opt(140) }),
   defaults: z.object({ buyerPaysFee: z.boolean(), autoMeia: z.boolean(), age: z.enum(AGES), refund: opt(300) }),
+  /** código do app autenticador: exigido para trocar a conta de recebimento quando a conta usa o app (D-04) */
+  code: opt(20).optional(),
 });
 export type SettingsInput = z.input<typeof settingsSchema>;
+/** `needsCode`: a conta de recebimento mudou e a conta usa app autenticador; a tela pede o código e salva de novo. */
+export type SettingsResult = R | { ok: false; error: string; needsCode: true };
 
-export async function saveSettings(input: SettingsInput): Promise<R> {
+const PAYOUT_CODE = "Para trocar a conta de recebimento, digite o código do app autenticador.";
+
+export async function saveSettings(input: SettingsInput): Promise<SettingsResult> {
   const s = await scope("owner");
   if (!s) return { ok: false, error: "Só o dono pode mudar as configurações." };
   const p = settingsSchema.safeParse(input);
@@ -220,6 +226,15 @@ export async function saveSettings(input: SettingsInput): Promise<R> {
   if (clash) return { ok: false, error: "Esse endereço já está em uso. Escolha outro." };
   const prevPayout = (org.payout ?? {}) as Record<string, unknown>;
   const payoutChanged = (Object.keys(d.payout) as (keyof typeof d.payout)[]).some((k) => String(prevPayout[k] ?? "") !== String(d.payout[k] ?? ""));
+  // para onde vão os saques: com o app autenticador ligado, trocar exige o código do app (sessão roubada não
+  // redireciona o dinheiro). Sem o app, segue valendo só com a sessão, com aviso por e-mail e registro abaixo.
+  if (payoutChanged && (await mfaSettings(s.user.id)).method === "totp") {
+    if (!d.code) return { ok: false, error: PAYOUT_CODE, needsCode: true };
+    // só o código do app (um código de recuperação não troca o destino do dinheiro, e não é gasto aqui)
+    if (/[a-z]/i.test(d.code)) return { ok: false, error: "Use o código de 6 dígitos do app autenticador.", needsCode: true };
+    const c = await checkSecondFactor(s.user.id, "bank", d.code);
+    if (!c.ok) return { ok: false, error: c.error, needsCode: true };
+  }
   await db.update(organizers).set({
     name: d.name, slug: d.slug, contactEmail: d.contactEmail || null, legalName: d.legalName || null, cnpj: d.cnpj || null,
     payout: d.payout, defaults: d.defaults,
