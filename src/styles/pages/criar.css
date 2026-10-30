@@ -478,29 +478,72 @@
   .cv-lim button:hover{background:var(--cv-lime)}
   .cv-lim button:disabled{opacity:.35}
   .cv-lim b{min-width:16px;text-align:center;color:var(--cv-ink);font-variant-numeric:tabular-nums}
-  /* cartão do tipo de ingresso: nome em cima; preço, quantidade e limite numa linha, cada um com título pequeno */
-  .cv-ty{padding:12px 14px 12px 16px}
-  .cv-tyg{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 22px;margin-top:8px}
-  .cv-tyg .f{display:flex;flex-direction:column;gap:4px;min-width:0}
-  .cv-ty .l{display:flex;align-items:center;gap:8px;min-height:22px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8A8A82}
-  .cv-ty .l em{font-style:normal;font-weight:600;text-transform:none;letter-spacing:0;color:#A3A39B}
-  .cv-tyg .cv-mini{height:22px;padding:0 8px 0 2px;gap:6px;font-size:11px;letter-spacing:0;text-transform:none}
-  .cv-tyg .cv-mini .sw{width:28px;height:18px}
-  .cv-tyg .cv-mini .sw::after{width:12px;height:12px}
-  .cv-tyg .cv-mini.on .sw::after{transform:translateX(10px)}
-  .cv-tyg .cv-pz.ro{padding:0 6px}
-  .cv-tyg .cv-free{height:30px;padding:0 14px;font-size:13px}
-  .cv-tyg .cv-lim{display:flex;gap:4px;height:auto;padding:0;background:transparent;font-size:inherit}
-  .cv-tyg .cv-lim button{width:30px;height:30px;background:var(--cv-paper);font-size:15px}
-  .cv-tyg .cv-lim b{display:flex;align-items:baseline;justify-content:center;gap:3px;min-width:64px;font:600 17px 'Inter Tight',sans-serif}
-  .cv-tyg .cv-lim b small{font:600 11.5px Inter,sans-serif;color:var(--cv-mut)}
-  .cv-tyd{display:flex;flex-direction:column;gap:4px;margin-top:10px}
-  .cv-ty .cv-tyd .ds{flex:none;width:100%;height:36px;padding:0 12px;border-radius:10px;background:var(--cv-paper);font-size:13px}
-  .cv-ty .cv-tyd .ds:focus{background:#fff;box-shadow:inset 0 0 0 1.5px var(--cv-ink)}
-  .cv-tyd-add{margin-top:8px;padding:0;border:0;background:none;font-size:12.5px;font-weight:600;color:#77776F;cursor:pointer}
-  .cv-tyd-add:hover{color:var(--cv-ink);text-decoration:underline}
-  .cv-ty .cv-sug{margin-top:8px}
-  @media (max-width:640px){.cv-tyg{gap:10px 16px}.cv-tyg .f{flex:1 1 calc(50% - 8px)}}
+  /* Ingressos (design v2): perguntas numeradas e tabela Ingresso | Preço | Quantidade | Limite por pessoa */
+  .cv-qa{display:flex;align-items:center;gap:12px;margin:30px 0 14px}
+  .cv-qa .qn{flex:none;width:28px;height:28px;border-radius:50%;background:var(--cv-ink);color:var(--cv-lime);display:grid;place-items:center;font:700 13px 'Inter Tight',sans-serif}
+  .cv-qa .qt{font:600 19px 'Inter Tight',sans-serif;letter-spacing:-.015em}
+  .cv-qa .qh{margin-left:auto;font-size:13px;color:var(--cv-mut)}
+  .cv-mo2 .mo.mo-sm{padding:16px}
+  .cv-mo2 .mo.mo-sm .ic{width:40px;height:40px;margin-bottom:14px}
+  .cv-mo2 .mo.off{opacity:.55}
+  .cv-tbx{display:flex;flex-direction:column;gap:6px;padding:0 6px 6px}
+  .cv-tbh,.cv-tbr{display:grid;grid-template-columns:minmax(0,1fr) 150px 120px 116px 30px;align-items:center;gap:12px}
+  .cv-tbh{padding:2px 12px 2px 16px;font-size:12px;font-weight:600;color:#9A9A92}
+  .cv-tbr{padding:10px 12px 10px 16px;border-radius:16px;background:#fff;animation:cvIn .35s var(--cv-ease) both}
+  .cv-tbr .tn{display:flex;align-items:flex-start;gap:12px;min-width:0}
+  .cv-tbr .dt{width:10px;height:10px;flex:none;margin-top:10px;border-radius:50%}
+  .dt.int{background:#111}.dt.meia{background:#B9E23A}.dt.soc{background:#9B87F5}.dt.own{background:#FF9B3D}.dt.free{background:#7BC70A}
+  .cv-tbr .tn-i{flex:1;min-width:0;display:flex;flex-direction:column}
+  .cv-tbr .tn-n{min-width:0;border:0;outline:0;background:transparent;font:600 16px 'Inter Tight',sans-serif;color:var(--cv-ink);padding:3px 6px;margin-left:-6px;border-radius:8px}
+  .cv-tbr .tn-d{min-width:0;border:0;outline:0;background:transparent;font-size:12.5px;color:#55554E;padding:2px 6px;margin-left:-6px;border-radius:6px}
+  .cv-tbr .tn-d::placeholder{color:#A8A8A0}
+  .cv-tbr .tn-n:hover,.cv-tbr .tn-n:focus,.cv-tbr .tn-d:hover,.cv-tbr .tn-d:focus{background:var(--cv-paper)}
+  .cv-tbr.auto .tn-n,.cv-tbr.auto .tn-d{cursor:help}
+  .cv-tbr .pr,.cv-tbr .qt2{display:flex;align-items:center;gap:6px;height:44px;padding:0 10px 0 12px;border:0;border-radius:12px;background:var(--cv-paper);transition:box-shadow .2s,background .2s;cursor:text;width:100%;box-sizing:border-box;text-align:left}
+  .cv-tbr .pr:focus-within,.cv-tbr .qt2:focus-within{background:#fff;box-shadow:0 0 0 2px var(--cv-ink)}
+  .cv-tbr .pr .cur{font-size:13px;font-weight:600;color:#8A8A82}
+  .cv-tbr .pr input,.cv-tbr .qt2 input{width:100%;min-width:0;border:0;outline:0;background:transparent;font:600 17px 'Inter Tight',sans-serif;color:var(--cv-ink);font-variant-numeric:tabular-nums}
+  .cv-tbr .pr .fr{flex:none;height:22px;padding:0 7px;border:0;border-radius:999px;background:#fff;font-size:10.5px;font-weight:700;color:#77776F;cursor:pointer;opacity:0;transition:opacity .2s}
+  .cv-tbr .pr:hover .fr,.cv-tbr .pr:focus-within .fr{opacity:1}
+  .cv-tbr .pr .fr:hover{background:#EEFBC4;color:#2F4500}
+  .cv-tbr .qt2 span{font-size:12px;color:#9A9A92}
+  .cv-tbr .pr.ro{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;cursor:pointer}
+  .cv-tbr .pr.ro b{font:600 16px 'Inter Tight',sans-serif;line-height:1.1}
+  .cv-tbr .pr.ro small{font-size:11px;color:#8A8A82}
+  .cv-tbr .pr.ro.auto{background:#F3FBD6;cursor:help}
+  .cv-tbr .pr.ro.auto small{color:#3D5200}
+  .cv-tbr .pr.ro.free{background:#EEFBC4}
+  .cv-tbr .qt2.ro{cursor:help}
+  .cv-tbr .qt2.ro b{font:600 17px 'Inter Tight',sans-serif;color:#77776F}
+  .cv-tbr .lm{display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 6px;border-radius:12px;background:var(--cv-paper)}
+  .cv-tbr .lm button{width:30px;height:30px;border:0;border-radius:50%;background:#fff;font-size:15px;font-weight:700;cursor:pointer;display:inline-grid;place-items:center;padding:0;line-height:1}
+  .cv-tbr .lm button:hover{background:var(--cv-lime)}
+  .cv-tbr .lm button:disabled{opacity:.35}
+  .cv-tbr .lm b{font:600 16px 'Inter Tight',sans-serif}
+  .cv-tbr .cv-sug{grid-column:1/-1;margin:2px 0 0 22px}
+  .cv-addw{position:relative;padding:4px 4px 0}
+  .cv-addb{display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 16px 0 8px;border:0;border-radius:999px;background:transparent;font-size:14px;font-weight:600;color:var(--cv-ink);cursor:pointer}
+  .cv-addb span{width:28px;height:28px;border-radius:50%;background:var(--cv-ink);color:var(--cv-lime);display:grid;place-items:center;font-size:17px}
+  .cv-addb:hover{background:#fff}
+  .cv-pop{position:absolute;left:4px;top:52px;z-index:20;width:min(360px,calc(100vw - 48px));padding:6px;border-radius:18px;background:#fff;box-shadow:0 2px 6px rgba(17,17,17,.06),0 24px 60px rgba(17,17,17,.16);animation:cvIn .3s var(--cv-ease) both}
+  .cv-pop-i{display:block;width:100%;padding:10px 12px;border:0;border-radius:12px;background:transparent;text-align:left;cursor:pointer}
+  .cv-pop-i:hover{background:var(--cv-paper)}
+  .cv-pop-i b{display:block;font-size:14px}
+  .cv-pop-i .s{display:block;font-size:12.5px;color:var(--cv-mut);margin-top:2px}
+  .cv-warn3{display:flex;flex-direction:column;gap:2px;margin-top:12px;padding:14px 16px;border-radius:16px;background:#FFF1D9;font-size:13.5px;color:#6B4A10}
+  .cv-warn3 b{color:#3D2A05}
+  /* celular: cada ingresso vira um bloco; preço, quantidade e limite ganham o título em cima */
+  @media (max-width:720px){
+    .cv-tbh{display:none}
+    .cv-tbr{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 8px;padding:12px}
+    .cv-tbr .tn{grid-column:1/-1;padding-right:30px}
+    .cv-tbr > .cv-rm,.cv-tbr > span:empty{position:absolute;top:10px;right:8px}
+    .cv-tbr{position:relative}
+    .cv-tbr .cell{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .cv-tbr .cell::before{content:attr(data-l);font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#9A9A92}
+    .cv-tbr .pr .fr{opacity:1}
+    .cv-qa .qh{display:none}
+  }
   .cv-sug{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;border-radius:999px;background:#F7FCE3;font-size:12px;color:#3D5200}
   .cv-sec .add{display:flex;flex-wrap:wrap;gap:6px;padding:6px 6px 2px}
   .cv-addsec{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:4px 2px}

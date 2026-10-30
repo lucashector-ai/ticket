@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { BannerArt } from "@/components/art/banner";
 import { FlyerArt } from "@/components/art/flyer";
 import {
-  effTypes, joinBr, KIND_LABEL, limitOf, MAX_LIMIT, MEIA_DESC, num, PALETTE, splitBr, toCents,
+  effTypes, joinBr, limitOf, MAX_LIMIT, MEIA_DESC, num, PALETTE, splitBr, toCents,
   type DraftSector, type DraftType, type MediaKey, type Teaser, type TypeKind, type Visibility,
 } from "@/lib/criar/model";
 import type { Derived } from "./flow";
@@ -53,27 +53,21 @@ export function MapaStep({ c }: { c: Ctx }) {
 }
 
 /* =========================== 6. INGRESSOS =========================== */
-const ADD_TYPES: { kind: TypeKind; label: string; name: string; desc: string; free?: boolean; limit: string }[] = [
-  { kind: "inteira", label: "Inteira", name: "Inteira", desc: "", limit: "6" },
-  { kind: "meia", label: "Meia-entrada", name: "Meia-entrada", desc: MEIA_DESC, limit: "6" },
-  { kind: "social", label: "Meia social", name: "Meia social", desc: "Leve 1 kg de alimento não perecível. Doado a uma instituição parceira.", limit: "4" },
-  { kind: "outro", label: "Gratuito", name: "Ingresso gratuito", desc: "", free: true, limit: "2" },
-  { kind: "outro", label: "Tipo próprio", name: "Novo tipo", desc: "", limit: "4" },
+const ADD_TYPES: { kind: TypeKind; label: string; sub: string; name: string; desc: string; free?: boolean; limit: string }[] = [
+  { kind: "inteira", label: "Inteira", sub: "Preço cheio, para todo mundo.", name: "Inteira", desc: "", limit: "6" },
+  { kind: "meia", label: "Meia-entrada", sub: "50% da inteira, com documento (Lei 12.933).", name: "Meia-entrada", desc: MEIA_DESC, limit: "6" },
+  { kind: "social", label: "Meia social", sub: "Mais barata que a inteira com 1 kg de alimento.", name: "Meia social", desc: "Leve 1 kg de alimento não perecível. Doado a uma instituição parceira.", limit: "4" },
+  { kind: "outro", label: "VIP / Open bar", sub: "Área ou benefício extra, preço maior.", name: "VIP", desc: "", limit: "4" },
+  { kind: "outro", label: "Gratuito", sub: "Sem custo: o público garante a vaga com o QR.", name: "Ingresso gratuito", desc: "", free: true, limit: "2" },
+  { kind: "outro", label: "Personalizado", sub: "Você define nome, preço e regras.", name: "Novo ingresso", desc: "", limit: "4" },
 ];
 const MAP_SECTORS = ["Pista", "Pista Premium", "Camarote", "Área VIP", "Arquibancada", "Cadeira numerada"];
-const TAG: Record<TypeKind, string> = { inteira: "tag int", meia: "tag meia", social: "tag soc", outro: "tag own" };
 const money = (v: number) => String(Math.round(Math.max(0, v) * 100) / 100).replace(".", ",");
 
-function Stepper({ value, onChange, step, prefix, suffix, label, wide }: { value: string; onChange: (v: string) => void; step: number; prefix?: string; suffix?: string; label: string; wide?: boolean }) {
-  return (
-    <div className={wide ? "cv-pz cv-pzw" : "cv-pz"}>
-      <button type="button" onClick={() => onChange(money(num(value) - step))} aria-label={`Diminuir ${label}`}>−</button>
-      <label>{prefix && <small>{prefix}</small>}<input autoComplete="off" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value.replace(/[^\d,]/g, ""))} placeholder="0" aria-label={label} />{suffix && <small>{suffix}</small>}</label>
-      <button type="button" onClick={() => onChange(money(num(value) + step))} aria-label={`Aumentar ${label}`}>+</button>
-    </div>
-  );
-}
 
+const DOT: Record<TypeKind, string> = { inteira: "dt int", meia: "dt meia", social: "dt soc", outro: "dt own" };
+
+/** Setor (ou "Ingressos", sem setores): tabela Ingresso | Preço | Quantidade | Limite por pessoa, como no design v2. */
 function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many: boolean }) {
   const { d, upd } = c;
   const setSector = (fn: (z: DraftSector) => DraftSector) => upd((o) => ({ ...o, sectors: o.sectors.map((z) => (z.id === k.id ? fn(z) : z)) }), "tk");
@@ -81,69 +75,72 @@ function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many
   const types = effTypes(k, d.autoMeia);
   let cap = 0, inteira = 0;
   for (const t of types) { cap += num(t.qty); if (t.kind === "inteira" && !t.free) inteira = num(t.price); }
-  const ro = () => c.flash("Esta meia é gerada da Inteira. Desligue a meia automática para editar.");
-  const [openDesc, setOpenDesc] = useState<string[]>([]);
+  const ro = () => c.flash("Esta meia é gerada da Inteira. Desligue a meia automática nas regras da venda para editar.");
+  const [adding, setAdding] = useState(false);
   const nextColor = () => setSector((z) => ({ ...z, color: PALETTE[(PALETTE.indexOf(z.color) + 1) % PALETTE.length] }));
+  const brl = (v: string) => num(v).toLocaleString("pt-BR", { minimumFractionDigits: num(v) % 1 ? 2 : 0, maximumFractionDigits: 2 });
   return (
     <div className="cv-sec" style={{ animationDelay: `${i * 60}ms` }}>
       <div className="h">
         <button className="cv-dot" type="button" style={{ background: k.color }} onClick={nextColor} aria-label="Trocar a cor do setor" title="Trocar a cor" />
         {many ? <input autoComplete="off" className="nm" value={k.name} maxLength={80} onChange={(e) => setSector((z) => ({ ...z, name: e.target.value }))} aria-label="Nome do setor" /> : <b className="nm">Ingressos</b>}
-        <span className="s">{types.length} {types.length === 1 ? "tipo" : "tipos"} · {cap.toLocaleString("pt-BR")} lugares</span>
+        <span className="s">{types.length} {types.length === 1 ? "tipo" : "tipos"} · {cap.toLocaleString("pt-BR")} {types.every((t) => t.free) ? "vagas" : "ingressos"}</span>
         {many && d.sectors.length > 1 && <button className="cv-rm" type="button" onClick={() => upd((o) => ({ ...o, sectors: o.sectors.filter((z) => z.id !== k.id) }), "tk")} aria-label={`Remover ${k.name}`}>×</button>}
         <button className={k.open ? "cv-chev o" : "cv-chev"} type="button" onClick={() => setSector((z) => ({ ...z, open: !z.open }))} aria-expanded={k.open} aria-label={`Abrir ${k.name}`}><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4" /></svg></button>
       </div>
       {k.open && (
-        <div className="b">
+        <div className="cv-tbx">
+          <div className="cv-tbh" aria-hidden="true"><span>Ingresso</span><span>Preço</span><span>Quantidade</span><span>Limite por pessoa</span><span /></div>
           {types.map((t) => {
             const lim = limitOf(t);
             return (
-              <div key={t.id} className={t.auto ? "cv-ty auto" : "cv-ty"}>
-                <div className="r1">
-                  <span className={TAG[t.kind]}>{t.free ? "GRÁTIS" : KIND_LABEL[t.kind].toUpperCase()}</span>
-                  <input autoComplete="off" className="tn" value={t.name} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { name: e.target.value })} aria-label="Nome do tipo" />
-                  <button className="cv-rm" type="button" onClick={t.auto ? ro : () => setSector((z) => ({ ...z, types: z.types.filter((u) => u.id !== t.id) }))} aria-label={`Remover ${t.name}`}>×</button>
-                </div>
-                {/* preço, quantidade e limite por pessoa: cada um na sua caixa, com título */}
-                <div className="cv-tyg">
-                  <div className="f">
-                    <span className="l">Preço
-                      {!t.auto && <button className={t.free ? "cv-mini on" : "cv-mini"} type="button" role="switch" aria-checked={!!t.free} onClick={() => setType(t.id, { free: !t.free })}><span className="sw" aria-hidden="true" />Grátis</button>}
-                    </span>
-                    {t.free
-                      ? <button className="cv-free" type="button" onClick={() => setType(t.id, { free: false })} title="Clique para cobrar">Grátis</button>
-                      : t.auto ? <span className="cv-pz ro" onClick={ro}><label><small>R$</small><b>{num(t.price).toLocaleString("pt-BR", { minimumFractionDigits: num(t.price) % 1 ? 2 : 0, maximumFractionDigits: 2 })}</b></label></span>
-                        : <Stepper value={t.price} onChange={(v) => setType(t.id, { price: v })} step={5} prefix="R$" label={`preço de ${t.name}`} wide />}
-                  </div>
-                  <div className="f">
-                    <span className="l">Quantidade</span>
-                    {t.auto ? <span className="cv-pz ro" onClick={ro}><label><b>{t.qty}</b><small>un.</small></label></span>
-                      : <Stepper value={t.qty} onChange={(v) => setType(t.id, { qty: v.replace(/\D/g, "") })} step={50} suffix="un." label={`quantidade de ${t.name}`} />}
-                  </div>
-                  <div className="f">
-                    <span className="l">Limite por pessoa</span>
-                    <span className="cv-lim">
-                      <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.max(1, lim - 1)) })} disabled={!t.auto && lim <= 1} aria-label={`Diminuir limite de ${t.name}`}>−</button>
-                      <b>{lim}<small>{lim === 1 ? "ingresso" : "ingressos"}</small></b>
-                      <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.min(MAX_LIMIT, lim + 1)) })} disabled={!t.auto && lim >= MAX_LIMIT} aria-label={`Aumentar limite de ${t.name}`}>+</button>
-                    </span>
+              <div key={t.id} className={t.auto ? "cv-tbr auto" : "cv-tbr"}>
+                <div className="tn">
+                  <i className={t.free ? "dt free" : DOT[t.kind]} aria-hidden="true" />
+                  <div className="tn-i">
+                    <input autoComplete="off" className="tn-n" value={t.name} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { name: e.target.value })} aria-label="Nome do ingresso" />
+                    <input autoComplete="off" className="tn-d" value={t.desc} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { desc: e.target.value })} placeholder="+ descrição (opcional)" aria-label={`Descrição de ${t.name}`} />
                   </div>
                 </div>
-                {t.desc || openDesc.includes(t.id)
-                  ? <label className="cv-tyd"><span className="l">Descrição <em>opcional</em></span>
-                    <input autoComplete="off" className="ds" value={t.desc} readOnly={t.auto} onClick={t.auto ? ro : undefined} onChange={(e) => setType(t.id, { desc: e.target.value })} placeholder="Quem pode comprar, o que inclui" aria-label={`Descrição de ${t.name}`} autoFocus={!t.desc} /></label>
-                  : !t.auto && <button className="cv-tyd-add" type="button" onClick={() => setOpenDesc((x) => [...x, t.id])}>+ Descrição</button>}
+                <div className="cell" data-l="Preço">
+                  {t.free
+                    ? <button className="pr ro free" type="button" onClick={() => setType(t.id, { free: false })} title="Tocar para cobrar"><b>Grátis</b><small>tocar para cobrar</small></button>
+                    : t.auto
+                      ? <span className="pr ro auto" onClick={ro}><b>R$ {brl(t.price)}</b><small>50% da inteira</small></span>
+                      : <label className="pr"><span className="cur">R$</span><input autoComplete="off" inputMode="decimal" value={t.price} onChange={(e) => setType(t.id, { price: e.target.value.replace(/[^\d,]/g, "") })} placeholder="0" aria-label={`Preço de ${t.name}`} />
+                        <button className="fr" type="button" onClick={() => setType(t.id, { free: true })} title="Deixar grátis">grátis</button></label>}
+                </div>
+                <div className="cell" data-l="Quantidade">
+                  {t.auto ? <span className="qt2 ro" onClick={ro}><b>{t.qty}</b><span>un.</span></span>
+                    : <label className="qt2"><input autoComplete="off" inputMode="numeric" value={t.qty} onChange={(e) => setType(t.id, { qty: e.target.value.replace(/\D/g, "").slice(0, 6) })} placeholder="0" aria-label={`Quantidade de ${t.name}`} /><span>un.</span></label>}
+                </div>
+                <div className="cell" data-l="Limite por pessoa">
+                  <div className="lm">
+                    <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.max(1, lim - 1)) })} disabled={!t.auto && lim <= 1} aria-label={`Diminuir limite de ${t.name}`}>−</button>
+                    <b>{lim}</b>
+                    <button type="button" onClick={t.auto ? ro : () => setType(t.id, { limit: String(Math.min(MAX_LIMIT, lim + 1)) })} disabled={!t.auto && lim >= MAX_LIMIT} aria-label={`Aumentar limite de ${t.name}`}>+</button>
+                  </div>
+                </div>
+                {!t.auto && types.length > 1
+                  ? <button className="cv-rm" type="button" onClick={() => setSector((z) => ({ ...z, types: z.types.filter((u) => u.id !== t.id) }))} aria-label={`Remover ${t.name}`}>×</button>
+                  : <span />}
                 {t.kind === "social" && inteira > 0 && !t.free && <span className="cv-sug"><Spark size={12} />Sugestão: {brMoney(Math.round(inteira * 0.6))}, entre a meia e a inteira</span>}
               </div>
             );
           })}
-          <div className="add">
-            {ADD_TYPES.filter((a) => a.kind === "outro" || !k.types.some((t) => t.kind === a.kind) || a.kind === "inteira").map((a) => (
-              <button key={a.label} className="cv-chip sm" type="button" onClick={() => {
-                const price = a.kind === "meia" && inteira ? money(inteira / 2) : a.kind === "social" && inteira ? money(Math.round(inteira * 0.6)) : "";
-                setSector((z) => ({ ...z, open: true, types: [...z.types, { id: c.nid("t"), kind: a.kind, name: a.name, price, qty: "100", desc: a.desc, free: a.free, limit: a.limit }] }));
-              }}>+ {a.label}</button>
-            ))}
+          <div className="cv-addw" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setAdding(false); }}>
+            <button className="cv-addb" type="button" onClick={() => setAdding((v) => !v)} aria-expanded={adding}><span>+</span>Adicionar tipo de ingresso</button>
+            {adding && (
+              <div className="cv-pop">
+                {ADD_TYPES.filter((a) => a.kind === "outro" || a.kind === "inteira" || !k.types.some((t) => t.kind === a.kind)).map((a) => (
+                  <button key={a.label} className="cv-pop-i" type="button" onClick={() => {
+                    const price = a.kind === "meia" && inteira ? money(inteira / 2) : a.kind === "social" && inteira ? money(Math.round(inteira * 0.6)) : "";
+                    setSector((z) => ({ ...z, open: true, types: [...z.types, { id: c.nid("t"), kind: a.kind, name: a.name, price, qty: "100", desc: a.desc, free: a.free, limit: a.limit }] }));
+                    setAdding(false);
+                  }}><b>{a.label}</b><span className="s">{a.sub}</span></button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -154,6 +151,10 @@ function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many
 export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
   const { d, set, upd } = c;
   const many = d.tmode === "mapa" || d.sectors.length > 1;
+  // gratuito = todos os tipos grátis; voltar para pago tira o "grátis" de todos
+  const paid = d.sectors.some((k) => k.types.some((t) => !t.free));
+  const setPaid = (v: boolean) => upd((o) => ({ ...o, sectors: o.sectors.map((k) => ({ ...k, types: k.types.map((t) => ({ ...t, free: !v })) })) }), "tk");
+  const meiaWarn = paid && !d.autoMeia && !d.sectors.some((k) => k.types.some((t) => t.kind === "meia"));
   const [cps, setCps] = useState(d.coupons.length > 0);
   const [rules, setRules] = useState(false);
   const toSingle = () => upd((o) => {
@@ -180,12 +181,7 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
   ];
   return (
     <section className="cv-st cv-wide cv-noenter">
-      <StepHead n={6} k="ingressos" q="Como você quer vender?" s="Cada setor pode ter inteira, meia-entrada (50% por lei), meia social, ingresso grátis ou um tipo seu. Ajuste preço, quantidade e limite por pessoa direto na lista." />
-      <div className="cv-b cv-seg big">
-        <button className={!many ? "sg on" : "sg"} type="button" onClick={toSingle} disabled={d.tmode === "mapa"} title={d.tmode === "mapa" ? "Com mapa, os ingressos são por setor" : undefined}>Preço único</button>
-        <button className={many ? "sg on" : "sg"} type="button" onClick={toSectors}>Por setores</button>
-      </div>
-      {d.tmode === "mapa" && <p className="cv-note">Com mapa 3D, cada setor aqui é uma área que o público escolhe no mapa.</p>}
+      <StepHead n={6} k="ingressos" q="Como você quer vender?" s="Responda duas perguntas e a gente monta os ingressos. Depois é só ajustar os números." />
       <div className="cv-acc">
         <button className="h" type="button" onClick={() => setRules((v) => !v)} aria-expanded={rules}>
           <span className="tx"><b>Regras da venda</b>
@@ -199,6 +195,28 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
           </div>
         )}
       </div>
+
+      <div className="cv-qa"><span className="qn">1</span><b className="qt">O evento é pago ou gratuito?</b></div>
+      <div className="cv-mo2">
+        {[
+          { on: paid, t: "Pago", s: "Você define os preços. Meia-entrada calculada sozinha.", icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6", act: () => setPaid(true) },
+          { on: !paid, t: "Gratuito", s: "Inscrição grátis, sem taxa. O público garante a vaga com o QR.", icon: "M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z", act: () => setPaid(false) },
+        ].map((m) => (
+          <button key={m.t} className={m.on ? "mo on" : "mo"} type="button" onClick={m.act} aria-pressed={m.on}><span className="ic"><Ico d={m.icon} /></span><b>{m.t}</b><span className="s">{m.s}</span></button>
+        ))}
+      </div>
+
+      <div className="cv-qa"><span className="qn">2</span><b className="qt">Como organizar os preços?</b></div>
+      <div className="cv-mo2">
+        {[
+          { on: !many, t: "Ingresso único", s: d.tmode === "mapa" ? "Com mapa 3D, os ingressos são por setor." : "Os mesmos ingressos para todo mundo.", icon: "M4 7h16M4 12h16M4 17h16", act: toSingle, off: d.tmode === "mapa" },
+          { on: many, t: "Por setores", s: "Um preço para cada área: pista, camarote, VIP…", icon: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15", act: toSectors, off: false },
+        ].map((m) => (
+          <button key={m.t} className={`mo mo-sm${m.on ? " on" : ""}${m.off ? " off" : ""}`} type="button" onClick={m.off ? () => c.flash("Com mapa 3D, cada área do mapa é um setor.") : m.act} aria-pressed={m.on}><span className="ic"><Ico d={m.icon} /></span><b>{m.t}</b><span className="s">{m.s}</span></button>
+        ))}
+      </div>
+
+      <div className="cv-qa"><span className="qn">3</span><b className="qt">Ajuste os ingressos</b><span className="qh">Toque nos números para editar</span></div>
       <div className="cv-secs">
         {d.sectors.map((k, i) => <SectorCard key={k.id} c={c} k={k} i={i} many={many} />)}
         {many && (
@@ -209,6 +227,7 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
           </div>
         )}
       </div>
+      {meiaWarn && <div className="cv-warn3"><b>Falta a meia-entrada.</b><span>A Lei 12.933 garante meia para estudantes, PcD, jovens de baixa renda e maiores de 60. Ligue “Meia automática” nas regras da venda.</span></div>}
       <div className="cv-sum">
         <div className="cv-sm"><small>Ingressos à venda{x.sessions.length > 1 ? ` (${x.sessions.length} datas)` : ""}</small><b>{x.totalQty.toLocaleString("pt-BR")}</b></div>
         <div className="cv-sm dk"><small>Se esgotar, você recebe</small><b>{shortMoney(x.net)}</b></div>
