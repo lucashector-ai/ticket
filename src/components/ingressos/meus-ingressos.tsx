@@ -55,9 +55,15 @@ export function MeusIngressos({ groups, lists = [], pending = [], sent = [], inc
   const [moved, setMoved] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState(confirmedOrder != null);
 
-  const up = useMemo(() => groups.filter((g) => g.upcoming).sort((a, b) => a.startAt.localeCompare(b.startAt)), [groups]);
+  // vindo da compra (?pedido=N): o evento desse pedido fica em destaque, mesmo que outro aconteça antes
+  const up = useMemo(() => {
+    const list = groups.filter((g) => g.upcoming).sort((a, b) => a.startAt.localeCompare(b.startAt));
+    const i = confirmedOrder != null ? list.findIndex((g) => g.orderNumbers.includes(confirmedOrder)) : -1;
+    return i > 0 ? [list[i], ...list.slice(0, i), ...list.slice(i + 1)] : list;
+  }, [groups, confirmedOrder]);
   const past = useMemo(() => groups.filter((g) => !g.upcoming).sort((a, b) => b.startAt.localeCompare(a.startAt)), [groups]);
   const f = up[0];
+  const fJust = confirmedOrder != null && !!f?.orderNumbers.includes(confirmedOrder);
   const others = up.slice(1);
 
   const idx = (g: TicketGroup) => Math.min(cur[g.key] ?? 0, g.tickets.length - 1);
@@ -119,12 +125,12 @@ export function MeusIngressos({ groups, lists = [], pending = [], sent = [], inc
         <>
           {f ? (
             <TicketStack total={f.tickets.length} cur={idx(f)} labels={f.tickets.map((t) => t.holderName)} onPick={(i) => setCur((c) => ({ ...c, [f.key]: i }))}>
-            <article className={f.tickets[idx(f)].status === "valid" && !moved[f.tickets[idx(f)].id] ? "tkb" : "tkb dim"} aria-label={`Próximo evento: ${f.title}`}>
+            <article className={f.tickets[idx(f)].status === "valid" && !moved[f.tickets[idx(f)].id] ? "tkb" : "tkb dim"} aria-label={`${fJust ? "Compra confirmada" : "Próximo evento"}: ${f.title}`}>
               <Link className="tkb-art" href={`/eventos/${f.eventSlug}`} aria-label={`Ver evento ${f.title}`}>
                 <div className="in"><FlyerArt id={f.flyerId} /></div>
               </Link>
               <div className="tkb-i">
-                <span className="tkb-k"><span className="tkb-dot" aria-hidden="true" />Próximo evento · {f.countdown}</span>
+                <span className="tkb-k"><span className="tkb-dot" aria-hidden="true" />{fJust ? "Compra confirmada" : "Próximo evento"} · {f.countdown}</span>
                 <h2 className="tkb-t">{f.title}</h2>
                 {(() => {
                   const t = f.tickets[idx(f)];
