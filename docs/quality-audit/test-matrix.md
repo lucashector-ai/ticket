@@ -43,12 +43,22 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/db/webhook.test.ts | Webhook: assinatura errada, confirmação, repetida, cancelamento fora de ordem, cancelamento de pendente | 400 / emite 1× / sem duplicar / não desfaz / expira | VALIDADO (sem rede) |
 | tests/db/place-order.test.ts | Total no servidor; último lugar reservado por outra pessoa; mesma pessoa refaz; dois simultâneos pelo último; limite por pessoa | R$ 107,99 / recusa / aceita / ≤ 1 aberto (falha sem a correção) / recusa | VALIDADO |
 | tests/db/tickets.test.ts | Portaria: QR adulterado, outro evento, dois operadores no mesmo QR, já usado | recusa / uma entrada só | VALIDADO |
+| tests/db/fulfill-atomic.test.ts | Queda no meio da emissão (gravação dos ingressos falha) e nova tentativa | nada pela metade; nova tentativa baixa o estoque uma vez (falhava: estoque 3 com 1 ingresso) | VALIDADO (rodada 2) |
+| tests/db/fulfill-atomic.test.ts | Mesmo CPF em duas contas confirmando juntas (3 rodadas); mesma conta com dois pedidos juntos | só um passa (falhava: os dois passavam) | VALIDADO (rodada 2) |
+| tests/db/grupo.test.ts | D-01: mesma conta paga duas partes ao mesmo tempo; segura outra parte depois de pagar uma; dois grupos ao mesmo tempo / depois de cancelar | uma parte só; recusado; um grupo aberto, outro depois de cancelar (falham sem a correção) | VALIDADO (rodada 2) |
+| tests/db/payout-destination.test.ts | D-04: trocar a conta de recebimento com app: sem código, errado, de recuperação, certo; sem app | recusa ×3 / troca / troca (falha sem a correção) | VALIDADO (rodada 2) |
+| tests/db/optin.test.ts | D-03: pedido guarda a caixa; campanha vai para quem marcou e para os pedidos antigos, não para quem não marcou | conforme | VALIDADO (rodada 2) |
+| tests/db/finance-sums.test.ts | Financeiro/extrato somados no banco × cálculo antigo pedido a pedido (taxa absorvida perto de meio centavo, meia, cupom, teste, revenda, reembolso) | idêntico, centavo a centavo | VALIDADO (rodada 2) |
+| tests/db/order-rate.test.ts | 13 pedidos seguidos da mesma conta; erro de preenchimento; outra conta | 12 passam, 13º recusado; erro não conta; outra conta livre | VALIDADO (rodada 2) |
+| tests/unit/password-throttle.test.ts | S-23: "esqueci a senha" (login simulado): 30 s, 6 por hora, maiúsculas, outro e-mail, depois de 1 h | conforme (falha sem 3271b9e) | VALIDADO (rodada 2) |
+| tests/unit/admin-guard.test.ts | S-05: central com e-mail confirmado, domínio, ADMIN_EMAILS fora do domínio, `secure` só com app | conforme | VALIDADO (rodada 2) |
 
-Última execução completa: 30/10 madrugada, **52 testes, 52 aprovados, 0 reprovados** (15 arquivos, com `TEST_DATABASE_URL`); sem a variável, os 24 de integração ficam pulados. Build do OpenNext verde depois de cada bloco.
+Última execução completa: 30/10 rodada 2, **70 testes, 70 aprovados, 0 reprovados** (23 arquivos: 27 unitários + 43 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 85e8bff).
 
 ### No navegador (Playwright, servidor local, conta de teste)
 
-E2E versionado: `tests/e2e/checkout.e2e.mjs` (`pnpm test:e2e`, com `E2E_EMAIL`, `E2E_PASSWORD`, `E2E_EVENT`, `E2E_TYPE` e `NODE_PATH=$(npm root -g)`; recusa rodar fora do localhost). Última execução: 4/4 passos ok.
+E2E versionado: `tests/e2e/checkout.e2e.mjs` (`pnpm test:e2e`, com `E2E_EMAIL`, `E2E_PASSWORD`, `E2E_EVENT`, `E2E_TYPE` e `NODE_PATH=$(npm root -g)`; recusa rodar fora do localhost). Rodada 2: também confere a caixa de novidades do produtor (desmarcada → marcada); última execução: 6/6 ok.
+E2E da portaria pela câmera: `tests/e2e/portaria-camera.e2e.mjs` (`pnpm test:e2e:portaria`, com `E2E_EMAIL`, `E2E_PASSWORD`, `E2E_EVENT`, `TEST_DATABASE_URL`); vídeo `.y4m` gerado por `tests/e2e/qr-y4m.mjs` a partir do QR de verdade da página do ingresso. Última execução: 13/13 ok.
 
 
 | Fluxo | Resultado |
@@ -65,6 +75,11 @@ E2E versionado: `tests/e2e/checkout.e2e.mjs` (`pnpm test:e2e`, com `E2E_EMAIL`, 
 | Exportar compradores (CSV) | VALIDADO: arquivo com colunas corretas |
 | App da portaria sem internet, código digitado | VALIDADO: "NÃO LIBERADO · Sem conexão." e o ingresso continua válido no banco (falha fechada) |
 | Ingresso reembolsado na portaria (QR e código) | VALIDADO (`tests/db/refund.test.ts`) |
+| Portaria pela câmera (câmera falsa, QR real): válido, já usado, outro evento, reembolsado, cancelado, adulterado | VALIDADO (rodada 2, 13/13; mensagens com o Marcos) |
+| Configurações: trocar conta de recebimento com app autenticador (D-04) | VALIDADO (rodada 2) |
+| Financeiro do painel com somas no banco e paginação (`?p=`, valor inválido/fora do intervalo) | VALIDADO (rodada 2; mais de 25 eventos: só por leitura, a conta de teste tem 5) |
+| Firefox e WebKit/Safari | BLOQUEADO (rede não baixa os navegadores) |
+| Login com Google/Apple | BLOQUEADO no local (rodada 2: nada mudou no login) |
 
 ### Matriz de cenários do produto (técnico)
 
@@ -72,7 +87,9 @@ E2E versionado: `tests/e2e/checkout.e2e.mjs` (`pnpm test:e2e`, com `E2E_EMAIL`, 
 |---|---|---|
 | Valor manipulado no navegador | `placeOrder` recalcula com `priceOrder` e preços do banco | VALIDADO (código + e2e) |
 | Clique duplo / requisição repetida no pagamento | trava por `paid_at` no `fulfillOrder` | VALIDADO (integração) |
-| Várias abas do mesmo evento | um pedido aberto por pessoa e evento (`releaseOthers`) | NÃO TESTADO no navegador |
+| Várias abas do mesmo evento | um pedido aberto por pessoa e evento (`releaseOthers`) | VALIDADO no navegador (duas abas retomam o mesmo pedido) |
+| Mesmo CPF em contas diferentes confirmando juntas | trava por conta/CPF + conferência dentro da transação | VALIDADO (integração, rodada 2) |
+| Worker cai no meio da emissão | transação única (`db.batch`) | VALIDADO (integração, rodada 2) |
 | Reserva expira durante o pagamento | `fulfillOrder` (sem cobrança: expira; com cobrança: emite se houver lugar, senão estorna) | VALIDADO (integração) |
 | Webhook duplicado / fora de ordem | KV + `fulfillOrder` idempotente; `canceled` só expira pedido pendente | VALIDADO (`tests/db/webhook.test.ts`, eventos assinados localmente); com a Stripe de verdade: BLOQUEADO |
 | Pagamento recusado no cartão | pedido segue pendente até a reserva vencer | BLOQUEADO (sem chave de teste da Stripe no local) |

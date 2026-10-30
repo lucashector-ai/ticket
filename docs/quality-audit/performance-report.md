@@ -37,9 +37,9 @@ O cliente do Neon Auth (~250 KB) entrava no carregamento inicial dessas telas s�
 - **Driver HTTP do Neon:** cada consulta é uma ida e volta HTTP; o que mais pesa é a sequência de rodadas, não o tamanho das consultas. Na página do evento eram 4 rodadas (evento+sessão → parecidos/seguir → pré-venda → revenda/reservas/compras) e a consulta grande do evento rodava 2× (metadados + página). Agora: 2 rodadas e 1 consulta do evento.
 - **Home:** já carrega tudo em paralelo (2 rodadas). Sem mudança.
 - **Consultas dentro de laços:** só em operações administrativas pequenas (ordem dos destaques, datas de sessões no adiamento) e no cancelamento em lote (com limite e orçamento de tempo). Sem N+1 em páginas públicas.
-- **Painel financeiro / extrato do banco:** `listOrders` traz todos os pedidos pagos dos eventos do produtor, sem paginação. Para produtores grandes (dezenas de milhares de pedidos) vai pesar; recomendação: agregar no SQL (soma por evento/dia) em vez de trazer as linhas. Não mexi (mudança grande em cálculo financeiro, merece teste próprio).
+- **Painel financeiro / extrato do banco** (RESOLVIDO na rodada 2, 351ca5c): antes, `listOrders` trazia todos os pedidos pagos dos eventos do produtor para somar no servidor. Agora `orderSums` soma no banco, agrupando por evento, situação, dia (São Paulo), teste e valor do pedido (o número de linhas cresce com os dias de venda e os preços distintos, não com os pedidos), e a taxa continua arredondada pedido a pedido (paridade centavo a centavo em `tests/db/finance-sums.test.ts`). A tabela "Por evento" do financeiro é paginada (25 por página). Ainda usam `listOrders` (todas as linhas): início do painel, público, marketing e o painel de um evento; próximos candidatos à mesma troca.
 
 ## Próximas oportunidades
 1. `/criar-evento` (286 KB): ver o que dá para carregar só na etapa que usa (mapa, IA). O leitor de QR da portaria já foi feito.
-2. Agregar o financeiro no banco (acima).
+2. Levar a soma no banco (`orderSums`) para o início do painel, público e marketing.
 3. Medir LCP/INP/CLS no navegador em produção (ou num preview autorizado) com o build minificado.
