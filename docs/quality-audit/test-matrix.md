@@ -31,9 +31,14 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/db/stock.test.ts | Pagamento confirmado depois da reserva vencer, com lugar | emite (quem pagou tem prioridade) | VALIDADO |
 | tests/db/tickets.test.ts | Ingresso enviado na compra: aceite troca código e QR; código antigo não entra | conforme (falha sem a correção f8306a2) | VALIDADO |
 | tests/db/tickets.test.ts | Revenda: comprador com código novo; vendedor não entra com o antigo | conforme | VALIDADO |
+| tests/db/painel.test.ts | Conta não produtora tenta convidar equipe / salvar configurações | recusado, nenhum produtor criado (falha sem ff46243) | VALIDADO |
+| tests/db/painel.test.ts | Produtor aprovado convida | ok | VALIDADO |
+| tests/db/painel.test.ts | Membro removido: acesso pessoal revogado, acessos criados para outros mantidos | conforme | VALIDADO |
+| tests/db/painel.test.ts | Excluir evento com pagamento em andamento / sem | recusa / exclui | VALIDADO |
+| tests/db/edit-types.test.ts | Apagar tipo citado em carrinho abandonado, com pagamento em andamento, com ingresso emitido | libera / bloqueia / bloqueia; sem a limpeza a FK quebra | VALIDADO |
 | tests/db/tickets.test.ts | Portaria: QR adulterado, outro evento, dois operadores no mesmo QR, já usado | recusa / uma entrada só | VALIDADO |
 
-Última execução completa: 30/10 madrugada, **31 testes, 31 aprovados, 0 reprovados** (7 arquivos, com `TEST_DATABASE_URL`); sem a variável, os 12 de integração ficam pulados. Build do OpenNext verde depois de cada bloco.
+Última execução completa: 30/10 madrugada, **39 testes, 39 aprovados, 0 reprovados** (9 arquivos, com `TEST_DATABASE_URL`); sem a variável, os 20 de integração ficam pulados. Build do OpenNext verde depois de cada bloco.
 
 ### No navegador (Playwright, servidor local, conta de teste)
 
