@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { BrandLogo } from "@/components/brand-logo";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -176,12 +176,18 @@ export function CitySheet({ cities, city, out, onPick, onClose }: { cities: City
   );
 }
 
+const onPop = (cb: () => void) => { window.addEventListener("popstate", cb); return () => window.removeEventListener("popstate", cb); };
+
 type Tab = { href: string; label: string; on: (p: string) => boolean; icon: ReactNode };
 
 /** Barra de abas do celular (até 760 px; escondida onde já existe uma barra fixa de compra ou de pagamento). */
 export function TabBar({ user }: { user: HeaderUser }) {
   const path = usePathname() ?? "/";
   const [kb, setKb] = useState(false);
+  // no login a caminho de uma aba (ex.: Ingressos sem conta), a aba de destino continua marcada
+  const search = useSyncExternalStore(onPop, () => window.location.search, () => "");
+  const next = new URLSearchParams(search).get("next") ?? "";
+  const at = path.startsWith("/entrar") && next.startsWith("/") ? next : path;
 
   // teclado aberto (a área visível encolhe): a barra sai para não cobrir o campo
   useEffect(() => {
@@ -201,7 +207,7 @@ export function TabBar({ user }: { user: HeaderUser }) {
   return (
     <nav className={kb ? "tbar kb" : "tbar"} aria-label="Navegação rápida">
       {tabs.map((t) => {
-        const on = t.on(path);
+        const on = t.on(at);
         return (
           <Link key={t.label} className={on ? "tbar-i on" : "tbar-i"} href={t.href} aria-current={on ? "page" : undefined}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">{t.icon}</svg>
