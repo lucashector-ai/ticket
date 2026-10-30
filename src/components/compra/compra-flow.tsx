@@ -22,7 +22,7 @@ import { PhoneField } from "@/components/phone-field";
 import { phoneValid } from "@/lib/phone";
 import type { ResumeData } from "@/lib/payments/pending";
 
-export type CompraStep = "resumo" | "dados" | "pagamento" | "pix" | "proc" | "done";
+export type CompraStep = "dados" | "pagamento" | "pix" | "proc" | "done";
 /**
  * `name`: rótulo completo ("Pista · Inteira"), usado no resumo e nos titulares; `type`: só o tipo ("Inteira").
  * `meiaOk`: o titular pode marcar meia-entrada (tipos de inteira); meia e social já vêm com preço próprio.
@@ -72,13 +72,9 @@ const resumeKey = (r: ResumeData) => fpKey({
 });
 type Pending = { orderId: string; key: string };
 
-/** chave da data do ingresso no resumo ("" quando o evento tem uma data só) */
-const dayOf = (e: CompraEvent, t: CompraTier) => (e.sessions.length ? t.sessionId ?? "" : "");
-type TierGroup = { name: string | null; color: string | null; tiers: CompraTier[] };
-
 const RESERVA_SEG = 900; // igual ao prazo do pedido no servidor (15 min)
 const PIX_SEG = 900;
-const STEP_INDEX: Record<CompraStep, number> = { resumo: 0, dados: 1, pagamento: 2, pix: 2, proc: 2, done: 3 };
+const STEP_INDEX: Record<CompraStep, number> = { dados: 0, pagamento: 1, pix: 1, proc: 1, done: 2 };
 
 /** Compra com 1 ingresso travado: parte de um grupo ou anúncio da revenda. */
 export type CompraLock = {
@@ -126,8 +122,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const { flash } = useToast();
   /* retomada: Pix já gerado → tela do QR; cartão → etapa de pagamento; grátis → dados (confirma de novo) */
   const [step, setStep] = useState<CompraStep>(() => !resume ? initialStep : resume.method === "free" ? "dados" : resume.method === "pix" && resume.pix ? "pix" : "pagamento");
-  const [qty, setQty] = useState<Record<string, number>>(initialQty);
-  const [couponInput, setCouponInput] = useState(resume?.coupon?.code ?? initialCoupon ?? "");
+  const [qty] = useState<Record<string, number>>(initialQty);
   const [coupon, setCoupon] = useState<Coupon | null>(resume?.coupon ?? null);
   const [cupErr, setCupErr] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
@@ -200,23 +195,6 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const ctaRef = useRef<HTMLButtonElement>(null);
   const [authNudge, setAuthNudge] = useState(false);
   const authRef = useRef<HTMLDivElement>(null);
-  /* data escolhida no resumo: a dos ingressos já selecionados, senão a primeira */
-  const [session, setSession] = useState<string | null>(() => {
-    const picked = new Set(event.tiers.filter((t) => (initialQty[t.id] ?? 0) > 0).map((t) => t.sessionId));
-    return (event.sessions.find((s) => picked.has(s.id)) ?? event.sessions[0])?.id ?? null;
-  });
-  /* setores abertos por data; nas datas com ingressos vindos da página do evento, abrem só os setores escolhidos */
-  const [openSecs, setOpenSecs] = useState<Record<string, boolean>>(() => {
-    const o: Record<string, boolean> = {};
-    const withSel = new Set(event.tiers.filter((t) => t.sector && (initialQty[t.id] ?? 0) > 0).map((t) => dayOf(event, t)));
-    for (const t of event.tiers) {
-      if (!t.sector || !withSel.has(dayOf(event, t))) continue;
-      const k = `${dayOf(event, t)}|${t.sector}`;
-      o[k] = o[k] || (initialQty[t.id] ?? 0) > 0;
-    }
-    return o;
-  });
-
   /* cronômetros da reserva e do Pix: com pedido criado, contam até o prazo dele (pelo relógio do aparelho) */
   useEffect(() => {
     const iv = setInterval(() => {
@@ -248,23 +226,21 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   }, [initialCoupon, event.slug]);
 
   /* mantém a seleção na URL (volta do Google, recarregar a página) */
-  const urlFor = useCallback((s: CompraStep) => {
-    const itens = Object.entries(qty).filter(([, q]) => q > 0).map(([id, q]) => `${id}:${q}`).join(",");
+  const itensParam = Object.entries(qty).filter(([, q]) => q > 0).map(([id, q]) => `${id}:${q}`).join(",");
+  const urlFor = useCallback(() => {
     const p = new URLSearchParams({ evento: event.slug });
-    if (lock) {
-      if (s === "dados") p.set("etapa", "dados");
-      return `/checkout?${p.toString()}&${lock.query}`;
-    }
-    if (itens) p.set("itens", itens);
+    if (lock) return `/checkout?${p.toString()}&${lock.query}`;
+    if (itensParam) p.set("itens", itensParam);
     if (coupon) p.set("cupom", coupon.code);
-    if (s === "dados") p.set("etapa", "dados");
     return `/checkout?${p.toString()}`;
-  }, [qty, coupon, event.slug, lock]);
+  }, [itensParam, coupon, event.slug, lock]);
+  /** volta para a escolha de ingressos na página do evento, com a mesma seleção (parte de grupo/revenda: de onde veio) */
+  const choiceUrl = lock ? lock.back : `/eventos/${event.slug}?${new URLSearchParams({ comprar: "1", ...(itensParam ? { itens: itensParam } : {}), ...(coupon ? { cupom: coupon.code } : {}) }).toString()}`;
   useEffect(() => {
     if (step === "done") return;
     // com pedido criado, a URL aponta para ele: recarregar (ou voltar depois) continua no mesmo pagamento
-    if (pendingId && step !== "resumo" && step !== "dados") window.history.replaceState(null, "", `/checkout?pedido=${pendingId}`);
-    else if (step === "resumo" || step === "dados" || step === "pagamento") window.history.replaceState(null, "", urlFor(step === "pagamento" ? "dados" : step));
+    if (pendingId && step !== "dados") window.history.replaceState(null, "", `/checkout?pedido=${pendingId}`);
+    else if (step === "dados" || step === "pagamento") window.history.replaceState(null, "", urlFor());
   }, [step, urlFor, pendingId]);
 
   /* ingressos e titulares */
@@ -292,16 +268,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   /** pedido sem valor (ingressos grátis ou cupom de 100%): pula o pagamento */
   const free = nq > 0 && price.total === 0;
 
-  /* resumo: ingressos da data escolhida agrupados por setor (na ordem em que aparecem); sem setor, lista simples */
+  /* várias datas: a data de cada linha aparece no resumo */
   const multiDay = event.sessions.length > 0;
-  const dayKey = multiDay ? session ?? "" : "";
-  const groups: TierGroup[] = [];
-  for (const t of event.tiers) {
-    if (multiDay && t.sessionId && t.sessionId !== session) continue;
-    const g = groups.find((x) => x.name === t.sector);
-    if (g) g.tiers.push(t); else groups.push({ name: t.sector, color: t.sectorColor, tiers: [t] });
-  }
-  const firstSec = groups.find((g) => g.name);
   const dayLabel = (id: string) => (multiDay ? event.sessions.find((s) => s.id === event.tiers.find((t) => t.id === id)?.sessionId)?.label ?? null : null);
 
   /* validação */
@@ -402,7 +370,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     setStep("done");
     window.scrollTo({ top: 0, behavior: "smooth" });
     // o pedido está pago: a URL volta para o evento (um ?pedido= pago levaria para Meus ingressos)
-    window.history.replaceState(null, "", urlFor("resumo"));
+    window.history.replaceState(null, "", urlFor());
     // parte de grupo / revenda: recarregar a página levaria de volta ao grupo (a vaga já está paga)
     if (!lock) router.refresh();
   }, [lock, router, setPending, urlFor]);
@@ -450,26 +418,6 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       setCardSel(list.find((c) => !c.expired)?.id ?? "new");
     });
   }, [wantCards]);
-
-  const setTierQty = (id: string, delta: number) => {
-    if (lock) return;
-    const tier = event.tiers.find((t) => t.id === id);
-    if (delta > 0 && tier && (qty[id] ?? 0) >= tier.limit) { flash(`Máximo de ${tier.limit} ${tier.limit === 1 ? "ingresso" : "ingressos"} de ${tier.name} por pessoa.`); return; }
-    setQty((o) => {
-      const total = Object.values(o).reduce((s, v) => s + v, 0);
-      if (delta > 0 && total >= event.maxPerOrder) { flash(`Máximo de ${event.maxPerOrder} ingressos por pessoa.`); return o; }
-      return { ...o, [id]: Math.max(0, (o[id] ?? 0) + delta) };
-    });
-    setTried(false);
-  };
-
-  async function applyCoupon() {
-    const c = couponInput.trim().toUpperCase();
-    if (!c) return;
-    const r = await checkCoupon(c, event.slug);
-    if (r.ok) { setCoupon(couponOf(r)); setCupErr(null); }
-    else { setCoupon(null); setCupErr(r.error); }
-  }
 
   function nudgeLogin() {
     setAuthNudge(true);
@@ -550,10 +498,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
 
   async function next() {
     if (expired || busy) return;
-    if (step === "resumo") {
-      if (!nq) { setTried(true); return; }
-      go("dados");
-    } else if (step === "dados") {
+    if (step === "dados") {
       if (!user) { setTried(true); nudgeLogin(); return; }
       if (dadosErr.length) { setTried(true); return; }
       if (free) {
@@ -615,7 +560,8 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   const prev = () => {
     // saindo do Pix: cancela o código gerado (e o pedido) para não pagar duas vezes nem deixar pedido aberto
     if (step === "pix" && order) { void abandonPayment(order.orderId); setOrder(null); setPending(null); }
-    go(step === "dados" ? "resumo" : step === "pagamento" ? "dados" : "pagamento");
+    if (step === "dados") { router.push(choiceUrl); return; }
+    go(step === "pagamento" ? "dados" : "pagamento");
   };
   /** Desiste do pedido retomado: cancela e volta para a escolha com os mesmos ingressos. */
   async function dropResume() {
@@ -627,7 +573,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     if (r.paying) { setBusy(false); flash("O pagamento deste pedido já está sendo confirmado. Confira em Meus ingressos em instantes."); return; }
     setPending(null);
     setOrder(null);
-    window.location.assign(`${urlFor("resumo")}&aviso=cancelado`);
+    window.location.assign(`${urlFor()}&aviso=cancelado`);
   }
   /** Já paguei: confere na hora (o checkout também confere sozinho a cada 3 s). */
   async function checkPixNow() {
@@ -640,11 +586,11 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
     else { flash(r.error); setOrder(null); setPending(null); go("pagamento"); }
   }
   const idx = STEP_INDEX[step];
-  const steps = ["Resumo", "Dados", free ? "Sem pagamento" : "Pagamento", "Confirmação"].map((label, i) => ({
+  const steps = ["Dados", free ? "Sem pagamento" : "Pagamento", "Confirmação"].map((label, i) => ({
     label, n: String(i + 1), cls: i < idx ? "ok" : i === idx ? "cur" : "",
-    go: () => { if (i < idx && idx < 3 && step !== "proc") go((["resumo", "dados", "pagamento"] as const)[i]); },
+    go: () => { if (i < idx && idx < 2 && step !== "proc") go((["dados", "pagamento"] as const)[i]); },
   }));
-  const ctaLabel = step === "resumo" ? "Continuar" : step === "dados" ? (user ? (free ? "Garantir ingresso" : "Ir para pagamento") : "Entrar para continuar") : step === "pagamento" ? (pay === "card" ? `Pagar ${money(price.total)}` : "Gerar código Pix") : "";
+  const ctaLabel = step === "dados" ? (user ? (free ? "Garantir ingresso" : "Ir para pagamento") : "Entrar para continuar") : step === "pagamento" ? (pay === "card" ? `Pagar ${money(price.total)}` : "Gerar código Pix") : "";
   const payLabel = done ? (done.method === "free" ? "Gratuito" : done.method === "card" ? `Cartão · ${done.installments}x` : "Pix") : free ? "Gratuito" : pay === "card" ? `Cartão${live ? "" : ` ${cardBrand(cc.num)}`} · ${inst}x` : "Pix";
   const totalCents = done ? done.totalCents : order && step === "pix" ? order.totalCents : price.total;
   const totalLabel = nq || done ? priceOf(totalCents) : money(0);
@@ -654,9 +600,9 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       {queueEventId && step !== "done" && <QueueGate eventId={queueEventId} title={event.title} />}
       {step !== "done" && (
         <div className="ck-top">
-          <Link className="ck-back" href={lock?.back ?? `/eventos/${event.slug}`}>
+          <Link className="ck-back" href={choiceUrl}>
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4" /></svg>
-            {lock?.kind === "grupo" ? "Voltar ao grupo" : "Voltar ao evento"}
+            Voltar<span className="ck-back-x">{lock?.kind === "grupo" ? " ao grupo" : lock ? " ao evento" : " aos ingressos"}</span>
           </Link>
           <ol className="steps" aria-label="Etapas da compra">
             {steps.map((st) => (
@@ -683,11 +629,11 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
             <b className="exp-t">O tempo da reserva acabou</b>
             <span className="exp-s">Seus ingressos voltaram para a venda. Escolha de novo para garantir o lugar.</span>
           </div>
-          <Link className="go2" href={`/eventos/${event.slug}`}>Escolher de novo</Link>
+          <Link className="go2" href={lock ? lock.back : `/eventos/${event.slug}?comprar=1`}>Escolher de novo</Link>
         </div>
       )}
 
-      {notice && step === "resumo" && !expired && (
+      {notice && step === "dados" && !expired && (
         <div className="ck-note" role="status">
           <span className="ck-note-i" aria-hidden="true">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
@@ -712,99 +658,41 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
       {step !== "done" && (
         <div className="ck-g">
           <section className="ck-main">
-            {step === "resumo" && (
+            {step === "dados" && (
               <div className="pane">
-                <h1 className="ck-h">Revise seu pedido</h1>
-                <p className="ck-p">{lock ? lock.title : "Confira os ingressos antes de seguir. Dá para ajustar as quantidades aqui."}</p>
-                {lock && (
+                <h1 className="ck-h">Seus dados</h1>
+                <p className="ck-p">{free ? "Usamos esses dados para enviar os ingressos. Nada é cobrado: o ingresso é grátis." : "Usamos esses dados para enviar os ingressos e emitir o comprovante."}</p>
+                {/* a escolha dos ingressos ficou na página do evento: aqui, um resumo curto para conferir ou alterar */}
+                {lock ? (
                   <div className="lockc">
                     {lines.map((l) => (
                       <div className="lk-row" key={l.ticketTypeId}>
                         <span className="lk-ic" aria-hidden="true">{lock.kind === "grupo"
                           ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="9" cy="8" r="3.2" /><circle cx="17" cy="9.5" r="2.6" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M14.5 19a4 4 0 0 1 6.5-3" /></svg>
                           : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h13l-3-3M20 17H7l3 3" /></svg>}</span>
-                        <span className="lk-i"><b>{l.name}</b><small>1 ingresso · {lock.kind === "grupo" ? "parte do grupo" : "revenda oficial"}</small></span>
+                        <span className="lk-i"><b>{l.name}</b><small>{lock.title}</small></span>
                         <b className="lk-p">{priceOf(l.priceCents)}</b>
                       </div>
                     ))}
                     <p className="lk-n">{lock.note}</p>
                   </div>
-                )}
-                {!lock && multiDay && (
-                  <>
-                    <span className="sess-l">Escolha a data</span>
-                    <div className="sess-p" role="radiogroup" aria-label="Datas">
-                      {event.sessions.map((s) => {
-                        const n = event.tiers.filter((t) => t.sessionId === s.id).reduce((acc, t) => acc + (qty[t.id] ?? 0), 0);
-                        return (
-                          <button key={s.id} type="button" role="radio" aria-checked={session === s.id} className={session === s.id ? "pd on" : "pd"} onClick={() => setSession(s.id)}>
-                            <span className="pd-w">{s.wd}</span><b className="pd-d">{s.day}</b><span className="pd-c">{s.sub}</span>
-                            {n > 0 && <i className="pd-n">{n}</i>}
-                          </button>
-                        );
-                      })}
+                ) : (
+                  <div className="ck-pick">
+                    <div className="ck-pick-i">
+                      <b>{lines.map((l) => `${l.quantity}× ${l.name}`).join(" · ")}</b>
+                      <span>{[...new Set(lines.map((l) => dayLabel(l.ticketTypeId)).filter(Boolean))].join(" · ") || event.dateNice}</span>
                     </div>
-                  </>
+                    <Link href={choiceUrl}>Alterar</Link>
+                  </div>
                 )}
-                {!lock && <div className="trs">
-                  {groups.map((g) => {
-                    if (!g.name) return g.tiers.map((t) => <TierRow key={t.id} t={t} q={qty[t.id] ?? 0} sub={t.desc || (multiDay ? "" : t.note)} onQty={setTierQty} />);
-                    const key = `${dayKey}|${g.name}`;
-                    const sel = g.tiers.reduce((acc, t) => acc + (qty[t.id] ?? 0), 0);
-                    const open = openSecs[key] ?? g === firstSec;
-                    const avail = g.tiers.filter((t) => t.open);
-                    const from = Math.min(...(avail.length ? avail : g.tiers).map((t) => t.priceCents));
-                    return (
-                      <div key={key} className={open ? "tg open" : "tg"}>
-                        <button className="tg-h" type="button" aria-expanded={open} onClick={() => setOpenSecs((o) => ({ ...o, [key]: !open }))}>
-                          <i className="sec-sw" style={{ background: g.color ?? "#111" }} aria-hidden="true" />
-                          <b className="tg-t">{g.name}</b>
-                          {sel > 0 && <i className="tg-n">{sel}</i>}
-                          <span className="tg-from">{from ? `a partir de ${money(from)}` : "Grátis"}</span>
-                          <span className="tg-c" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4" /></svg></span>
-                        </button>
-                        {/* sempre montado: a altura anima de 0 até o conteúdo (grid 0fr → 1fr) */}
-                        <div className="tg-bw" inert={!open}>
-                          <div className="tg-bi">
-                            <div className="tg-b">
-                              {g.tiers.map((t, i) => <TierRow key={t.id} t={t} q={qty[t.id] ?? 0} label={t.type} sub={t.desc || (multiDay ? "" : t.note)} onQty={setTierQty} delay={i} />)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>}
-                {tried && !nq && <p className="err">Escolha pelo menos um ingresso para continuar.</p>}
-                {!lock && <div className="cupb">
-                  <span className="cup-i" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12V4h8l9 9-8 8z" /><circle cx="7.5" cy="8.5" r="1.3" /></svg>
-                  </span>
-                  <input autoComplete="off" className="cup-in" type="text" placeholder="Cupom de desconto" value={couponInput} onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCupErr(null); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void applyCoupon(); } }} aria-label="Cupom de desconto" />
-                  <button className="cup-b" type="button" onClick={() => void applyCoupon()}>Aplicar</button>
-                </div>}
-                {(coupon || cupErr) && (
-                  <p className={cupErr ? "errm" : "okm"}>{cupErr ?? `Cupom ${coupon?.code} aplicado: ${coupon?.percentOff ? `${coupon.percentOff}% de desconto` : `${money(coupon?.amountOffCents ?? 0)} de desconto`}.`}</p>
-                )}
-                <div className="know">
-                  <Know icon={<path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z" />} title="Ingressos nominais" text="Na próxima etapa você diz quem vai usar cada ingresso. Os de outras pessoas vão por e-mail para elas." />
-                  {!lock && <Know icon={<path d="M4 7h16M4 12h10M4 17h7" />} title="Meia-entrada" text="Estudantes, PcD, jovens de baixa renda e maiores de 60. Marque na etapa de dados e leve o documento." />}
-                  <Know icon={<path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4" />} title="Cancelamento" text="Até 7 dias após a compra, desde que falte mais de 48h para o evento." />
-                </div>
-              </div>
-            )}
-
-            {step === "dados" && (
-              <div className="pane">
-                <h1 className="ck-h">Seus dados</h1>
-                <p className="ck-p">{free ? "Usamos esses dados para enviar os ingressos. Nada é cobrado: o ingresso é grátis." : "Usamos esses dados para enviar os ingressos e emitir o comprovante."}</p>
+                {cupErr && <p className="errm">{cupErr}</p>}
                 {user ? (
                   <span className="hint ck-acc">
                     Comprando como <b className="hint-b">{user.email}</b>
                   </span>
                 ) : (
                   <div ref={authRef}>
-                    <InlineAuth onDone={() => router.refresh()} returnUrl={urlFor("dados")} highlight={authNudge || tried} human={human ?? null} apple={apple} />
+                    <InlineAuth onDone={() => router.refresh()} returnUrl={urlFor()} highlight={authNudge || tried} human={human ?? null} apple={apple} />
                   </div>
                 )}
                 <div className="fg2">
@@ -1177,7 +1065,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               {pay === "card" && step === "pagamento" && (
                 <span className="sm-inst">{price.installments}x de {money(Math.round(price.total / price.installments))}{price.installments <= 3 ? " sem juros" : ""}</span>
               )}
-              {(step === "resumo" || step === "dados" || step === "pagamento") && (
+              {(step === "dados" || step === "pagamento") && (
                 <button
                   ref={ctaRef}
                   className={`go2 block tw-pay-btn${payPhase === "paying" ? " is-paying" : payPhase === "approved" ? " is-paying is-approved" : ""}`}
@@ -1190,7 +1078,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 </button>
               )}
               {(step === "dados" || step === "pagamento" || step === "pix") && (
-                <button className="back2" type="button" onClick={prev}>Voltar</button>
+                <button className="back2" type="button" onClick={prev}>{step === "dados" && !lock ? "Alterar ingressos" : "Voltar"}</button>
               )}
               <span className="sm-sec">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
@@ -1253,47 +1141,11 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
   );
 }
 
-/** Linha de um tipo de ingresso no resumo; dentro de um setor mostra só o tipo (`label`), sem repetir setor e data. */
-function TierRow({ t, q, label = t.name, sub, onQty, delay }: { t: CompraTier; q: number; label?: string; sub: string; onQty: (id: string, delta: number) => void; delay?: number }) {
-  return (
-    <div className={t.sold ? "trw so" : q > 0 ? "trw sel" : "trw"} style={delay !== undefined ? ({ "--i": delay } as React.CSSProperties) : undefined}>
-      <div className="tr-i">
-        <b className="tr-n">{label}</b>
-        {sub && <span className="tr-o">{sub}</span>}
-      </div>
-      <span className={t.priceCents ? "tr-p" : "tr-p free"}>{priceOf(t.priceCents)}</span>
-      {t.open ? (
-        <div className="qt">
-          <button className="qt-b" type="button" onClick={() => onQty(t.id, -1)} aria-label={`Remover um ${t.name}`}>−</button>
-          <span className="qt-v">{q}</span>
-          <button className="qt-b" type="button" onClick={() => onQty(t.id, 1)} aria-label={`Adicionar um ${t.name}`}>+</button>
-        </div>
-      ) : (
-        <span className="tr-so">{t.sold ? "Esgotado" : "Em breve"}</span>
-      )}
-    </div>
-  );
-}
-
 function Row({ k, v, ok }: { k: string; v: string; ok?: boolean }) {
   return (
     <div className={ok ? "sm-r ok" : "sm-r"}>
       <span className="sm-k">{k}</span>
       <span className="sm-v">{v}</span>
-    </div>
-  );
-}
-
-function Know({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
-  return (
-    <div className="kn">
-      <span className="kn-i" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
-      </span>
-      <div>
-        <b className="kn-t">{title}</b>
-        <span className="kn-s">{text}</span>
-      </div>
     </div>
   );
 }

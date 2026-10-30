@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BannerArt } from "@/components/art/banner";
 import { FlyerArt } from "@/components/art/flyer";
 import { EventCard } from "@/components/event-card";
@@ -22,6 +22,8 @@ import type { EventoData } from "./types";
 import { useTickets } from "./use-tickets";
 import { VenueMap } from "./venue-map";
 import { brl } from "@/lib/format";
+import { BuySheet, firstStep, useBuySheet } from "./buy-sheet";
+import { ResaleCard } from "./resale-card";
 
 type Props = {
   e: EventoData;
@@ -30,12 +32,20 @@ type Props = {
   initialFollowing: boolean;
   similar: EventCardData[];
   viewerEmail: string;
+  /** escolha vinda da URL (voltou do checkout) */
+  initialItens?: string;
+  /** ?comprar=1: abre a escolha de ingressos assim que a página carrega */
+  openBuy?: boolean;
 };
 
-export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewerEmail }: Props) {
+/** celular e tablet: a escolha de ingressos abre em tela cheia em vez do cartão ao lado */
+const narrow = () => window.matchMedia("(max-width: 1024px)").matches;
+
+export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewerEmail, initialItens = "", openBuy = false }: Props) {
   const router = useRouter();
   const { flash } = useToast();
-  const tickets = useTickets(e);
+  const tickets = useTickets(e, initialItens);
+  const sheet = useBuySheet();
   const player = usePlayer();
   const [ld, setLd] = useState<"on" | "out" | "">("on");
 
@@ -63,15 +73,57 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
   const waiting = e.launch.phase !== "open" && !e.launch.access;
   /** leva até o cartão de ingressos e dá um destaque nele */
   const goTickets = () => {
+    if (!waiting && narrow()) { startBuy(); return; }
     const el = document.getElementById("ingressos");
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
     el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
   };
-  const mbarGo = () => {
-    if (tickets.nq && !waiting) tickets.checkout();
-    else document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  /** abre a compra em tela cheia: com ingressos já escolhidos, direto na lista deles */
+  const startBuy = () => {
+    const picked = e.tiers.find((x) => (tickets.qty[x.id] ?? 0) > 0);
+    if (!picked) { tickets.setSector(null); sheet.go(firstStep(e, tickets.session)); return; }
+    if (picked.sessionId && e.sessions.length > 1) tickets.setSession(picked.sessionId);
+    const sectors = new Set(e.tiers.filter((x) => e.sessions.length <= 1 || x.sessionId === picked.sessionId).map((x) => x.sector).filter(Boolean));
+    tickets.setSector(sectors.size > 1 ? picked.sector : null);
+    sheet.go("ingressos");
   };
+  const mbarGo = () => {
+    if (waiting) document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    else if (tickets.nq) tickets.checkout();
+    else startBuy();
+  };
+  /* ?comprar=1 (voltar do checkout, "Alterar ingressos"): reabre a escolha; o parâmetro sai da URL */
+  useEffect(() => {
+    if (!openBuy) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("comprar");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    if (waiting) return;
+    const id = requestAnimationFrame(() => {
+      if (narrow()) startBuy();
+      else document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(id);
+    // só na chegada à página
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /* o botão flutuante some enquanto a chamada de compra logo abaixo do nome está na tela */
+  const buyRef = useRef<HTMLDivElement>(null);
+  const [inlineBuy, setInlineBuy] = useState(true);
+  useEffect(() => {
+    const el = buyRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([en]) => setInlineBuy(en.isIntersecting), { rootMargin: "-68px 0px 0px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  /* revenda (#revenda): no celular a lista fica na coluna principal */
+  useEffect(() => {
+    if (window.location.hash !== "#revenda" || !narrow()) return;
+    const id = requestAnimationFrame(() => document.getElementById("revenda-m")?.scrollIntoView({ block: "start" }));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   return (
     <>
@@ -145,7 +197,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
                   </div>
                 </li>
               </ul>
-              <div className="et-buy">
+              <div className="et-buy" ref={buyRef}>
                 <div>
                   <span>{waiting ? (e.launch.phase === "presale" ? "Venda geral abre em" : e.launch.presaleAt ? "Pré-venda começa em" : "Vendas abrem em") : e.minPriceCents > 0 ? "Ingressos a partir de" : "Ingressos"}</span>
                   {waiting && launchTarget(e.launch) ? <MiniCountdown target={launchTarget(e.launch)!} /> : <b>{e.minPriceCents > 0 ? brl(e.minPriceCents) : e.tiers.some((t) => t.priceCents === 0) ? "Grátis" : "Escolha o seu"}</b>}
@@ -157,9 +209,10 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
               </div>
             </div>
 
+            {!waiting && e.resale.offers.length > 0 && <div className="rsl-m"><ResaleCard e={e} anchor="revenda-m" /></div>}
             <Description paragraphs={e.paragraphs} />
             <Lineup lineup={e.lineup} timed={e.timed} p={player} />
-            {e.venueMap && <VenueMap e={e} t={tickets} />}
+            {e.venueMap && <VenueMap e={e} t={tickets} onSector={waiting ? undefined : (name) => { tickets.setSector(name); sheet.go("ingressos"); }} />}
 
             <div className="blk-s">
               <h2>O que você deve saber</h2>
@@ -200,7 +253,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
             {e.organizer && <OrganizerCard o={e.organizer} eventSlug={e.slug} loggedIn={loggedIn} initialFollowing={initialFollowing} />}
           </div>
 
-          <aside className="side">
+          <aside className={waiting ? "side" : "side side-tk"}>
             {waiting ? <LaunchCard e={e} email={viewerEmail} compact={!!e.launch.openAt} /> : <TicketsCard e={e} t={tickets} />}
           </aside>
         </div>
@@ -218,7 +271,7 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
         )}
       </main>
 
-      <div className="mbar">
+      <div className={inlineBuy && !tickets.nq ? "mbar off" : "mbar"} aria-hidden={inlineBuy && !tickets.nq ? true : undefined}>
         {waiting ? (
           <div>
             <span>{e.launch.phase === "presale" ? "Venda geral abre em" : e.launch.presaleAt ? "Pré-venda começa em" : "Vendas abrem em"}</span>
@@ -226,11 +279,14 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
           </div>
         ) : (
           <div>
-            <span>{tickets.qtyLabel}</span>
-            <b>{brl(tickets.total)}</b>
+            <span>{tickets.nq ? `${tickets.nq} ${tickets.nq === 1 ? "ingresso" : "ingressos"}` : e.minPriceCents > 0 ? "A partir de" : "Ingressos"}</span>
+            <b>{tickets.nq ? (tickets.subtotal ? brl(tickets.totalWithFee) : "Grátis") : e.minPriceCents > 0 ? brl(e.minPriceCents) : e.tiers.some((x) => x.priceCents === 0) ? "Grátis" : "Escolha"}</b>
           </div>
         )}
-        <button type="button" onClick={mbarGo} disabled={tickets.pending}>{waiting ? (e.launch.phase === "soon" && e.launch.presaleAt ? "Pré-venda" : "Me avise") : tickets.nq ? "Continuar" : "Escolher"}</button>
+        <button type="button" onClick={mbarGo} disabled={tickets.pending} tabIndex={inlineBuy && !tickets.nq ? -1 : undefined}>
+          {waiting ? (e.launch.phase === "soon" && e.launch.presaleAt ? "Pré-venda" : "Me avise") : tickets.pending ? "Abrindo…" : tickets.nq ? "Continuar" : "Comprar ingresso"}
+          {!waiting && tickets.nq > 0 && !tickets.pending && <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>}
+        </button>
       </div>
 
       {ld && (
@@ -250,6 +306,12 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
         </div>
       )}
 
+      {!waiting && (
+        <BuySheet e={e} t={tickets} s={sheet} onMap={() => {
+          sheet.close();
+          setTimeout(() => document.getElementById("mapa")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+        }} />
+      )}
       <PlayerBar p={player} />
       {e.queueOn && !waiting && <QueueGate eventId={e.id} title={e.title} />}
     </>

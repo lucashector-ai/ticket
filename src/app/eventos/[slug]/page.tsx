@@ -19,7 +19,7 @@ import { artVersion, eventShareArt } from "@/lib/share-image";
 
 export const dynamic = "force-dynamic";
 
-type Params = { params: Promise<{ slug: string }> };
+type Params = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
@@ -118,6 +118,7 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
     sessions,
     venueMap,
     maxPerOrder: e.maxPerOrder,
+    feeRate: e.absorbFee ? 0 : SERVICE_FEE_RATE,
     queueOn: e.queueMode !== "off",
     resale: {
       offers: e.resaleEnabled && e.status === "published" && deadlineOpen(e.startAt, e.resaleUntilHours) ? offers.flatMap((o) => {
@@ -135,8 +136,10 @@ function toData(e: EventDetail, access: boolean, held: Map<string, number>, offe
   };
 }
 
-export default async function EventoPage({ params }: Params) {
+export default async function EventoPage({ params, searchParams }: Params) {
   const { slug } = await params;
+  const sp = await searchParams;
+  const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k]) ?? "";
   const [ev, user] = await Promise.all([getEventBySlug(slug), getSessionUser()]);
   // rascunho: só quem criou vê (prévia)
   if (!ev || (ev.status === "draft" && ev.createdByUserId !== user?.id)) notFound();
@@ -154,7 +157,7 @@ export default async function EventoPage({ params }: Params) {
 
   return (
     <div className="pg-evento">
-      <EventoView e={data} user={headerUser} loggedIn={!!user} initialFollowing={following} similar={similar} viewerEmail={user?.email ?? ""} />
+      <EventoView e={data} user={headerUser} loggedIn={!!user} initialFollowing={following} similar={similar} viewerEmail={user?.email ?? ""} initialItens={one("itens")} openBuy={one("comprar") === "1"} />
       <SiteFooter />
     </div>
   );

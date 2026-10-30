@@ -113,7 +113,7 @@ export function TicketsCard({ e, t }: { e: EventoData; t: Tickets }) {
           <b>{allFree ? "Grátis" : brl(t.total)}</b>
         </div>
         <button className="go" type="button" onClick={t.checkout} disabled={t.nq === 0 || t.pending}>
-          {t.pending ? "Criando pedido…" : allFree ? "Garantir ingresso" : "Continuar para pagamento"}
+          {t.pending ? "Criando pedido…" : allFree ? "Garantir ingresso" : "Continuar"}
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
         </button>
       </div>

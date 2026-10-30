@@ -8,7 +8,8 @@ import type { EventoData } from "./types";
 import type { Tickets } from "./use-tickets";
 
 /** Mapa 3D do local na página do evento: tocar numa área ou setor mostra os ingressos dele. */
-export function VenueMap({ e, t }: { e: EventoData; t: Tickets }) {
+/** `onSector`: no celular, tocar num setor abre a compra direto nos ingressos dele */
+export function VenueMap({ e, t, onSector }: { e: EventoData; t: Tickets; onSector?: (name: string) => void }) {
   const data = e.venueMap!;
   const [view, setView] = useState<MapView>(VIEW_3D);
   const [sel, setSel] = useState<string | null>(null);
@@ -19,6 +20,7 @@ export function VenueMap({ e, t }: { e: EventoData; t: Tickets }) {
   const byId = new Map(data.areas.map((a) => [a.id, a]));
   const sectors = [...new Map(data.areas.filter((a) => a.sectorName).map((a) => [a.sectorName!, { name: a.sectorName!, color: a.color }])).values()];
   const pick = (name: string) => {
+    if (onSector && window.matchMedia("(max-width: 1024px)").matches) { onSector(name); return; }
     t.setSector(t.sector === name ? null : name);
     if (window.matchMedia("(max-width: 1024px)").matches) document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };

@@ -10,23 +10,47 @@ import type { EventoData } from "./types";
 
 export type Coupon = { code: string; percentOff: number; amountOffCents: number; amountPerTicket: boolean; sector: string | null };
 
-export function useTickets(e: EventoData) {
+/** Escolha vinda da URL (`itens=<id>:<qtd>,...`, ao voltar do checkout): só tipos à venda, dentro dos limites. */
+function parseItens(e: EventoData, raw: string) {
+  const q: Record<string, number> = {};
+  let sum = 0;
+  for (const part of raw.split(",")) {
+    const [id, n] = part.split(":");
+    const tier = e.tiers.find((t) => t.id === id && t.status === "open" && t.available > 0);
+    const k = Math.min(Number.parseInt(n ?? "", 10), tier?.limit ?? 0, tier?.available ?? 0, e.maxPerOrder - sum);
+    if (tier && k > 0) { q[tier.id] = k; sum += k; }
+  }
+  return q;
+}
+
+export function useTickets(e: EventoData, initialItens = "") {
   const router = useRouter();
   const { flash } = useToast();
-  const [qty, setQty] = useState<Record<string, number>>({});
+  const [qty, setQty] = useState<Record<string, number>>(() => parseItens(e, initialItens));
   const [couponInput, setCouponInput] = useState("");
   const [coupon, setCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [checking, startCheck] = useTransition();
   const [pending, startCheckout] = useTransition();
   /** data escolhida (eventos com várias datas) */
-  const [session, setSession] = useState<string | null>(e.sessions[0]?.id ?? null);
+  const [session, setSession] = useState<string | null>(() => {
+    const picked = e.tiers.find((t) => (qty[t.id] ?? 0) > 0)?.sessionId;
+    return (picked && e.sessions.some((s) => s.id === picked) ? picked : e.sessions[0]?.id) ?? null;
+  });
   /** setor escolhido no mapa do local (null = todos) */
   const [sector, setSector] = useState<string | null>(null);
   const visibleTiers = useMemo(
     () => e.tiers.filter((t) => (e.sessions.length <= 1 || t.sessionId === session) && (!sector || t.sector === sector)),
     [e.sessions.length, e.tiers, session, sector],
   );
+
+  // voltou do checkout pelo "voltar" do navegador (a página pode vir da memória, sem os itens da URL)
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("itens");
+    if (!raw) return;
+    const id = requestAnimationFrame(() => setQty((q) => (Object.values(q).some(Boolean) ? q : parseItens(e, raw))));
+    return () => cancelAnimationFrame(id);
+  }, [e]);
 
   const nq = useMemo(() => Object.values(qty).reduce((s, n) => s + n, 0), [qty]);
   const subtotal = useMemo(() => e.tiers.reduce((s, t) => s + (qty[t.id] ?? 0) * t.priceCents, 0), [e.tiers, qty]);
@@ -36,6 +60,11 @@ export function useTickets(e: EventoData) {
     return priceOrder({ lines, holders: [], coupon, method: "pix", installments: 1 }).discount;
   }, [coupon, e.tiers, qty]);
   const total = subtotal - discount;
+  /** total com a taxa de serviço (o que a pessoa vai pagar no Pix) */
+  const totalWithFee = useMemo(() => {
+    const lines = e.tiers.filter((t) => (qty[t.id] ?? 0) > 0).map((t) => ({ ticketTypeId: t.id, priceCents: t.priceCents, quantity: qty[t.id], sector: t.sector }));
+    return priceOrder({ lines, holders: [], coupon, method: "pix", installments: 1, feeRate: e.feeRate }).total;
+  }, [coupon, e.tiers, e.feeRate, qty]);
 
   const inc = useCallback((id: string) => {
     const tier = e.tiers.find((t) => t.id === id);
@@ -82,6 +111,12 @@ export function useTickets(e: EventoData) {
     const itens = e.tiers.filter((t) => (qty[t.id] ?? 0) > 0).map((t) => `${t.id}:${qty[t.id]}`).join(",");
     const p = new URLSearchParams({ evento: e.slug, itens });
     if (coupon) p.set("cupom", coupon.code);
+    // a escolha fica na URL do evento: o "voltar" do navegador reabre com os mesmos ingressos
+    const here = new URL(window.location.href);
+    here.searchParams.set("itens", itens);
+    if (coupon) here.searchParams.set("cupom", coupon.code); else here.searchParams.delete("cupom");
+    here.searchParams.delete("comprar");
+    window.history.replaceState(window.history.state, "", `${here.pathname}${here.search}${here.hash}`);
     startCheckout(() => router.push(`/checkout?${p.toString()}`));
   }, [nq, pending, e.tiers, e.slug, qty, coupon, router]);
 
@@ -107,7 +142,7 @@ export function useTickets(e: EventoData) {
   const qtyLabel = nq ? `${nq} ${nq === 1 ? "ingresso selecionado" : "ingressos selecionados"}` : "Nenhum ingresso selecionado";
 
   return {
-    qty, inc, dec, nq, subtotal, discount, total, qtyLabel, session, setSession, sector, setSector, visibleTiers,
+    qty, inc, dec, nq, subtotal, discount, total, totalWithFee, qtyLabel, session, setSession, sector, setSector, visibleTiers,
     couponInput, setCouponInput: (v: string) => { setCouponInput(v.toUpperCase()); setCouponError(null); },
     coupon, couponMessage, applyCoupon, checking,
     checkout, pending, group, grouping,

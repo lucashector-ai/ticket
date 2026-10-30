@@ -6,7 +6,7 @@ import { getSessionUser } from "@/lib/auth/server";
 import { getEventBySlug } from "@/lib/data/events";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { CompraFlow, type CompraEvent, type CompraSession, type CompraStep } from "@/components/compra/compra-flow";
+import { CompraFlow, type CompraEvent, type CompraSession } from "@/components/compra/compra-flow";
 import { dateNice, hourLabel, parts } from "@/lib/format";
 import { SERVICE_FEE_RATE } from "@/lib/pricing";
 import { turnstileSiteKey } from "@/lib/turnstile";
@@ -26,7 +26,7 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * /checkout?evento=<slug>&itens=<ticketTypeId>:<qtd>,...&cupom=<código>&etapa=dados
+ * /checkout?evento=<slug>&itens=<ticketTypeId>:<qtd>,...&cupom=<código> (começa em Dados: a escolha é na página do evento)
  * Parte de um grupo: &grupo=<código>&vaga=<id> · Revenda: &revenda=<id do anúncio> (1 ingresso, preço travado)
  * Retomar um pedido não pago: /checkout?pedido=<id> (Meus ingressos, recarregar no meio do pagamento). Quem volta
  * ao checkout do evento com um pedido pendente desse evento também cai nele, na etapa de pagamento.
@@ -85,6 +85,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
     const tt = e.ticketTypes.find((t) => t.id === id && tierStatus(t) === "open");
     if (tt && Number.isFinite(n) && n > 0) qty[tt.id] = Math.min(n, tt.maxPerOrder, e.maxPerOrder);
   }
+  // sem ingressos escolhidos (link antigo, lote virou): volta para a escolha na página do evento
+  if (!Object.keys(qty).length) redirect(`/eventos/${e.slug}?comprar=1${one("cupom") ? `&cupom=${encodeURIComponent(one("cupom"))}` : ""}`);
   const profile = user ? await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, user.id) }) : null;
 
   // várias datas: mesmas pílulas da página do evento (ordem cronológica)
@@ -120,7 +122,6 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
     sessions: special ? [] : sessions,
     feeRate: e.absorbFee ? 0 : SERVICE_FEE_RATE,
   };
-  const step = (["resumo", "dados"].includes(one("etapa")) ? one("etapa") : "resumo") as CompraStep;
   // pagamento de verdade: a chave publicável vai como prop (lida em runtime, sem NEXT_PUBLIC_)
   const stripeKey = stripePublishableKey();
   if (stripeEnabled() && !stripeKey) console.error("checkout: STRIPE_SECRET_KEY sem STRIPE_PUBLISHABLE_KEY: o cartão não vai funcionar");
@@ -135,7 +136,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         profile={profile ? { name: profile.name ?? "", phone: profile.phone ?? "", cpf: profile.cpf ?? "" } : null}
         initialQty={qty}
         initialCoupon={resume ? null : one("cupom").toUpperCase() || null}
-        initialStep={Object.keys(qty).length ? step : "resumo"}
+        initialStep="dados"
         resume={resume}
         notice={notice}
         queueEventId={!special && e.queueMode !== "off" ? e.id : null}

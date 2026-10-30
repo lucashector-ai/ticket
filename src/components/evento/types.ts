@@ -79,6 +79,8 @@ export type EventoData = {
   venueMap: VenueMapData | null;
   maxPerOrder: number;
   minPriceCents: number;
+  /** taxa de serviço cobrada do comprador (0 quando o produtor absorve) */
+  feeRate: number;
   /** abertura das vendas e pré-venda (datas em ISO); `access`: tem o link da pré-venda */
   /** anúncios ativos da revenda oficial (preço do anúncio e com a taxa de serviço) */
   resale: { offers: { id: string; label: string; color: string | null; session: string | null; priceCents: number; totalCents: number; mine: boolean }[] };
