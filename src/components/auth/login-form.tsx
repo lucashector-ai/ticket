@@ -8,6 +8,7 @@ import { GoogleButton } from "@/components/auth/google-button";
 import { AppleButton } from "@/components/auth/apple-button";
 import { CheckIcon, FieldError, FormError, PasswordField, fieldCls, isEmail } from "@/components/auth/fields";
 import { Turnstile, useHuman } from "@/components/auth/turnstile";
+import { nextHint } from "@/components/auth/next-hint";
 
 type Err = { email?: boolean; pw?: boolean };
 
@@ -35,12 +36,13 @@ export function LoginForm({ next, human, apple = false }: { next: string; human:
     }
   }
 
+  const hint = nextHint(next);
   const signupHref = next && next !== "/" ? `/cadastro?next=${encodeURIComponent(next)}` : "/cadastro";
 
   return (
     <form className="lx-box" action={formAction} onSubmit={validate} noValidate>
       <h1 className="lx-t">Bem-vindo de volta</h1>
-      <p className="lx-s">Digite seu e-mail e senha para acessar sua conta.</p>
+      <p className="lx-s">{hint ? `Entre na sua conta ${hint}.` : "Digite seu e-mail e senha para acessar sua conta."}</p>
       <input type="hidden" name="next" value={next} />
       {state?.error && <FormError>{state.error}</FormError>}
       <label className="lf">

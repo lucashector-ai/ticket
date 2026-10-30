@@ -10,7 +10,7 @@ const PROTECTED = ["/meus-ingressos", "/conta", "/ingressos", "/criar-evento", "
 /** Parâmetro com que o Neon Auth volta do Google; precisa ser trocado pela sessão. */
 const OAUTH_VERIFIER = "neon_auth_session_verifier";
 
-export default function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   // www.ticketswin.com.br → ticketswin.com.br (um endereço só)
   const host = request.headers.get("host") ?? "";
@@ -39,7 +39,21 @@ export default function proxy(request: NextRequest) {
   const returningFromOAuth = searchParams.has(OAUTH_VERIFIER);
   if (!isProtected && !returningFromOAuth) return NextResponse.next();
   middleware ??= auth.middleware({ loginUrl: "/entrar" });
-  return middleware(request);
+  return withNext(await middleware(request), request);
+}
+
+/**
+ * O Neon Auth manda para /entrar sem dizer de onde a pessoa veio; com o `next`, depois de entrar
+ * (ou criar a conta) ela volta para o que tentou abrir: o ingresso do e-mail, Criar evento, a Conta.
+ */
+function withNext(res: Response, request: NextRequest) {
+  const loc = res.headers.get("location");
+  if (!loc) return res;
+  const url = new URL(loc, request.url);
+  if (url.origin !== request.nextUrl.origin || url.pathname !== "/entrar" || url.searchParams.has("next")) return res;
+  url.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
+  try { res.headers.set("location", url.toString()); } catch { /* cabeçalho imutável: segue sem o next */ }
+  return res;
 }
 
 export const config = {

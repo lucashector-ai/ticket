@@ -10,6 +10,7 @@ import { CheckIcon, FieldError, FormError, PasswordField, fieldCls, isEmail } fr
 import { PhoneField } from "@/components/phone-field";
 import { phoneValid } from "@/lib/phone";
 import { Turnstile, useHuman } from "@/components/auth/turnstile";
+import { nextHint } from "@/components/auth/next-hint";
 
 type Err = { name?: boolean; email?: boolean; phone?: boolean; pw?: boolean; terms?: boolean };
 
@@ -66,7 +67,7 @@ export function SignupForm({ next, human, apple = false, initialEmail = "" }: { 
   return (
     <form className="lx-box" action={formAction} onSubmit={validate} noValidate>
       <h1 className="lx-t">Crie sua conta</h1>
-      <p className="lx-s">Leva menos de um minuto. Seus ingressos ficam salvos aqui.</p>
+      <p className="lx-s">{nextHint(next) === "para criar e gerenciar seus eventos" ? "Leva menos de um minuto. Depois você conta sobre seus eventos e já pode criar o primeiro." : "Leva menos de um minuto. Seus ingressos ficam salvos aqui."}</p>
       <input type="hidden" name="next" value={next} />
       {state?.error && <FormError>{state.error}</FormError>}
       <label className="lf">
