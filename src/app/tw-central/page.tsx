@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { AdminAccountProducer, AdminApps, AdminPayouts } from "@/components/admin/actions";
 import { AdminHighlights } from "@/components/admin/highlights";
+import { AdminTrailTab } from "@/components/admin/trail";
+import { adminTicketTrail, parseTrailQuery } from "@/lib/admin-trail";
 import { ADMIN_PATH, adminApplications, adminEvents, adminHeroSlides, adminHighlights, adminOverview, adminPayouts, adminProducers, adminUser, adminUsers } from "@/lib/admin";
 import { destLabel } from "@/lib/bank";
 import { brl } from "@/lib/format";
@@ -11,7 +13,7 @@ import { brl } from "@/lib/format";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Central", robots: { index: false, follow: false } };
 
-const TABS = [["geral", "Visão geral"], ["inscricoes", "Inscrições"], ["saques", "Saques"], ["destaques", "Destaques"], ["produtores", "Produtores"], ["contas", "Contas"], ["eventos", "Eventos"]] as const;
+const TABS = [["geral", "Visão geral"], ["inscricoes", "Inscrições"], ["saques", "Saques"], ["destaques", "Destaques"], ["produtores", "Produtores"], ["contas", "Contas"], ["eventos", "Eventos"], ["ingressos", "Ingressos"]] as const;
 const day = (d: Date | string) => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).replace(".", "");
 
 /** Central da Tickets Win (secreta): só para os e-mails de admin, com app autenticador. */
@@ -122,6 +124,9 @@ export default async function Central({ searchParams }: { searchParams: Promise<
             </div>
           </section>
         )}
+
+        {/* rastro do ingresso (D-12): só aqui, depois da checagem de admin com app autenticador */}
+        {tab === "ingressos" && <AdminTrailTab q={q} path={ADMIN_PATH} valid={!q.trim() || !!parseTrailQuery(q)} rows={q.trim() ? await adminTicketTrail(q) : null} />}
 
         {tab === "eventos" && (
           <section className="ad-card">
