@@ -151,9 +151,9 @@ Detalhes em `performance-report.md`. Rodada 2: financeiro e extrato do Banco dei
 | Navegador (Playwright, Chromium) | 13 fluxos (checkout e2e ×2, duas abas, upload, cupom, login Google, login com e-mail inexistente, câmera da portaria, portaria offline, "me avise", prévia OG, CSV, Meus ingressos/PDF) | 12 | 1 (cronômetro, texto, com o Marcos) | Firefox/WebKit: BLOQUEADO (não instalados) |
 | Navegador, UX (Marcos; Playwright, Chromium) | 304 telas (8 larguras) + axe em 76 + 21 jornadas/cenários (ver `test-matrix.md`) | 21 cenários aprovados ao fim (11 falharam antes e foram corrigidos) | 0 em aberto | leitor de tela real, Firefox/WebKit, câmera real: BLOQUEADO |
 | Navegador, UX rodada 2 (Marcos; Playwright, Chromium) | 22 cenários (ver `test-matrix.md`, "Rodada 2") + 100 telas de regressão + e2e da câmera do Romano rodado de novo (13/13) | 22 executados: 20 aprovados ao fim (6 falharam antes e foram corrigidos), 2 com uma parte BLOQUEADA (ativação/aprovação de produtor; geração com IA) | 0 em aberto | ativação de conta nova, aprovação de produtor, IA, câmera real, leitor de tela, Firefox/WebKit: BLOQUEADO |
-| Rodada 4: unitários + integração no banco de teste (suíte inteira, `pnpm test`), com equipe e produtoras | 138 (40 arquivos) | 138 | 0 | 0 |
+| Rodada 4: unitários + integração no banco de teste (suíte inteira, `pnpm test` sobre o commit 6044d2c), com equipe, produtoras e cota de meia | 143 (41 arquivos) | 143 | 0 | 0 |
 | Rodada 4: banner em HTML com a CSP bloqueando (home, 1280 e 390) | 3 navegadores | 3 | 0 | 0 |
-| Rodada 4: build (`opennextjs-cloudflare build`, cópia `ticket-build`, commit 6de7863: todo o código da rodada 4 do Romano, do Marcos commitado até então e do banner) | 1 | 1 | 0 | 0 |
+| Rodada 4: build (`opennextjs-cloudflare build`, cópia `ticket-build`, commit 6044d2c: rodada 4 do Romano, seletor de produtoras do Marcos 734ed42, banner) | 2 (6de7863 e 6044d2c) | 2 | 0 | 0 |
 | Rodada 4: navegador (Chromium 390 e 1280): caixa de meia no checkout com e sem tipo Meia; link de transferência aberto por outra conta | 2 × 2 | 4 | 0 | aceite positivo pela tela: coberto na integração (conta de destino precisa de e-mail confirmado) |
 | Pagamento real com Stripe (cartão, 3D Secure, Pix real, webhook real) | 0 | — | — | BLOQUEADO (sem chave de teste no local) |
 

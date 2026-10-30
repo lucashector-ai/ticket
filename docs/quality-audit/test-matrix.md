@@ -75,7 +75,7 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 | tests/db/produtoras.test.ts | Até 3 produtoras (3 pedidos simultâneos: 1 passa), isolamento de eventos/recebimento/saques, cookie forjado com a produtora de outra pessoa, admin alternando para a produtora da equipe | conforme | VALIDADO (rodada 4) |
 | tests/unit/art-frame.test.ts | Palco dos banners em HTML: CSP própria (sandbox sem mesma origem, sem rede), rota fixa, aceita só a página que emoldura | conforme | VALIDADO (rodada 4) |
 | tests/db/trail.test.ts | D-12: jornada inteira registrada (emissão, presente, transferência enviada/cancelada/aceita, revenda, check-in recusado e aceito, reembolso) e achada pelo código original, e-mail e nº do pedido; emissão que falha não deixa rastro; ingresso antigo reconstruído; busca | conforme | VALIDADO (rodada 4) |
-Última execução completa: 30/10 rodada 4, **138 testes, 138 aprovados, 0 reprovados** (40 arquivos, com `TEST_DATABASE_URL` do branch `teste-r4`).
+Última execução completa: 30/10 rodada 4, commit 6044d2c, **143 testes, 143 aprovados, 0 reprovados** (41 arquivos, com `TEST_DATABASE_URL` do branch `teste-r4`).
 Anterior: 30/10 rodada 3, **103 testes, 103 aprovados, 0 reprovados** (32 arquivos, com `TEST_DATABASE_URL`; perfis `qa-test-…` apagados no fim pela limpeza global). Rodada 2: 71 testes, 71 aprovados (23 arquivos: 27 unitários + 44 de integração, com `TEST_DATABASE_URL`); sem a variável, os de integração ficam pulados (`pnpm test`: 27 aprovados). Build do OpenNext verde no fim da rodada (commit 99aed9b); e2e da câmera repetido depois das mudanças de portaria do Marcos (13/13).
 
 ### No navegador (Playwright, servidor local, conta de teste)
