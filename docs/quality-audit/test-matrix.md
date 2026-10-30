@@ -46,12 +46,21 @@ Como rodar: `pnpm test` (unitários; os de integração são pulados). Integraç
 
 ### No navegador (Playwright, servidor local, conta de teste)
 
+E2E versionado: `tests/e2e/checkout.e2e.mjs` (`pnpm test:e2e`, com `E2E_EMAIL`, `E2E_PASSWORD`, `E2E_EVENT`, `E2E_TYPE` e `NODE_PATH=$(npm root -g)`; recusa rodar fora do localhost). Última execução: 4/4 passos ok.
+
+
 | Fluxo | Resultado |
 |---|---|
 | Checkout completo no modo de teste (evento QA, 2 ingressos, 1 "Sou eu" + 1 enviado por e-mail, Pix de teste, confirmação) | VALIDADO: pedido pago, total R$ 107,99 (100 + 7,99), 2 vendidos, 1 envio pendente |
 | Upload de imagem: PNG real / HTML com nome .png / sem login | VALIDADO: 200 / 415 / 401 |
 | Cupom sem login: limite de 30 consultas por IP em 10 min | VALIDADO |
 | Cronômetro "Reservados por" antes de existir pedido | FALHOU (texto): repassado ao Marcos (handoff 04:45) |
+| Duas abas com o mesmo evento | VALIDADO: a segunda aba retoma o mesmo pedido; nada vendido acima |
+| Portaria pelo painel com câmera (câmera falsa mostrando o QR de um ingresso de teste) | VALIDADO: lido e marcado como usado |
+| Login com e-mail inexistente (1 tentativa) | VALIDADO: "E-mail ou senha incorretos." |
+| "Me avise" sem login: 15 cadastros por IP por hora | VALIDADO |
+| Prévia OG de rascunho | VALIDADO: 404 (publicado 200) |
+| Exportar compradores (CSV) | VALIDADO: arquivo com colunas corretas |
 
 ### Matriz de cenários do produto (técnico)
 
