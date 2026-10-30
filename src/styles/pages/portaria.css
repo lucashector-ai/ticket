@@ -91,6 +91,7 @@
   .pt-res-n{max-width:100%;font:600 clamp(34px,10vw,52px)/1.02 'Inter Tight',sans-serif;letter-spacing:-.035em;overflow-wrap:anywhere;animation:ptUp .3s .08s cubic-bezier(.22,1,.36,1) both}
   .pt-res-t{font-size:17px;font-weight:600;color:rgba(255,255,255,.92)}
   .pt-res-e{max-width:300px;font-size:16px;line-height:1.4;font-weight:600;color:rgba(255,255,255,.92)}
+  .pt-res-h{max-width:300px;margin-top:2px;font-size:14px;line-height:1.45;color:rgba(255,255,255,.78)}
   .pt-res-c{margin-top:6px;font:700 14px 'Space Mono',monospace;letter-spacing:.08em;color:rgba(255,255,255,.88)}
   .pt-res-tap{position:absolute;z-index:5;left:0;right:0;bottom:calc(30px + env(safe-area-inset-bottom));font-size:13px;color:rgba(255,255,255,.6)}
   @media (prefers-reduced-motion:reduce){.pt-edge,.pt-edge i,.pt-core,.pt-scan,.pt-aim span{animation:none}}
