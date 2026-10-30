@@ -2,8 +2,8 @@
 .pg-adm{min-height:100vh;background:#F4F4F0;color:#111;font-family:Inter,system-ui,sans-serif}
 .pg-adm {
   .ad-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:24px;height:64px;padding:0 24px;background:#111;color:#fff}
-  .ad-brand{display:flex;align-items:baseline;gap:8px;color:#fff}
-  .ad-brand b{font:600 17px 'Inter Tight',sans-serif;letter-spacing:-.02em}
+  .ad-brand{display:flex;align-items:center;gap:10px;color:#fff}
+  .ad-brand svg{display:block;flex:none}
   .ad-brand span{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#D3F55B}
   .ad-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
   .ad-tabs a{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;font-size:14px;font-weight:500;color:#C9CBC2;white-space:nowrap}

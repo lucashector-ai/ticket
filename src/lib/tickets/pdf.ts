@@ -1,7 +1,7 @@
 import "server-only";
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import QRCode from "qrcode";
-import { MARK, WORD } from "@/components/brand-logo";
+import { BRAND_BOX, MARK, WORD } from "@/components/brand-logo";
 import type { TicketCardData } from "@/lib/tickets/card";
 
 /*
@@ -14,6 +14,7 @@ const INK = rgb(0.067, 0.067, 0.067);
 const MUTE = rgb(0.43, 0.43, 0.45);
 const SOFT = rgb(0.6, 0.6, 0.62);
 const LIME = rgb(0.827, 0.961, 0.357);
+const BRAND_G = rgb(0.235, 1, 0.388); // #3CFF63, o isotipo
 const PAPER = rgb(0.949, 0.949, 0.933);
 const WHITE = rgb(1, 1, 1);
 const NAVY = rgb(0.094, 0.098, 0.2);
@@ -147,12 +148,11 @@ export async function ticketPdf(t: TicketCardData, qrPayload: string, art: Uint8
   const foot = [t.holder, t.orderNumber ? `Pedido #${t.orderNumber}` : "", t.age].filter(Boolean).join("  ·  ");
   if (foot) center(page, foot, reg, 9.5, Y(y + 12), MUTE);
   y += 16 + 14;
-  // marca (os mesmos desenhos do logo do site)
-  const mark = 18, wordH = 13, wordW = (wordH * 724) / 128, gap = 6;
-  const lx = (W - mark - gap - wordW) / 2, ly = Y(y);
-  page.drawSvgPath(MARK, { x: lx, y: ly + 2, scale: mark / 173, color: LIME });
-  const ws = wordH / 128;
-  for (const d of WORD) page.drawSvgPath(d, { x: lx + mark + gap - 194 * ws, y: ly + 2 - (mark - wordH) / 2 + 22 * ws, scale: ws, color: INK });
+  // marca: isotipo + logotipo, os mesmos desenhos (e proporções) do logo do site
+  const [lbx, lby, lbw, lbh] = BRAND_BOX.full, ls = 18 / lbh;
+  const lx = (W - lbw * ls) / 2 - lbx * ls, ly = Y(y) + 2 + lby * ls;
+  page.drawSvgPath(MARK, { x: lx, y: ly, scale: ls, color: BRAND_G });
+  for (const d of WORD) page.drawSvgPath(d, { x: lx, y: ly, scale: ls, color: INK });
 
   return doc.save();
 }

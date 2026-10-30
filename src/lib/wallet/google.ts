@@ -42,7 +42,7 @@ export async function googleSaveUrl(d: PassData, site: string) {
     issuerName: "Tickets Win",
     reviewStatus: "UNDER_REVIEW",
     eventName: txt(d.title),
-    logo: { sourceUri: { uri: `${site}/wallet/google-logo.png` }, contentDescription: txt("Tickets Win") },
+    logo: { sourceUri: { uri: `${site}/wallet/google-logo.png?v=2` }, contentDescription: txt("Tickets Win") },
     hexBackgroundColor: toHex(PASS_THEME.bg),
     ...(d.art ? { heroImage: { sourceUri: { uri: d.art }, contentDescription: txt(d.title) } } : {}),
     ...(d.venue || d.address ? { venue: { name: txt(d.venue || d.city), address: txt(d.address || d.city) } } : {}),

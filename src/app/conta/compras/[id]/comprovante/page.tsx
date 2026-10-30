@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { BrandLogo } from "@/components/brand-logo";
 import { PrintButton } from "@/components/conta/pedido";
 import { getSessionUser } from "@/lib/auth/server";
 import { orderDetail } from "@/lib/data/pedido";
@@ -35,7 +36,7 @@ export default async function ComprovantePage({ params }: { params: Promise<{ id
       <main className="rc-doc">
         <header className="rc-head">
           <div>
-            <span className="rc-logo">Tickets Win</span>
+            <span className="rc-logo" role="img" aria-label="Tickets Win"><BrandLogo height={24} /></span>
             <p>{COMPANY.legalName}<br />CNPJ {COMPANY.cnpj ?? "em registro"} · {COMPANY.city}<br />{SUPPORT.email}</p>
           </div>
           <div className="rc-head-r">

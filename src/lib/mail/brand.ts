@@ -68,7 +68,7 @@ export function brandShell(o: ShellOpts) {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escHtml(o.preheader)}${"&#847;&zwnj;&nbsp;".repeat(40)}</div>
 <table ${TABLE} style="background:${B.bg}"><tr><td align="center" style="padding:32px 12px">
 <table class="tw-card" role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${B.card};border-radius:28px">
-<tr><td align="center" style="padding:40px 40px 0"><a href="${escHtml(s)}" style="text-decoration:none"><img src="${escHtml(s)}/email/tickets-win.png" width="138" height="26" alt="Tickets Win" style="display:block;width:138px;height:26px;border:0"></a></td></tr>
+<tr><td align="center" style="padding:40px 40px 0"><a href="${escHtml(s)}" style="text-decoration:none"><img src="${escHtml(s)}/email/tickets-win.png?v=2" width="137" height="26" alt="Tickets Win" style="display:block;width:137px;height:26px;border:0"></a></td></tr>
 ${o.body}
 <tr><td style="padding:64px 0 0">
 <table ${TABLE} style="background:${B.ink};border-radius:0 0 28px 28px">
@@ -78,7 +78,7 @@ ${o.body}
 <tr><td class="tw-px" style="padding:44px 48px 0"><div style="height:1px;line-height:1px;background:#2A2A2A">&nbsp;</div></td></tr>
 <tr><td align="center" class="tw-px" style="padding:28px 48px 0;font-family:${B.font};font-size:14px;font-weight:600;line-height:2">${nav}</td></tr>
 ${social ? `<tr><td align="center" style="padding:22px 48px 0"><table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0"><tr>${social}</tr></table></td></tr>` : ""}
-<tr><td align="center" style="padding:56px 40px 0"><a href="${escHtml(s)}" style="text-decoration:none"><img src="${escHtml(s)}/email/tickets-win-rodape.png" width="340" height="64" alt="Tickets Win" style="display:block;width:340px;max-width:100%;height:auto;border:0"></a></td></tr>
+<tr><td align="center" style="padding:56px 40px 0"><a href="${escHtml(s)}" style="text-decoration:none"><img src="${escHtml(s)}/email/tickets-win-rodape.png?v=2" width="337" height="64" alt="Tickets Win" style="display:block;width:337px;max-width:100%;height:auto;border:0"></a></td></tr>
 <tr><td align="center" class="tw-px" style="padding:32px 48px 48px;font-family:${B.font};font-size:12px;line-height:1.7;color:#7C7C77">${legal}</td></tr>
 </table></td></tr>
 </table></td></tr></table>${o.pixelUrl ? `<img src="${escHtml(o.pixelUrl)}" alt="" width="1" height="1" style="display:block;width:1px;height:1px;border:0">` : ""}</body></html>`;

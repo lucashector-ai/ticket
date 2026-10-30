@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BrandLogo } from "@/components/brand-logo";
 import { AdminAccountProducer, AdminApps, AdminPayouts } from "@/components/admin/actions";
 import { AdminHighlights } from "@/components/admin/highlights";
 import { ADMIN_PATH, adminApplications, adminEvents, adminHighlights, adminOverview, adminPayouts, adminProducers, adminUser, adminUsers } from "@/lib/admin";
@@ -22,7 +23,7 @@ export default async function Central({ searchParams }: { searchParams: Promise<
     return (
       <div className="pg-adm">
         <header className="ad-top">
-          <span className="ad-brand"><b>Tickets Win</b><span>Central</span></span>
+          <span className="ad-brand"><BrandLogo height={20} /><span className="sr-only">Tickets Win</span><span>Central</span></span>
           <span className="ad-me">{admin.email}</span>
         </header>
         <main className="ad-main">
@@ -43,7 +44,7 @@ export default async function Central({ searchParams }: { searchParams: Promise<
   return (
     <div className="pg-adm">
       <header className="ad-top">
-        <Link href={ADMIN_PATH} className="ad-brand"><b>Tickets Win</b><span>Central</span></Link>
+        <Link href={ADMIN_PATH} className="ad-brand" aria-label="Tickets Win · Central"><BrandLogo height={20} /><span>Central</span></Link>
         <nav className="ad-tabs" aria-label="Seções">
           {TABS.map(([k, l]) => (
             <Link key={k} href={`${ADMIN_PATH}?aba=${k}`} className={tab === k ? "on" : undefined}>
