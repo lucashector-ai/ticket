@@ -563,6 +563,12 @@
     .cv-qa .qh{display:none}
   }
   .cv-sug{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;border-radius:999px;background:#F7FCE3;font-size:12px;color:#445000}
+  /* meia com preço diferente da metade da inteira (D-09): aviso em âmbar (vermelho acima da inteira) com atalho para usar a metade */
+  .cv-sug.off{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;border-radius:12px;padding:6px 6px 6px 12px;background:#FFF1D9;color:#6B4A10}
+  .cv-sug.off span{flex:1 1 180px;min-width:0}
+  .cv-sug.off button{flex:none;height:28px;padding:0 12px;border:0;border-radius:999px;background:#fff;font:inherit;font-weight:700;color:#3D2A05;white-space:nowrap;cursor:pointer}
+  .cv-sug.off button:hover{background:#FFE2B0}
+  .cv-sug.off.bad{background:#FDECEA;color:#B3261E}
   .cv-sec .add{display:flex;flex-wrap:wrap;gap:6px;padding:6px 6px 2px}
   .cv-addsec{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:4px 2px}
   .cv-addsec span{font-size:13px;color:var(--cv-mut);margin-right:4px}

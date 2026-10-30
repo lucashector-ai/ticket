@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { BannerArt } from "@/components/art/banner";
 import { FlyerArt } from "@/components/art/flyer";
 import {
-  effTypes, joinBr, limitOf, MAX_LIMIT, MEIA_DESC, num, PALETTE, splitBr, toCents,
+  effTypes, joinBr, limitOf, MAX_LIMIT, MEIA_DESC, meiaSug, num, PALETTE, splitBr, toCents,
   type DraftSector, type DraftType, type MediaKey, type Teaser, type TypeKind, type Visibility,
 } from "@/lib/criar/model";
 import type { Derived } from "./flow";
@@ -67,6 +67,21 @@ const money = (v: number) => String(Math.round(Math.max(0, v) * 100) / 100).repl
 
 const DOT: Record<TypeKind, string> = { inteira: "dt int", meia: "dt meia", social: "dt soc", outro: "dt own" };
 
+/** Aviso da meia (Lei 12.933): metade da inteira; se o preço digitado for outro, mostra a metade e um atalho para usar. */
+function MeiaHint({ inteira, price, use }: { inteira: number; price: string; use: (v: string) => void }) {
+  if (inteira <= 0) return null;
+  const half = Math.round(inteira * 50) / 100;
+  if (toCents(price) === Math.round(half * 100)) return <span className="cv-sug"><Spark size={12} />Metade da inteira, como prevê a Lei 12.933</span>;
+  // acima da inteira o servidor não publica (meiaPriceError): avisa já na tabela
+  const over = toCents(price) > Math.round(inteira * 100);
+  return (
+    <span className={over ? "cv-sug off bad" : "cv-sug off"} role={over ? "alert" : undefined}>
+      <span>{over ? `A meia não pode custar mais que a inteira (${brMoney(inteira)}).` : `Pela Lei 12.933, a meia é a metade: ${brMoney(half)}.`}</span>
+      <button type="button" onClick={() => use(String(half).replace(".", ","))}>Usar {brMoney(half)}</button>
+    </span>
+  );
+}
+
 /** Setor (ou "Ingressos", sem setores): tabela Ingresso | Preço | Quantidade | Limite por pessoa, como no design v2. */
 function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many: boolean }) {
   const { d, upd } = c;
@@ -75,10 +90,12 @@ function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many
   const types = effTypes(k, d.autoMeia);
   let cap = 0, inteira = 0;
   for (const t of types) { cap += num(t.qty); if (t.kind === "inteira" && !t.free) inteira = num(t.price); }
-  const ro = () => c.flash("Esta meia é gerada da Inteira. Desligue a meia automática nas regras da venda para editar.");
+  const ro = () => c.flash("Nome, quantidade e limite desta meia seguem a Inteira. Para mudar, desligue a meia automática nas regras da venda.");
+  // meia automática: o preço é editável (D-09) e fica guardado na Inteira de origem; vazio volta para a metade
+  const baseOf = (t: { id: string }) => k.types.find((u) => `${u.id}-m` === t.id);
+  const setMeia = (t: { id: string }, v: string | undefined) => { const b = baseOf(t); if (b) setType(b.id, { meia: v }); };
   const [adding, setAdding] = useState(false);
   const nextColor = () => setSector((z) => ({ ...z, color: PALETTE[(PALETTE.indexOf(z.color) + 1) % PALETTE.length] }));
-  const brl = (v: string) => num(v).toLocaleString("pt-BR", { minimumFractionDigits: num(v) % 1 ? 2 : 0, maximumFractionDigits: 2 });
   return (
     <div className="cv-sec" style={{ animationDelay: `${i * 60}ms` }}>
       <div className="h">
@@ -106,7 +123,10 @@ function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many
                   {t.free
                     ? <button className="pr ro free" type="button" onClick={() => setType(t.id, { free: false })} title="Tocar para cobrar"><b>Grátis</b><small>tocar para cobrar</small></button>
                     : t.auto
-                      ? <span className="pr ro auto" onClick={ro}><b>R$ {brl(t.price)}</b><small>50% da inteira</small></span>
+                      ? <label className="pr"><span className="cur">R$</span><input autoComplete="off" inputMode="decimal" value={baseOf(t)?.meia ?? t.price} placeholder={meiaSug(baseOf(t)?.price ?? "")}
+                          onChange={(e) => setMeia(t, e.target.value.replace(/[^\d,]/g, ""))}
+                          onBlur={(e) => { const b = baseOf(t); if (b && (num(e.target.value) <= 0 || toCents(e.target.value) === toCents(meiaSug(b.price)))) setMeia(t, undefined); }}
+                          aria-label={`Preço de ${t.name}`} /></label>
                       : <label className="pr"><span className="cur">R$</span><input autoComplete="off" inputMode="decimal" value={t.price} onChange={(e) => setType(t.id, { price: e.target.value.replace(/[^\d,]/g, "") })} placeholder="0" aria-label={`Preço de ${t.name}`} />
                         <button className="fr" type="button" onClick={() => setType(t.id, { free: true })} title="Deixar grátis">grátis</button></label>}
                 </div>
@@ -125,6 +145,7 @@ function SectorCard({ c, k, i, many }: { c: Ctx; k: DraftSector; i: number; many
                   ? <button className="cv-rm" type="button" onClick={() => setSector((z) => ({ ...z, types: z.types.filter((u) => u.id !== t.id) }))} aria-label={`Remover ${t.name}`}>×</button>
                   : <span />}
                 {t.kind === "social" && inteira > 0 && !t.free && <span className="cv-sug"><Spark size={12} />Sugestão: {brMoney(Math.round(inteira * 0.6))}, entre a meia e a inteira</span>}
+                {t.kind === "meia" && !t.free && <MeiaHint inteira={t.auto ? num(baseOf(t)?.price) : inteira} price={t.price} use={(v) => (t.auto ? setMeia(t, undefined) : setType(t.id, { price: v }))} />}
               </div>
             );
           })}
@@ -174,7 +195,7 @@ export function IngressosStep({ c, x }: { c: Ctx; x: Derived }) {
   }), "tk");
   const setCp = (id: string, patch: Partial<(typeof d.coupons)[number]>) => upd((o) => ({ ...o, coupons: o.coupons.map((y) => (y.id === id ? { ...y, ...patch } : y)) }));
   const OPT: [keyof typeof d & ("autoMeia" | "fee" | "transfer" | "resale"), string, string][] = [
-    ["autoMeia", "Criar meia-entrada automaticamente", "Todo tipo Inteira ganha uma Meia por 50% do valor (Lei 12.933)."],
+    ["autoMeia", "Criar meia-entrada automaticamente", "Todo tipo Inteira ganha uma Meia pela metade do valor (Lei 12.933). O preço dá para ajustar na tabela."],
     ["fee", "Repassar taxa ao comprador", "O preço aparece com “+ taxas”. Desligado, a taxa de 7,99% sai do seu repasse."],
     ["transfer", "Permitir transferência", "O fã envia o ingresso para outra pessoa. O QR antigo deixa de valer na hora."],
     ["resale", "Permitir revenda oficial", "Quem não puder ir revende aqui, sem passar do valor pago, e o comprador recebe um QR novo."],
