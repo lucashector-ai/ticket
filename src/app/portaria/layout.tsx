@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   // iPhones mais antigos só abrem em tela cheia com a tag antiga
   other: { "apple-mobile-web-app-capable": "yes" },
 };
-export const viewport: Viewport = { themeColor: "#000000", width: "device-width", initialScale: 1, maximumScale: 1, viewportFit: "cover" };
+export const viewport: Viewport = { themeColor: "#000000", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 /** App da portaria: tela própria, sem o cabeçalho do site, instalável na tela de início. */
 export default function PortariaLayout({ children }: { children: React.ReactNode }) {

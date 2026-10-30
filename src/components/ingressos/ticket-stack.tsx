@@ -22,7 +22,7 @@ export function TicketStack({ total, cur, labels, onPick, children }: {
       {[...backs].reverse().map((i) => {
         const k = backs.indexOf(i) + 1;
         return (
-          <button key={i} type="button" className={`tks-b b${k}`} style={{ "--k": k } as CSSProperties} onClick={() => onPick(i)} aria-label={`Ver ingresso ${i + 1} de ${total}${labels[i] ? `, de ${labels[i]}` : ""}`}>
+          <button key={i} type="button" className={`tks-b b${k}`} style={{ "--k": k } as CSSProperties} onClick={() => onPick(i)}>
             <span className="tks-l"><b>Ingresso {i + 1} de {total}</b>{labels[i] && <small>{labels[i]}</small>}<em>Ver</em></span>
           </button>
         );

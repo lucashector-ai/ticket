@@ -9,7 +9,8 @@ import type { EventCard as EventCardData } from "@/lib/data/events";
 export function EventCard({ e, delay, className = "card rv" }: { e: EventCardData; delay?: string; className?: string }) {
   return (
     <article className={className} style={delay ? { animationDelay: delay } : undefined}>
-      <Link className="cimg" href={`/eventos/${e.slug}`} aria-label={`Ver ${e.title}`}>
+      {/* imagem e seta repetem o link do título: fora da ordem do teclado e do leitor de tela (um link por card) */}
+      <Link className="cimg" href={`/eventos/${e.slug}`} tabIndex={-1} aria-hidden="true">
         <FlyerArt id={e.flyerId} />
         {e.categoryLabel && <span className="pill-w">{e.categoryLabel}</span>}
       </Link>
@@ -20,7 +21,7 @@ export function EventCard({ e, delay, className = "card rv" }: { e: EventCardDat
         <p className="cmeta mute">{e.city}, {e.uf}</p>
         <div className="cfoot">
           <span className="price">{e.minPriceCents ? <><small>A partir de</small>{brl(e.minPriceCents)}</> : "Grátis"}</span>
-          <Link className="go" href={`/eventos/${e.slug}`} aria-label={`Ingressos para ${e.title}`}>
+          <Link className="go" href={`/eventos/${e.slug}`} tabIndex={-1} aria-hidden="true">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
         </div>

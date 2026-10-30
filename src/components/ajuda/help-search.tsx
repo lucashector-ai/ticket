@@ -77,8 +77,10 @@ export function HelpSearch({ docs, initialQ = "", variant = "hero", children }: 
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Escape") setQ(""); }}
-        aria-controls={`${id}-r`}
+        aria-controls={active ? `${id}-r` : undefined}
       />
+      {/* sempre na página: o leitor de tela anuncia quantos artigos a busca achou */}
+      <span className="sr" role="status">{active ? (results.length === 1 ? "1 artigo encontrado" : `${results.length} artigos encontrados`) : ""}</span>
       {active && (
         <button className="hp-sclr" type="button" onClick={() => { setQ(""); input.current?.focus(); }} aria-label="Limpar busca"><IcClose /></button>
       )}

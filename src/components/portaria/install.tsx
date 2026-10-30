@@ -35,7 +35,7 @@ export function InstallHint({ compact = false }: { compact?: boolean }) {
     <div className={compact ? "pt-inst sm" : "pt-inst"} role="note">
       <span className="pt-inst-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg></span>
       {mode === "ios" ? (
-        <span className="pt-inst-t"><b>Instale no iPhone</b>Toque em <i aria-label="Compartilhar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V3M8 7l4-4 4 4M5 11v9h14v-9" /></svg></i> e depois em <b className="in">Adicionar à Tela de Início</b>.</span>
+        <span className="pt-inst-t"><b>Instale no iPhone</b>Toque em <i role="img" aria-label="Compartilhar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M5 11v9h14v-9" /></svg></i> e depois em <b className="in">Adicionar à Tela de Início</b>.</span>
       ) : (
         <span className="pt-inst-t"><b>Instale o app da portaria</b>Abre direto na câmera, em tela cheia.</span>
       )}

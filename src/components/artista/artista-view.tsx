@@ -336,7 +336,7 @@ export function ArtistaView(p: ArtistaProps) {
             </div>
             <div className="sim">
               {p.similar.map((m) => (
-                <Link className="sim-b" href={`/artistas/${m.slug}`} key={m.slug} aria-label={`Ver perfil de ${m.name}`}>
+                <Link className="sim-b" href={`/artistas/${m.slug}`} key={m.slug}>
                   <span className="sim-ph" style={{ background: m.grad, color: m.fg }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     {m.image ? <img src={m.image} alt="" loading="lazy" /> : <BustIcon />}

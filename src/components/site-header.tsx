@@ -84,7 +84,7 @@ export function SiteHeader({ user, variant = "default", onImage = false, cities,
             )}
             {user ? (
               <details className="umenu hide-m">
-                <summary className="lnk" aria-label="Sua conta">{firstName(user)}</summary>
+                <summary className="lnk" aria-label={`${firstName(user)}: sua conta`}>{firstName(user)}</summary>
                 <div className="umenu-pop">
                   <Link href="/meus-ingressos">Meus ingressos</Link>
                   <Link href="/conta">Minha conta</Link>

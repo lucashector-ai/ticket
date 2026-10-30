@@ -243,7 +243,8 @@ export function EventoView({ e, user, loggedIn, initialFollowing, similar, viewe
 
             <div className="blk-s" id="local" style={{ scrollMarginTop: 100 }}>
               <h2>Local</h2>
-              <div className="map" role="img" aria-label={`Mapa ilustrativo de ${e.venue}`}>
+              {/* desenho decorativo; o nome, o endereço e o link "Como chegar" estão em texto dentro dele */}
+              <div className="map">
                 <span className="pin" aria-hidden="true"><i /></span>
                 <div className="pin-c">
                   <div>

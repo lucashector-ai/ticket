@@ -218,7 +218,7 @@ function Upcoming({ p, notify, onBell }: { p: ProdutorProps; notify: boolean; on
     <div className="pane">
       {n && (
         <article className="nx">
-          <Link className="nx-art" href={`/eventos/${n.slug}`} aria-label={`Ver ingressos de ${n.title}`}><BannerArt id={n.bannerId} fit="card" /></Link>
+          <Link className="nx-art" href={`/eventos/${n.slug}`} tabIndex={-1} aria-hidden="true"><BannerArt id={n.bannerId} fit="card" /></Link>
           <div className="nx-i">
             <span className="nx-k"><span className="nx-dot" aria-hidden="true" />Próximo evento · {n.countdown}</span>
             <h2 className="nx-t">{n.title}</h2>

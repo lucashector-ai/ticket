@@ -290,7 +290,8 @@ export function HomeClient({ user, events, heroEvents, categories, cityOpts, spo
             </div>
             <div className="gwrap" ref={gridRef} style={{ minHeight: lockH || undefined }}>
               {loading && (
-                <div className="grid" aria-busy="true" aria-label="Carregando eventos">
+                <div className="grid" aria-busy="true">
+                  <span className="sr" role="status">Carregando eventos</span>
                   {SKELETONS.map((k) => <SkeletonCard key={k} />)}
                 </div>
               )}

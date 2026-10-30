@@ -36,7 +36,7 @@ export function OrganizerCard({ o, eventSlug, loggedIn, initialFollowing }: { o:
       <h2>Quem organiza</h2>
       <div className="pr2">
         <div className="pr2-top">
-          <Link className="prod-av" href={`/produtor/${o.slug}`} style={{ background: "#111111", color: "#D3F55B", overflow: "hidden" }} aria-label={`Página de ${o.name}`}>
+          <Link className="prod-av" href={`/produtor/${o.slug}`} style={{ background: "#111111", color: "#D3F55B", overflow: "hidden" }} tabIndex={-1} aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {o.avatarUrl ? <img src={o.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : o.initials}
           </Link>

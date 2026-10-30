@@ -161,7 +161,7 @@ function TierRow({ tier, t, inGroup = false, delay, showLimit }: { tier: TierIte
           </button>
         </div>
       )}
-      {sold && <span className="soldt">Encerrado</span>}
+      {sold && <span className="soldt">{tier.status === "closed" ? "Encerrado" : "Esgotado"}</span>}
       {upcoming && <span className="soldt up">{tier.note ?? "Próxima virada de lote"}</span>}
     </div>
   );

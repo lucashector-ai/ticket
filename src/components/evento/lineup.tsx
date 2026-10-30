@@ -41,7 +41,7 @@ export function Lineup({ lineup, timed, p }: { lineup: LineupItem[]; timed: bool
                 <small>{a.role ?? "Set ao vivo"}</small>
               </span>
               <ListenButton artist={a} p={p} />
-              <Link className="lu-go" href={`/artistas/${a.slug}`} aria-label={`Ver perfil de ${a.name}`}>
+              <Link className="lu-go" href={`/artistas/${a.slug}`} aria-label={`Ver artista: ${a.name}`}>
                 <span className="lu-go-l">Ver artista</span>
                 <span className="lu-go-a"><ArrowIcon /></span>
               </Link>
@@ -52,7 +52,7 @@ export function Lineup({ lineup, timed, p }: { lineup: LineupItem[]; timed: bool
         <div className="lu-grid">
           {lineup.map((a) => (
             <div className="lu-card" key={a.id}>
-              <Link className="lu-card-a" href={`/artistas/${a.slug}`} aria-label={`Ver perfil de ${a.name}`}>
+              <Link className="lu-card-a" href={`/artistas/${a.slug}`}>
                 <Avatar a={a} big />
                 <b>{a.name}</b>
                 <small>Ver perfil <ArrowIcon /></small>

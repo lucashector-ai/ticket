@@ -300,7 +300,7 @@ function Row({ x, t, fee, showLimit }: { x: TierItem; t: Tickets; fee: number; s
           </button>
         </span>
       ) : (
-        <span className="bs-so">{upcoming ? x.note ?? "Em breve" : "Esgotado"}</span>
+        <span className="bs-so">{upcoming ? x.note ?? "Em breve" : x.status === "closed" ? "Encerrado" : "Esgotado"}</span>
       )}
       <span className="bs-p">{q > 1 && x.priceCents > 0 && `${q} × `}{x.priceCents ? money(x.priceCents) : "Grátis"}{x.priceCents > 0 && fee > 0 && <small>+ {money(fee)} taxa</small>}</span>
       {extra && <span className="bs-td">{extra}</span>}
