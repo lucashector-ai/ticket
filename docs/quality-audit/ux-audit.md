@@ -107,3 +107,35 @@ Evento → tela cheia (setor → ingresso) → Continuar (3,1–3,5 s até o che
 
 ### U-22 · Texto do limite repetido · P3 · VALIDADO
 - `/eventos/marea`: "Até 8 de cada tipo por pessoa, no máximo 8 por compra". Quando o limite do tipo é igual ao máximo da compra, fica só "Até 8 ingressos por compra".
+
+### Jornada do produtor (celular 390, conta de teste) · executada de ponta a ponta 2 vezes
+Painel → Criar evento → 1 Tipo (Show, uma data) → 2 Nome e faixa etária → 3 Data (atalhos "Esta sexta/Próximo sábado" + calendário, horários com padrão 21h–3h, portões 19h) → 4 Local (lista de locais já usados + busca Google) → 5 Mapa (Sem mapa / Com IA) → 6 Ingressos (pago/gratuito, ingresso único/por setores; Meia e Inteira já montadas; "Se esgotar, você recebe R$ 9.600,00") → 7 Artes (cartaz e banner obrigatórios) → 8 Abertura das vendas → Revisão com nota 0–100 e "!" nos pendentes → Publicar → "Seu evento está no ar!" com link, Compartilhar, Acompanhar vendas.
+Resultado: 9 toques em Continuar + ~8 ações + 2 envios de imagem. Publicado: VALIDADO. Erros testados: sem tipo, sem nome, publicar sem artes (leva à etapa Artes com a mensagem certa), cartaz 800×800 e 1200×1500 (recusados), 2160×2880 (aceito).
+**O produtor precisa mesmo fazer tudo isso?** Quase tudo tem padrão bom (horário, lotação, meia, taxa, vendas "já"). As travas reais são nome, data, local, preço e **duas** artes; a segunda arte é a que mais pesa para o iniciante (DM-2).
+
+### U-23 · Etapas do criador cortadas no celular · P2 · VALIDADO
+- Faixa de etapas com `justify-content:center` + rolagem: a 390px apareciam "3 4 5" e as etapas 1–2 ficavam inalcançáveis. Agora começa do início e a etapa atual rola para o centro. M: `c1-01.png` → `c2-00-top.png`. Commit aed8b41.
+
+### U-24 · Criador: textos e controles · P3 · VALIDADO
+- Sem nome/tipo: o foco vai ao campo que falta (antes só um aviso que some). Busca de local repetia a cidade ("São Paulo – SP · São Paulo – SP") e marcava "Na Tickets Win" (virou "Já cadastrado"). Revisão: "Publicar evento" quebrava em 2 linhas; "Quem pode ver" em 3 colunas quebrava cada opção em 3 linhas (agora lista no celular); política de cancelamento cortada numa linha (agora 2 linhas). Erro de proporção dizia "precisa ser 1080 × 1440 px", mas qualquer tamanho na proporção serve (agora explica). Aba de acessibilidade cobria o "Continuar". M: `c3-etapa9.png`. Commits aed8b41, d5cff02.
+
+### U-25 · Painel no desktop: nome do evento numa coluna de 70px · P2 · VALIDADO
+- Início do painel a 1280px: "QA / Romano · / checkout / (teste)", uma palavra por linha; o botão de acessibilidade cobria o texto do plano no menu. M: `painel-1280.png` → `painel-1280-depois.png`. Commit d5cff02.
+
+### Portaria (celular 390) · VALIDADO
+Equipe → "Abrir app da portaria" → app do evento ("0 de 0 entraram"); sem câmera: "Não conseguimos abrir a câmera." + "Permitir câmera"; "Digitar código": código inexistente → "NÃO LIBERADO · Ingresso não encontrado."; ingresso de outro evento → "NÃO LIBERADO · Este ingresso é de outro evento (nome)". Tela vermelha inteira, texto grande, "Toque para continuar". Câmera real: BLOQUEADO (sem câmera no Chromium headless). Ingresso válido/já usado: NÃO TESTADO (não quis gastar ingressos de teste do Romano).
+
+### Busca (U-26) · P2 · VALIDADO
+- "aurra" e "funk" davam 0 resultados (sem tolerância a erro; gênero fora da busca). Agora 1 e 3. Sem resultado: mensagem com "Limpar filtros" (ok). Commit desta rodada.
+
+### Teste do iniciante (contado pela interface, sem atalhos de código)
+| Tarefa | Ações | Dúvidas/erros observados |
+|---|---|---|
+| Achar um evento | 1 toque (card na home) ou busca | busca não perdoava erro de digitação (corrigido) |
+| Entender o preço | 0 (card: "A partir de R$ 275"; evento: preço + taxa por tipo) | desktop mostrava total sem taxa e celular com taxa (corrigido) |
+| Escolher ingresso | 4 toques (Comprar → setor → + → Continuar) | limite "por pessoa" confuso (corrigido) |
+| Concluir compra de teste | CPF + 3 toques (Ir para pagamento → Gerar Pix → Já paguei) | recarregar a confirmação abria checkout novo (corrigido) |
+| Achar o ingresso | 1 toque ("Ver meus ingressos") | destaque era de outro evento (corrigido) |
+| Criar conta de produtor | NÃO TESTADO (regra: no máximo 3 contas novas; usei a conta existente) | — |
+| Criar evento + configurar lote + publicar | 9 Continuar + ~8 ações + 2 imagens | exigência de 2 artes (DM-2); etapas cortadas no topo (corrigido) |
+| Achar as vendas | 0 (Início do painel: receita, vendidos, pedidos, ticket médio) | nomes de evento espremidos no desktop (corrigido) |

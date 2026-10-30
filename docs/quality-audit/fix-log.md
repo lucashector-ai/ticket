@@ -56,3 +56,9 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 05:50 | (ver git) | Sem rolagem lateral em /eventos e /painel/evento a 320–390 (U-18) | Playwright 320/390 | VALIDADO |
 | 30/10 06:10 | 71e2206 | Contraste dos cinzas de texto (U-19) | axe em 30 telas × 390/1280, antes/depois | VALIDADO |
 | 30/10 06:10 | 805d704 | Nomes acessíveis, 1 link por card, zoom na portaria, Esgotado/Encerrado (U-20, U-21) | axe + Playwright | VALIDADO |
+
+### Dados de teste criados pelo Marcos (banco de teste)
+- 2 eventos publicados "QA Marcos · Show de teste (não comprar)" (`/eventos/qa-marcos-show-de-teste-nao-comprar` e `…-2`), conta de teste existente, Casa Tangente, 7/11. Apagar depois.
+- Compras de teste (Pix de teste, sem cobrança) na conta de teste: 6 pedidos de Aurora Ao Vivo (#48307, #48317–#48322) e pedidos pendentes/cancelados de Marea Festival (#48350, #48351).
+- 1 acesso de portaria "Portão Principal Norte (QA Marcos)" criado e desligado (2×).
+- Imagens enviadas ao R2 local (cartaz e banner de teste). Nenhuma conta nova criada.
