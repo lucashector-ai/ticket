@@ -251,3 +251,17 @@ Firefox e WebKit liberados. No WebKit a sessão é injetada pela rota do Playwri
 | axe: home, menu aberto, folha de cidade, Dados, Pagamento (Pix e cartão) | Chromium 390 | VALIDADO (só a arte do cartaz no resumo) |
 | Compra de evento já encerrado pelo link do checkout | Firefox 430 | FALHOU → handoff ao Romano (U-73) |
 | Payment Element real e teclado de verdade sobre a barra | — | BLOQUEADO (sem chave no local; Playwright não abre teclado) |
+
+## Rodada 6 (Marcos, 30/10) · topo da home no celular
+
+| Cenário | Onde | Status |
+|---|---|---|
+| Cartão a 74 px, 16 px das bordas, 358:206, busca 26 px abaixo, link = cartão, pontos no cartão, sem rolagem lateral (banner de produtores e slide de evento) | Chromium, Firefox, WebKit × 320/375/390/430 | VALIDADO |
+| Transição: 600 e 760 (cartão limitado a 280 px), 761/768 com o computador como antes | Chromium | VALIDADO |
+| Busca grudada no topo após rolar; barra de abas embaixo | 3 motores × 320/375/390/430 | VALIDADO |
+| Toque no cartão → /produtores e /eventos/sintonia; fora do cartão não navega; deslizar; autoplay 7 s | Chromium 390 | VALIDADO |
+| Arte do celular do banner livre isolada (iframe 358×206, sandbox allow-scripts, /api/arte-html) | Chromium 390 | VALIDADO |
+| Central › banner livre: campo "Arte do celular", tamanhos, prévia "Celular (arte própria)", esvaziar volta à arte normal | 3 motores × 390/1280 (rota temporária fora do git, apagada; sem conta admin) | VALIDADO (tela) · BLOQUEADO (salvar com login) |
+| Validação e gravação de `html_mobile`/tamanhos (limite 300 KB, CHECK no banco) | vitest unitário + banco de teste | VALIDADO (suíte toda: 160 testes) |
+| axe no topo + busca | Chromium 320/390 | VALIDADO (sem violações) |
+

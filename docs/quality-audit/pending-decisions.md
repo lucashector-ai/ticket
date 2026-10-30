@@ -2,6 +2,24 @@
 
 Cada item: o que é, por que precisa da decisão, opções e a recomendação. Nada aqui foi aplicado sem estar marcado.
 
+## Rodada 6 · arte do celular no banner livre (aplicar ANTES de publicar f9f9cd2)
+
+Três colunas novas em `hero_slides` (tabela da rodada 4, que já tem de existir). Só acrescenta colunas com padrão e duas regras de checagem: não mexe em nenhuma linha. Sem elas, a home do código novo dá erro (a consulta lê as colunas). Já aplicado no banco de **teste** (`teste-r5`), rodado duas vezes (idempotente).
+
+```sql
+-- Banner livre: arte própria para o celular (opcional). Sem ela, o celular usa a arte normal.
+ALTER TABLE hero_slides ADD COLUMN IF NOT EXISTS html_mobile text;
+ALTER TABLE hero_slides ADD COLUMN IF NOT EXISTS mobile_width integer NOT NULL DEFAULT 358;
+ALTER TABLE hero_slides ADD COLUMN IF NOT EXISTS mobile_height integer NOT NULL DEFAULT 206;
+ALTER TABLE hero_slides DROP CONSTRAINT IF EXISTS hero_slides_html_mobile_chk;
+ALTER TABLE hero_slides ADD CONSTRAINT hero_slides_html_mobile_chk CHECK (html_mobile IS NULL OR length(html_mobile) <= 300000);
+ALTER TABLE hero_slides DROP CONSTRAINT IF EXISTS hero_slides_mobile_size_chk;
+ALTER TABLE hero_slides ADD CONSTRAINT hero_slides_mobile_size_chk CHECK (mobile_width BETWEEN 240 AND 1600 AND mobile_height BETWEEN 120 AND 1600);
+```
+
+Depois do schema, a arte do celular do banner "BEM-VINDO, PRODUTOR." (id `7b1e0c55-2f4a-4d6b-9a51-50d0c7e0a001`): `UPDATE` idempotente (só grava se o banner existir; rodar de novo regrava o mesmo HTML, 41 890 caracteres) no arquivo fora do repositório `/tmp/claude-0/-home-user-ticket/dc2b2806-50d2-5c85-87db-64a5410a3563/scratchpad/banner/update-banner-produtores-mobile.sql` (o HTML sozinho em `…/scratchpad/banner/produtores-mobile.html`). Também dá para colar o HTML na central (Destaques › banner livre › Arte do celular). Sem o UPDATE, o celular mostra a arte de computador reduzida (como hoje).
+Reversão: `ALTER TABLE hero_slides DROP COLUMN IF EXISTS html_mobile, DROP COLUMN IF EXISTS mobile_width, DROP COLUMN IF EXISTS mobile_height;` (só depois de voltar o código).
+
 ## Rodada 4 · schema para a produção (aplicar ANTES de publicar a rodada 4)
 
 Ordem: (1) `ticket_events` (abaixo), (2) `hero_slides` e o banner de produtores (bloco seguinte). As produtoras múltiplas e a correção da equipe **não** mudam o schema.
