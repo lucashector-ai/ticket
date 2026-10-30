@@ -19,7 +19,7 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 | S-09 | P1 | Limite por pessoa | Compra em grupo permite contornar o limite por pessoa (a mesma conta paga várias partes; vários grupos) | ABERTO: decisão comercial (`pending-decisions.md` D-01) | — |
 | S-10 | P2 | Financeiro | Trocar a conta de recebimento dos saques não pede o app autenticador (sessão roubada redireciona os próximos saques; o dono recebe e-mail) | ABERTO: decisão (D-04) | — |
 | S-11 | P2 | Segredos | HMAC do QR, cookie da portaria, banco e 2FA com valor padrão no código se a variável faltasse | VALIDADO | 675aac5 |
-| S-12 | P2 | Checkout antigo | `createOrder` (ação chamável, sem uso) sem limite por CPF, fila nem pré-venda; `payOrder` com emissão própria; `cancelOrder` sem cancelar a cobrança | CORRIGIDO, NÃO VALIDADO no navegador | 7730368 |
+| S-12 | P2 | Checkout antigo | `createOrder` (ação chamável, sem uso) sem limite por CPF, fila nem pré-venda; `payOrder` com emissão própria; `cancelOrder` sem cancelar a cobrança | VALIDADO (`tests/db/checkout-legacy.test.ts`) | 7730368 |
 | S-13 | P3 | Login | "Não encontramos uma conta com este e-mail" no login revelava contas | CORRIGIDO, NÃO VALIDADO | ver fix-log |
 | S-14 | P2 | Cupom | `checkCoupon` sem login e sem limite permitia descobrir códigos | VALIDADO | c23bfe6 |
 | S-15 | P1 | Dependências | jspdf 2.5.2 (2 críticos) e html-to-image sem uso; node-forge 1.3.1 | VALIDADO (audit 47 → 8) | bb0f74f, a59301a |
