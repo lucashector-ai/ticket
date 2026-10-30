@@ -151,6 +151,7 @@ Detalhes em `performance-report.md`. Rodada 2: financeiro e extrato do Banco dei
 | Navegador, UX rodada 2 (Marcos; Playwright, Chromium) | 22 cenários (ver `test-matrix.md`, "Rodada 2") + 100 telas de regressão + e2e da câmera do Romano rodado de novo (13/13) | 22 executados: 20 aprovados ao fim (6 falharam antes e foram corrigidos), 2 com uma parte BLOQUEADA (ativação/aprovação de produtor; geração com IA) | 0 em aberto | ativação de conta nova, aprovação de produtor, IA, câmera real, leitor de tela, Firefox/WebKit: BLOQUEADO |
 | Rodada 4: unitários + integração no banco de teste (suíte inteira, `pnpm test`), com equipe e produtoras | 138 (40 arquivos) | 138 | 0 | 0 |
 | Rodada 4: banner em HTML com a CSP bloqueando (home, 1280 e 390) | 3 navegadores | 3 | 0 | 0 |
+| Rodada 4: build (`opennextjs-cloudflare build`, cópia `ticket-build`, commit 6de7863: todo o código da rodada 4 do Romano, do Marcos commitado até então e do banner) | 1 | 1 | 0 | 0 |
 | Rodada 4: navegador (Chromium 390 e 1280): caixa de meia no checkout com e sem tipo Meia; link de transferência aberto por outra conta | 2 × 2 | 4 | 0 | aceite positivo pela tela: coberto na integração (conta de destino precisa de e-mail confirmado) |
 | Pagamento real com Stripe (cartão, 3D Secure, Pix real, webhook real) | 0 | — | — | BLOQUEADO (sem chave de teste no local) |
 
