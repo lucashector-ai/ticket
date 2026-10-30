@@ -9,6 +9,7 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 
 ## Dados de teste no banco de teste
 - Testes de integração criam eventos, produtores, perfis e cupons `qa-test-…` e apagam no fim (conferido no fechamento: 0 eventos, 0 produtores, 0 perfis restantes). Cupom `QAROMANO10` e 15 cadastros "me avise" `qa.romano.aviso*@example.com` usados na validação foram apagados.
+- Rodada 2 (Romano): no evento `qa-romano-checkout`, o tipo "Pista QA" passou para 40 lugares e limite 20 por pessoa (para os testes no navegador); pedidos de teste #48933–#48936 (checkout e2e, 1 ingresso cada). Os testes de integração e o e2e da portaria criam e apagam os próprios dados (conferido: 0 eventos `qa-e2e-portaria-outro-*`, 0 pedidos `TEST-e2e-*`). Na validação da D-04 o app autenticador da conta de teste foi ligado e desligado (estado final: sem 2FA, sem conta de recebimento, como antes; ficou 1 registro no log de segurança da conta). Coluna `orders.producer_opt_in` criada no branch de teste. Nenhuma conta nova criada pelo Romano.
 - 1 imagem PNG de 1×1 enviada ao R2 local na validação do upload (`/midia/eventos/e665d30ef5fa/mvugl1o4-…png`), só local.
 - Evento `qa-romano-checkout` (produtor da conta de teste, 1 tipo "Pista QA"; ao fim da noite com 6 lugares, 4 vendidos em 3 pedidos pagos de teste e 2 cancelados/abertos) criado no banco de teste para os testes no navegador. Pode ser apagado junto com o branch de teste; pedido nº 48308 pago em modo de teste (2 ingressos: TW-M3QC-DXZZ, já usado no teste da câmera, e um enviado para `qa.romano.presente@example.com`, sem conta).
 
@@ -40,6 +41,21 @@ Formato: data/hora · quem · commit · o que · como foi validado · status.
 | 30/10 06:00 | 0e456dd | E2E do checkout versionado (`pnpm test:e2e`) | 4/4 passos ok | VALIDADO |
 | 30/10 06:25 | f3f288f · dcf63b1 | Limites revistos para CGNAT: pedidos contam só quando criados; só cupom errado conta (20/10 min por IP); "me avise" 40/h | Playwright: cupom válido 25× sem bloqueio, errados bloqueados; testes do placeOrder | VALIDADO |
 | 30/10 06:30 | 3271b9e | "Esqueci a senha"/ativação: teto de 6 por hora por e-mail (S-23) | tsc/eslint; sem teste (login compartilhado com a produção) | CORRIGIDO, NÃO VALIDADO |
+
+### Romano · rodada 2 (30/10, depois da aprovação do dono)
+
+| Data/hora | Commit | Correção | Validação | Status |
+|---|---|---|---|---|
+| 30/10 10:45 | 89b1c92 | Servidor local de volta na porta 3042 (estava fora do ar no início da rodada) | curl 200 em `/` e no evento de teste | VALIDADO |
+| 30/10 11:00 | 1c12a57 | Emissão numa transação só (`db.batch`): queda no meio não deixa nada pela metade nem baixa o estoque duas vezes (S-24); trava por conta e CPF na confirmação (S-25) | `tests/db/fulfill-atomic.test.ts` (3 cenários, falham sem a correção) + suíte inteira + checkout e2e no navegador | VALIDADO |
+| 30/10 11:05 | 67f9873 | D-01: uma parte de grupo por conta e um grupo aberto por pessoa em cada evento; Ajuda atualizada | `tests/db/grupo.test.ts` (3 cenários, falham sem a correção) | VALIDADO (integração) |
+| 30/10 11:15 | 4cc67ad · 4a29bdf | D-04: trocar a conta de recebimento exige o código do app quando a conta usa o app | `tests/db/payout-destination.test.ts` (falha sem a correção); Chromium: sem código → campo aparece com foco; errado → não salva; certo → salva | VALIDADO |
+| 30/10 11:40 | 09de382 | D-03: caixa desmarcada "Quero receber novidades de <produtor>" no checkout; campanhas só para quem marcou (pedidos antigos como antes); coluna `orders.producer_opt_in` (SQL em pending-decisions) | `tests/db/optin.test.ts`; e2e do checkout marcando a caixa (pedido #48936 com opt-in = true) | VALIDADO |
+| 30/10 11:55 | (fflate) | fflate 0.8.3 (aviso moderado); D-06 avaliada: código vulnerável do better-auth não roda no nosso Worker | `pnpm audit --prod`; teste da Wallet; zip/unzip de fumaça; leitura do SDK e do build | VALIDADO |
+| 30/10 12:05 | 351ca5c | Financeiro e extrato do Banco somados no banco (`orderSums`); tabela por evento paginada (25) | `tests/db/finance-sums.test.ts` (paridade centavo a centavo com o cálculo antigo); Chromium no financeiro (valores = SQL direto) | VALIDADO |
+| 30/10 12:10 | ddca928 | Teste do limitador do "esqueci a senha" (S-23) com o login simulado | `tests/unit/password-throttle.test.ts` (falha sem 3271b9e) | VALIDADO |
+| 30/10 12:25 | 003a4e1 | E2E da portaria pela câmera (câmera falsa do Chromium, QR real do ingresso): válido, já usado, outro evento, reembolsado, cancelado, adulterado | `pnpm test:e2e:portaria`: 13/13 ok | VALIDADO |
+| 30/10 12:35 | 85e8bff | Testes da central admin (S-05) e do limite de 12 pedidos por conta a cada 10 min | `tests/unit/admin-guard.test.ts`, `tests/db/order-rate.test.ts` | VALIDADO |
 
 ## Marcos
 
