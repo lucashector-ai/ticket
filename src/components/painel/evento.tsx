@@ -17,6 +17,7 @@ import type { RefundTab } from "@/lib/data/reembolsos";
 import { CheckinLinks, type CheckinLink } from "./checkin-links";
 import { useOrigin } from "./use-origin";
 import { csvBlob } from "@/lib/csv";
+import { Tbl } from "@/components/painel/tbl";
 
 type Tab = "geral" | "participantes" | "lista" | "checkin" | "financeiro" | "lancamento" | "revenda" | "reembolsos";
 type Person = { id: string; name: string; ini: string; bg: string; email: string; ticket: string; meia: boolean; order: string; date: string; status: string; inAt: string | null };
@@ -159,7 +160,7 @@ function Geral({ p }: { p: EventoPainelProps }) {
           <Chart c={p.chart} />
           <section className="cx">
             <div className="card-h"><div><h2 className="card-t">Ingressos por setor</h2><span className="card-s">Lotes, vendas e receita de cada tipo</span></div><Link className="b2" href={`/criar-evento?editar=${p.ev.id}`}>Gerenciar lotes</Link></div>
-            <div className="tbl">
+            <Tbl label="Ingressos por setor">
               <div className="tr2 thd"><span>Tipo</span><span>Preço</span><span>Vendidos</span><span className="num">Receita</span><span /></div>
               {p.tiers.map((t) => (
                 <div className="tr2" key={t.id}>
@@ -170,7 +171,7 @@ function Geral({ p }: { p: EventoPainelProps }) {
                   <span className={t.stCls}>{t.status}</span>
                 </div>
               ))}
-            </div>
+            </Tbl>
           </section>
         </div>
         <aside className="side2">
@@ -253,7 +254,7 @@ function People({ p }: { p: EventoPainelProps }) {
           <div className="chips3">{FIL.map(([k, l, c]) => <button key={k} className={f === k ? "chp on" : "chp"} type="button" onClick={() => setF(k)}>{l} <span className="sg-n">{n(c)}</span></button>)}</div>
           <div className="ca"><button className="b2" type="button" onClick={() => exportCsv(p.ev.title, list)}>Exportar CSV</button></div>
         </div>
-        <div className="tbl">
+        <Tbl label="Participantes">
           <div className="tr3 thd"><span>Participante</span><span>Ingresso</span><span>Pedido</span><span>Compra</span><span>Check-in</span></div>
           {shown.map((x) => (
             <div className="tr3" key={x.id}>
@@ -265,7 +266,7 @@ function People({ p }: { p: EventoPainelProps }) {
             </div>
           ))}
           {list.length === 0 && <div className="empty2"><b className="em-t">{p.people.length ? "Ninguém encontrado" : "Nenhum participante ainda"}</b><span className="em-s">{p.people.length ? "Tente outro nome, e-mail ou número de pedido." : "Os ingressos vendidos aparecem aqui."}</span></div>}
-        </div>
+        </Tbl>
         <span className="tbl-f">Mostrando {n(shown.length)} de {n(list.length)} participantes</span>
       </section>
     </div>

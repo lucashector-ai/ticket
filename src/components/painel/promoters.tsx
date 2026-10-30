@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { createPromoter, setPromoterActive } from "@/lib/actions/promoters";
 import { useOrigin } from "./use-origin";
+import { Tbl } from "@/components/painel/tbl";
 
 export type PromoterRow = {
   id: string; name: string; email: string; event: string; code: string; token: string; pct: number; active: boolean;
@@ -68,7 +69,7 @@ export function PainelPromoters({ p, ranked = false }: { p: PromotersProps; rank
           <span><b>{p.totals.commission}</b> de comissão a pagar</span>
         </div>
       )}
-      <div className="tbl">
+      <Tbl label="Vendas por parceiro">
         {p.rows.map((r, i) => (
           <div className={`${r.active ? "pr-row" : "pr-row off"}${ranked ? " rk" : ""}`} key={r.id}>
             {ranked && <span className={i < 3 && r.tickets > 0 ? `pr-rk top${i + 1}` : "pr-rk"} aria-label={`${i + 1}º lugar`}>{i + 1}</span>}
@@ -89,7 +90,7 @@ export function PainelPromoters({ p, ranked = false }: { p: PromotersProps; rank
           </div>
         ))}
         {!p.rows.length && !open && <div className="empty2"><b className="em-t">Nenhum parceiro ainda</b><span className="em-s">Crie um link para cada promoter: as vendas e a comissão de cada um aparecem aqui.</span></div>}
-      </div>
+      </Tbl>
     </section>
   );
 }

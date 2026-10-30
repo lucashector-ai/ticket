@@ -7,6 +7,7 @@ import { useToast } from "@/components/toast";
 import { createCoupon, setCouponActive } from "@/lib/actions/painel";
 import type { PromotersProps } from "./promoters";
 import { useOrigin } from "./use-origin";
+import { Tbl } from "@/components/painel/tbl";
 
 export type MarketingProps = {
   events: { id: string; slug: string; title: string; when: string; unlisted: boolean }[];
@@ -54,7 +55,7 @@ export function PainelMarketing(p: MarketingProps) {
         <div className="maincol">
           <section className="cx">
             <div className="card-h"><div><h2 className="card-t">Cupons</h2><span className="card-s">Pause um cupom a qualquer momento; quem já comprou não é afetado.</span></div></div>
-            <div className="tbl">
+            <Tbl label="Cupons">
               <div className="tr6 thd"><span>Código</span><span>Evento</span><span>Desconto</span><span>Usos</span><span>Validade</span><span /></div>
               {p.coupons.map((c) => (
                 <div className="tr6" key={c.id}>
@@ -69,7 +70,7 @@ export function PainelMarketing(p: MarketingProps) {
                 </div>
               ))}
               {p.coupons.length === 0 && <div className="empty2"><b className="em-t">Nenhum cupom ainda</b><span className="em-s">Crie o primeiro ao lado: parceiros, lista VIP, promoção relâmpago.</span></div>}
-            </div>
+            </Tbl>
           </section>
 
           <section className="cx">

@@ -7,6 +7,7 @@ import { useToast } from "@/components/toast";
 import { removeSignup, saveLaunch, sendLaunchNow } from "@/lib/actions/launch";
 import { useOrigin } from "./use-origin";
 import { csvBlob } from "@/lib/csv";
+import { Tbl } from "@/components/painel/tbl";
 
 type Signup = { id: string; kind: "abertura" | "presale"; email: string; when: string; notified: boolean; used: boolean; token: string };
 export type LaunchProps = {
@@ -107,7 +108,7 @@ export function PainelLancamento({ p }: { p: LaunchProps }) {
                 <button className="b2" type="button" onClick={csv} disabled={!p.signups.length}>Exportar CSV</button>
               </div>
             </div>
-            <div className="tbl">
+            <Tbl label="Lista de pré-venda e aviso">
               {shown.slice(0, 200).map((s) => (
                 <div className="ln-row" key={s.id}>
                   <span className="ln-e">{s.email}<small>{s.when}</small></span>
@@ -117,7 +118,7 @@ export function PainelLancamento({ p }: { p: LaunchProps }) {
                 </div>
               ))}
               {!shown.length && <div className="empty2"><b className="em-t">Ninguém ainda</b><span className="em-s">{list === "presale" ? "Defina a pré-venda e divulgue a página: o cadastro aparece nela." : "Com a abertura marcada, a página mostra o campo \"Me avise\"."}</span></div>}
-            </div>
+            </Tbl>
             {shown.length > 200 && <span className="tbl-f">Mostrando 200 de {shown.length}. O CSV leva a lista inteira.</span>}
           </section>
         </div>

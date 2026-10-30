@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { producerCancelListing, saveTransferResale } from "@/lib/actions/revenda";
 import { DEADLINE_HOURS, deadlineLabel } from "@/lib/refund-policy";
+import { Tbl } from "@/components/painel/tbl";
 
 type Listing = { id: string; code: string; what: string; price: string; pct: number; status: "active" | "reserved" | "sold" | "cancelled"; when: string };
 export type RevendaProps = {
@@ -75,7 +76,7 @@ export function PainelRevenda({ p }: { p: RevendaProps }) {
                 </div>
               </div>
             </div>
-            <div className="tbl">
+            <Tbl label="Anúncios da revenda">
               {shown.slice(0, 200).map((l) => (
                 <div className="ln-row rv-row" key={l.id}>
                   <span className="ln-e">{l.what}<small>{l.code} · {l.when}</small></span>
@@ -90,7 +91,7 @@ export function PainelRevenda({ p }: { p: RevendaProps }) {
                   <span className="em-s">{p.resaleEnabled ? "Quando alguém não puder ir, anuncia o ingresso pela página dele e o anúncio aparece aqui e na página do evento." : "A revenda está desligada. Ligue ao lado para que os compradores possam revender com segurança."}</span>
                 </div>
               )}
-            </div>
+            </Tbl>
             {shown.length > 200 && <span className="tbl-f">Mostrando 200 de {shown.length}.</span>}
           </section>
         </div>

@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useToast } from "@/components/toast";
 import { addGuest, addGuestsBulk, inviteAllPending, inviteGuest, removeGuest, undoGuestCheckin } from "@/lib/actions/lista";
 import { csvBlob } from "@/lib/csv";
+import { Tbl } from "@/components/painel/tbl";
 
 export type ListaGuest = {
   id: string; name: string; email: string; token: string; guests: number; note: string;
@@ -93,7 +94,7 @@ export function PainelLista({ p }: { p: ListaProps }) {
               <div className="chips3">{FIL.map(([k, l, c]) => <button key={k} className={fil === k ? "chp on" : "chp"} type="button" onClick={() => setFil(k)}>{l} <span className="sg-n">{n(c)}</span></button>)}</div>
               <div className="ca"><button className="b2" type="button" onClick={() => exportCsv(p.title, list)} disabled={!list.length}>Exportar CSV</button></div>
             </div>
-            <div className="tbl">
+            <Tbl label="Lista free">
               <div className="lf-row thd"><span>Convidado</span><span>Ingresso de lista</span><span>Entrada</span><span /></div>
               {shown.map((g) => (
                 <div className="lf-row" key={g.id}>
@@ -124,7 +125,7 @@ export function PainelLista({ p }: { p: ListaProps }) {
                   <span className="em-s">{p.guests.length ? "Tente outro nome ou e-mail." : "Adicione quem entra de graça: os nomes aparecem aqui e na portaria."}</span>
                 </div>
               )}
-            </div>
+            </Tbl>
             <span className="tbl-f">Mostrando {n(shown.length)} de {n(list.length)} {list.length === 1 ? "nome" : "nomes"}{list.length > shown.length ? ". Busque para achar os outros." : ""}</span>
           </section>
         </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { csvBlob } from "@/lib/csv";
+import { Tbl } from "@/components/painel/tbl";
 
 type Buyer = { id: string; name: string; ini: string; bg: string; email: string; orders: number; tickets: number; spent: string; events: number; last: string; meia: boolean };
 export type PublicoProps = {
@@ -49,7 +50,7 @@ export function PainelPublico(p: PublicoProps) {
             <div className="chips3">{FIL.map(([k, l, c]) => <button key={k} className={f === k ? "chp on" : "chp"} type="button" onClick={() => setF(k)}>{l} <span className="sg-n">{c}</span></button>)}</div>
             <div className="ca"><button className="b2" type="button" onClick={csv} disabled={!list.length}>Exportar CSV</button></div>
           </div>
-          <div className="tbl">
+          <Tbl label="Compradores">
             <div className="tr5 thd"><span>Comprador</span><span className="num">Ingressos</span><span className="num">Eventos</span><span className="num">Gasto</span><span>Última compra</span></div>
             {list.slice(0, 300).map((b) => (
               <div className="tr5" key={b.id}>
@@ -61,7 +62,7 @@ export function PainelPublico(p: PublicoProps) {
               </div>
             ))}
             {list.length === 0 && <div className="empty2"><b className="em-t">{p.buyers.length ? "Ninguém encontrado" : "Ainda sem compradores"}</b><span className="em-s">{p.buyers.length ? "Tente outro nome ou e-mail." : "Quem comprar ingresso para os seus eventos aparece aqui."}</span></div>}
-          </div>
+          </Tbl>
           <span className="tbl-f">Mostrando {Math.min(300, list.length)} de {list.length} compradores · o CSV leva a lista filtrada inteira</span>
         </section>
 

@@ -12,6 +12,7 @@ import type { HistoryRow, OrderStatusKey, RefundOrderDetail, RefundOrderRow, Ref
 import type { CancelProgress } from "@/lib/payments/cancel-event";
 import { hoursLabel, LEGAL_DAYS, LEGAL_MIN_HOURS, POLICY_HOURS, policyText, POSTPONE_REFUND_DAYS, type CancelPolicy } from "@/lib/refund-policy";
 import { PainelPortal } from "./emails/portal";
+import { Tbl } from "@/components/painel/tbl";
 
 const ORDER_ST: Record<OrderStatusKey, [string, string]> = {
   paid: ["Pago", "st on"], partial: ["Reembolso parcial", "st warn"], refunded: ["Reembolsado", "st end"], cancelled: ["Cancelado", "st end"], pending: ["Pendente", "st draft"], expired: ["Expirado", "st end"],
@@ -102,7 +103,7 @@ function Orders({ p, onOpen }: { p: RefundTab; onOpen: (id: string) => void }) {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L20 20" /></svg>
         <input autoComplete="off" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome, e-mail, nº do pedido ou código do ingresso" aria-label="Buscar pedido" />
       </label>
-      <div className="tbl" aria-busy={loading}>
+      <Tbl label="Pedidos para reembolsar ou cancelar" aria-busy={loading}>
         <div className="rr-or thd"><span>Pedido</span><span>Comprador</span><span>Pago</span><span>Situação</span><span /></div>
         {rows.map((o) => (
           <button className="rr-or" key={o.id} type="button" onClick={() => onOpen(o.id)}>
@@ -114,7 +115,7 @@ function Orders({ p, onOpen }: { p: RefundTab; onOpen: (id: string) => void }) {
           </button>
         ))}
         {!rows.length && <div className="empty2"><b className="em-t">{q ? "Nenhum pedido encontrado" : "Nenhum pedido pago ainda"}</b><span className="em-s">{q ? "Tente o e-mail completo, o número do pedido (ex.: 48213) ou o código do ingresso (TW-…)." : "Os pedidos pagos aparecem aqui."}</span></div>}
-      </div>
+      </Tbl>
       {!q && rows.length >= 25 && <span className="tbl-f">Mostrando os 25 mais recentes. Use a busca para achar os outros.</span>}
     </section>
   );
@@ -298,7 +299,7 @@ function Requests({ p, onOpen }: { p: RefundTab; onOpen: (r: RequestRow) => void
   return (
     <section className="cx">
       <div className="card-h"><div><h2 className="card-t">Pedidos de reembolso</h2><span className="card-s">{p.postponed?.open ? `Evento adiado: quem comprou antes do anúncio pode pedir até ${p.postponed.until}.` : "Compradores que pediram o dinheiro de volta."}</span></div></div>
-      <div className="tbl">
+      <Tbl label="Pedidos de reembolso">
         {p.requests.map((r) => (
           <button className="rr-or rr-rq" key={r.id} type="button" onClick={() => onOpen(r)}>
             <span className="rr-n">nº {r.number ?? "—"}<small>{r.at}</small></span>
@@ -309,7 +310,7 @@ function Requests({ p, onOpen }: { p: RefundTab; onOpen: (r: RequestRow) => void
           </button>
         ))}
         {!p.requests.length && <div className="empty2"><b className="em-t">Nenhum pedido em aberto</b><span className="em-s">Os pedidos feitos pelos compradores no ingresso aparecem aqui.</span></div>}
-      </div>
+      </Tbl>
     </section>
   );
 }
@@ -338,10 +339,10 @@ function History({ rows, onOpen }: { rows: HistoryRow[]; onOpen: (id: string) =>
   return (
     <section className="cx">
       <div className="card-h"><div><h2 className="card-t">Histórico</h2><span className="card-s">Quem reembolsou o quê, quando, quanto e por quê.</span></div></div>
-      <div className="tbl">
+      <Tbl label="Histórico de reembolsos">
         {shown.map((h) => <HistoryLine key={h.id} h={h} onOpen={onOpen} />)}
         {!rows.length && <div className="empty2"><b className="em-t">Nenhum reembolso ainda</b><span className="em-s">Cada reembolso e cancelamento fica registrado aqui.</span></div>}
-      </div>
+      </Tbl>
       {rows.length > shown.length && <button className="b2 rr-more" type="button" onClick={() => setAll(true)}>Ver todos ({rows.length})</button>}
     </section>
   );

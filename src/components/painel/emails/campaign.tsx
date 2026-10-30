@@ -12,6 +12,7 @@ import { EventSetup } from "./event-setup";
 import { useOrigin } from "../use-origin";
 import { EmailEditor } from "./editor";
 import { STATUS } from "./list";
+import { Tbl } from "@/components/painel/tbl";
 
 export type EvOpt = { id: string; title: string; when: string; past: boolean };
 export type EditorData = { org: OrgInfo; events: Record<string, EvInfo>; upcoming: string[] };
@@ -382,20 +383,20 @@ function Report({ p }: { p: CampaignProps }) {
         <div className="mc-main">
           <section className="cx">
             <div className="card-h"><div><h2 className="card-t">Links mais clicados</h2><span className="card-s">Cliques no e-mail, por endereço</span></div></div>
-            <div className="tbl">
+            <Tbl label="Links mais clicados">
               {r.links.map((l, i) => <div className="mc-lk" key={i}><span className="mc-lu" title={l.url}>{l.url.replace(/^https?:\/\//, "")}</span><b>{n(l.clicks)}</b></div>)}
               {!r.links.length && <div className="empty2"><span className="em-s">Este e-mail não tem links.</span></div>}
-            </div>
+            </Tbl>
           </section>
           <section className="cx">
             <div className="card-h wrap2">
               <div><h2 className="card-t">Quem recebeu</h2><span className="card-s">{r.total > r.people.length ? `Mostrando ${n(r.people.length)} de ${n(r.total)}` : `${n(r.total)} pessoas`}</span></div>
               <div className="seg2 sm">{([["all", "Todos"], ["open", "Abriram"], ["click", "Clicaram"], ["no", "Não abriram"], ["unsub", "Saíram"]] as const).map(([k, l]) => <button key={k} className={tab === k ? "sg on" : "sg"} type="button" onClick={() => setTab(k)}>{l}</button>)}</div>
             </div>
-            <div className="tbl">
+            <Tbl label="Quem recebeu">
               {people.slice(0, 200).map((x, i) => <div className="ln-row mc-pr" key={i}><span className="ln-e">{x.name || x.email}<small>{x.name ? x.email : ""}</small></span><span className={PST[x.status]?.[1] ?? "st draft"}>{PST[x.status]?.[0] ?? x.status}</span></div>)}
               {!people.length && <div className="empty2"><span className="em-s">Ninguém neste filtro.</span></div>}
-            </div>
+            </Tbl>
           </section>
         </div>
         <aside className="mc-side"><section className="cx"><div className="card-h"><h2 className="card-t">O e-mail</h2></div><MailThumb html={html} scale={0.46} height={560} /></section></aside>

@@ -7,6 +7,7 @@ import { ended, nowMs } from "@/lib/painel/build";
 import { BancoCard } from "@/components/painel/banco-card";
 import { bankCredential, bankUrl, destLabel, hasDestination, RELEASE_DAYS, walletFor } from "@/lib/bank";
 import { mfaSettings } from "@/lib/mfa";
+import { Tbl } from "@/components/painel/tbl";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Financeiro" };
@@ -51,7 +52,7 @@ export default async function PainelFinanceiro() {
       </div>
       <section className="cx">
         <div className="card-h"><div><h2 className="card-t">Por evento</h2><span className="card-s">O líquido de cada evento entra no Banco Tickets Win e fica disponível {RELEASE_DAYS} dias depois do evento. Vendas de teste não geram repasse.</span></div></div>
-        <div className="tbl">
+        <Tbl label="Vendas por evento">
           <div className="tr4 thd"><span>Evento</span><span className="num">Vendido</span><span className="num">Taxa</span><span className="num">Ingressos</span><span className="num">Líquido</span></div>
           {rows.map((r) => (
             <div className="tr4" key={r.id}>
@@ -60,7 +61,7 @@ export default async function PainelFinanceiro() {
             </div>
           ))}
           {rows.length === 0 && <div className="empty2"><b className="em-t">Nenhum evento publicado</b><span className="em-s">Quando você vender, os valores aparecem aqui.</span></div>}
-        </div>
+        </Tbl>
       </section>
     </div>
   );

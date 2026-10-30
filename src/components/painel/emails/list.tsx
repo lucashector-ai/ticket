@@ -9,6 +9,7 @@ import { createCampaign, createEventCampaign, createFromSaved, deleteCampaign, d
 import { MOTIVES, type Motive } from "@/lib/mail/event-email";
 import type { TemplateKey } from "@/lib/mail/templates";
 import { PainelPortal } from "./portal";
+import { Tbl } from "@/components/painel/tbl";
 
 type Row = { id: string; name: string; subject: string; status: string; when: string; recipients: number; open: string; click: string; progress: number };
 export type EmailsProps = {
@@ -85,7 +86,7 @@ export function PainelEmails(p: EmailsProps) {
               {([["all", "Todas"], ["draft", "Rascunhos"], ["sent", "Enviadas"]] as const).map(([k, l]) => <button key={k} className={filter === k ? "sg on" : "sg"} type="button" onClick={() => setFilter(k)}>{l}</button>)}
             </div>
           </div>
-          <div className="tbl">
+          <Tbl label="Campanhas">
             <div className="ml-row thd"><span>Campanha</span><span>Status</span><span className="num">Pessoas</span><span className="num">Abertura</span><span className="num">Cliques</span><span /></div>
             {shown.map((c) => (
               <div className="ml-row" key={c.id}>
@@ -107,7 +108,7 @@ export function PainelEmails(p: EmailsProps) {
               </div>
             ))}
             {!shown.length && <div className="empty2"><b className="em-t">Nada por aqui</b><span className="em-s">Nenhuma campanha neste filtro.</span></div>}
-          </div>
+          </Tbl>
         </section>
       )}
 
