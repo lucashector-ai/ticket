@@ -66,14 +66,19 @@ export type PlaceOrderResult =
   | { ok: true; orderId: string; number: number; totalCents: number; live: boolean; pixCode: string; pixQrSvg: string; expiresAt: string | null; hostedUrl: string | null }
   | { ok: false; error: string; needsLogin?: boolean };
 
+/** Mesma resposta para código inexistente, de outro evento ou vencido: a tela não confirma que um código existe (SEC-307/SEC-008). */
+const COUPON_INVALID = "Cupom inválido ou expirado.";
+
 async function findCoupon(code: string, eventId: string) {
   const c = await db.query.coupons.findFirst({ where: and(eq(coupons.code, code), eq(coupons.active, true)) });
-  if (!c) return { ok: false as const, error: "Cupom inválido ou expirado." };
-  if (c.expiresAt && c.expiresAt < new Date()) return { ok: false as const, error: "Cupom expirado." };
+  if (!c || (c.eventId && c.eventId !== eventId) || (c.expiresAt && c.expiresAt < new Date())) return { ok: false as const, error: COUPON_INVALID };
+  // "esgotado" só aparece para quem já tem um código que vale neste evento
   if (c.maxUses != null && c.uses >= c.maxUses) return { ok: false as const, error: "Cupom esgotado." };
-  if (c.eventId && c.eventId !== eventId) return { ok: false as const, error: "Cupom não vale para este evento." };
   return { ok: true as const, coupon: c };
 }
+
+/** Cupons errados por conta a cada 10 min no pedido (o pedido também testava códigos, sem limite: SEC-307). */
+const COUPON_MISSES_ACCOUNT = 10;
 
 /** o último uso do cupom está reservado por outro pedido em andamento (ou já foi usado) */
 const COUPON_TAKEN = "Este cupom esgotou: os últimos usos já estão em outros pedidos. Remova o cupom ou tente de novo em alguns minutos.";
@@ -211,8 +216,16 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
   let couponRow: typeof coupons.$inferSelect | null = null;
   if (coupon) {
+    // o mesmo freio da conferência da tela (por IP) e um por conta: só os errados contam
+    const keys = [`cupom:${await clientIp()}`, `cupom:u:${user.id}`];
+    if ((await limitReached(keys[0], COUPON_MISSES)) || (await limitReached(keys[1], COUPON_MISSES_ACCOUNT))) {
+      return { ok: false, error: "Muitas tentativas de cupom. Espere alguns minutos e tente de novo." };
+    }
     const c = await findCoupon(coupon, ev.id);
-    if (!c.ok) return { ok: false, error: c.error };
+    if (!c.ok) {
+      if (c.error === COUPON_INVALID) for (const k of keys) await addHit(k, 600);
+      return { ok: false, error: c.error };
+    }
     couponRow = c.coupon;
   }
   const feeRate = ev.absorbFee ? 0 : SERVICE_FEE_RATE;
