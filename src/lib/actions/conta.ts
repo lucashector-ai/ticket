@@ -255,14 +255,23 @@ export async function confirmEmailMfa(code: string): Promise<R> {
 
 /**
  * App autenticador, passo 1: gera o segredo e o QR code para cadastrar no app.
- * Se já existe um app cadastrado, trocar exige o código dele (`current`).
+ * Sempre prova o fator atual antes (SEC-004): com app cadastrado, o código dele (`current`); com código por e-mail
+ * (ou sem duas etapas), um código mandado ao e-mail da conta. Sem `current`, manda o código e devolve `needEmail`.
+ * Assim uma sessão roubada não troca o fator da pessoa por um app do invasor.
  */
-export async function startTotp(current?: string): Promise<R & { qr?: string; key?: string; uri?: string }> {
+export async function startTotp(current?: string): Promise<R & { qr?: string; key?: string; uri?: string; needEmail?: boolean; to?: string }> {
   const { user } = await me();
   const s = await mfaSettings(user.id);
   if (s.method === "totp") {
     const ok = await checkSecondFactor(user.id, "off", current ?? "");
     if (!ok.ok) return { ok: false, error: current ? ok.error : "Digite o código do app atual para trocar de aparelho." };
+  } else if (!current) {
+    const email = s.email || user.email;
+    const r = await issueCode(user.id, "setup", email, s.name);
+    return r.ok ? { ok: true, needEmail: true, to: maskEmail(email) } : r;
+  } else {
+    const ok = await checkCode(user.id, "setup", current);
+    if (!ok.ok) return ok;
   }
   const secretB32 = newTotpSecret();
   await stashTotpSetup(user.id, secretB32);

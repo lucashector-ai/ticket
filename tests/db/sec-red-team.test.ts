@@ -11,6 +11,7 @@ import { qaId, TEST_DB } from "./setup";
  *   SEC-003 · ex-admin da equipe continua com os acessos da portaria que viu no painel (tokens não mudam na saída)
  *             (corrigido pelo AppSec: `it` comum, regressão)
  *   SEC-004 · sessão com 2FA por e-mail troca para um app autenticador novo sem o código do e-mail
+ *             (corrigido pelo AppSec: `it` comum; o caminho com o código certo está em sec-totp-setup.test.ts)
  * Só contas fictícias "qa-test-…" com e-mail @example.com, sem login real (sessão simulada).
  */
 vi.mock("next/server", async (orig) => ({ ...(await orig<typeof import("next/server")>()), after: () => {} }));
@@ -208,7 +209,7 @@ describe.skipIf(!TEST_DB)("red team: autorização e conta (banco de teste)", ()
     expect(r.ok).toBe(true);
   });
 
-  it.fails("SEC-004: com 2FA por e-mail, cadastrar um app autenticador exige o código do e-mail (sessão sozinha não troca o fator)", async () => {
+  it("SEC-004: com 2FA por e-mail, cadastrar um app autenticador exige o código do e-mail (sessão sozinha não troca o fator)", async () => {
     const { db, schema } = D;
     const { eq } = await import("drizzle-orm");
     const A = await import("@/lib/actions/conta");
@@ -220,7 +221,9 @@ describe.skipIf(!TEST_DB)("red team: autorização e conta (banco de teste)", ()
     const confirm = key ? await as(victim, () => A.confirmTotp(totpNow(key))) : { ok: false };
     const p = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, victim.id), columns: { mfaMethod: true } });
     console.log("[SEC-004]", JSON.stringify({ startSemCodigo: start.ok, appCadastrado: confirm.ok, metodoAgora: p?.mfaMethod }));
-    expect(start.ok).toBe(false);
+    // sem o código do e-mail não sai QR nem chave (a resposta pede o código: needEmail, ou erro de envio)
+    expect(start.ok && !!start.key).toBe(false);
+    expect(confirm.ok).toBe(false);
     expect(p?.mfaMethod).toBe("email");
   });
 });

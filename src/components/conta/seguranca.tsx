@@ -43,7 +43,7 @@ export function ContaSeguranca(p: Props) {
 function MfaCard({ mfa, email }: Props) {
   const router = useRouter();
   const { flash } = useToast();
-  type Mode = "idle" | "pick" | "totp-cur" | "email-app" | "totp" | "email" | "off" | "renew" | "codes";
+  type Mode = "idle" | "pick" | "totp-cur" | "totp-mail" | "email-app" | "totp" | "email" | "off" | "renew" | "codes";
   const [mode, setMode] = useState<Mode>("idle");
   const [setup, setSetup] = useState<{ qr: string; key: string; uri: string } | null>(null);
   const [to, setTo] = useState("");
@@ -61,6 +61,8 @@ function MfaCard({ mfa, email }: Props) {
     const r = await startTotp(current);
     setBusy(false);
     if (!r.ok) { fail(r.error); return; }
+    // sem app cadastrado: primeiro o código que mandamos ao e-mail da conta (SEC-004)
+    if (r.needEmail) { setTo(r.to ?? ""); setCode(""); setRec(false); setMode("totp-mail"); return; }
     setSetup({ qr: r.qr!, key: r.key!, uri: r.uri! }); setCode(""); setMode("totp");
   }
   async function beginEmail(current?: string) {
@@ -81,7 +83,7 @@ function MfaCard({ mfa, email }: Props) {
   async function confirm(v = code) {
     if (busy || (!rec && v.length !== 6)) return;
     setBusy(true); setErr(null);
-    if (mode === "totp-cur") { setBusy(false); await beginTotp(v); return; }
+    if (mode === "totp-cur" || mode === "totp-mail") { setBusy(false); await beginTotp(v); return; }
     if (mode === "email-app") { setBusy(false); await beginEmail(v); return; }
     const r = mode === "totp" ? await confirmTotp(v) : mode === "email" ? await confirmEmailMfa(v) : mode === "renew" ? await renewRecovery(v) : await confirmMfaOff(v);
     setBusy(false);
@@ -100,8 +102,8 @@ function MfaCard({ mfa, email }: Props) {
       {rec
         ? <input autoComplete="off" className="ct-in ct-rec" value={code} onChange={(e) => { setCode(e.target.value.toUpperCase().slice(0, 9)); setErr(null); }} placeholder="XXXX-XXXX" autoFocus aria-label="Código de recuperação" />
         : <CodeBoxes value={code} onChange={(v) => { setCode(v); setErr(null); }} onDone={(v) => void confirm(v)} disabled={busy} />}
-      {(mode === "email" || (mode === "off" && mfa.method === "email")) && (
-        <ResendButton className="ct-link" key={mode} onResend={async () => { const r = await resendMfaCode(mode === "email" ? "setup" : "off"); if (!r.ok) setErr(r.error ?? null); return r.ok; }} />
+      {(mode === "email" || mode === "totp-mail" || (mode === "off" && mfa.method === "email")) && (
+        <ResendButton className="ct-link" key={mode} onResend={async () => { const r = await resendMfaCode(mode === "off" ? "off" : "setup"); if (!r.ok) setErr(r.error ?? null); return r.ok; }} />
       )}
       {mfa.method === "totp" && (mode === "off" || mode === "totp-cur" || mode === "email-app") && <button className="ct-link" type="button" onClick={() => { setRec((x) => !x); setCode(""); setErr(null); }}>{rec ? "Usar o código do app" : "Perdi o celular: usar código de recuperação"}</button>}
       {err && <p className="ct-err" role="alert">{err}</p>}
@@ -152,6 +154,7 @@ function MfaCard({ mfa, email }: Props) {
         </div>
       )}
 
+      {mode === "totp-mail" && codeBox(<>Para cadastrar o app autenticador, confirme que é você: enviamos um código para <b>{to}</b>.</>, "Continuar")}
       {mode === "totp-cur" && codeBox(<>Para cadastrar outro celular, digite primeiro o código do app que você usa hoje.</>, "Continuar")}
       {mode === "email-app" && codeBox(<>Para trocar o app pelo código por e-mail, digite primeiro o código do app autenticador. Depois mandamos um código para o seu e-mail.</>, "Continuar")}
 
