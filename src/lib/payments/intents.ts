@@ -62,8 +62,9 @@ async function pixFrom(pi: Stripe.PaymentIntent): Promise<PixData | null> {
     // desenhamos o QR aqui (mesmo visual do checkout) a partir do copia e cola da Stripe
     pixQrSvg: await QRCode.toString(q.data, { type: "svg", margin: 0, errorCorrectionLevel: "M" }),
     expiresAt: new Date((q.expires_at ?? Math.floor(Date.now() / 1000) + 900) * 1000).toISOString(),
-    // só no modo de teste: a página da Stripe com o botão de simular o pagamento do Pix
-    hostedUrl: pi.livemode ? null : q.hosted_instructions_url ?? null,
+    // só no modo de teste e fora do site publicado: a página da Stripe com o botão de simular o pagamento do Pix
+    // (no site o comprador não vê nada da Stripe, nem com a chave de teste: decisão do dono, 31/10)
+    hostedUrl: pi.livemode || process.env.NODE_ENV === "production" ? null : q.hosted_instructions_url ?? null,
   };
 }
 
