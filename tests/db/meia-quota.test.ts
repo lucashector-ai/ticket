@@ -1,5 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { qaId, TEST_DB } from "./setup";
+import { qaCpf, qaId, TEST_DB } from "./setup";
+
+/** um CPF por pessoa fictícia (o mesmo CPF não segura o mesmo evento em duas contas, SEC-305) */
+const cpfs = new Map<string, string>();
+const cpfOf = (id: string) => cpfs.get(id) ?? cpfs.set(id, qaCpf()).get(id)!;
 
 /*
  * Cota de meia-entrada por setor e data (decisão do dono: 40% dos lugares do setor). Conta o tipo Meia e a caixa
@@ -29,7 +33,7 @@ async function event(types: { name: string; kind: string; qty: number; price?: n
 }
 const buy = (slug: string, typeId: string, u: U, meia: boolean) => C.placeOrder({
   eventSlug: slug, items: [{ ticketTypeId: typeId, quantity: 1 }], coupon: null,
-  buyer: { name: "Pessoa Teste", email: u.email, phone: "(11) 98765-4321", cpf: "529.982.247-25" },
+  buyer: { name: "Pessoa Teste", email: u.email, phone: "(11) 98765-4321", cpf: cpfOf(u.id) },
   holders: [{ ticketTypeId: typeId, name: "Pessoa Teste", meia, me: true, email: null }],
   method: "pix", installments: 1, groupShareId: null, resaleListingId: null,
 });

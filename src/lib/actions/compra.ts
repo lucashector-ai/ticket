@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { z } from "zod";
 import { cpfValid } from "@/lib/cpf";
@@ -80,6 +80,28 @@ const COUPON_TAKEN = "Este cupom esgotou: os últimos usos já estão em outros 
 
 /** pedidos por conta a cada 10 min (trocar a forma de pagamento cria outro; uso normal fica bem abaixo) */
 const ORDERS_PER_10MIN = 12;
+
+/**
+ * Reserva sem pagar (SEC-305): cada pedido segura ingressos por 15 min. Sem mudar regra comercial, dois freios contra
+ * contas e CPFs em série segurando o estoque de um lançamento:
+ *  - no máximo PENDING_EVENTS eventos com pedido em andamento ao mesmo tempo por conta (pedido do mesmo evento é
+ *    trocado pelo novo, como sempre);
+ *  - um CPF segura um pedido em andamento por evento (outra conta com o mesmo CPF espera ele vencer ou ser pago).
+ * Vale para a compra normal (parte de grupo e revenda têm a própria vaga travada).
+ */
+const PENDING_EVENTS = 3;
+async function holdBlocked(userId: string, eventId: string, cpf: string): Promise<string | null> {
+  const r = await db.execute<{ events: number; cpf: boolean }>(sql`
+    select
+      (select count(distinct o.event_id)::int from ${orders} o
+        where o.user_id = ${userId} and o.status = 'pending' and o.expires_at > now() and o.event_id <> ${eventId}) as events,
+      exists(select 1 from ${orders} o
+        where o.buyer_cpf = ${cpf} and o.event_id = ${eventId} and o.status = 'pending' and o.expires_at > now() and o.user_id <> ${userId}) as cpf`);
+  const row = r.rows[0];
+  if (row && Number(row.events) >= PENDING_EVENTS) return "Você já tem compras em andamento em outros eventos. Conclua ou cancele uma delas em Meus ingressos e tente de novo.";
+  if (row?.cpf) return "Já existe uma compra em andamento com este CPF para este evento, em outra conta. Conclua aquela compra ou espere a reserva dela acabar (até 15 minutos).";
+  return null;
+}
 
 /** cupons errados por IP a cada 10 min (sem login): impede descobrir códigos chutando. Só os errados contam:
  *  um link de e-mail com o cupom aberto por muita gente na mesma rede (CGNAT do celular) não é bloqueado. */
@@ -201,6 +223,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   // sem Stripe e sem o modo de teste liberado (SEC-100): pedido com valor não reserva nada, porque não teria como ser pago
   if (!free && !live && !testPaymentsAllowed()) return { ok: false, error: PAYMENT_UNAVAILABLE };
   if (live && !free && p.total < STRIPE_MIN_BRL_CENTS) return { ok: false, error: "O valor mínimo para pagamento online é R$ 0,50." };
+  if (!special) {
+    const blocked = await holdBlocked(user.id, ev.id, digits(buyer.cpf));
+    if (blocked) return { ok: false, error: blocked };
+  }
   // cada pedido segura os ingressos por 15 min: criar pedidos em sequência viraria um jeito de travar o estoque
   // (conta só pedido criado de verdade; erro de preenchimento não gasta a cota)
   if (!(await allowHit(`pedido:${user.id}`, ORDERS_PER_10MIN, 600))) return { ok: false, error: "Muitos pedidos em pouco tempo. Espere alguns minutos e tente de novo." };

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { qaId, TEST_DB } from "./setup";
+import { qaCpf, qaId, TEST_DB } from "./setup";
 
 /*
  * d72c91c / f3f288f: cada pedido segura os ingressos por 15 min, então criar pedidos em sequência viraria um
@@ -53,7 +53,8 @@ describe.skipIf(!TEST_DB || !!process.env.STRIPE_SECRET_KEY)("limite de pedidos 
     expect(rs[12]).toMatchObject({ ok: false, error: "Muitos pedidos em pouco tempo. Espere alguns minutos e tente de novo." });
     const other = qaId("outra");
     session.user = { ...u, id: other, email: `${other}@example.com` };
-    expect((await C.placeOrder({ ...input(), buyer: { ...input().buyer, email: `${other}@example.com` } })).ok).toBe(true);
+    // outra conta (com o próprio CPF: o mesmo CPF não segura o mesmo evento em duas contas, SEC-305)
+    expect((await C.placeOrder({ ...input(qaCpf()), buyer: { ...input(qaCpf()).buyer, email: `${other}@example.com` } })).ok).toBe(true);
     session.user = null;
   }, 120_000);
 });

@@ -1,5 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { qaId, TEST_DB } from "./setup";
+import { qaCpf, qaId, TEST_DB } from "./setup";
+
+/** um CPF por pessoa fictícia (o mesmo CPF não segura o mesmo evento em duas contas, SEC-305) */
+const cpfs = new Map<string, string>();
+const cpfOf = (id: string) => cpfs.get(id) ?? cpfs.set(id, qaCpf()).get(id)!;
 
 /*
  * Prioridade 2 do dono: valores alterados pelo navegador (SEC-100…). O pedido é criado pela ação de verdade
@@ -33,7 +37,7 @@ async function coupon(eventId: string | null, o: { pct?: number; maxUses?: numbe
 }
 const input = (slug: string, tt: string, qty: number, u: U, extra: Record<string, unknown> = {}) => ({
   eventSlug: slug, items: [{ ticketTypeId: tt, quantity: qty }], coupon: null as string | null,
-  buyer: { name: "Pessoa Teste", email: u.email, phone: "(11) 98765-4321", cpf: "529.982.247-25" },
+  buyer: { name: "Pessoa Teste", email: u.email, phone: "(11) 98765-4321", cpf: cpfOf(u.id) },
   holders: Array.from({ length: qty }, (_, i) => (i === 0 ? { ticketTypeId: tt, name: "Pessoa Teste", meia: false, me: true, email: null } : { ticketTypeId: tt, name: "Outra Pessoa", meia: false, me: false, email: `${qaId("h")}@example.com` })),
   method: "pix" as "pix" | "card" | "free", installments: 1, groupShareId: null, resaleListingId: null, ...extra,
 });
