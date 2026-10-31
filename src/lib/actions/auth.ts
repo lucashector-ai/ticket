@@ -11,6 +11,7 @@ import { emailEnabled, logEmails } from "@/lib/email";
 import { issueCode, logSecurity, mfaSettings, rememberDevice } from "@/lib/mfa";
 import { HUMAN_ERROR, verifyHuman } from "@/lib/turnstile";
 import { linkThrottled } from "@/lib/password-link";
+import { loginAttempt, loginSucceeded, signupAttempt } from "@/lib/login-guard";
 import { normalizePhone, phoneValid } from "@/lib/phone";
 
 export type AuthState = { error?: string; ok?: boolean } | null;
@@ -47,8 +48,11 @@ export async function signInWithEmail(_prev: AuthState, formData: FormData): Pro
   const parsed = signInSchema.safeParse({ email: formData.get("email"), password: formData.get("password") });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (!(await verifyHuman(formData.get("cf-turnstile-response")))) return { error: HUMAN_ERROR };
+  const locked = await loginAttempt(parsed.data.email);
+  if (locked) return { error: locked };
   const { data, error } = await auth.signIn.email(parsed.data);
   if (error) return { error: friendlySignIn(error.message, error.code) };
+  await loginSucceeded(parsed.data.email);
   const next = safeNext(formData.get("next"));
   if (await secondStep(userIdOf(data), tokenOf(data))) redirect(`/verificacao?next=${encodeURIComponent(next)}`);
   redirect(next);
@@ -58,6 +62,8 @@ export async function signUpWithEmail(_prev: AuthState, formData: FormData): Pro
   const parsed = signUpSchema.safeParse({ name: formData.get("name"), email: formData.get("email"), phone: String(formData.get("phone") ?? ""), password: formData.get("password") });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (!(await verifyHuman(formData.get("cf-turnstile-response")))) return { error: HUMAN_ERROR };
+  const many = await signupAttempt();
+  if (many) return { error: many };
   const { phone, ...cred } = parsed.data;
   const { data, error } = await auth.signUp.email(cred);
   if (error) return { error: friendly(error.message, error.code) };
@@ -105,8 +111,11 @@ export async function signInInline(email: string, password: string, human: strin
   const parsed = signInSchema.safeParse({ email, password });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
   if (!(await verifyHuman(human))) return { ok: false, error: HUMAN_ERROR };
+  const locked = await loginAttempt(parsed.data.email);
+  if (locked) return { ok: false, error: locked };
   const { data, error } = await auth.signIn.email(parsed.data);
   if (error) return { ok: false, error: friendlySignIn(error.message, error.code) };
+  await loginSucceeded(parsed.data.email);
   return { ok: true, mfa: await secondStep(userIdOf(data), tokenOf(data)) };
 }
 
@@ -115,6 +124,8 @@ export async function signUpInline(name: string, email: string, password: string
   const parsed = signUpSchema.safeParse({ name, email, phone, password });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
   if (!(await verifyHuman(human))) return { ok: false, error: HUMAN_ERROR };
+  const many = await signupAttempt();
+  if (many) return { ok: false, error: many };
   const { phone: tel, ...cred } = parsed.data;
   const { data, error } = await auth.signUp.email(cred);
   if (error) return { ok: false, error: friendly(error.message, error.code) };
