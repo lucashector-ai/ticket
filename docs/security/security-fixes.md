@@ -6,6 +6,8 @@ Nada foi configurado nem girado na produção. Nenhuma mudança de schema. Nenhu
 
 **Peça nova usada por várias correções: contador atômico de tentativas** (`src/lib/attempts.ts`). O KV da Cloudflare não serve de contador (eventualmente consistente, 1 escrita por segundo por chave, sem incremento atômico). Cada tentativa vira uma linha em `security_events` (tipo `try:<balde>`, fora do histórico que a pessoa vê) gravada numa transação com trava por balde (`pg_advisory_xact_lock`) e a contagem conferida na mesma transação: com N pedidos simultâneos passam exatamente `max`. Falha fechada (erro do banco recusa). Sem tabela nova. Poda: por balde depois de 1 dia e geral no cron (mais de 2 dias). Teste: `tests/db/attempts.test.ts` (30 simultâneos com máximo 6 → exatamente 6).
 
+**Verificação final (HEAD `2b9d6ef` + este registro):** `pnpm exec tsc --noEmit` sem erros; `pnpm exec eslint src tests` sem erros nem avisos; `TEST_DATABASE_URL=… pnpm test`: 65 arquivos, 252 testes passando e 1 `it.fails` esperado (SEC-008, criação de cupom, ainda aberto); build `opennextjs-cloudflare build` numa cópia limpa (`git ls-files`): OK.
+
 ---
 
 ## SEC-100 · Modo de teste de pagamento sem trava (P1; P0 se a produção vende sem a chave)
