@@ -1,9 +1,9 @@
 import "server-only";
-import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
+import { randomInt, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { signingSecret } from "@/lib/signing-secret";
+import { acceptedKeys, currentKey, hmacWith, type Key } from "@/lib/signing-secret";
 
 /*
  * App da portaria (/portaria): o aparelho entra num evento com o código curto ou o link de um
@@ -27,7 +27,13 @@ export function normalizeCode(v: string) {
   return s.length === 8 ? `${s.slice(0, 4)}-${s.slice(4)}` : null;
 }
 
-const sign = (id: string) => createHmac("sha256", signingSecret()).update(`portaria:${id}`).digest("base64url").slice(0, 32);
+const signWith = (k: Key, id: string) => hmacWith(k, `portaria:${id}`).slice(0, 32);
+const sign = (id: string) => signWith(currentKey("portaria"), id);
+/** Assinatura do cookie confere com a chave atual ou uma anterior (aparelho conectado não cai na troca, SEC-200). */
+const signedOk = (id: string, sig: string) => acceptedKeys("portaria").some((k) => {
+  const want = signWith(k, id);
+  return want.length === sig.length && timingSafeEqual(Buffer.from(want), Buffer.from(sig));
+});
 
 /** Cookie do aparelho conectado a um acesso: só o id, assinado; HttpOnly. */
 export const portariaCookie = (linkId: string) => ({
@@ -63,7 +69,6 @@ export async function portariaSession() {
   const raw = (await cookies()).get(PORTARIA_COOKIE)?.value ?? "";
   const [id, sig] = raw.split(".");
   if (!id || !sig || !/^[0-9a-f-]{36}$/.test(id)) return null;
-  const want = sign(id);
-  if (want.length !== sig.length || !timingSafeEqual(Buffer.from(want), Buffer.from(sig))) return null;
+  if (!signedOk(id, sig)) return null;
   return activeAccess({ id });
 }

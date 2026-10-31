@@ -40,7 +40,9 @@ vi.mock("next/headers", () => ({
   headers: async () => ({ get: (k: string) => reqHeaders.get(k.toLowerCase()) ?? null }),
   cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }),
 }));
-vi.mock("@/lib/signing-secret", () => ({ signingSecret: () => "segredo-de-teste-agente-05" }));
+// segredo de teste no chaveiro real (src/lib/signing-secret.ts), sem TW_SIGNING_SECRET: o caminho de hoje
+process.env.NEON_AUTH_COOKIE_SECRET = "segredo-de-teste-agente-05";
+delete process.env.TW_SIGNING_SECRET;
 const mailed: { to: string; code: string; purpose: string }[] = [];
 vi.mock("@/lib/notify", () => ({
   mailMfaCode: async (to: string, code: string, purpose: string) => { mailed.push({ to, code, purpose }); return true; },

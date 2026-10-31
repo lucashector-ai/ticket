@@ -1,15 +1,25 @@
 import "server-only";
-import { createHmac } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import QRCode from "qrcode";
-import { signingSecret } from "@/lib/signing-secret";
+import { acceptedKeys, currentKey, hmacWith, type Key } from "@/lib/signing-secret";
 
 /**
  * Payload assinado do QR: ONDE|código|assinatura (HMAC do segredo do ingresso). Fica fora dos arquivos
  * "use server": lá toda função exportada vira um endpoint público, e isto é um assinador.
  */
+const payloadWith = (k: Key, code: string, secret: string) => `ONDE|${code}|${hmacWith(k, `${code}:${secret}`).slice(0, 16)}`;
+
 export async function qrPayload(code: string, secret: string) {
-  const sig = createHmac("sha256", signingSecret()).update(`${code}:${secret}`).digest("base64url").slice(0, 16);
-  return `ONDE|${code}|${sig}`;
+  return payloadWith(currentKey("qr"), code, secret);
+}
+
+/** O QR lido é deste ingresso? Aceita a chave atual e as anteriores (QR já enviado continua valendo, SEC-200). */
+export function qrPayloadMatches(code: string, secret: string, raw: string) {
+  const got = Buffer.from(raw);
+  return acceptedKeys("qr").some((k) => {
+    const want = Buffer.from(payloadWith(k, code, secret));
+    return want.length === got.length && timingSafeEqual(want, got);
+  });
 }
 
 /** SVG (string) do QR code assinado de um ingresso, sem margem, para injetar no container do design. */

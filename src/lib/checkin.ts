@@ -1,8 +1,7 @@
 import "server-only";
-import { timingSafeEqual } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { qrPayload } from "@/lib/tickets/qr";
+import { qrPayloadMatches } from "@/lib/tickets/qr";
 import { getTicketByCode } from "@/lib/data/ingressos";
 import { checkinGuest, guestKind, guestTokenFrom } from "@/lib/guest-list";
 import { sessionRefusal } from "@/lib/checkin-day";
@@ -10,11 +9,6 @@ import { trailInsert, trailNote } from "@/lib/tickets/trail";
 
 const PAYLOAD_RE = /^ONDE\|((?:TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4})\|([A-Za-z0-9_-]{16})$/;
 const CODE_RE = /^(?:TW|ONDE)-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
-
-function same(a: string, b: string) {
-  const ba = Buffer.from(a), bb = Buffer.from(b);
-  return ba.length === bb.length && timingSafeEqual(ba, bb);
-}
 
 export type CheckinResult = {
   ok: boolean; status: number; error?: string; checkedInAt?: Date | null;
@@ -51,7 +45,7 @@ export async function checkinTicket(input: string, eventIds: Set<string> | null,
     await trailInsert([{ ticketId: ticket.id, kind: "checkin_recusado", code: ticket.code, holderName: ticket.holderName, note: trailNote(`${r.error ?? "Recusado"} · ${by}`) }]).catch((e) => console.error("checkin: rastro", e));
     return r;
   };
-  if (m && !same(await qrPayload(ticket.code, ticket.secret), raw)) return refused({ ok: false, status: 404, error: "QR code inválido ou de um ingresso transferido." });
+  if (m && !qrPayloadMatches(ticket.code, ticket.secret, raw)) return refused({ ok: false, status: 404, error: "QR code inválido ou de um ingresso transferido." });
   if (eventIds && !eventIds.has(ticket.eventId)) return refused({ ok: false, status: 403, error: `Este ingresso é de outro evento (${ticket.event.title}).` });
   if (ticket.status === "used") return refused({ ok: false, status: 409, error: "Ingresso já utilizado.", checkedInAt: ticket.checkedInAt, ticket: info });
   if (ticket.status !== "valid") {

@@ -6,7 +6,7 @@ import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
 import { clearAttempts, reserveAttempt } from "@/lib/attempts";
 import { mailMfaCode } from "@/lib/notify";
-import { signingSecret } from "@/lib/signing-secret";
+import { acceptedKeys, currentKey, hmacWith, type Key } from "@/lib/signing-secret";
 
 /*
  * Verificação em duas etapas da Tickets Win (por cima do login do Neon Auth).
@@ -28,9 +28,17 @@ const MAX_TRIES = 5;
 export const RESEND_AFTER = 30;
 const MAX_SENDS_HOUR = 8;
 
-const secret = () => signingSecret();
-const mac = (s: string) => createHmac("sha256", secret()).update(s).digest("base64url").slice(0, 32);
-const hashCode = (userId: string, purpose: string, code: string) => createHash("sha256").update(`${secret()}:${userId}:${purpose}:${code}`).digest("base64url");
+/*
+ * Chaves (SEC-200, src/lib/signing-secret.ts): "mfa" para o cookie da segunda etapa, os aparelhos e os códigos por
+ * e-mail; "recovery" para os códigos de recuperação; "totp" para cifrar o segredo do app. Com o segredo antigo (sem
+ * TW_SIGNING_SECRET) as contas são exatamente as de antes; com a chave derivada, HMAC.
+ */
+const macWith = (k: Key, s: string) => hmacWith(k, s).slice(0, 32);
+const mac = (s: string) => macWith(currentKey("mfa"), s);
+const hashWith = (k: Key, text: string) => (k.kind === "raw"
+  ? createHash("sha256").update(`${k.value}:${text}`).digest("base64url")
+  : hmacWith(k, text));
+const hashCode = (k: Key, userId: string, purpose: string, code: string) => hashWith(k, `${userId}:${purpose}:${code}`);
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const cookieOpts = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/" };
 
@@ -49,7 +57,7 @@ export async function mfaSettings(userId: string): Promise<{ method: MfaMethod |
 /** A sessão atual já passou pela segunda etapa? */
 export async function sessionCleared(sessionId: string) {
   const pass = (await cookies()).get(PASS_COOKIE)?.value;
-  return !!sessionId && !!pass && same(pass, mac(`pass:${sessionId}`));
+  return !!sessionId && !!pass && acceptedKeys("mfa").some((k) => same(pass, macWith(k, `pass:${sessionId}`)));
 }
 
 /** Libera a sessão depois do código certo. Só em ação de servidor ou rota. */
@@ -84,7 +92,7 @@ export async function issueCode(userId: string, purpose: CodePurpose, to: string
   if (sent >= MAX_SENDS_HOUR) return { ok: false, error: "Muitos códigos pedidos. Tente de novo daqui a uma hora." };
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
   if (!(await mailMfaCode(to, code, purpose, name))) return { ok: false, error: "Não conseguimos enviar o e-mail agora. Tente de novo." };
-  await store.put(key, JSON.stringify({ h: hashCode(userId, purpose, code), n: 0, at: Date.now(), to } satisfies Stored), { expirationTtl: CODE_TTL });
+  await store.put(key, JSON.stringify({ h: hashCode(currentKey("mfa"), userId, purpose, code), n: 0, at: Date.now(), to } satisfies Stored), { expirationTtl: CODE_TTL });
   await store.put(countKey, String(sent + 1), { expirationTtl: 3600 });
   // código novo, tentativas novas (o limite de envios por hora continua valendo)
   await clearAttempts(userId, `code:${purpose}`);
@@ -115,7 +123,7 @@ export async function checkCode(userId: string, purpose: CodePurpose, code: stri
     return { ok: false, error: "Código incorreto várias vezes. Peça um novo código." };
   }
   const clean = code.replace(/\D/g, "");
-  if (clean.length === 6 && same(s.h, hashCode(userId, purpose, clean))) {
+  if (clean.length === 6 && acceptedKeys("mfa").some((k) => same(s.h, hashCode(k, userId, purpose, clean)))) {
     await store.delete(key);
     await clearAttempts(userId, `code:${purpose}`).catch(() => {});
     return { ok: true, to: s.to };
@@ -211,19 +219,29 @@ export async function verifyTotp(secretB32: string, code: string, userId?: strin
 }
 
 /* o segredo fica cifrado no banco (AES-GCM com chave derivada do segredo do servidor) */
-async function aesKey() {
-  const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${secret()}:totp`));
+async function aesKey(k: Key) {
+  const raw = k.kind === "raw" ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${k.value}:totp`)) : new Uint8Array(k.value);
   return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 export async function sealSecret(plain: string) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await aesKey(), new TextEncoder().encode(plain)));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await aesKey(currentKey("totp")), new TextEncoder().encode(plain)));
   return `${Buffer.from(iv).toString("base64url")}.${Buffer.from(ct).toString("base64url")}`;
 }
-export async function openSecret(sealed: string) {
+/** Abre com a chave atual ou uma anterior (SEC-200). `stale`: foi aberto com uma chave anterior (vale recifrar). */
+export async function openSecretWith(sealed: string): Promise<{ plain: string; stale: boolean }> {
   const [iv, ct] = sealed.split(".");
-  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: Buffer.from(iv, "base64url") }, await aesKey(), Buffer.from(ct, "base64url"));
-  return new TextDecoder().decode(pt);
+  const keys = acceptedKeys("totp");
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: Buffer.from(iv, "base64url") }, await aesKey(keys[i]), Buffer.from(ct, "base64url"));
+      return { plain: new TextDecoder().decode(pt), stale: i > 0 };
+    } catch { /* tenta a próxima chave */ }
+  }
+  throw new Error("segredo cifrado com chave desconhecida");
+}
+export async function openSecret(sealed: string) {
+  return (await openSecretWith(sealed)).plain;
 }
 
 /** Segredo do app autenticador esperando a confirmação (15 min), cifrado no KV. */
@@ -240,7 +258,7 @@ export async function dropTotpSetup(userId: string) {
 
 /* códigos de recuperação: 10 códigos de uso único, guardados só como hash */
 const RC = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-const rcHash = (userId: string, c: string) => createHash("sha256").update(`${secret()}:rc:${userId}:${c.replace(/[^A-Z0-9]/gi, "").toUpperCase()}`).digest("base64url");
+const rcHash = (userId: string, c: string, k: Key = currentKey("recovery")) => hashWith(k, `rc:${userId}:${c.replace(/[^A-Z0-9]/gi, "").toUpperCase()}`);
 export function newRecoveryCodes(userId: string) {
   const codes = Array.from({ length: 10 }, () => {
     const r = crypto.getRandomValues(new Uint8Array(8));
@@ -272,16 +290,22 @@ export async function checkSecondFactor(userId: string, purpose: CodePurpose, in
   const p = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, userId), columns: { mfaTotp: true, mfaRecovery: true } });
   const clean = input.trim();
   if (/[a-z]/i.test(clean)) {
-    const h = rcHash(userId, clean);
     const left = p?.mfaRecovery ?? [];
-    if (left.includes(h)) {
+    // códigos gerados antes da troca de chave continuam valendo (SEC-200)
+    const h = acceptedKeys("recovery").map((k) => rcHash(userId, clean, k)).find((x) => left.includes(x));
+    if (h) {
       await db.update(schema.userProfiles).set({ mfaRecovery: left.filter((x) => x !== h) }).where(eq(schema.userProfiles.userId, userId));
       await clearAttempts(userId, "totp").catch(() => {});
       return { ok: true, how: "recovery" };
     }
-  } else if (p?.mfaTotp && (await verifyTotp(await openSecret(p.mfaTotp), clean, userId))) {
-    await clearAttempts(userId, "totp").catch(() => {});
-    return { ok: true, how: "totp" };
+  } else if (p?.mfaTotp) {
+    const sec = await openSecretWith(p.mfaTotp);
+    if (await verifyTotp(sec.plain, clean, userId)) {
+      await clearAttempts(userId, "totp").catch(() => {});
+      // cifrado com a chave anterior: regrava com a atual (a troca de chave avança sozinha com o uso, SEC-200)
+      if (sec.stale) await db.update(schema.userProfiles).set({ mfaTotp: await sealSecret(sec.plain) }).where(eq(schema.userProfiles.userId, userId)).catch(() => {});
+      return { ok: true, how: "totp" };
+    }
   }
   return { ok: false, error: /[a-z]/i.test(clean) ? "Código de recuperação inválido ou já usado." : "Código incorreto. Confira o horário do celular e o código da Tickets Win no app." };
 }

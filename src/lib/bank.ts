@@ -1,12 +1,12 @@
 import "server-only";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
 import type { OrganizerPayout } from "@/db/schema";
 import { orderSums, platformFee } from "@/lib/data/painel";
 import { chosenOrgId, orgAccessList } from "@/lib/data/org-access";
-import { signingSecret } from "@/lib/signing-secret";
+import { acceptedKeys, currentKey, hmacWith, type Key } from "@/lib/signing-secret";
 
 /*
  * Banco Tickets Win: a carteira do dono dos eventos.
@@ -208,14 +208,15 @@ export async function checkBankPassword(password: string, stored: string) {
 const SESSION = "tw_banco";
 const PENDING = "tw_banco_p";
 const SESSION_MIN = 30;
-const mac = (s: string) => createHmac("sha256", signingSecret()).update(`banco:${s}`).digest("base64url").slice(0, 32);
+const macWith = (k: Key, s: string) => hmacWith(k, `banco:${s}`).slice(0, 32);
+const mac = (s: string) => macWith(currentKey("banco"), s);
+const macOk = (s: string, m: string) => acceptedKeys("banco").some((k) => { const want = macWith(k, s); return want.length === m.length && timingSafeEqual(Buffer.from(want), Buffer.from(m)); });
 const opts = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" as const, path: "/" };
 const pack = (userId: string, exp: number) => `${userId}.${exp}.${mac(`${userId}:${exp}`)}`;
 function unpack(v: string | undefined) {
   const [u, e, m] = v?.split(".") ?? [];
   if (!u || !e || !m || Number(e) < Date.now()) return null;
-  const want = mac(`${u}:${e}`);
-  return want.length === m.length && timingSafeEqual(Buffer.from(want), Buffer.from(m)) ? u : null;
+  return macOk(`${u}:${e}`, m) ? u : null;
 }
 
 /** Quem está dentro do banco agora (senha + código conferidos nos últimos 30 minutos). */
@@ -244,8 +245,7 @@ export async function setBankSetup(userId: string, stage: SetupStage) {
 export async function bankSetup(): Promise<{ userId: string; stage: SetupStage } | null> {
   const [u, st, e, m] = (await cookies()).get(SETUP)?.value?.split(".") ?? [];
   if (!u || !st || !e || !m || Number(e) < Date.now() || (st !== "email" && st !== "totp")) return null;
-  const want = mac(`setup:${u}:${st}:${e}`);
-  return want.length === m.length && timingSafeEqual(Buffer.from(want), Buffer.from(m)) ? { userId: u, stage: st } : null;
+  return macOk(`setup:${u}:${st}:${e}`, m) ? { userId: u, stage: st } : null;
 }
 export async function clearBankSetup() {
   (await cookies()).delete(SETUP);
