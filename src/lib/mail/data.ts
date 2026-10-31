@@ -135,7 +135,8 @@ export async function resolveAudience(a: Audience, s: Sender, ownEventIds: strin
     for (const r of rows) add(r.email, null);
   }
 
-  const exclude = a.excludeBuyersOf.filter((id) => own.has(id) || /^[0-9a-f-]{36}$/.test(id));
+  // só eventos da própria produtora: excluir compradores de evento alheio revelava quem comprou lá (SEC-009/SEC-321)
+  const exclude = a.excludeBuyersOf.filter((id) => own.has(id));
   if (exclude.length && by.size) {
     const rows = await db.selectDistinct({ email: orders.buyerEmail }).from(orders).where(and(inArray(orders.eventId, exclude), eq(orders.status, "paid")));
     for (const r of rows) by.delete((r.email ?? "").toLowerCase());
