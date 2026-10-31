@@ -74,7 +74,12 @@ vi.mock("@/lib/attempts", () => ({
     const list = (tries.get(k) ?? []).filter((t) => t > now - windowSec * 1000);
     if (list.length >= max) { tries.set(k, list); return { ok: false }; }
     list.push(now); tries.set(k, list);
-    return { ok: true, n: list.length };
+    return { ok: true, n: list.length, id: `${k}|${now}|${list.length}` };
+  },
+  releaseAttempt: async (id: string) => {
+    const [subject, bucket] = id.split("|");
+    const list = tries.get(`${subject}|${bucket}`) ?? [];
+    list.pop();
   },
   clearAttempts: async (subject: string, bucket: string) => { tries.delete(`${subject}|${bucket}`); },
 }));
@@ -120,12 +125,12 @@ describe("limitador genérico (src/lib/rate-limit.ts)", () => {
     expect(await allowHit(`pedido:${USER}`, 12, 600)).toBe(true);
   });
 
-  it("limitReached só lê; addHit conta (padrão do cupom: só o errado gasta a cota)", async () => {
-    const { addHit, limitReached } = await import("@/lib/rate-limit");
-    for (let i = 0; i < 50; i++) expect(await limitReached("cupom:203.0.113.7", 20)).toBe(false); // ler não conta
-    for (let i = 0; i < 20; i++) await addHit("cupom:203.0.113.7", 600);
-    expect(await limitReached("cupom:203.0.113.7", 20)).toBe(true);
-    expect(await limitReached("cupom:198.51.100.1", 20)).toBe(false);
+  it("reserveMiss: reserva antes de conferir; acerto devolve (só o errado gasta a cota, SEC-400)", async () => {
+    const { reserveMiss } = await import("@/lib/rate-limit");
+    for (let i = 0; i < 50; i++) { const s = await reserveMiss("cupom:203.0.113.7", 20); expect(s.ok).toBe(true); if (s.ok) await s.release(); }
+    for (let i = 0; i < 20; i++) expect((await reserveMiss("cupom:203.0.113.7", 20)).ok).toBe(true);
+    expect((await reserveMiss("cupom:203.0.113.7", 20)).ok).toBe(false);
+    expect((await reserveMiss("cupom:198.51.100.1", 20)).ok).toBe(true);
   });
 
   it("clientIp usa o cf-connecting-ip (o da Cloudflare) antes do x-forwarded-for", async () => {
@@ -146,13 +151,13 @@ describe("limitador genérico (src/lib/rate-limit.ts)", () => {
   });
 
   it("SEC-302: com o contador fora do ar (antes: o KV recusando a escrita), o limitador não libera tudo (falha fechada)", async () => {
-    const { allowHit, limitReached } = await import("@/lib/rate-limit");
+    const { allowHit, reserveMiss } = await import("@/lib/rate-limit");
     kvMode.failPut = true;
     counter.down = true;
     const r: boolean[] = [];
     for (let i = 0; i < 20; i++) r.push(await allowHit(`signup:203.0.113.7`, 12, 3600));
     expect(r.filter(Boolean).length).toBeLessThanOrEqual(12);
-    expect(await limitReached("cupom:203.0.113.7", 20)).toBe(true);
+    expect((await reserveMiss("cupom:203.0.113.7", 20)).ok).toBe(false);
   });
 });
 

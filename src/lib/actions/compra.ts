@@ -23,7 +23,7 @@ import { releaseOthers } from "@/lib/payments/pending";
 import { testPix } from "@/lib/payments/pix-test";
 import { PAYMENT_UNAVAILABLE, stripeEnabled, testPaymentsAllowed } from "@/lib/payments/stripe";
 import { couponHeldOkSql, couponLockKey } from "@/lib/payments/coupon";
-import { addHit, allowHit, clientIp, limitReached } from "@/lib/rate-limit";
+import { allowHit, clientIp, reserveMiss } from "@/lib/rate-limit";
 import { abortOf, ensure, lockKeys, runBatch } from "@/lib/payments/tx";
 
 const { orders, orderItems, coupons, events, userProfiles } = schema;
@@ -111,17 +111,20 @@ async function holdBlocked(userId: string, eventId: string, cpf: string): Promis
 /** cupons errados por IP a cada 10 min (sem login): impede descobrir códigos chutando. Só os errados contam:
  *  um link de e-mail com o cupom aberto por muita gente na mesma rede (CGNAT do celular) não é bloqueado. */
 const COUPON_MISSES = 20;
+const COUPON_TOO_MANY = "Muitas tentativas de cupom. Espere alguns minutos e tente de novo.";
 
 /** Confere um cupom para o resumo do checkout (não exige login). */
 export async function checkCoupon(code: string, eventSlug: string) {
   if (typeof code !== "string" || typeof eventSlug !== "string" || code.length > 60) return { ok: false as const, error: "Cupom inválido ou expirado." };
-  const key = `cupom:${await clientIp()}`;
-  if (await limitReached(key, COUPON_MISSES)) return { ok: false as const, error: "Muitas tentativas de cupom. Espere alguns minutos e tente de novo." };
+  // reservada antes de conferir (SEC-400); cupom que vale devolve a tentativa
+  const slot = await reserveMiss(`cupom:${await clientIp()}`, COUPON_MISSES);
+  if (!slot.ok) return { ok: false as const, error: COUPON_TOO_MANY };
   const ev = await db.query.events.findFirst({ where: eq(events.slug, eventSlug), columns: { id: true } });
-  if (!ev) return { ok: false as const, error: "Evento indisponível." };
+  if (!ev) { await slot.release(); return { ok: false as const, error: "Evento indisponível." }; }
   const r = await findCoupon(code.trim().toUpperCase(), ev.id);
-  if (!r.ok) { await addHit(key, 600); return r; }
-  return couponView(r.coupon);
+  if (!r.ok && r.error === COUPON_INVALID) return r;
+  await slot.release();
+  return r.ok ? couponView(r.coupon) : r;
 }
 
 function couponView(c: typeof coupons.$inferSelect) {
@@ -216,16 +219,15 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
   let couponRow: typeof coupons.$inferSelect | null = null;
   if (coupon) {
-    // o mesmo freio da conferência da tela (por IP) e um por conta: só os errados contam
-    const keys = [`cupom:${await clientIp()}`, `cupom:u:${user.id}`];
-    if ((await limitReached(keys[0], COUPON_MISSES)) || (await limitReached(keys[1], COUPON_MISSES_ACCOUNT))) {
-      return { ok: false, error: "Muitas tentativas de cupom. Espere alguns minutos e tente de novo." };
-    }
+    // o mesmo freio da conferência da tela (por IP) e um por conta, reservados antes de conferir (SEC-400):
+    // só o cupom inválido fica contado; o que vale (ou está esgotado) devolve as duas reservas
+    const slots = [await reserveMiss(`cupom:${await clientIp()}`, COUPON_MISSES), await reserveMiss(`cupom:u:${user.id}`, COUPON_MISSES_ACCOUNT)];
+    const release = () => Promise.all(slots.map((s) => (s.ok ? s.release() : undefined)));
+    if (slots.some((s) => !s.ok)) { await release(); return { ok: false, error: COUPON_TOO_MANY }; }
     const c = await findCoupon(coupon, ev.id);
-    if (!c.ok) {
-      if (c.error === COUPON_INVALID) for (const k of keys) await addHit(k, 600);
-      return { ok: false, error: c.error };
-    }
+    if (!c.ok && c.error === COUPON_INVALID) return { ok: false, error: c.error };
+    await release();
+    if (!c.ok) return { ok: false, error: c.error };
     couponRow = c.coupon;
   }
   const feeRate = ev.absorbFee ? 0 : SERVICE_FEE_RATE;

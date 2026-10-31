@@ -38,23 +38,26 @@ describe.skipIf(!TEST_DB)("contador atômico de tentativas (banco de teste)", ()
     for (let i = 0; i < 3; i++) expect((await A.reserveAttempt(s, "code:bank", 3, 600)).ok).toBe(true);
     expect((await A.reserveAttempt(s, "code:bank", 3, 600)).ok).toBe(false);
     await A.clearAttempts(s, "code:bank");
-    expect(await A.reserveAttempt(s, "code:bank", 3, 600)).toEqual({ ok: true, n: 1 });
+    expect(await A.reserveAttempt(s, "code:bank", 3, 600)).toMatchObject({ ok: true, n: 1 });
     // tentativas de 10 min atrás não contam numa janela de 5 min
     const { and, eq, sql } = await import("drizzle-orm");
     const t = D.schema.securityEvents;
     await D.db.update(t).set({ createdAt: sql`now() - interval '10 minutes'` }).where(and(eq(t.userId, s), eq(t.kind, "try:code:bank")));
-    expect(await A.reserveAttempt(s, "code:bank", 1, 300)).toEqual({ ok: true, n: 1 });
+    expect(await A.reserveAttempt(s, "code:bank", 1, 300)).toMatchObject({ ok: true, n: 1 });
   });
 
-  it("SEC-302: allowHit no banco: 30 ao mesmo tempo com máximo 12 passam exatamente 12; limitReached/addHit contam só o que foi somado", async () => {
+  it("SEC-302/SEC-400: allowHit no banco: 30 ao mesmo tempo com máximo 12 passam exatamente 12; reserveMiss também, e a devolução libera a vaga", async () => {
     const R = await import("@/lib/rate-limit");
     const key = subject();
     const r = await Promise.all(Array.from({ length: 30 }, () => R.allowHit(key, 12, 600)));
     expect(r.filter(Boolean)).toHaveLength(12);
     const miss = subject();
-    for (let i = 0; i < 50; i++) expect(await R.limitReached(miss, 3)).toBe(false);
-    await Promise.all([R.addHit(miss, 600), R.addHit(miss, 600), R.addHit(miss, 600)]);
-    expect(await R.limitReached(miss, 3)).toBe(true);
+    const slots = await Promise.all(Array.from({ length: 20 }, () => R.reserveMiss(miss, 3)));
+    expect(slots.filter((s) => s.ok)).toHaveLength(3);
+    const first = slots.find((s) => s.ok);
+    if (first?.ok) await first.release();
+    expect((await R.reserveMiss(miss, 3)).ok).toBe(true);
+    expect((await R.reserveMiss(miss, 3)).ok).toBe(false);
   });
 
   it("poda do cron: tentativa com mais de 2 dias sai; acontecimento de segurança fica", async () => {

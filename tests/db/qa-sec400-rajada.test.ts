@@ -7,8 +7,8 @@ import { qaId, TEST_DB } from "./setup";
  * pedidos simultâneos leem a contagem antes de qualquer erro ser somado, e todos conferem o palpite.
  * Afeta o código de acesso da portaria (8 erros por IP em 15 min) e o cupom (20 erros por IP em 10 min).
  *
- * Os testes "rajada" afirmam o comportamento SEGURO e hoje falham (`it.fails`): quando a correção entrar
- * (reservar a tentativa antes de conferir, como `allowHit`/`reserveAttempt`), viram `it` comuns.
+ * Os testes "rajada" afirmam o comportamento SEGURO. Eram `it.fails`; com a correção (Agente 03, rodada 2: a
+ * tentativa é reservada antes de conferir com `reserveMiss` e devolvida no acerto) viraram `it` comuns.
  * O controle em sequência mostra que o freio funciona sem concorrência.
  */
 vi.mock("next/server", async (orig) => ({ ...(await orig<typeof import("next/server")>()), after: () => {} }));
@@ -45,7 +45,7 @@ describe.skipIf(!TEST_DB)("Agente 06 · SEC-400: freios \"só o erro conta\" sob
     expect(rs[8]).toMatchObject({ ok: false, error: expect.stringMatching(TOO_MANY) });
   });
 
-  it.fails("rajada: 40 códigos errados da portaria ao mesmo tempo, do mesmo IP, não passam de 8 conferências", async () => {
+  it("rajada: 40 códigos errados da portaria ao mesmo tempo, do mesmo IP, não passam de 8 conferências", async () => {
     const { enterWithCode } = await import("@/lib/actions/portaria");
     freshIp();
     const rs = await Promise.all(Array.from({ length: 40 }, () => enterWithCode("ZZZZ-ZZZZ")));
@@ -54,7 +54,7 @@ describe.skipIf(!TEST_DB)("Agente 06 · SEC-400: freios \"só o erro conta\" sob
     expect(checked).toBeLessThanOrEqual(8);
   });
 
-  it.fails("rajada: 50 cupons errados ao mesmo tempo, do mesmo IP, não passam de 20 conferências", async () => {
+  it("rajada: 50 cupons errados ao mesmo tempo, do mesmo IP, não passam de 20 conferências", async () => {
     const { db, schema } = D;
     const C = await import("@/lib/actions/compra");
     const [ev] = await db.insert(schema.events).values({ slug: qaId("ev"), title: "QA cupom rajada", status: "published", startAt: new Date(Date.now() + 30 * 864e5), queueMode: "off" }).returning();
@@ -64,5 +64,20 @@ describe.skipIf(!TEST_DB)("Agente 06 · SEC-400: freios \"só o erro conta\" sob
     const checked = rs.filter((r) => !r.ok && !TOO_MANY.test(r.error)).length;
     console.log("[SEC-400 cupom]", JSON.stringify({ enviados: 50, conferidos: checked, limite: 20 }));
     expect(checked).toBeLessThanOrEqual(20);
+  });
+
+  it("Agente 03 (SEC-400): acerto devolve a reserva: 30 conferências seguidas de um cupom que vale não travam o IP", async () => {
+    const { db, schema } = D;
+    const C = await import("@/lib/actions/compra");
+    const [ev] = await db.insert(schema.events).values({ slug: qaId("ev"), title: "QA cupom acerto", status: "published", startAt: new Date(Date.now() + 30 * 864e5), queueMode: "off" }).returning();
+    created.push(ev.id);
+    const code = qaId("OK").slice(-12).toUpperCase();
+    await db.insert(schema.coupons).values({ eventId: ev.id, code, percentOff: 10 });
+    freshIp();
+    for (let i = 0; i < 30; i++) expect(await C.checkCoupon(code, ev.slug)).toMatchObject({ ok: true, code });
+    // os erros continuam contados normalmente depois dos acertos
+    const misses = await Promise.all(Array.from({ length: 25 }, (_, i) => C.checkCoupon(`QA03X${i}`, ev.slug)));
+    expect(misses.filter((r) => !r.ok && !TOO_MANY.test(r.error))).toHaveLength(20);
+    expect(await C.checkCoupon(code, ev.slug)).toMatchObject({ ok: false, error: expect.stringMatching(TOO_MANY) });
   });
 });

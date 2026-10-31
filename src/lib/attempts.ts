@@ -21,23 +21,25 @@ import { abortOf, ensure, lockKeys, runBatch } from "@/lib/payments/tx";
 const KIND = (bucket: string) => `try:${bucket}`.slice(0, 32);
 const KEEP_SEC = 86_400;
 
-export type Attempt = { ok: true; n: number } | { ok: false };
+export type Attempt = { ok: true; n: number; id: string } | { ok: false };
 
-/** Reserva uma tentativa no balde; `n` é a posição dela na janela (1 = primeira). Recusa quando passaria de `max`. */
+/** Reserva uma tentativa no balde; `n` é a posição dela na janela (1 = primeira). Recusa quando passaria de `max`.
+ *  `id` identifica a reserva, para devolvê-la com `releaseAttempt` (palpite certo não gasta a cota, SEC-400). */
 export async function reserveAttempt(subject: string, bucket: string, max: number, windowSec: number, meta?: { ip?: string | null; ua?: string | null }): Promise<Attempt> {
   const kind = KIND(bucket);
   const { securityEvents: t } = schema;
+  const id = crypto.randomUUID();
   const inWindow = sql`${t.userId} = ${subject} and ${t.kind} = ${kind} and ${t.createdAt} > now() - make_interval(secs => ${windowSec})`;
   try {
     const res = await runBatch([
       lockKeys([`try:${subject}:${kind}`]),
       db.delete(t).where(and(eq(t.userId, subject), eq(t.kind, kind), sql`${t.createdAt} < now() - make_interval(secs => ${Math.max(KEEP_SEC, windowSec)})`)),
-      db.insert(t).values({ userId: subject, kind, ip: meta?.ip?.slice(0, 64) ?? null, userAgent: meta?.ua?.slice(0, 300) ?? null }),
+      db.insert(t).values({ id, userId: subject, kind, ip: meta?.ip?.slice(0, 64) ?? null, userAgent: meta?.ua?.slice(0, 300) ?? null }),
       ensure(sql`(select count(*) from ${t} where ${inWindow}) <= ${max}`, "tries"),
       db.execute(sql`select count(*)::int as n from ${t} where ${inWindow}`),
     ]);
     const rows = (res[4] as { rows?: { n: number }[] }).rows ?? (res[4] as unknown as { n: number }[]);
-    return { ok: true, n: Number(rows[0]?.n ?? max) };
+    return { ok: true, n: Number(rows[0]?.n ?? max), id };
   } catch (e) {
     if (abortOf(e) === "tries") return { ok: false };
     throw e;
@@ -50,6 +52,12 @@ export async function countAttempts(subject: string, bucket: string, windowSec: 
   const r = await db.select({ n: sql<number>`count(*)::int` }).from(t)
     .where(and(eq(t.userId, subject), eq(t.kind, KIND(bucket)), sql`${t.createdAt} > now() - make_interval(secs => ${windowSec})`));
   return Number(r[0]?.n ?? 0);
+}
+
+/** Devolve uma reserva feita por `reserveAttempt` (a tentativa deixa de contar). */
+export async function releaseAttempt(id: string) {
+  const { securityEvents: t } = schema;
+  await db.delete(t).where(and(eq(t.id, id), sql`${t.kind} like 'try:%'`));
 }
 
 /** Zera o balde (ex.: código certo). */
