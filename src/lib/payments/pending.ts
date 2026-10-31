@@ -3,7 +3,7 @@ import { and, asc, eq, gt, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { cancelIntent, startPix } from "@/lib/payments/intents";
 import { testPix } from "@/lib/payments/pix-test";
-import { stripeEnabled } from "@/lib/payments/stripe";
+import { stripeEnabled, testPaymentsAllowed } from "@/lib/payments/stripe";
 
 /*
  * Pedido criado e ainda não pago (status pending, dentro dos 15 min da reserva).
@@ -105,7 +105,8 @@ export async function resumeView(order: OrderRow): Promise<ResumeData> {
       // o mesmo PaymentIntent: devolve o QR já gerado enquanto ele vale (nunca cria outro)
       const px = await startPix(order);
       if (px.ok) pix = { pixCode: px.pix.pixCode, pixQrSvg: px.pix.pixQrSvg, expiresAt: px.pix.expiresAt, secondsLeft: secondsUntil(px.pix.expiresAt), live: true, testUrl: px.pix.hostedUrl };
-    } else {
+    } else if (testPaymentsAllowed()) {
+      // Pix de teste só onde o modo de teste vale (SEC-100); senão a retomada cai na etapa de pagamento, que avisa
       pix = { ...(await testPix(order.number ?? 0, order.totalCents)), expiresAt: order.expiresAt?.toISOString() ?? null, secondsLeft: secondsUntil(order.expiresAt), live: false, testUrl: null };
     }
   }

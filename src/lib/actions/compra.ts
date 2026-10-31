@@ -21,7 +21,7 @@ import { boughtByType, fulfillOrder, overLimit, type FulfillResult } from "@/lib
 import { startPix, STRIPE_MIN_BRL_CENTS } from "@/lib/payments/intents";
 import { releaseOthers } from "@/lib/payments/pending";
 import { testPix } from "@/lib/payments/pix-test";
-import { stripeEnabled } from "@/lib/payments/stripe";
+import { PAYMENT_UNAVAILABLE, stripeEnabled, testPaymentsAllowed } from "@/lib/payments/stripe";
 import { couponHeldOkSql, couponLockKey } from "@/lib/payments/coupon";
 import { addHit, allowHit, clientIp, limitReached } from "@/lib/rate-limit";
 import { abortOf, ensure, lockKeys, runBatch } from "@/lib/payments/tx";
@@ -198,6 +198,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   if (method === "free" && p.total > 0) return { ok: false, error: "Este pedido tem valor a pagar. Escolha Pix ou cartão." };
   const free = p.total === 0;
   const live = stripeEnabled();
+  // sem Stripe e sem o modo de teste liberado (SEC-100): pedido com valor não reserva nada, porque não teria como ser pago
+  if (!free && !live && !testPaymentsAllowed()) return { ok: false, error: PAYMENT_UNAVAILABLE };
   if (live && !free && p.total < STRIPE_MIN_BRL_CENTS) return { ok: false, error: "O valor mínimo para pagamento online é R$ 0,50." };
   // cada pedido segura os ingressos por 15 min: criar pedidos em sequência viraria um jeito de travar o estoque
   // (conta só pedido criado de verdade; erro de preenchimento não gasta a cota)
@@ -277,9 +279,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 export type ConfirmResult = FulfillResult;
 
 /**
- * Confirma um pedido SEM gateway: pedido grátis (sempre) ou o modo de teste (só quando a Stripe NÃO está
- * configurada; a referência fica TEST-…, que não entra no saldo do produtor). Com a Stripe ligada, pedido
- * com valor só é confirmado pelo pagamento de verdade (webhook ou checkPayment).
+ * Confirma um pedido SEM gateway: pedido grátis (sempre) ou o modo de teste (só com testPaymentsAllowed():
+ * sem a Stripe e fora do site de produção ou com ALLOW_TEST_PAYMENTS=1, ver payments/stripe.ts; a referência
+ * fica TEST-…, que não entra no saldo do produtor). Com a Stripe ligada, pedido com valor só é confirmado pelo
+ * pagamento de verdade (webhook ou checkPayment); sem nenhum dos dois, é recusado (SEC-100).
  */
 export async function confirmPayment(orderId: string): Promise<ConfirmResult> {
   const user = await getSessionUser();
@@ -288,7 +291,9 @@ export async function confirmPayment(orderId: string): Promise<ConfirmResult> {
   const order = await db.query.orders.findFirst({ where: and(eq(orders.id, orderId), eq(orders.userId, user.id)), columns: { id: true, number: true, totalCents: true, status: true } });
   if (!order) return { ok: false, error: "Pedido não encontrado." };
   const free = order.totalCents === 0;
-  if (!free && stripeEnabled() && order.status !== "paid") return { ok: false, error: "Finalize o pagamento para confirmar o pedido." };
+  if (!free && order.status !== "paid" && !testPaymentsAllowed()) {
+    return { ok: false, error: stripeEnabled() ? "Finalize o pagamento para confirmar o pedido." : PAYMENT_UNAVAILABLE };
+  }
   return fulfillOrder(order.id, { ref: `${free ? "FREE" : "TEST"}-${order.number}`, charged: false });
 }
 
