@@ -105,7 +105,7 @@ describe("SEC-303: webhook do Neon Auth com freio por destinatário", () => {
   };
 
   it("pedidos seguidos ao Neon Auth para o mesmo e-mail viram no máximo 1 e-mail no intervalo", async () => {
-    const r = [];
+    const r: { throttled?: boolean }[] = [];
     for (let i = 0; i < 5; i++) r.push(await (await hook(`ev-${i}`)).json());
     expect(mails).toEqual(["forget-password:vitima@example.com"]);
     expect(r.slice(1).every((x) => x.throttled)).toBe(true);
