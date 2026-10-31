@@ -7,7 +7,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { db, schema } from "@/db";
 import { qrPayload } from "@/lib/tickets/qr";
 import { heldSql } from "@/lib/holds";
-import { ONE_SHARE, paidShareInGroup, shareStillHeld } from "@/lib/special";
+import { ONE_SHARE, paidShareInGroup } from "@/lib/special";
 import { mailGroupSharePaid, mailOrderConfirmed, mailResaleSold, mailTransferSent } from "@/lib/notify";
 import { refundOrder } from "@/lib/payments/refund";
 import { ticketCode } from "@/lib/tickets/code";
@@ -230,13 +230,10 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
     const limitErr = await limitMsg();
     if (limitErr) return fail(limitErr);
   }
-  let held = false;
   if (order.groupShareId) {
     const sh = await db.query.groupShares.findFirst({ where: eq(groupShares.id, order.groupShareId), columns: { paidAt: true, userId: true, groupId: true } });
     if (!sh || sh.paidAt || sh.userId !== order.userId) return fail("Esta parte do grupo já foi paga ou passou para outra pessoa.");
     if (await paidShareInGroup(sh.groupId, order.userId)) return fail(ONE_SHARE);
-    // parte de grupo com a vaga ainda segurada: entra direto; senão disputa o estoque como qualquer compra
-    held = await shareStillHeld(order.groupShareId);
   }
 
   const holderQueue = [...(order.holders ?? [])];
@@ -306,12 +303,13 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
     // limite de usos do cupom: os pedidos que reservaram um uso cabem; o que confirma depois da reserva vencida não
     steps.push(ensure(couponPaidOkSql(order.couponId), "coupon"));
   }
-  // depois da baixa: vendidos + vagas seguradas por grupos cabem na lotação (a parte de grupo segurada entra direto)
-  if (!held) {
-    steps.push(ensure(sql`not exists (
-      select 1 from ${ticketTypes} where ${ticketTypes.id} in (${sql.join(typeIds.map((id) => sql`${id}`), sql`, `)})
-      and ${ticketTypes.sold} + ${heldSql(ticketTypes.id)} > ${ticketTypes.quantity})`, "stock"));
-  }
+  // depois da baixa: vendidos + vagas seguradas por grupos cabem na lotação. Vale também para a parte de grupo: com a
+  // vaga ainda segurada, ela sai das "seguradas" (paga acima) e entra nas vendidas, então a soma não muda e passa; com
+  // o grupo vencido/cancelado no meio do caminho, ou o lote reduzido pelo produtor, disputa a lotação como qualquer
+  // compra (antes entrava direto, conferido fora da transação, e podia vender acima da quantidade: SEC-104)
+  steps.push(ensure(sql`not exists (
+    select 1 from ${ticketTypes} where ${ticketTypes.id} in (${sql.join(typeIds.map((id) => sql`${id}`), sql`, `)})
+    and ${ticketTypes.sold} + ${heldSql(ticketTypes.id)} > ${ticketTypes.quantity})`, "stock"));
   if (meiaGroups.length) steps.push(ensure(meiaQuotaPaidOkSql(order.eventId, meiaGroups), "meia"));
   // limite por pessoa com este pedido já pago (conta e CPF), conferido com a trava acima
   if (normal) {

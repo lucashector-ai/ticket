@@ -80,9 +80,3 @@ export async function claimSpecial(s: Special, userId: string, name: string) {
   return r.length > 0;
 }
 
-/** O grupo desta parte ainda segura a vaga? (senão o pagamento disputa o estoque como qualquer compra) */
-export async function shareStillHeld(shareId: string) {
-  const sh = await db.query.groupShares.findFirst({ where: eq(groupShares.id, shareId), with: { group: { columns: { status: true, expiresAt: true } } } });
-  return !!sh && !sh.paidAt && sh.group.status === "open" && sh.group.expiresAt > new Date();
-}
-
