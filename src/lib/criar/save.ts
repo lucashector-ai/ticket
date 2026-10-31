@@ -10,6 +10,7 @@ import { linkArtistSpotify } from "@/lib/spotify-artists";
 import { AREA_KINDS, KIND_COLOR, MAX_AREAS, normalizePlan } from "@/lib/criar/plan";
 import { meiaPriceError } from "@/lib/criar/meia";
 import { activeAccess, canEditEvent, PORTARIA_ONLY } from "@/lib/data/org-access";
+import { ownProducer } from "@/lib/producer-apply";
 import {
   CATEGORY_KINDS, effTypes, eventSlug, limitOf, MAX_LIMIT, num, parseBrDateTime, parseCity, spDate, toCents,
   type DbMap, type Draft, type VenuePlace,
@@ -279,6 +280,9 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   else {
     const ctx = await activeAccess(user.id);
     if (ctx?.role === "portaria") return fail(PORTARIA_ONLY);
+    // sem produtora (nem própria nem de equipe já aceita): só o produtor por conta própria (produtor antigo) ganha uma
+    // produtora nova aqui. Quem só tem convite de equipe não aceito não vira dono de produtora por este caminho (SEC-001).
+    if (!ctx && !(await ownProducer(user.id))) return fail("Abra o Painel do produtor para entrar na equipe antes de criar eventos.");
     organizerId = ctx ? ctx.org.id : (await organizerFor(user)).id;
   }
   const venueIds = new Map<string, string>();

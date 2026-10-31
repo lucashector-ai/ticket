@@ -7,6 +7,7 @@ import { qaId, TEST_DB } from "./setup";
  * docs/security/findings/red-team.md. Cada `it.fails` afirma o comportamento SEGURO e hoje falha porque a falha
  * existe; quando o AppSec corrigir, o teste passa a falhar como "it.fails" e deve virar `it` comum (regressão).
  *   SEC-001 · conta da equipe (portaria/admin) conclui o "cadastro do produtor aprovado" e vira produtor sem aprovação
+ *             (corrigido pelo AppSec: `it` comum, regressão)
  *   SEC-003 · ex-admin da equipe continua com os acessos da portaria que viu no painel (tokens não mudam na saída)
  *   SEC-004 · sessão com 2FA por e-mail troca para um app autenticador novo sem o código do e-mail
  * Só contas fictícias "qa-test-…" com e-mail @example.com, sem login real (sessão simulada).
@@ -72,7 +73,7 @@ describe.skipIf(!TEST_DB)("red team: autorização e conta (banco de teste)", ()
     if (users.length) await db.delete(schema.securityEvents).where(inArray(schema.securityEvents.userId, users));
   });
 
-  it.fails("SEC-001: quem só é da portaria (ou admin) de outra produtora NÃO conclui o cadastro de produtor aprovado nem cria evento próprio", async () => {
+  it("SEC-001: quem só é da portaria (ou admin) de outra produtora NÃO conclui o cadastro de produtor aprovado nem cria evento próprio", async () => {
     const { db, schema } = D;
     const { eq } = await import("drizzle-orm");
     const P = await import("@/lib/actions/painel");
@@ -102,6 +103,47 @@ describe.skipIf(!TEST_DB)("red team: autorização e conta (banco de teste)", ()
     expect(done.ok).toBe(false);
     expect(mine?.onboarding ?? null).toBeNull();
     expect(made.ok).toBe(false);
+  });
+
+  it("SEC-001 (controles): admin da equipe também não conclui o cadastro, mas segue criando evento na produtora da dona; inscrição aprovada e produtor antigo continuam", async () => {
+    const { db, schema } = D;
+    const { eq } = await import("drizzle-orm");
+    const P = await import("@/lib/actions/painel");
+    const O = await import("@/lib/actions/onboarding");
+    const C = await import("@/lib/actions/criar");
+    const { producerStatus } = await import("@/lib/producer-apply");
+    const { emptyDraft } = await import("@/lib/criar/model");
+    const owner = person("dona1b"), admin = person("admin1b"), fresh = person("aprovada1b");
+    const { org } = await approvedOrg(owner);
+    expect(await as(owner, () => P.inviteMember(admin.email, "admin"))).toMatchObject({ ok: true });
+    expect((await producerStatus(admin)).status).toBe("team");
+    const done = await as(admin, () => O.finishOnboarding({ name: `QA Admin Propria ${admin.id.slice(-6)}`, city: "Recife", uf: "PE", instagram: "", tagline: "" }));
+    expect(done.ok).toBe(false);
+    expect(await db.query.organizers.findFirst({ where: eq(schema.organizers.ownerUserId, admin.id) })).toBeUndefined();
+    // convite ainda não aceito (nunca abriu o painel): criar evento não dá uma produtora própria a quem só é da equipe
+    const early = await as(admin, () => C.saveEvent({ draft: { ...emptyDraft(), title: "QA evento antes do aceite", vis: "rascunho" }, eventId: null, dbMap: {} as never }));
+    expect(early.ok).toBe(false);
+    expect(await db.query.organizers.findFirst({ where: eq(schema.organizers.ownerUserId, admin.id) })).toBeUndefined();
+    // o trabalho de admin continua: aberto o painel (convite aceito), evento novo vai para a produtora da dona
+    const { getPainelScope } = await import("@/lib/data/painel");
+    await getPainelScope(admin);
+    const made = await as(admin, () => C.saveEvent({ draft: { ...emptyDraft(), title: "QA evento do admin", vis: "rascunho" }, eventId: null, dbMap: {} as never }));
+    expect(made.ok).toBe(true);
+    if (made.ok) expect((await db.query.events.findFirst({ where: eq(schema.events.id, made.eventId), columns: { organizerId: true } }))?.organizerId).toBe(org.id);
+    // evento feito como admin na produtora da dona não transforma o admin em produtor próprio
+    expect((await producerStatus(admin)).status).toBe("team");
+    // a dona (produtora com cadastro) continua podendo atualizar o cadastro
+    expect((await producerStatus(owner)).status).toBe("producer");
+    expect((await as(owner, () => O.finishOnboarding({ name: `QA Produtora QA ${owner.id.slice(-6)} Nova`, city: "Recife", uf: "PE", instagram: "", tagline: "" }))).ok).toBe(true);
+    // inscrição aprovada (sem equipe) conclui o cadastro
+    await db.insert(schema.producerApplications).values({ userId: fresh.id, email: fresh.email, firstName: "Pessoa", lastName: "Aprovada", phone: "11987654321", city: "Recife", uf: "PE", audience: "x", category: "Outro", avgTicketCents: 0, expected: 0, source: "Outro", status: "approved" });
+    try {
+      expect((await producerStatus(fresh)).status).toBe("approved");
+      expect((await as(fresh, () => O.finishOnboarding({ name: `QA Aprovada ${fresh.id.slice(-6)}`, city: "Recife", uf: "PE", instagram: "", tagline: "" }))).ok).toBe(true);
+      expect((await producerStatus(fresh)).status).toBe("producer");
+    } finally {
+      await db.delete(schema.producerApplications).where(eq(schema.producerApplications.userId, fresh.id));
+    }
   });
 
   it.fails("SEC-003: depois que a dona remove o admin, os acessos da portaria que ele via no painel deixam de abrir o app", async () => {

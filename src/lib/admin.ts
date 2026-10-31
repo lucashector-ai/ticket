@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, desc, eq, inArray, isNotNull, or, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull, or, sql, sum } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { mfaSettings } from "@/lib/mfa";
@@ -84,14 +84,16 @@ export async function adminUsers(q: string): Promise<AdminUserRow[]> {
   }
   const ids = base.map((b) => b.id);
   if (!ids.length) return [];
-  // mesma regra de isProducer (lib/data/producer): cadastro concluído, equipe de um produtor ou já criou evento
+  // mesma regra de producerStatus (lib/producer-apply): produtor próprio, inscrição aprovada, equipe, inscrição
   const verifiedEmails = base.filter((b) => b.verified && b.email).map((b) => b.email.toLowerCase());
   const [profiles, owners, members, creators, apps, buys] = await Promise.all([
     db.query.userProfiles.findMany({ where: inArray(userProfiles.userId, ids), columns: { userId: true, mfaMethod: true } }),
     db.select({ userId: organizers.ownerUserId }).from(organizers).where(and(inArray(organizers.ownerUserId, ids), isNotNull(organizers.onboarding))),
     db.select({ userId: organizerMembers.userId, email: organizerMembers.email }).from(organizerMembers)
       .where(verifiedEmails.length ? or(inArray(organizerMembers.userId, ids), inArray(sql`lower(${organizerMembers.email})`, verifiedEmails)) : inArray(organizerMembers.userId, ids)),
-    db.selectDistinct({ userId: events.createdByUserId }).from(events).where(inArray(events.createdByUserId, ids)),
+    // produtor antigo: evento sem produtora ou numa produtora da própria conta (evento feito como admin de outra não conta)
+    db.selectDistinct({ userId: events.createdByUserId }).from(events).leftJoin(organizers, eq(organizers.id, events.organizerId))
+      .where(and(inArray(events.createdByUserId, ids), or(isNull(events.organizerId), eq(organizers.ownerUserId, events.createdByUserId)))),
     // última inscrição de cada conta
     db.selectDistinctOn([producerApplications.userId], { userId: producerApplications.userId, status: producerApplications.status })
       .from(producerApplications).where(inArray(producerApplications.userId, ids)).orderBy(producerApplications.userId, desc(producerApplications.createdAt)),
@@ -99,13 +101,15 @@ export async function adminUsers(q: string): Promise<AdminUserRow[]> {
   ]);
   const mfa = new Map(profiles.map((p) => [p.userId, p.mfaMethod]));
   const prod = new Set<string>([...owners, ...creators].map((o) => o.userId ?? ""));
-  for (const m of members) if (m.userId) prod.add(m.userId);
+  const team = new Set<string>();
+  for (const m of members) if (m.userId) team.add(m.userId);
   const memberEmails = new Set(members.map((m) => m.email.toLowerCase()));
   const app = new Map(apps.map((a) => [a.userId, a.status]));
   const nb = new Map(buys.map((b) => [b.userId, b.n]));
   return base.map((b) => ({
     id: b.id, name: b.name ?? "", email: b.email, verified: !!b.verified, createdAt: new Date(b.created).toISOString(),
-    producer: prod.has(b.id) || (!!b.verified && memberEmails.has(b.email.toLowerCase())) ? "producer" : app.get(b.id) ?? "none",
+    producer: prod.has(b.id) ? "producer" : app.get(b.id) === "approved" ? "approved"
+      : team.has(b.id) || (!!b.verified && memberEmails.has(b.email.toLowerCase())) ? "team" : app.get(b.id) ?? "none",
     mfa: mfa.get(b.id) ?? null, paidOrders: nb.get(b.id) ?? 0, google: !!b.google,
   }));
 }

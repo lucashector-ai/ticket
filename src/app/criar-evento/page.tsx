@@ -10,7 +10,7 @@ import { brDateTime, emptyDraft, isDefaultRefund, STEP_LABELS, type DbMap, type 
 import { ProducerApply } from "@/components/produtor/inscricao";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { CATEGORIES, producerStatus, SOURCES, UFS } from "@/lib/producer-apply";
+import { canCreateEvents, CATEGORIES, producerStatus, SOURCES, UFS } from "@/lib/producer-apply";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Criar evento" };
@@ -29,11 +29,12 @@ export default async function CriarEventoPage({ searchParams }: { searchParams: 
   if (!editId) {
     const { status, app } = await producerStatus(user);
     // virar produtor começa com o e-mail confirmado (a inscrição seria recusada no envio); quem já é produtor segue
-    if (status !== "producer" && !(await emailConfirmed(user))) redirect(activateHref("/criar-evento"));
+    const creator = canCreateEvents(status);
+    if (!creator && !(await emailConfirmed(user))) redirect(activateHref("/criar-evento"));
     if (status === "approved") redirect("/produtores/cadastro");
     // na equipe só como portaria: criar evento é com o dono ou um admin da produtora
-    if (status === "producer" && (await activeAccess(user.id))?.role === "portaria") redirect("/painel");
-    if (status !== "producer") {
+    if (creator && (await activeAccess(user.id))?.role === "portaria") redirect("/painel");
+    if (!creator) {
       const profile = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, user.id), columns: { name: true, phone: true } });
       const parts = (profile?.name || user.name || "").trim().split(/\s+/);
       return (

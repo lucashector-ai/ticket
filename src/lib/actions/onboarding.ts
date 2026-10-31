@@ -6,7 +6,7 @@ import { getSessionUser } from "@/lib/auth/server";
 import { ACTIVATE_PRODUCER, emailConfirmed } from "@/lib/auth/verified";
 import { initials, slugify } from "@/lib/format";
 import { isProducer } from "@/lib/data/producer";
-import { producerStatus } from "@/lib/producer-apply";
+import { canOnboard, producerStatus } from "@/lib/producer-apply";
 
 const { organizers } = schema;
 type R<T = object> = ({ ok: true } & T) | { ok: false; error: string };
@@ -47,7 +47,8 @@ export async function finishOnboarding(input: { name: string; city: string; uf: 
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Entre na sua conta." };
   const st = await producerStatus(user);
-  if (st.status !== "approved" && st.status !== "producer") return { ok: false, error: "Sua conta de produtor ainda não foi aprovada." };
+  // só inscrição aprovada (ou produtor que atualiza o cadastro): estar na equipe de outra produtora não aprova ninguém (SEC-001)
+  if (!canOnboard(st.status)) return { ok: false, error: "Sua conta de produtor ainda não foi aprovada." };
   // virar produtor exige o e-mail confirmado (quem já era produtor antes desta regra continua liberado)
   if (st.status === "approved" && !(await emailConfirmed(user))) return { ok: false, error: ACTIVATE_PRODUCER };
   const name = input.name.trim().replace(/\s+/g, " ").slice(0, 80);

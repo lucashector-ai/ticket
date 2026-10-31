@@ -111,11 +111,11 @@ export function AdminPayouts({ rows }: { rows: Payout[] }) {
 }
 
 const PS: Record<string, [string, string]> = {
-  producer: ["Produtor", "approved"], approved: ["Aprovado (falta cadastro)", "pending"], pending: ["Inscrição pendente", "pending"], rejected: ["Recusado", "rejected"],
+  producer: ["Produtor", "approved"], team: ["Só equipe", "pending"], approved: ["Aprovado (falta cadastro)", "pending"], pending: ["Inscrição pendente", "pending"], rejected: ["Recusado", "rejected"],
 };
 
 /** Coluna "Produtor" da aba Contas: status e liberar/remover a permissão de criar eventos. */
-export function AdminAccountProducer({ userId, email, status }: { userId: string; email: string; status: "producer" | "approved" | "pending" | "rejected" | "none" }) {
+export function AdminAccountProducer({ userId, email, status }: { userId: string; email: string; status: "producer" | "team" | "approved" | "pending" | "rejected" | "none" }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);

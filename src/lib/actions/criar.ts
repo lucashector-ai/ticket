@@ -7,7 +7,7 @@ import { getSessionUser } from "@/lib/auth/server";
 import type { DbMap, Draft, VenuePlace } from "@/lib/criar/model";
 import { saveEventAs, type SaveEventResult } from "@/lib/criar/save";
 import { autocompletePlaces, placeDetails, placesEnabled } from "@/lib/places";
-import { producerStatus } from "@/lib/producer-apply";
+import { canCreateEvents, producerStatus } from "@/lib/producer-apply";
 
 export type { SaveEventResult };
 
@@ -15,8 +15,9 @@ export type { SaveEventResult };
 export async function saveEvent(input: { draft: Draft; eventId: string | null; dbMap: DbMap }): Promise<SaveEventResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Sua sessão expirou. Entre de novo para salvar o evento." };
-  // evento novo só para produtor aprovado (edição continua presa ao dono, dentro de saveEventAs)
-  if (!input.eventId && (await producerStatus(user)).status !== "producer") return { ok: false, error: "Sua conta de produtor ainda não foi aprovada." };
+  // evento novo só para produtor aprovado ou equipe (na produtora ativa; a portaria é barrada em saveEventAs; edição
+  // continua presa a quem pode editar, dentro de saveEventAs)
+  if (!input.eventId && !canCreateEvents((await producerStatus(user)).status)) return { ok: false, error: "Sua conta de produtor ainda não foi aprovada." };
   return saveEventAs(user, input);
 }
 

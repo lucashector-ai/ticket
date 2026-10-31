@@ -32,7 +32,7 @@ export async function submitApplication(input: AppInput): Promise<{ ok: boolean;
   if (!(await emailConfirmed(user))) return { ok: false, error: ACTIVATE_PRODUCER, verify: true };
   const st = await producerStatus(user);
   if (st.status === "producer" || st.status === "approved") return { ok: false, error: "Sua conta de produtor já está liberada." };
-  if (st.status === "pending") return { ok: false, error: "Sua inscrição já está em análise. Respondemos no mesmo dia útil." };
+  if (st.app?.status === "pending") return { ok: false, error: "Sua inscrição já está em análise. Respondemos no mesmo dia útil." };
   const p = appSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0].message };
   const d = p.data;
