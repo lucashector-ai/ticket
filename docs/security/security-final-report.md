@@ -163,7 +163,7 @@ Ressalvas: o controle vale para o **nosso** domínio; o Neon Auth hospedado cont
 
 **Condições antes ou junto do deploy:**
 1. **D-SEC-03-0:** decidir o modo de teste. Sem `STRIPE_SECRET_KEY` e sem `ALLOW_TEST_PAYMENTS=1`, a produção para de vender evento pago (grátis continua).
-2. **SEC-402:** publicar só um build feito fora desta pasta (integração da Cloudflare ou cópia limpa, como o AppSec fez). Um build daqui grava o `NEXT_PUBLIC_SITE_URL` de desenvolvimento e liga o modo de teste sem a variável. Melhor ainda: corrigir o SEC-402 no código antes.
+2. **SEC-402:** publicar só um build feito fora desta pasta (integração da Cloudflare ou cópia limpa, como o AppSec fez). Um build daqui grava o `NEXT_PUBLIC_SITE_URL` de desenvolvimento e liga o modo de teste sem a variável. Melhor ainda: corrigir o SEC-402 no código antes. O build do branch `hotfix/sec-100` registrado em `$S/sec/hotfix-build.log` (31/10 08:11) não carregou arquivo `.env` (pasta sem `.env.local`): esse não tem o problema.
 3. Nenhuma mudança de schema é necessária para estas correções (confirmado pelo AppSec; nada no diff toca `src/db/schema.ts`).
 4. Avisar quem usa e-mail marketing sem e-mail confirmado (D-SEC-03-2).
 
