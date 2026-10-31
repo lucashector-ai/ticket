@@ -11,7 +11,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const flash = useCallback((m: string) => {
     if (timer.current) clearTimeout(timer.current);
     setMsg(m);
-    timer.current = setTimeout(() => setMsg(null), 2600);
+    // mensagem longa (avisos com o que fazer) fica mais tempo na tela: ~16 caracteres por segundo, até 12 s
+    timer.current = setTimeout(() => setMsg(null), Math.min(12_000, Math.max(2600, m.length * 60)));
   }, []);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   return (

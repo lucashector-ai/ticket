@@ -11,7 +11,7 @@ import { checkinTicket, type CheckinResult } from "@/lib/checkin";
 import { organizerFor } from "@/lib/criar/save";
 import { getPainelScope, type PainelRole } from "@/lib/data/painel";
 import { isProducer } from "@/lib/data/producer";
-import { mailPortariaAccess, mailSecurityNotice, mailTeamInvite, userContact } from "@/lib/notify";
+import { mailPortariaAccess, mailSecurityNotice, mailTeamInvite } from "@/lib/notify";
 import { destLabel } from "@/lib/bank";
 import { checkSecondFactor, logSecurity, mfaSettings } from "@/lib/mfa";
 import { newAccessCode } from "@/lib/portaria";
@@ -87,8 +87,12 @@ export async function sendCheckinLink(id: string, email: string): Promise<{ ok: 
   if (!s) return { ok: false, error: "Sem permissão." };
   const mail = email.trim().toLowerCase();
   if (!z.email().safeParse(mail).success) return { ok: false, error: "Confira o e-mail." };
-  const link = await db.query.checkinLinks.findFirst({ where: and(eq(schema.checkinLinks.id, id), isNull(schema.checkinLinks.revokedAt)), columns: { id: true, token: true, code: true, label: true, eventId: true } });
+  const link = await db.query.checkinLinks.findFirst({ where: and(eq(schema.checkinLinks.id, id), isNull(schema.checkinLinks.revokedAt)), columns: { id: true, token: true, code: true, label: true, eventId: true, email: true, createdByUserId: true } });
   if (!link || !s.events.some((e) => e.id === link.eventId)) return { ok: false, error: "Acesso não encontrado." };
+  // o acesso de outra pessoa só vai para o e-mail que já está nele: trocar o destino é da dona ou de quem criou (SEC-401)
+  if (link.email && link.email !== mail && s.role !== "owner" && link.createdByUserId !== s.user.id) {
+    return { ok: false, error: "Este acesso já tem um e-mail. Só quem criou o acesso, ou o dono, pode mandá-lo para outro e-mail." };
+  }
   if (!(await deliver(link, mail, s.org?.name ?? "A produção"))) return { ok: false, error: "Não foi possível enviar o e-mail agora. Tente de novo." };
   revalidatePath(`/painel/evento/${link.eventId}`);
   revalidatePath("/painel/equipe");
@@ -165,69 +169,67 @@ export async function inviteMember(email: string, role: string): Promise<R> {
   return { ok: true };
 }
 
+/** Resultado da saída de alguém da equipe: acessos desligados (criados pela pessoa) e acessos trocados (para reenviar). */
+type Retired = { ok: true; revoked: number; rotated: number } | { ok: false; error: string };
+
 /**
- * Troca token e código de todos os acessos de portaria ligados dos eventos `evIds` (SEC-003). Quem deixa de ser admin
- * viu (e pode ter copiado) esses valores na tela Equipe. Aparelho já conectado continua (o cookie guarda só o id do
- * acesso); quem recebeu o acesso por e-mail recebe o link novo; os outros pegam o código novo no painel.
+ * Quem sai da equipe (ou deixa de ser admin) perde a portaria dos eventos da produtora (SEC-003, SEC-401):
+ * 1. todos os acessos que a pessoa criou são desligados: o pessoal ("Abrir app da portaria") e os que ela criou para
+ *    outras pessoas, inclusive com um e-mail escolhido por ela. Aparelho conectado a eles sai na hora;
+ * 2. se era admin, ela viu (e pode ter copiado) token e código de todos os outros acessos na tela Equipe: eles trocam
+ *    de token e código. NADA é reenviado sozinho: o e-mail gravado no acesso pode ter sido escolhido pela pessoa
+ *    que saiu (sendCheckinLink). A dona reenvia na tela Equipe (o aviso diz quantos); aparelho já conectado continua.
  */
-async function rotateCheckinLinks(evIds: string[], orgName: string) {
-  if (!evIds.length) return 0;
+async function retireFromPortaria(userId: string | null, wasAdmin: boolean, evIds: string[]) {
   const { checkinLinks } = schema;
+  if (!evIds.length) return { revoked: 0, rotated: 0 };
+  const revoked = userId
+    ? (await db.update(checkinLinks).set({ revokedAt: new Date() })
+      .where(and(eq(checkinLinks.createdByUserId, userId), inArray(checkinLinks.eventId, evIds), isNull(checkinLinks.revokedAt)))
+      .returning({ id: checkinLinks.id })).length
+    : 0;
+  if (!wasAdmin) return { revoked, rotated: 0 };
   const live = await db.query.checkinLinks.findMany({
     where: and(inArray(checkinLinks.eventId, evIds), isNull(checkinLinks.revokedAt)),
-    columns: { id: true, label: true, eventId: true, email: true },
+    columns: { id: true },
   });
-  const resend: { id: string; token: string; code: string; label: string; eventId: string; email: string }[] = [];
-  let n = 0;
+  let rotated = 0;
   for (const l of live) {
     for (let i = 0; i < 5; i++) {
-      const token = randomBytes(18).toString("base64url"), code = newAccessCode();
       try {
-        await db.update(checkinLinks).set({ token, code }).where(eq(checkinLinks.id, l.id));
-        n++;
-        if (l.email) resend.push({ ...l, token, code, email: l.email });
+        // sentAt volta a vazio: a tela mostra "ainda não enviado" e o botão de enviar o acesso novo
+        await db.update(checkinLinks).set({ token: randomBytes(18).toString("base64url"), code: newAccessCode(), sentAt: null }).where(eq(checkinLinks.id, l.id));
+        rotated++;
         break;
       } catch { /* colisão rara de código: tenta outro */ }
     }
   }
-  if (resend.length) after(async () => { for (const l of resend) await deliver(l, l.email, orgName).catch(() => false); });
-  return n;
+  return { revoked, rotated };
 }
 
-export async function setMemberRole(memberId: string, role: string): Promise<R> {
+export async function setMemberRole(memberId: string, role: string): Promise<Retired> {
   const s = await scope("owner");
   const r = roleSchema.safeParse(role);
   if (!s?.org || !r.success) return { ok: false, error: "Sem permissão." };
-  const [before] = await db.select({ role: organizerMembers.role }).from(organizerMembers).where(and(eq(organizerMembers.id, memberId), eq(organizerMembers.organizerId, s.org.id)));
+  const [before] = await db.select({ role: organizerMembers.role, userId: organizerMembers.userId }).from(organizerMembers).where(and(eq(organizerMembers.id, memberId), eq(organizerMembers.organizerId, s.org.id)));
   await db.update(organizerMembers).set({ role: r.data }).where(and(eq(organizerMembers.id, memberId), eq(organizerMembers.organizerId, s.org.id)));
-  // admin que vira portaria deixa de ver os acessos: os que ele viu trocam de token e código
-  if (before?.role === "admin" && r.data !== "admin") await rotateCheckinLinks(s.events.filter((e) => e.organizerId === s.org!.id).map((e) => e.id), s.org.name);
+  // admin que vira portaria: perde os acessos que criou e os que viu trocam de token e código
+  const out = before?.role === "admin" && r.data !== "admin"
+    ? await retireFromPortaria(before.userId, true, s.events.filter((e) => e.organizerId === s.org!.id).map((e) => e.id))
+    : { revoked: 0, rotated: 0 };
   revalidatePath("/painel/equipe");
-  return { ok: true };
+  return { ok: true, ...out };
 }
 
-export async function removeMember(memberId: string): Promise<R> {
+export async function removeMember(memberId: string): Promise<Retired> {
   const s = await scope("owner");
   if (!s?.org) return { ok: false, error: "Sem permissão." };
   const [gone] = await db.delete(organizerMembers).where(and(eq(organizerMembers.id, memberId), eq(organizerMembers.organizerId, s.org.id)))
-    .returning({ userId: organizerMembers.userId, email: organizerMembers.email, role: organizerMembers.role });
-  // quem saiu da equipe perde o acesso pessoal de portaria que o painel criou para ele ("Abrir app da portaria",
-  // rótulo = nome ou e-mail da pessoa): o aparelho fica com um cookie de 30 dias e cada leitura confere se o
-  // acesso ainda está ligado. Os acessos que ele criou para outras pessoas da portaria continuam.
+    .returning({ userId: organizerMembers.userId, role: organizerMembers.role });
   const evIds = s.events.filter((e) => e.organizerId === s.org!.id).map((e) => e.id);
-  if (gone?.userId && evIds.length) {
-    const c = await userContact(gone.userId);
-    const labels = [...new Set([c?.name.trim(), c?.email, gone.email].filter((v): v is string => !!v).map((v) => v.slice(0, 60)))];
-    await db.update(schema.checkinLinks).set({ revokedAt: new Date() })
-      .where(and(
-        eq(schema.checkinLinks.createdByUserId, gone.userId), inArray(schema.checkinLinks.eventId, evIds),
-        inArray(schema.checkinLinks.label, labels), isNull(schema.checkinLinks.email), isNull(schema.checkinLinks.revokedAt),
-      ));
-  }
-  // admin via (e podia copiar) token e código de todos os acessos na tela Equipe: trocam todos (SEC-003)
-  if (gone?.role === "admin") await rotateCheckinLinks(evIds, s.org.name);
+  const out = gone ? await retireFromPortaria(gone.userId, gone.role === "admin", evIds) : { revoked: 0, rotated: 0 };
   revalidatePath("/painel/equipe");
-  return { ok: true };
+  return { ok: true, ...out };
 }
 
 /* ---------- configurações ---------- */

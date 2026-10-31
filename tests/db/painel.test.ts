@@ -65,7 +65,9 @@ describe.skipIf(!TEST_DB)("painel: permissões e integridade (banco de teste)", 
     expect(r.ok).toBe(true);
   });
 
-  it("membro removido perde o acesso pessoal de portaria; acessos que ele criou para outros continuam (S-06)", async () => {
+  // S-06 mantinha os acessos que o removido criou para outras pessoas; o SEC-401 mudou a regra: o e-mail e o destino
+  // desses acessos foram escolhidos por quem saiu, então todos os criados por ele caem (a dona recria o que precisar)
+  it("membro removido perde o acesso pessoal de portaria e os que ele criou para outros (S-06, SEC-401)", async () => {
     const { db, schema } = D;
     const { eq } = await import("drizzle-orm");
     const { owner, org, ev } = await producer();
@@ -81,7 +83,7 @@ describe.skipIf(!TEST_DB)("painel: permissões e integridade (banco de teste)", 
     const a = await db.query.checkinLinks.findFirst({ where: eq(schema.checkinLinks.id, mine.id) });
     const b = await db.query.checkinLinks.findFirst({ where: eq(schema.checkinLinks.id, other.id) });
     expect(a?.revokedAt).not.toBeNull();
-    expect(b?.revokedAt).toBeNull();
+    expect(b?.revokedAt).not.toBeNull();
   });
 
   it("excluir evento com alguém pagando agora é recusado; sem pagamento em andamento, exclui (S-03)", async () => {

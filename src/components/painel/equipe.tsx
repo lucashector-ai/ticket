@@ -23,11 +23,17 @@ export function PainelEquipe(p: EquipeProps) {
   const [busy, start] = useTransition();
   const [email, setEmail] = useState("");
   const owner = p.role === "owner";
-  const run = (fn: () => Promise<{ ok: true } | { ok: false; error: string }>, ok: string) => start(async () => {
+  const run = <T extends { ok: true } | { ok: false; error: string }>(fn: () => Promise<T>, ok: string | ((r: Extract<T, { ok: true }>) => string)) => start(async () => {
     const r = await fn();
-    if (!r.ok) { flash(r.error); return; }
-    flash(ok); router.refresh();
+    if (!r.ok) { flash((r as { error: string }).error); return; }
+    flash(typeof ok === "string" ? ok : ok(r as Extract<T, { ok: true }>)); router.refresh();
   });
+  /** quem sai (ou deixa de ser admin) perde os acessos da portaria que criou; os que viu trocam e a dona reenvia (SEC-401) */
+  const retired = (done: string) => (r: { revoked: number; rotated: number }) => [
+    done,
+    r.revoked ? `${r.revoked} ${r.revoked === 1 ? "acesso da portaria criado pela pessoa foi desligado" : "acessos da portaria criados pela pessoa foram desligados"}.` : "",
+    r.rotated ? `${r.rotated} ${r.rotated === 1 ? "acesso trocou" : "acessos trocaram"} de link e código: reenvie em “Convidar para a portaria” (quem já estava conectado continua).` : "",
+  ].filter(Boolean).join(" ");
 
   return (
     <div className="pane">
@@ -72,9 +78,9 @@ export function PainelEquipe(p: EquipeProps) {
                   <span className="pp-av" style={{ background: m.active ? "#F8FFC2" : "#F0F0EB" }}>{m.email[0]?.toUpperCase()}</span>
                   <span className="pp-i"><b className="pp-n">{m.email}</b><span className="pp-e">{m.me ? "Você" : m.active ? "Ativo" : "Convite enviado: aparece como ativo quando a pessoa entrar na Tickets Win com este e-mail (e confirmar o e-mail)"}</span></span>
                   {owner
-                    ? <select value={m.role} disabled={busy} onChange={(e) => run(() => setMemberRole(m.id, e.target.value), "Função atualizada.")} aria-label={`Função de ${m.email}`}><option value="admin">Admin</option><option value="portaria">Portaria</option></select>
+                    ? <select value={m.role} disabled={busy} onChange={(e) => run(() => setMemberRole(m.id, e.target.value), retired("Função atualizada."))} aria-label={`Função de ${m.email}`}><option value="admin">Admin</option><option value="portaria">Portaria</option></select>
                     : <span className="st draft">{m.role === "admin" ? "Admin" : "Portaria"}</span>}
-                  {owner ? <button className="x-b" type="button" disabled={busy} onClick={() => { if (window.confirm(`Tirar ${m.email} da equipe?`)) run(() => removeMember(m.id), "Removido da equipe."); }}>Remover</button> : <span />}
+                  {owner ? <button className="x-b" type="button" disabled={busy} onClick={() => { if (window.confirm(`Tirar ${m.email} da equipe?`)) run(() => removeMember(m.id), retired("Removido da equipe.")); }}>Remover</button> : <span />}
                 </div>
               ))}
               {p.members.length === 0 && <span className="card-s">Só você por enquanto.</span>}

@@ -85,7 +85,7 @@ export function CheckinLinks({ eventId, links: links0 }: { eventId: string; link
                 <div className="cl-i">
                   <b>{l.label}{l.code && <code className="cl-code">{l.code}</code>}</b>
                   <span>{[
-                    l.email ? (l.sent ? `enviado para ${l.email}` : l.email) : null,
+                    l.email ? (l.sent ? `enviado para ${l.email}` : `${l.email} (ainda não enviado)`) : null,
                     l.opened ? `aberto ${l.opened}` : "ainda não aberto",
                     `${l.scans} ${l.scans === 1 ? "entrada" : "entradas"}`,
                     l.used ? `usado ${l.used}` : null,

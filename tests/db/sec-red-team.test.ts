@@ -187,7 +187,7 @@ describe.skipIf(!TEST_DB)("red team: autorização e conta (banco de teste)", ()
     const link = await as(owner, () => P.createCheckinLink(ev.id, "Porta 2"));
     if (!link.ok) throw new Error("sem acesso");
     const m = await db.query.organizerMembers.findFirst({ where: eq(schema.organizerMembers.organizerId, org.id) });
-    expect(await as(owner, () => P.setMemberRole(m!.id, "portaria"))).toMatchObject({ ok: true });
+    expect(await as(owner, () => P.setMemberRole(m!.id, "portaria"))).toMatchObject({ ok: true, rotated: 1 });
     expect(await activeAccess({ token: link.token })).toBeNull();
     expect(await activeAccess({ code: link.code })).toBeNull();
     // portaria que vira admin não troca nada (não havia o que esconder)
