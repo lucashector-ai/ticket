@@ -13,6 +13,7 @@ import {
 } from "@/lib/mfa";
 import { mailSecurityNotice } from "@/lib/notify";
 import { normalizePhone, phoneValid } from "@/lib/phone";
+import { allowHit } from "@/lib/rate-limit";
 
 type R = { ok: boolean; error?: string };
 
@@ -117,6 +118,8 @@ async function emailTaken(email: string) {
   } catch { return false; }
 }
 
+const NEW_EMAILS_PER_DAY = 10;
+
 /** Passo 2: manda o código para o e-mail novo (só depois do código do e-mail atual). Também serve de "reenviar". */
 export async function requestNewEmail(newEmail: string): Promise<R> {
   const { user } = await me();
@@ -124,7 +127,10 @@ export async function requestNewEmail(newEmail: string): Promise<R> {
   if (!v.success) return { ok: false, error: "Digite um e-mail válido." };
   if (v.data === user.email.toLowerCase()) return { ok: false, error: "Este já é o seu e-mail." };
   if (!(await hasStep(user.id, "email"))) return { ok: false, error: "A autorização expirou. Cancele e comece de novo." };
-  if (await emailTaken(v.data)) return { ok: false, error: "Já existe uma conta com este e-mail." };
+  // a troca servia para testar quais e-mails têm conta (SEC-309): cada e-mail novo conta, até 10 por dia por conta,
+  // e o e-mail que já é de outra conta recebe a mesma resposta (nenhum código sai; a confirmação também confere)
+  if (!(await allowHit(`novo-email:${user.id}`, NEW_EMAILS_PER_DAY, 86_400))) return { ok: false, error: "Muitas tentativas de troca de e-mail hoje. Tente de novo amanhã." };
+  if (await emailTaken(v.data)) return { ok: true };
   return issueCode(user.id, "newemail", v.data, (await mfaSettings(user.id)).name);
 }
 
