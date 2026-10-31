@@ -44,6 +44,14 @@ export async function reserveAttempt(subject: string, bucket: string, max: numbe
   }
 }
 
+/** Quantas tentativas o balde tem na janela (só lê). */
+export async function countAttempts(subject: string, bucket: string, windowSec: number): Promise<number> {
+  const { securityEvents: t } = schema;
+  const r = await db.select({ n: sql<number>`count(*)::int` }).from(t)
+    .where(and(eq(t.userId, subject), eq(t.kind, KIND(bucket)), sql`${t.createdAt} > now() - make_interval(secs => ${windowSec})`));
+  return Number(r[0]?.n ?? 0);
+}
+
 /** Zera o balde (ex.: código certo). */
 export async function clearAttempts(subject: string, bucket: string) {
   const { securityEvents: t } = schema;

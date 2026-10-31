@@ -1,12 +1,12 @@
 "use server";
 
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { headers } from "next/headers";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { checkinCounts, checkinTicket } from "@/lib/checkin";
 import { checkinGuest, doorGuests, guestKind, guestCounts, type DoorGuest } from "@/lib/guest-list";
 import { activeAccess, clearPortariaCookie, normalizeCode, portariaSession, setPortariaCookie } from "@/lib/portaria";
+import { addHit, limitReached } from "@/lib/rate-limit";
 
 export type PortariaScan = {
   ok: boolean; error?: string; off?: boolean;
@@ -23,13 +23,12 @@ const MAX_TRIES = 8;
 export async function enterWithCode(raw: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const code = normalizeCode(raw);
   const ip = (await headers()).get("cf-connecting-ip") ?? (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-  const { env } = await getCloudflareContext({ async: true });
+  // só o código errado conta, no contador atômico (SEC-302)
   const key = `portaria-try:${ip}`;
-  const tries = Number((await env.KV.get(key)) ?? 0);
-  if (tries >= MAX_TRIES) return { ok: false, error: "Muitas tentativas. Espere 15 minutos e tente de novo." };
+  if (await limitReached(key, MAX_TRIES, 15 * 60)) return { ok: false, error: "Muitas tentativas. Espere 15 minutos e tente de novo." };
   const link = code ? await activeAccess({ code }) : null;
   if (!link) {
-    await env.KV.put(key, String(tries + 1), { expirationTtl: 15 * 60 });
+    await addHit(key, 15 * 60);
     return { ok: false, error: "Código inválido, desligado ou de um evento que já acabou." };
   }
   await setPortariaCookie(link.id);

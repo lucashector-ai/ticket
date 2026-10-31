@@ -10,7 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * corrigir (fase 2), eles passam a falhar de verdade: troque `it.fails` por `it`.
  *   SEC-301: tentativas de código (e-mail e app autenticador) contadas com ler-e-gravar no KV (corrigido pelo AppSec:
  *            contador atômico no banco, reservado antes de comparar; viraram `it`)
- *   SEC-302: limitador genérico (`allowHit`) não é atômico e libera quando o KV recusa a escrita
+ *   SEC-302: limitador genérico (`allowHit`) não é atômico e libera quando o KV recusa a escrita (corrigido pelo
+ *            AppSec: usa o contador atômico do banco e falha fechada; viraram `it`)
  */
 
 /* ---------- KV simulado (com latência opcional e falha de escrita opcional) ---------- */
@@ -59,8 +60,14 @@ vi.mock("@/db", async () => ({
  * memória: a soma acontece antes de qualquer await, então é atômica como a do banco. O que o teste confere é que
  * checkCode/checkSecondFactor reservam a tentativa ANTES de comparar o palpite. */
 const tries = new Map<string, number[]>();
+const counter = { down: false };
 vi.mock("@/lib/attempts", () => ({
+  countAttempts: async (subject: string, bucket: string, windowSec: number) => {
+    if (counter.down) throw new Error("banco fora");
+    return (tries.get(`${subject}|${bucket}`) ?? []).filter((t) => t > Date.now() - windowSec * 1000).length;
+  },
   reserveAttempt: async (subject: string, bucket: string, max: number, windowSec: number) => {
+    if (counter.down) throw new Error("banco fora");
     const k = `${subject}|${bucket}`, now = Date.now();
     const list = (tries.get(k) ?? []).filter((t) => t > now - windowSec * 1000);
     if (list.length >= max) { tries.set(k, list); return { ok: false }; }
@@ -93,7 +100,7 @@ const wrongOf = (right: string) => String((Number(right) + 500_000) % 1_000_000)
 const USER = "00000000-0000-4000-8000-0000000000a5";
 
 beforeEach(() => {
-  kv.clear(); tries.clear(); mailed.length = 0; kvMode.latency = false; kvMode.failPut = false;
+  kv.clear(); tries.clear(); counter.down = false; mailed.length = 0; kvMode.latency = false; kvMode.failPut = false;
   Object.assign(profile, { mfaMethod: null, mfaTotp: null, mfaRecovery: [] });
   vi.useFakeTimers({ now: new Date("2026-10-31T12:00:10Z"), toFake: ["Date"] });
 });
@@ -129,19 +136,21 @@ describe("limitador genérico (src/lib/rate-limit.ts)", () => {
     reqHeaders.delete("x-forwarded-for");
   });
 
-  it.fails("SEC-302: 30 pedidos simultâneos com máximo 12 deixam passar no máximo 12", async () => {
+  it("SEC-302: 30 pedidos simultâneos com máximo 12 deixam passar no máximo 12", async () => {
     const { allowHit } = await import("@/lib/rate-limit");
     kvMode.latency = true;
     const r = await Promise.all(Array.from({ length: 30 }, () => allowHit(`pedido:${USER}`, 12, 600)));
     expect(r.filter(Boolean).length).toBeLessThanOrEqual(12);
   });
 
-  it.fails("SEC-302: com o KV recusando a escrita (limite de 1 escrita/s por chave), o limitador não libera tudo", async () => {
-    const { allowHit } = await import("@/lib/rate-limit");
+  it("SEC-302: com o contador fora do ar (antes: o KV recusando a escrita), o limitador não libera tudo (falha fechada)", async () => {
+    const { allowHit, limitReached } = await import("@/lib/rate-limit");
     kvMode.failPut = true;
+    counter.down = true;
     const r: boolean[] = [];
     for (let i = 0; i < 20; i++) r.push(await allowHit(`signup:203.0.113.7`, 12, 3600));
     expect(r.filter(Boolean).length).toBeLessThanOrEqual(12);
+    expect(await limitReached("cupom:203.0.113.7", 20)).toBe(true);
   });
 });
 

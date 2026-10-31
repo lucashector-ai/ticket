@@ -1,6 +1,5 @@
 "use server";
 
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -12,6 +11,7 @@ import { eventClosedFor, fulfillOrder, paidView, type FulfillOk } from "@/lib/pa
 import { chargeCard } from "@/lib/payments/intents";
 import { releasePending } from "@/lib/payments/pending";
 import { paidOf, stripe, stripeEnabled, stripeErrorMessage, stripeRef } from "@/lib/payments/stripe";
+import { allowHit } from "@/lib/rate-limit";
 
 /*
  * Pagamento pela Stripe dentro do checkout. O pedido só vira pago quando a Stripe confirma: pelo webhook
@@ -56,17 +56,8 @@ export type PayCardInput = z.input<typeof payCardSchema>;
 /** tentativas de cobrança no cartão por conta a cada hora (freia teste de cartões roubados) */
 const CARD_TRIES_PER_HOUR = 10;
 
-/** Conta mais uma tentativa; false quando já passou do limite. Sem KV (dev), não limita. */
-async function cardTryAllowed(userId: string) {
-  try {
-    const { env } = await getCloudflareContext({ async: true });
-    const key = `card-try:${userId}`;
-    const n = Number((await env.KV.get(key)) ?? 0);
-    if (n >= CARD_TRIES_PER_HOUR) return false;
-    await env.KV.put(key, String(n + 1), { expirationTtl: 3600 });
-  } catch { /* sem KV: segue */ }
-  return true;
-}
+/** Conta mais uma tentativa; false quando já passou do limite (contador atômico, falha fechada: SEC-302). */
+const cardTryAllowed = (userId: string) => allowHit(`card-try:${userId}`, CARD_TRIES_PER_HOUR, 3600);
 
 /** Cobra o cartão (novo, do Payment Element, ou salvo na conta) no pedido pendente. */
 export async function payCard(input: PayCardInput): Promise<PayCardResult> {

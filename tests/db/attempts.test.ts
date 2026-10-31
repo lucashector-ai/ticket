@@ -46,6 +46,17 @@ describe.skipIf(!TEST_DB)("contador atômico de tentativas (banco de teste)", ()
     expect(await A.reserveAttempt(s, "code:bank", 1, 300)).toEqual({ ok: true, n: 1 });
   });
 
+  it("SEC-302: allowHit no banco: 30 ao mesmo tempo com máximo 12 passam exatamente 12; limitReached/addHit contam só o que foi somado", async () => {
+    const R = await import("@/lib/rate-limit");
+    const key = subject();
+    const r = await Promise.all(Array.from({ length: 30 }, () => R.allowHit(key, 12, 600)));
+    expect(r.filter(Boolean)).toHaveLength(12);
+    const miss = subject();
+    for (let i = 0; i < 50; i++) expect(await R.limitReached(miss, 3)).toBe(false);
+    await Promise.all([R.addHit(miss, 600), R.addHit(miss, 600), R.addHit(miss, 600)]);
+    expect(await R.limitReached(miss, 3)).toBe(true);
+  });
+
   it("as tentativas não aparecem no histórico de segurança da pessoa", async () => {
     const s = subject();
     await A.reserveAttempt(s, "totp", 6, 300);
