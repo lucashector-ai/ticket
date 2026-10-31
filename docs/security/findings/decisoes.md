@@ -144,3 +144,17 @@ Valores iniciais em `src/lib/ai-quota.ts`: por conta 30 descrições, 20 mapas e
 
 ### D-SEC-03-7 · Rotação do segredo (SEC-200)
 Código pronto (chaves por finalidade, antigas aceitas). Plano passo a passo em `security-fixes.md` › SEC-200: `TW_SIGNING_SECRET` → alguns dias → `TW_LEGACY_SECRET` = valor atual do `NEON_AUTH_COOKIE_SECRET` + troca do `NEON_AUTH_COOKIE_SECRET` → apagar `TW_LEGACY_SECRET` quando não houver evento futuro com ingresso antigo. Nada foi girado.
+
+---
+
+## Agente 06 (QA de segurança e validação independente)
+
+Detalhes em `vulnerability-register.md` e `security-final-report.md`. Nenhum código de produção alterado; nenhuma configuração tocada.
+
+### D-SEC-06-1 · Como a produção é construída (SEC-402, P1)
+- **Hoje:** a trava do modo de teste (SEC-100) decide "é produção" por `NEXT_PUBLIC_SITE_URL`, e o Next grava esse valor no build, inclusive no código do servidor. O `.env.local` desta pasta tem um endereço que não é o da produção; o build de 29/10 em `.open-next` tem `http://localhost:3000` gravado. Um build feito aqui e publicado liga o modo de teste na produção mesmo sem `ALLOW_TEST_PAYMENTS`, se faltar a chave da Stripe.
+- **Decidir:** (a) publicar só builds da integração da Cloudflare ou de cópia limpa (sem `.env.local`), e o AppSec troca a regra para "num build de produção, modo de teste só com `ALLOW_TEST_PAYMENTS=1`"; (b) só a parte operacional. **Recomendação:** (a).
+
+### D-SEC-06-2 · Neon Auth hospedado acessível direto (SEC-403, P2, hipótese)
+- **Hoje:** a lista de permissão do `/api/auth/*` vale para o nosso domínio; o servidor do Neon Auth é público e o endereço aparece na tela do Google. Pedidos diretos a ele não passam pelo Turnstile nem pelos freios de login e de ativação do site (o freio do webhook continua valendo para os e-mails).
+- **Decidir/perguntar ao Neon:** desligar plugins não usados (link mágico; "entrar" por código, se o Apple puder seguir de outro jeito), conferir "trusted origins" e limites por IP, e se dá para exigir que as rotas de login venham do nosso Worker.
