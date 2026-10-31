@@ -32,20 +32,30 @@ export async function dropResetLink(t: string) {
   await (await kv()).delete(keyOf(t));
 }
 
-/** Um envio a cada 30s e no máximo 6 por hora por chave (e-mail); o Neon Auth também limita. */
-export async function linkThrottled(key: string) {
+/**
+ * Um envio a cada 30s e no máximo 6 por hora por chave (e-mail); o Neon Auth também limita.
+ * O webhook do Neon Auth usa a mesma função com um intervalo menor (segunda barreira, SEC-303).
+ */
+export async function linkThrottled(key: string, opts: { gapMs?: number; perHour?: number } = {}) {
+  const { gapMs = 30_000, perHour = LINKS_PER_HOUR } = opts;
   const store = await kv();
   const h = createHash("sha256").update(key.toLowerCase()).digest("base64url");
   const k = `pwreq:${h}`, kh = `pwreqh:${h}`;
   const at = Number((await store.get(k)) ?? 0);
-  if (at && Date.now() - at < 30_000) return true;
+  if (at && Date.now() - at < gapMs) return true;
   // além dos 30 s entre pedidos, no máximo 6 por hora para o mesmo e-mail: ninguém usa o site para
   // encher a caixa de entrada de outra pessoa (a resposta é a mesma com ou sem conta)
   const n = Number((await store.get(kh)) ?? 0);
-  if (n >= LINKS_PER_HOUR) return true;
+  if (n >= perHour) return true;
   await store.put(k, String(Date.now()), { expirationTtl: 60 });
   await store.put(kh, String(n + 1), { expirationTtl: 3600 });
   return false;
 }
 
 const LINKS_PER_HOUR = 6;
+
+/** Desfaz o intervalo mínimo de `key` (o envio falhou: a nova tentativa do mesmo envio não pode ficar presa). */
+export async function releaseThrottle(key: string) {
+  const h = createHash("sha256").update(key.toLowerCase()).digest("base64url");
+  await (await kv()).delete(`pwreq:${h}`);
+}

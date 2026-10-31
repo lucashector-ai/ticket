@@ -43,7 +43,10 @@ export function ActivateForm({ initialEmail, known, verified, next, why = null }
     setBusy(true); setErr(null);
     try {
       const res = await (await loadAuthClient()).emailOtp.verifyEmail({ email: email.trim(), otp: v });
-      if (res?.error) { setErr("Código incorreto ou expirado. Confira ou peça outro."); setCode(""); }
+      if (res?.error) {
+        // 429: freio de tentativas do site (o servidor manda a mensagem pronta)
+        setErr(res.error.status === 429 && res.error.message ? res.error.message : "Código incorreto ou expirado. Confira ou peça outro."); setCode("");
+      }
       else {
         flash("Conta ativada!");
         // veio de um convite (ex.: ingresso enviado por alguém): volta direto para ele

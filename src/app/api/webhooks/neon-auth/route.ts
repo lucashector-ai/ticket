@@ -4,6 +4,14 @@ import { catchAppleOtp } from "@/lib/auth/apple";
 import { verifyNeonWebhook } from "@/lib/auth/webhook";
 import { emailEnabled, logEmails } from "@/lib/email";
 import { mailAuthCode, mailAuthLink, mailWelcome } from "@/lib/notify";
+import { linkThrottled, releaseThrottle } from "@/lib/password-link";
+
+/**
+ * Segunda barreira antes de mandar código ou link (SEC-303): no máximo 1 a cada 10 s e 8 por hora por tipo e
+ * destinatário. As nossas ações já freiam antes (30 s e 6/h), então o uso normal nunca chega aqui; o que chega é
+ * pedido feito direto ao Neon Auth, sem passar pelo site.
+ */
+const WEBHOOK_MAIL = { gapMs: 10_000, perHour: 8 };
 
 /*
  * Webhook do Neon Auth (Console do Neon → Auth → Configuration → Webhooks):
@@ -43,11 +51,21 @@ export async function POST(req: Request) {
   if (ev.event_type === "send.otp" || ev.event_type === "send.magic_link") {
     if (!emailEnabled()) return Response.json({ error: "e-mail não configurado" }, { status: 503 });
     if (d.delivery_preference === "sms") return Response.json({ ok: true, skipped: "sms" });
+    // passou do freio: responde 200 (o Neon não repete) sem mandar nada, e registra
+    const brake = `wh:${ev.event_type}:${d.otp_type ?? d.link_type ?? ""}:${email}`;
+    if (await linkThrottled(brake, WEBHOOK_MAIL)) {
+      await logEmails("webhook-freio", [{ to: email, subject: `${ev.event_type} ${d.otp_type ?? d.link_type ?? ""}`.trim() }], false, "freio do webhook (SEC-303)");
+      await env.KV.put(seenKey, "1", { expirationTtl: 60 * 60 * 24 });
+      return Response.json({ ok: true, throttled: true });
+    }
     const sent = ev.event_type === "send.otp"
       ? await mailAuthCode(d.otp_type ?? "sign-in", email, d.otp_code ?? "", ev.user?.name)
       : await mailAuthLink(d.link_type ?? "sign-in", email, d.link_url ?? "");
     // falhou no Resend: 5xx faz o Neon tentar de novo
-    if (!sent) return Response.json({ error: "falha ao enviar" }, { status: 502 });
+    if (!sent) {
+      await releaseThrottle(brake);
+      return Response.json({ error: "falha ao enviar" }, { status: 502 });
+    }
   } else if (ev.event_type === "user.created") {
     // conta com Google já vem com o e-mail confirmado: só boas-vindas. Com senha, o e-mail de ativação faz esse papel.
     if (email && d.auth_provider && d.auth_provider !== "credential") after(() => mailWelcome(email, ev.user?.name));
