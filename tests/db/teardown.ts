@@ -12,5 +12,7 @@ export default function setup() {
     if (process.env.DATABASE_URL_PROD && process.env.DATABASE_URL_PROD === url) throw new Error("TEST_DATABASE_URL é a produção: recusado.");
     const sql = neon(url);
     await sql`delete from user_profiles where user_id like 'qa-test-%'`;
+    // tentativas contadas pelos limitadores (SEC-301/302) das contas, IPs e chaves fictícias desta rodada
+    await sql`delete from security_events where kind like 'try:%' and user_id like '%qa-test-%'`;
   };
 }

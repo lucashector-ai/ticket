@@ -7,7 +7,9 @@ import { qaCpf, qaId, TEST_DB } from "./setup";
  */
 vi.mock("next/server", async (orig) => ({ ...(await orig<typeof import("next/server")>()), after: () => {} }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
-vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }), headers: async () => new Headers({ "cf-connecting-ip": "203.0.113.77" }) }));
+// IP fictício próprio desta rodada (os erros de cupom ficam contados no banco por 10 min)
+const IP = qaId("ip");
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }), headers: async () => new Headers({ "cf-connecting-ip": IP }) }));
 type U = { id: string; email: string; name: string; emailVerified: boolean };
 const session: { user: U | null } = { user: null };
 vi.mock("@/lib/auth/server", () => ({ getSessionUser: async () => session.user }));
@@ -50,6 +52,7 @@ describe.skipIf(!TEST_DB || !!process.env.STRIPE_SECRET_KEY)("SEC-307/SEC-008: c
       await db.delete(schema.events).where(inArray(schema.events.id, created));
     }
     if (users.length) await db.delete(schema.userProfiles).where(inArray(schema.userProfiles.userId, users));
+    await db.delete(schema.securityEvents).where(inArray(schema.securityEvents.userId, [`cupom:${IP}`, ...users.map((u) => `cupom:u:${u}`), ...users.map((u) => `pedido:${u}`)]));
   });
 
   it("cupom de outro evento e cupom vencido respondem igual a cupom inexistente", async () => {
@@ -72,6 +75,8 @@ describe.skipIf(!TEST_DB || !!process.env.STRIPE_SECRET_KEY)("SEC-307/SEC-008: c
 
   it("10 cupons errados no pedido por conta: o 11º é recusado pelo freio (sem conferir o código)", async () => {
     kv.clear();
+    const { inArray } = await import("drizzle-orm");
+    await D.db.delete(D.schema.securityEvents).where(inArray(D.schema.securityEvents.userId, [`cupom:${IP}`]));
     const { ev, tt } = await event();
     const u = person();
     const r = [];
