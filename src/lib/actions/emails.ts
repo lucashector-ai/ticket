@@ -3,7 +3,10 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
+import { reserveAttempt } from "@/lib/attempts";
 import { getSessionUser } from "@/lib/auth/server";
+import { emailConfirmed } from "@/lib/auth/verified";
+import { isProducer } from "@/lib/data/producer";
 import { spDate } from "@/lib/criar/model";
 import { getPainelScope } from "@/lib/data/painel";
 import { emailEnabled } from "@/lib/email";
@@ -19,10 +22,15 @@ import { dateNice } from "@/lib/format";
 const { emailCampaigns, emailTemplates } = schema;
 type R<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
-/** Produtor logado (admin ou dono) e os eventos dele. */
+/**
+ * Produtor logado (admin ou dono) e os eventos dele. Só produtor (dona, equipe ou produtor antigo) com o e-mail
+ * confirmado: conta qualquer recebia papel "dono" por padrão e mandava e-mail com a marca e o domínio da Tickets Win
+ * (SEC-304, SEC-010).
+ */
 async function scope() {
   const user = await getSessionUser();
   if (!user) return null;
+  if (!(await isProducer(user)) || !(await emailConfirmed(user))) return null;
   const s = await getPainelScope(user);
   if (s.role === "portaria") return null;
   return { user, org: s.org, events: s.events, sender: { orgId: s.org?.id ?? null, userId: user.id } };
@@ -132,11 +140,23 @@ export async function audienceCount(audience: Audience): Promise<R<{ total: numb
   return { ok: true, total: list.length };
 }
 
+const TESTS_PER_CAMPAIGN_HOUR = 5, TESTS_PER_DAY = 20;
+
 export async function sendTest(id: string): Promise<R<{ to: string }>> {
   const sc = await scope();
   const c = sc && (await campaignOf(sc, id));
   if (!sc || !c) return { ok: false, error: "Campanha não encontrada." };
   if (!sc.user.email) return { ok: false, error: "Sua conta não tem e-mail." };
+  // e-mail de teste: 5 por campanha por hora e 20 por conta por dia (contador atômico, SEC-304)
+  try {
+    if (!(await reserveAttempt(`campaign:${c.id}`, "mailtest", TESTS_PER_CAMPAIGN_HOUR, 3600)).ok
+      || !(await reserveAttempt(sc.user.id, "mailtest:day", TESTS_PER_DAY, 86_400)).ok) {
+      return { ok: false, error: "Muitos e-mails de teste. Tente de novo mais tarde." };
+    }
+  } catch (e) {
+    console.error("sendTest attempts", e);
+    return { ok: false, error: "Não foi possível enviar o teste agora. Tente de novo em instantes." };
+  }
   const r = await sendTestEmail(c, sc.user.email, sc.user.name ?? "");
   if (!r.ok) return r;
   await db.update(emailCampaigns).set({ testSentAt: new Date() }).where(eq(emailCampaigns.id, c.id));

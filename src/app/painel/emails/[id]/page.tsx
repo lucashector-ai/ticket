@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CampaignView, type CampaignProps } from "@/components/painel/emails/campaign";
 import { db, schema } from "@/db";
+import { activateHref, emailConfirmed } from "@/lib/auth/verified";
 import { emailEnabled } from "@/lib/email";
 import { campaignStats, designEventIds, loadEvents, orgInfo, pct, resolveAudience, upcomingIds } from "@/lib/mail/data";
 import { normalizeDesign } from "@/lib/mail/design";
@@ -26,6 +27,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const { user, org, events } = await painelAccess("admin");
+  if (!(await emailConfirmed(user))) redirect(activateHref("/painel/emails"));
   const C = schema.emailCampaigns;
   const c = await db.query.emailCampaigns.findFirst({ where: and(eq(C.id, id), org ? eq(C.organizerId, org.id) : and(isNull(C.organizerId), eq(C.userId, user.id))) });
   if (!c) notFound();

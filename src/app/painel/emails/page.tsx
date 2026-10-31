@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { PainelEmails, type EmailsProps } from "@/components/painel/emails/list";
 import { db, schema } from "@/db";
+import { activateHref, emailConfirmed } from "@/lib/auth/verified";
 import { emailEnabled } from "@/lib/email";
 import { campaignStats, pct, reachable } from "@/lib/mail/data";
 import { TEMPLATES } from "@/lib/mail/templates";
@@ -16,6 +18,8 @@ const sp = (d: Date) => new Intl.DateTimeFormat("pt-BR", { day: "numeric", month
 /** Campanhas de e-mail do produtor: lista, números e o botão de nova campanha. */
 export default async function PainelEmailsPage() {
   const { user, org, events } = await painelAccess("admin");
+  // e-mail marketing só com o e-mail da conta confirmado (SEC-304): as ações recusam sem isso
+  if (!(await emailConfirmed(user))) redirect(activateHref("/painel/emails"));
   const C = schema.emailCampaigns, T = schema.emailTemplates;
   const scope = org ? eq(C.organizerId, org.id) : and(isNull(C.organizerId), eq(C.userId, user.id));
   const [rows, saved] = await Promise.all([
