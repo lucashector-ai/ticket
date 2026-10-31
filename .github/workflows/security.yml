@@ -1,0 +1,90 @@
+# Verificações de segurança e qualidade em cada pull request e em cada push para claude/**.
+# Só lê o código: sem segredos, sem deploy, sem escrita no repositório. O deploy de produção é feito pela
+# integração da Cloudflare no push do branch de produção e não depende deste workflow.
+# Decisões (bloqueia ou avisa) e motivos: docs/security/findings/blue-team.md (SEC-205, SEC-212).
+name: Segurança
+
+on:
+  pull_request:
+  push:
+    branches: ["claude/**"]
+
+# token do GITHUB só com leitura do conteúdo; nenhuma etapa precisa de mais
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # testes de banco (tests/db) ficam pulados sem TEST_DATABASE_URL; o CI nunca recebe URL de banco
+  TEST_DATABASE_URL: ""
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  codigo:
+    name: Tipos, lint e testes unitários
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # versão do pnpm vem de "packageManager" no package.json
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "22"
+          cache: pnpm
+      # lockfile congelado: o CI instala exatamente o que foi revisado; scripts de instalação só os de
+      # pnpm.onlyBuiltDependencies (esbuild, workerd, sharp)
+      - run: pnpm install --frozen-lockfile
+      - name: Tipos (tsc)
+        run: pnpm exec tsc --noEmit
+      - name: Lint (eslint)
+        run: pnpm exec eslint .
+      - name: Testes unitários (sem banco)
+        run: pnpm exec vitest run tests/unit
+
+  dependencias:
+    name: Dependências vulneráveis (pnpm audit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "22"
+      # o audit lê só o lockfile (não precisa instalar). Bloqueia aviso alto/crítico de dependência de
+      # produção que não esteja avaliado em .github/audit-allowlist.json (com prazo de revisão).
+      - name: pnpm audit --prod --audit-level=high
+        run: |
+          pnpm audit --prod --audit-level=high --json > "$RUNNER_TEMP/audit.json" || true
+          node .github/scripts/audit-gate.mjs "$RUNNER_TEMP/audit.json" .github/audit-allowlist.json
+
+  segredos:
+    name: Segredos no código e no histórico (Gitleaks)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: "8.28.0"
+      GITLEAKS_SHA256: "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # binário oficial com checksum conferido (a action do Gitleaks pede licença paga em organizações)
+      - name: Instalar Gitleaks
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/gitleaks.tgz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
+      # histórico inteiro (todas as refs baixadas); --redact: o log nunca mostra o valor encontrado
+      - name: Varredura
+        run: '"$RUNNER_TEMP/gitleaks" git --redact --no-banner --exit-code 1 --log-opts="--all" .'

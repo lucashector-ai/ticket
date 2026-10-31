@@ -1,0 +1,26 @@
+{
+  "sobre": "Avisos altos/críticos do pnpm audit já avaliados e aceitos por tempo limitado. Cada um precisa de motivo, referência e data de revisão; vencida a data, o CI volta a falhar até alguém reavaliar. Ver docs/security/findings/blue-team.md (SEC-205).",
+  "avisos": [
+    {
+      "ghsa": "GHSA-965c-763c-88jm",
+      "pacote": "better-auth 1.7.6 (dentro de @neondatabase/auth 0.7.0-beta)",
+      "motivo": "Falha no callback OAuth do servidor de login. Nosso Worker só usa do SDK o repasse para o Neon Auth hospedado e a leitura de cookies; o callback roda no Neon. Correção depende do Neon (SDK novo ou servidor >= 1.7.7).",
+      "referencia": "D-06, SEC-205",
+      "revisar_ate": "2026-12-31"
+    },
+    {
+      "ghsa": "GHSA-r4xp-prcw-77qf",
+      "pacote": "better-auth 1.7.6 (dentro de @neondatabase/auth 0.7.0-beta)",
+      "motivo": "Plugin oauth-proxy do servidor de login; não roda no nosso Worker. Correção depende do Neon.",
+      "referencia": "D-06, SEC-205",
+      "revisar_ate": "2026-12-31"
+    },
+    {
+      "ghsa": "GHSA-mrhx-c7xc-m3w5",
+      "pacote": "zod 4.5.4 (dentro de @neondatabase/auth 0.7.0-beta)",
+      "motivo": "Cópia do zod usada só pelo cliente do SDK de login; o nosso zod (validação do servidor) é 4.6.7, já corrigido.",
+      "referencia": "D-06, SEC-205",
+      "revisar_ate": "2026-12-31"
+    }
+  ]
+}
