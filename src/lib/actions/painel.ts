@@ -165,11 +165,43 @@ export async function inviteMember(email: string, role: string): Promise<R> {
   return { ok: true };
 }
 
+/**
+ * Troca token e código de todos os acessos de portaria ligados dos eventos `evIds` (SEC-003). Quem deixa de ser admin
+ * viu (e pode ter copiado) esses valores na tela Equipe. Aparelho já conectado continua (o cookie guarda só o id do
+ * acesso); quem recebeu o acesso por e-mail recebe o link novo; os outros pegam o código novo no painel.
+ */
+async function rotateCheckinLinks(evIds: string[], orgName: string) {
+  if (!evIds.length) return 0;
+  const { checkinLinks } = schema;
+  const live = await db.query.checkinLinks.findMany({
+    where: and(inArray(checkinLinks.eventId, evIds), isNull(checkinLinks.revokedAt)),
+    columns: { id: true, label: true, eventId: true, email: true },
+  });
+  const resend: { id: string; token: string; code: string; label: string; eventId: string; email: string }[] = [];
+  let n = 0;
+  for (const l of live) {
+    for (let i = 0; i < 5; i++) {
+      const token = randomBytes(18).toString("base64url"), code = newAccessCode();
+      try {
+        await db.update(checkinLinks).set({ token, code }).where(eq(checkinLinks.id, l.id));
+        n++;
+        if (l.email) resend.push({ ...l, token, code, email: l.email });
+        break;
+      } catch { /* colisão rara de código: tenta outro */ }
+    }
+  }
+  if (resend.length) after(async () => { for (const l of resend) await deliver(l, l.email, orgName).catch(() => false); });
+  return n;
+}
+
 export async function setMemberRole(memberId: string, role: string): Promise<R> {
   const s = await scope("owner");
   const r = roleSchema.safeParse(role);
   if (!s?.org || !r.success) return { ok: false, error: "Sem permissão." };
+  const [before] = await db.select({ role: organizerMembers.role }).from(organizerMembers).where(and(eq(organizerMembers.id, memberId), eq(organizerMembers.organizerId, s.org.id)));
   await db.update(organizerMembers).set({ role: r.data }).where(and(eq(organizerMembers.id, memberId), eq(organizerMembers.organizerId, s.org.id)));
+  // admin que vira portaria deixa de ver os acessos: os que ele viu trocam de token e código
+  if (before?.role === "admin" && r.data !== "admin") await rotateCheckinLinks(s.events.filter((e) => e.organizerId === s.org!.id).map((e) => e.id), s.org.name);
   revalidatePath("/painel/equipe");
   return { ok: true };
 }
@@ -178,7 +210,7 @@ export async function removeMember(memberId: string): Promise<R> {
   const s = await scope("owner");
   if (!s?.org) return { ok: false, error: "Sem permissão." };
   const [gone] = await db.delete(organizerMembers).where(and(eq(organizerMembers.id, memberId), eq(organizerMembers.organizerId, s.org.id)))
-    .returning({ userId: organizerMembers.userId, email: organizerMembers.email });
+    .returning({ userId: organizerMembers.userId, email: organizerMembers.email, role: organizerMembers.role });
   // quem saiu da equipe perde o acesso pessoal de portaria que o painel criou para ele ("Abrir app da portaria",
   // rótulo = nome ou e-mail da pessoa): o aparelho fica com um cookie de 30 dias e cada leitura confere se o
   // acesso ainda está ligado. Os acessos que ele criou para outras pessoas da portaria continuam.
@@ -192,6 +224,8 @@ export async function removeMember(memberId: string): Promise<R> {
         inArray(schema.checkinLinks.label, labels), isNull(schema.checkinLinks.email), isNull(schema.checkinLinks.revokedAt),
       ));
   }
+  // admin via (e podia copiar) token e código de todos os acessos na tela Equipe: trocam todos (SEC-003)
+  if (gone?.role === "admin") await rotateCheckinLinks(evIds, s.org.name);
   revalidatePath("/painel/equipe");
   return { ok: true };
 }

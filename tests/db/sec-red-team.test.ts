@@ -9,6 +9,7 @@ import { qaId, TEST_DB } from "./setup";
  *   SEC-001 · conta da equipe (portaria/admin) conclui o "cadastro do produtor aprovado" e vira produtor sem aprovação
  *             (corrigido pelo AppSec: `it` comum, regressão)
  *   SEC-003 · ex-admin da equipe continua com os acessos da portaria que viu no painel (tokens não mudam na saída)
+ *             (corrigido pelo AppSec: `it` comum, regressão)
  *   SEC-004 · sessão com 2FA por e-mail troca para um app autenticador novo sem o código do e-mail
  * Só contas fictícias "qa-test-…" com e-mail @example.com, sem login real (sessão simulada).
  */
@@ -146,7 +147,7 @@ describe.skipIf(!TEST_DB)("red team: autorização e conta (banco de teste)", ()
     }
   });
 
-  it.fails("SEC-003: depois que a dona remove o admin, os acessos da portaria que ele via no painel deixam de abrir o app", async () => {
+  it("SEC-003: depois que a dona remove o admin, os acessos da portaria que ele via no painel deixam de abrir o app", async () => {
     const { db, schema } = D;
     const { eq } = await import("drizzle-orm");
     const P = await import("@/lib/actions/painel");
@@ -167,6 +168,31 @@ describe.skipIf(!TEST_DB)("red team: autorização e conta (banco de teste)", ()
     console.log("[SEC-003]", JSON.stringify({ adminViaOEvento: seen, tokenAindaAbre: stillOpens, codigoAindaAbre: stillCode }));
     expect(stillOpens).toBe(false);
     expect(stillCode).toBe(false);
+    // o aparelho da porta já conectado (cookie com o id do acesso) continua lendo; o acesso não foi desligado
+    expect(await activeAccess({ id: link.id })).toBeTruthy();
+    const now = await db.query.checkinLinks.findFirst({ where: eq(schema.checkinLinks.id, link.id) });
+    expect(now?.revokedAt ?? null).toBeNull();
+    expect(now?.code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  });
+
+  it("SEC-003 (rebaixamento): admin que vira portaria também deixa de abrir com o token e o código que viu", async () => {
+    const { db, schema } = D;
+    const { eq } = await import("drizzle-orm");
+    const P = await import("@/lib/actions/painel");
+    const { activeAccess } = await import("@/lib/portaria");
+    const owner = person("dona3"), admin = person("admin3");
+    const { org, ev } = await approvedOrg(owner);
+    expect(await as(owner, () => P.inviteMember(admin.email, "admin"))).toMatchObject({ ok: true });
+    const link = await as(owner, () => P.createCheckinLink(ev.id, "Porta 2"));
+    if (!link.ok) throw new Error("sem acesso");
+    const m = await db.query.organizerMembers.findFirst({ where: eq(schema.organizerMembers.organizerId, org.id) });
+    expect(await as(owner, () => P.setMemberRole(m!.id, "portaria"))).toMatchObject({ ok: true });
+    expect(await activeAccess({ token: link.token })).toBeNull();
+    expect(await activeAccess({ code: link.code })).toBeNull();
+    // portaria que vira admin não troca nada (não havia o que esconder)
+    const again = await db.query.checkinLinks.findFirst({ where: eq(schema.checkinLinks.id, link.id) });
+    expect(await as(owner, () => P.setMemberRole(m!.id, "admin"))).toMatchObject({ ok: true });
+    expect((await db.query.checkinLinks.findFirst({ where: eq(schema.checkinLinks.id, link.id) }))?.token).toBe(again?.token);
   });
 
   it.fails("SEC-008: criar cupom no próprio evento não revela que um código já existe em evento de OUTRA produtora", async () => {
