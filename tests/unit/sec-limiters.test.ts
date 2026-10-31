@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * Os testes marcados com `it.fails` descrevem lacunas abertas (docs/security/findings/bots.md):
  * hoje o comportamento esperado NÃO acontece, então o teste "falha como previsto". Quando o AppSec
  * corrigir (fase 2), eles passam a falhar de verdade: troque `it.fails` por `it`.
- *   SEC-301: tentativas de código (e-mail e app autenticador) contadas com ler-e-gravar no KV
+ *   SEC-301: tentativas de código (e-mail e app autenticador) contadas com ler-e-gravar no KV (corrigido pelo AppSec:
+ *            contador atômico no banco, reservado antes de comparar; viraram `it`)
  *   SEC-302: limitador genérico (`allowHit`) não é atômico e libera quando o KV recusa a escrita
  */
 
@@ -54,6 +55,21 @@ vi.mock("@/db", async () => ({
   schema: await vi.importActual("@/db/schema"),
 }));
 
+/* contador atômico de tentativas (no servidor, uma transação no Postgres; ver tests/db/attempts.test.ts). Aqui, em
+ * memória: a soma acontece antes de qualquer await, então é atômica como a do banco. O que o teste confere é que
+ * checkCode/checkSecondFactor reservam a tentativa ANTES de comparar o palpite. */
+const tries = new Map<string, number[]>();
+vi.mock("@/lib/attempts", () => ({
+  reserveAttempt: async (subject: string, bucket: string, max: number, windowSec: number) => {
+    const k = `${subject}|${bucket}`, now = Date.now();
+    const list = (tries.get(k) ?? []).filter((t) => t > now - windowSec * 1000);
+    if (list.length >= max) { tries.set(k, list); return { ok: false }; }
+    list.push(now); tries.set(k, list);
+    return { ok: true, n: list.length };
+  },
+  clearAttempts: async (subject: string, bucket: string) => { tries.delete(`${subject}|${bucket}`); },
+}));
+
 /* TOTP de referência (RFC 6238), independente do código testado */
 const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 function unb32(s: string) {
@@ -77,7 +93,7 @@ const wrongOf = (right: string) => String((Number(right) + 500_000) % 1_000_000)
 const USER = "00000000-0000-4000-8000-0000000000a5";
 
 beforeEach(() => {
-  kv.clear(); mailed.length = 0; kvMode.latency = false; kvMode.failPut = false;
+  kv.clear(); tries.clear(); mailed.length = 0; kvMode.latency = false; kvMode.failPut = false;
   Object.assign(profile, { mfaMethod: null, mfaTotp: null, mfaRecovery: [] });
   vi.useFakeTimers({ now: new Date("2026-10-31T12:00:10Z"), toFake: ["Date"] });
 });
@@ -175,7 +191,7 @@ describe("códigos por e-mail (src/lib/mfa.ts: issueCode / checkCode)", () => {
     expect(await checkCode(USER, "bank", mailed[1].code)).toEqual({ ok: false, error: "O código expirou. Peça um novo." });
   });
 
-  it.fails("SEC-301: 20 códigos errados enviados ao mesmo tempo não passam de 5 conferências", async () => {
+  it("SEC-301: 20 códigos errados enviados ao mesmo tempo não passam de 5 conferências", async () => {
     const { checkCode, issueCode } = await import("@/lib/mfa");
     await issueCode(USER, "login", profile.email);
     const wrong = wrongOf(mailed[0].code);
@@ -215,7 +231,7 @@ describe("app autenticador (src/lib/mfa.ts: checkSecondFactor / verifyTotp)", ()
     expect(await checkSecondFactor(USER, "login", totpAt(secret, Date.now()))).toEqual({ ok: true, how: "totp" });
   });
 
-  it.fails("SEC-301: 30 tentativas simultâneas no app autenticador não passam de 6 conferências", async () => {
+  it("SEC-301: 30 tentativas simultâneas no app autenticador não passam de 6 conferências", async () => {
     const { checkSecondFactor } = await import("@/lib/mfa");
     const secret = await withTotp();
     const wrong = ["000000", "111111", "222222", "333333"].find((c) => ![-30_000, 0, 30_000].some((d) => totpAt(secret, Date.now() + d) === c))!;

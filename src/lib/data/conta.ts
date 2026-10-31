@@ -1,5 +1,5 @@
 import "server-only";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, notLike } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
@@ -22,5 +22,6 @@ export async function listOrders(userId: string) {
 }
 
 export async function listSecurityEvents(userId: string) {
-  return db.query.securityEvents.findMany({ where: eq(schema.securityEvents.userId, userId), orderBy: [desc(schema.securityEvents.createdAt)], limit: 15 });
+  // as tentativas de código (contador do SEC-301, tipo "try:…") não são acontecimentos para mostrar à pessoa
+  return db.query.securityEvents.findMany({ where: and(eq(schema.securityEvents.userId, userId), notLike(schema.securityEvents.kind, "try:%")), orderBy: [desc(schema.securityEvents.createdAt)], limit: 15 });
 }

@@ -4,6 +4,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { eq } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { db, schema } from "@/db";
+import { clearAttempts, reserveAttempt } from "@/lib/attempts";
 import { mailMfaCode } from "@/lib/notify";
 import { signingSecret } from "@/lib/signing-secret";
 
@@ -85,26 +86,46 @@ export async function issueCode(userId: string, purpose: CodePurpose, to: string
   if (!(await mailMfaCode(to, code, purpose, name))) return { ok: false, error: "Não conseguimos enviar o e-mail agora. Tente de novo." };
   await store.put(key, JSON.stringify({ h: hashCode(userId, purpose, code), n: 0, at: Date.now(), to } satisfies Stored), { expirationTtl: CODE_TTL });
   await store.put(countKey, String(sent + 1), { expirationTtl: 3600 });
+  // código novo, tentativas novas (o limite de envios por hora continua valendo)
+  await clearAttempts(userId, `code:${purpose}`);
   return { ok: true };
 }
 
-/** Confere o código do e-mail. Até 5 tentativas; depois disso é preciso pedir outro. */
+/** O contador não respondeu (banco fora): a tentativa é recusada, sem conferir o palpite. */
+const ATTEMPT_DOWN = "Não conseguimos conferir o código agora. Tente de novo em instantes.";
+
+/**
+ * Confere o código do e-mail. Até 5 tentativas; depois disso é preciso pedir outro.
+ * A tentativa é contada (de forma atômica, no banco) ANTES de comparar: palpites em paralelo não passam de 5 (SEC-301).
+ */
 export async function checkCode(userId: string, purpose: CodePurpose, code: string): Promise<{ ok: true; to: string } | { ok: false; error: string }> {
   const store = await kv();
   const key = `mfa:${purpose}:${userId}`;
   const s = await store.get<Stored>(key, "json");
   if (!s) return { ok: false, error: "O código expirou. Peça um novo." };
-  const clean = code.replace(/\D/g, "");
-  if (clean.length === 6 && same(s.h, hashCode(userId, purpose, clean))) {
-    await store.delete(key);
-    return { ok: true, to: s.to };
+  let at;
+  try {
+    at = await reserveAttempt(userId, `code:${purpose}`, MAX_TRIES, CODE_TTL);
+  } catch (e) {
+    console.error("mfa attempts", e);
+    return { ok: false, error: ATTEMPT_DOWN };
   }
-  if (s.n + 1 >= MAX_TRIES) {
+  if (!at.ok) {
     await store.delete(key);
     return { ok: false, error: "Código incorreto várias vezes. Peça um novo código." };
   }
-  await store.put(key, JSON.stringify({ ...s, n: s.n + 1 }), { expirationTtl: CODE_TTL });
-  return { ok: false, error: `Código incorreto. Você tem mais ${MAX_TRIES - s.n - 1} tentativa${MAX_TRIES - s.n - 1 === 1 ? "" : "s"}.` };
+  const clean = code.replace(/\D/g, "");
+  if (clean.length === 6 && same(s.h, hashCode(userId, purpose, clean))) {
+    await store.delete(key);
+    await clearAttempts(userId, `code:${purpose}`).catch(() => {});
+    return { ok: true, to: s.to };
+  }
+  const left = MAX_TRIES - at.n;
+  if (left <= 0) {
+    await store.delete(key);
+    return { ok: false, error: "Código incorreto várias vezes. Peça um novo código." };
+  }
+  return { ok: false, error: `Código incorreto. Você tem mais ${left} tentativa${left === 1 ? "" : "s"}.` };
 }
 
 /** Etapa já autorizada por código (ex.: trocar o e-mail), válida por 15 minutos. */
@@ -239,10 +260,15 @@ export async function checkSecondFactor(userId: string, purpose: CodePurpose, in
     const r = await checkCode(userId, purpose, input);
     return r.ok ? { ok: true, how: "email" } : r;
   }
-  const store = await kv();
-  const triesKey = `totp:tries:${userId}`;
-  const tries = Number((await store.get(triesKey)) ?? 0);
-  if (tries >= MAX_TOTP_TRIES) return { ok: false, error: "Muitas tentativas. Espere 5 minutos e tente de novo." };
+  // a tentativa conta antes de conferir, no banco e de forma atômica (SEC-301): 6 a cada 5 min, mesmo em paralelo
+  let at;
+  try {
+    at = await reserveAttempt(userId, "totp", MAX_TOTP_TRIES, 300);
+  } catch (e) {
+    console.error("mfa attempts", e);
+    return { ok: false, error: ATTEMPT_DOWN };
+  }
+  if (!at.ok) return { ok: false, error: "Muitas tentativas. Espere 5 minutos e tente de novo." };
   const p = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, userId), columns: { mfaTotp: true, mfaRecovery: true } });
   const clean = input.trim();
   if (/[a-z]/i.test(clean)) {
@@ -250,14 +276,13 @@ export async function checkSecondFactor(userId: string, purpose: CodePurpose, in
     const left = p?.mfaRecovery ?? [];
     if (left.includes(h)) {
       await db.update(schema.userProfiles).set({ mfaRecovery: left.filter((x) => x !== h) }).where(eq(schema.userProfiles.userId, userId));
-      await store.delete(triesKey);
+      await clearAttempts(userId, "totp").catch(() => {});
       return { ok: true, how: "recovery" };
     }
   } else if (p?.mfaTotp && (await verifyTotp(await openSecret(p.mfaTotp), clean, userId))) {
-    await store.delete(triesKey);
+    await clearAttempts(userId, "totp").catch(() => {});
     return { ok: true, how: "totp" };
   }
-  await store.put(triesKey, String(tries + 1), { expirationTtl: 300 });
   return { ok: false, error: /[a-z]/i.test(clean) ? "Código de recuperação inválido ou já usado." : "Código incorreto. Confira o horário do celular e o código da Tickets Win no app." };
 }
 
