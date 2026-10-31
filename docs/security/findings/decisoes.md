@@ -34,3 +34,58 @@ alter table coupons add constraint coupons_uses_chk check (uses >= 0);
 ### D-SEC-04-4 · Contestação (chargeback) (SEC-107, P3)
 - **Hoje:** `charge.dispute.created` não é tratado; com contestação aberta o ingresso segue válido.
 - **Opções:** (a) ouvir o evento e marcar o pedido "em contestação" para o produtor e a central decidirem (sem cancelar sozinho); (b) cancelar os ingressos ao abrir a contestação; (c) manter. **Recomendação:** (a). Exige adicionar o evento no webhook da Stripe (painel da Stripe, pelo dono).
+
+---
+
+## Agente 02 (Blue Team: infraestrutura, segredos, dependências, CI)
+
+Detalhes em `findings/blue-team.md`. Nenhum segredo foi girado, nenhuma configuração da Cloudflare/Neon/Stripe foi tocada e o bloqueio da CSP não foi ligado.
+
+### D-SEC-02-1 · Segredo mestre único e igual no desenvolvimento (SEC-200, P1 — urgente)
+- **Hoje:** `NEON_AUTH_COOKIE_SECRET` assina o cache de sessão do login **e** tudo o que é nosso (QR, portaria, banco, segunda etapa, cifra do app autenticador). O mesmo valor está em `.env.local`, `.dev.vars` e `.env.cloudflare` (conferido por igualdade, sem exibir). Quem tiver o valor se passa por qualquer conta, inclusive a central.
+- **Problema extra:** trocar o valor hoje quebra todos os QR já enviados (a portaria passa a aceitar só o código digitado), o 2FA por app de todo mundo (inclusive o seu) e os acessos da portaria.
+- **Opções:** (a) AppSec separa as chaves por finalidade, com chave anterior aceita por 60 dias e recifragem do TOTP; depois você gira na produção e põe um segredo próprio no desenvolvimento; (b) girar já, aceitando os efeitos acima (só se houver sinal de vazamento); (c) manter.
+- **Recomendação:** (a) nesta semana; (b) imediatamente se houver qualquer indício de que esses arquivos ou transcrições de sessão saíram do ambiente.
+
+### D-SEC-02-2 · Repositório público (SEC-201, P1)
+- **Hoje:** `lucashector-ai/ticket` está público: código, histórico e todos os relatórios de segurança, inclusive os achados ainda abertos desta operação, que são publicados a cada push.
+- **Opções:** (a) tornar privado (GitHub → Settings → General → Danger Zone → Change visibility) e conferir no painel da Cloudflare que o deploy continua (a integração usa o app do GitHub, que funciona com repositório privado); (b) manter público e tirar `docs/security` e `docs/quality-audit` do repositório; (c) manter.
+- **Recomendação:** (a), antes do próximo push com achado aberto. Não encontrei nenhum segredo no histórico (Gitleaks + busca manual).
+
+### D-SEC-02-3 · Senha do banco e papel da aplicação (SEC-203 P1, SEC-202 P2)
+- **Senha:** a senha do papel do banco apareceu em comandos de uma sessão anterior; você já foi orientado. Passos: Console do Neon → Roles → resetar a senha → `pnpm exec wrangler secret put DATABASE_URL` (colar quando pedir) → conferir o site → atualizar `.env.local`/`.dev.vars` se usarem esse papel. Status: **aguardando o dono**.
+- **Papel da aplicação:** hoje a produção usa o papel dono (`*_owner`), com poder de apagar tabelas. Proposta (testar primeiro no branch de teste, com `tests/db` rodando com a URL nova): criar o papel `app_rw` no Console do Neon (Roles; a senha é gerada lá) e aplicar:
+```sql
+grant usage on schema public to app_rw;
+grant select, insert, update, delete on all tables in schema public to app_rw;
+grant usage, select on all sequences in schema public to app_rw;
+alter default privileges in schema public grant select, insert, update, delete on tables to app_rw;
+alter default privileges in schema public grant usage, select on sequences to app_rw;
+grant usage on schema neon_auth to app_rw;
+grant select on neon_auth."user", neon_auth.account to app_rw;
+grant update (email, "emailVerified", name, "updatedAt") on neon_auth."user" to app_rw;
+```
+  (`alter default privileges` precisa rodar com o papel dono, que é quem cria as tabelas no `db:push`.) Depois: `DATABASE_URL` do Worker com `app_rw`; o papel dono fica só para `db:push`. Aproveitar a troca para resolver a senha exposta.
+- **Recomendação:** girar a senha já; papel novo na próxima janela, depois do teste.
+
+### D-SEC-02-4 · Separar desenvolvimento e produção (SEC-204, P2)
+- Tirar `DATABASE_URL_PROD` do `.env.local` e o arquivo `.env.cloudflare` da pasta do projeto (guardar num cofre de senhas); `pnpm db:push:prod` passa a receber a URL só na hora. Segredos próprios para desenvolvimento (inclui D-SEC-02-1). **Recomendação:** sim.
+
+### D-SEC-02-5 · Ligar o bloqueio da CSP (D-10, S-30)
+- Continua em Report-Only; não liguei. Minha leitura: o código está pronto (validado nos 3 navegadores na auditoria anterior; banners resolvidos na S-36). Falta só olhar no log do Worker se há avisos `csp` de `script-src` vindos da produção (scripts que a Cloudflare injeta, VLibras, Google/Apple).
+- **Recomendação:** mantida a (a) da D-10: uma semana de log sem aviso de `script-src` → `CSP_MODE=enforce` como variável do Worker (volta apagando a variável).
+
+### D-SEC-02-6 · HSTS para subdomínios (SEC-209, P3)
+- Hoje `max-age=31536000` sem `includeSubDomains`. Ligar protege todos os subdomínios (inclusive os que ainda vão existir) contra rebaixamento para HTTP, mas qualquer subdomínio sem HTTPS para de abrir por até 1 ano no navegador de quem visitou o site.
+- **Decidir:** confirmar que todos os subdomínios (DNS na Cloudflare, links de rastreio de e-mail, BIMI) servem HTTPS e, se sim, trocar para `max-age=31536000; includeSubDomains` em `next.config.ts` (o Blue Team aplica; a troca reinicia o `next dev`, por isso ficou para quando o servidor puder reiniciar). `preload` só depois de meses com `includeSubDomains`.
+
+### D-SEC-02-7 · Guarda de `security_events` (SEC-208, P3)
+- IP e aparelho guardados para sempre. **Proposta:** 1 ano (prazo para investigar fraude e contestação), poda no cron. Decidir junto com a retenção da D-03 (LGPD).
+
+### D-SEC-02-8 · Conferências no painel que só o dono pode fazer (SEC-210, SEC-213)
+- Neon: qual a janela de restauração para um momento (PITR) do plano; fazer uma restauração de teste num branch.
+- R2: confirmar que `onde-media` (tem PDFs de ingresso com QR) não tem acesso público (r2.dev ou domínio) nem listagem.
+- Cloudflare: guardar o log do Worker por mais tempo (Logpush) e criar alertas de erro do Worker (Notifications). Custo é decisão sua.
+
+### D-SEC-02-9 · Exceções do audit no CI (SEC-205)
+- O CI aceita até 31/12/2026 três avisos do SDK do Neon Auth (better-auth 1.7.6, zod 4.5.4) que não rodam no nosso Worker; depois disso volta a falhar até alguém reavaliar. Pendência sua: perguntar ao suporte do Neon (perguntas na D-06).
