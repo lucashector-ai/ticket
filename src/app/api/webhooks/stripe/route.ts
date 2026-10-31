@@ -4,7 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { fulfillOrder } from "@/lib/payments/fulfill";
 import { syncStripeRefund } from "@/lib/payments/refund";
-import { stripeEnabled, stripeRef, verifyStripeEvent } from "@/lib/payments/stripe";
+import { paidOf, stripeEnabled, stripeLiveMode, stripeRef, verifyStripeEvent } from "@/lib/payments/stripe";
 
 /*
  * Webhook da Stripe (Dashboard → Developers → Webhooks → Add endpoint):
@@ -50,6 +50,13 @@ export async function POST(req: Request) {
     return Response.json({ error: "assinatura inválida" }, { status: 400 });
   }
 
+  // evento de outro modo (teste × produção) assinado com o nosso segredo só chega por configuração errada: um
+  // pagamento de teste nunca confirma pedido de produção (nem o contrário)
+  if (event.livemode !== stripeLiveMode()) {
+    console.error("stripe webhook: modo do evento diferente da chave", event.id, event.livemode);
+    return Response.json({ ok: true, ignored: true });
+  }
+
   const store = await kv();
   const seenKey = `stw:${event.id}`;
   if (store && (await store.get(seenKey))) return Response.json({ ok: true, duplicate: true });
@@ -63,7 +70,7 @@ export async function POST(req: Request) {
           console.error("stripe webhook: pedido não encontrado", pi.id);
           break;
         }
-        const r = await fulfillOrder(o.id, { ref: stripeRef(pi.id), charged: true });
+        const r = await fulfillOrder(o.id, { ref: stripeRef(pi.id), charged: true, paid: paidOf(pi) });
         // outra chamada emitindo agora, ou o estorno automático falhou: 500 faz a Stripe repetir mais tarde
         if (!r.ok && (r.busy || r.retry)) return Response.json({ error: r.error }, { status: 500 });
         if (!r.ok) console.warn("stripe webhook: pedido não emitido", o.id, r.error);

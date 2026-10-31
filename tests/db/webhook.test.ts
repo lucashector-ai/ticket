@@ -20,7 +20,7 @@ function post(event: object, secret = SECRET) {
   const header = Stripe.webhooks.generateTestHeaderString({ payload, secret });
   return W.POST(new Request("http://localhost/api/webhooks/stripe", { method: "POST", body: payload, headers: { "stripe-signature": header } }));
 }
-const piEvent = (type: string, pi: string, orderId: string) => ({ id: `evt_${qaId("e").slice(-10)}`, object: "event", type, data: { object: { id: pi, object: "payment_intent", metadata: { orderId }, amount: 5000, amount_received: 5000 } } });
+const piEvent = (type: string, pi: string, orderId: string) => ({ id: `evt_${qaId("e").slice(-10)}`, object: "event", type, livemode: false, data: { object: { id: pi, object: "payment_intent", metadata: { orderId }, amount: 5000, amount_received: 5000, currency: "brl", livemode: false } } });
 
 describe.skipIf(!TEST_DB)("webhook da Stripe (banco de teste, sem rede)", () => {
   beforeAll(async () => {

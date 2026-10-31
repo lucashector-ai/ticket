@@ -11,7 +11,7 @@ import { ensureCustomer, ownCard } from "@/lib/payments/cards";
 import { eventClosedFor, fulfillOrder, paidView, type FulfillOk } from "@/lib/payments/fulfill";
 import { chargeCard } from "@/lib/payments/intents";
 import { releasePending } from "@/lib/payments/pending";
-import { stripe, stripeEnabled, stripeErrorMessage, stripeRef } from "@/lib/payments/stripe";
+import { paidOf, stripe, stripeEnabled, stripeErrorMessage, stripeRef } from "@/lib/payments/stripe";
 
 /*
  * Pagamento pela Stripe dentro do checkout. O pedido só vira pago quando a Stripe confirma: pelo webhook
@@ -157,7 +157,7 @@ export async function checkPayment(orderId: string): Promise<CheckResult> {
   try {
     const pi = await stripe().paymentIntents.retrieve(order.stripePaymentIntentId);
     if (pi.status === "succeeded") {
-      const done = await fulfillOrder(order.id, { ref: stripeRef(pi.id), charged: true });
+      const done = await fulfillOrder(order.id, { ref: stripeRef(pi.id), charged: true, paid: paidOf(pi) });
       if (done.ok) return { status: "paid", result: done };
       if (done.busy) return { status: "pending" };
       return { status: "closed", error: done.error };

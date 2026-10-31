@@ -16,6 +16,7 @@ import { abortOf as abortTx, ensure as ensureTx, lockKeys, runBatch } from "@/li
 import { trailInsert } from "@/lib/tickets/trail";
 import { meiaInOrder, meiaLockKey, meiaQuotaPaidOkSql, MEIA_SOLD_OUT } from "@/lib/meia-quota";
 import { salesEndedError } from "@/lib/tickets/sales-end";
+import type { PaidAmount } from "@/lib/payments/stripe";
 
 /*
  * Emissão dos ingressos de um pedido pago: a MESMA rotina para o webhook da Stripe, para a conferência
@@ -153,11 +154,17 @@ export async function eventClosedFor(eventId: string, typeIds: string[]): Promis
   return salesEndedError(ev, typeIds);
 }
 
+/** O valor e a moeda confirmados pela Stripe batem com o pedido? (o PaymentIntent é nosso, mas a emissão não confia nisso) */
+export const paidMatchesOrder = (paid: PaidAmount, order: { totalCents: number }) =>
+  paid.currency.toLowerCase() === "brl" && paid.amountCents === order.totalCents;
+
 /**
  * Confirma o pedido e emite os ingressos nominais.
  * `ref`: o que vai em orders.payment_ref (STRIPE-pi_…, TEST-…, FREE-…).
+ * `paid`: valor e moeda que a Stripe confirmou (webhook, conferência do checkout); se não baterem com o pedido,
+ * nada é emitido e o valor pago volta (estorno automático, como em qualquer pagamento que não pôde virar ingresso).
  */
-export async function fulfillOrder(orderId: string, pay: { ref: string; charged: boolean }): Promise<FulfillResult> {
+export async function fulfillOrder(orderId: string, pay: { ref: string; charged: boolean; paid?: PaidAmount }): Promise<FulfillResult> {
   const order = await db.query.orders.findFirst({ where: eq(orders.id, orderId), with: { items: true } });
   if (!order) return { ok: false, error: "Pedido não encontrado." };
   if (order.status === "paid") return (await paidView(order.id)) ?? { ok: false, error: "Pedido não encontrado." };
@@ -198,6 +205,12 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
     return { ok: false, error: `${why} Nada foi cobrado.` };
   };
 
+  // valor ou moeda confirmados diferentes do pedido (não deveria acontecer: o PaymentIntent nasce com o total do
+  // pedido): não emite e devolve o que foi pago; fica no log para conferência
+  if (pay.paid && !paidMatchesOrder(pay.paid, order)) {
+    console.error("fulfill: valor confirmado diferente do pedido", order.id, pay.paid.amountCents, pay.paid.currency, order.totalCents);
+    return fail("O valor pago não confere com o pedido.");
+  }
   // evento cancelado pelo produtor, ou que já terminou (o evento ou a data do ingresso), enquanto a pessoa pagava
   // (ex.: Pix pago depois): não emite; se houve cobrança, estorna (vale também para grupo e revenda)
   const closed = await eventClosedFor(order.eventId, order.items.map((i) => i.ticketTypeId));

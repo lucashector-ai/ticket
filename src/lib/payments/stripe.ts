@@ -58,6 +58,16 @@ export function isTestPayment(o: { paymentMethod?: string | null; method?: strin
 /** Referência gravada no pedido pago pela Stripe. */
 export const stripeRef = (paymentIntentId: string) => `STRIPE-${paymentIntentId}`;
 
+/** A chave configurada é de produção (cobra de verdade)? Eventos do webhook precisam ser do mesmo modo da chave. */
+export const stripeLiveMode = () => /^(sk|rk)_live_/.test(process.env.STRIPE_SECRET_KEY?.trim() ?? "");
+
+/** O que a Stripe diz que foi pago num PaymentIntent confirmado (conferido contra o pedido antes de emitir). */
+export type PaidAmount = { amountCents: number; currency: string };
+export const paidOf = (pi: { amount: number; amount_received?: number | null; currency: string }): PaidAmount => ({
+  amountCents: typeof pi.amount_received === "number" && pi.amount_received > 0 ? pi.amount_received : pi.amount,
+  currency: pi.currency,
+});
+
 /** Mensagens da Stripe em português para quem está comprando. */
 export function stripeErrorMessage(e: unknown): string {
   const err = e as { type?: string; code?: string; decline_code?: string; message?: string };
