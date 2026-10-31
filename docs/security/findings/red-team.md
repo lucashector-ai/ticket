@@ -14,17 +14,17 @@ Status usados: Hipótese · Confirmada · Em correção · Corrigida · Validada
 
 | ID | Sev. | Título | Status | Encaminhar |
 |---|---|---|---|---|
-| SEC-001 | **P1** | Conta da equipe (portaria/admin) conclui o "cadastro do produtor aprovado" e vira produtora sem aprovação da central | Confirmada (teste de banco) | AppSec |
+| SEC-001 | **P1** | Conta da equipe (portaria/admin) conclui o "cadastro do produtor aprovado" e vira produtora sem aprovação da central | CORRIGIDO, NÃO VALIDADO (`9c8f713`) | AppSec |
 | SEC-002 | P2 | Login com Apple assume conta criada por outra pessoa com o mesmo e-mail (não confirmada) e a marca como confirmada; a senha de quem criou continua valendo | Hipótese forte (código; NÃO TESTADO: Apple é terceiro) | AppSec + decisão do dono |
-| SEC-003 | P2 | Admin removido da equipe continua com todos os acessos de portaria que via no painel (token e código não mudam) | Confirmada (teste de banco) | AppSec |
-| SEC-004 | P2 | Sessão com 2FA por e-mail cadastra um app autenticador novo sem o código do e-mail (sessão roubada vira tomada da conta) | Confirmada (teste de banco) | AppSec |
+| SEC-003 | P2 | Admin removido da equipe continua com todos os acessos de portaria que via no painel (token e código não mudam) | CORRIGIDO, NÃO VALIDADO (`708a8ce`) | AppSec |
+| SEC-004 | P2 | Sessão com 2FA por e-mail cadastra um app autenticador novo sem o código do e-mail (sessão roubada vira tomada da conta) | CORRIGIDO, NÃO VALIDADO (`458fad2`) | AppSec |
 | SEC-005 | P2 | "Criar nova senha" pelo link não encerra as outras sessões (o comentário diz que encerra) | Hipótese (NÃO TESTADO: depende da configuração do Neon Auth, que é o da produção) | AppSec |
-| SEC-006 | P3 | `/api/auth/*` repassa ao Neon Auth endpoints que o site não usa (envio de código, redefinição de senha, link mágico) sem Turnstile nem o freio do site | Confirmada por código; efeito NÃO TESTADO (Neon Auth compartilhado) | AppSec / Agente 05 |
+| SEC-006 | P3 | `/api/auth/*` repassa ao Neon Auth endpoints que o site não usa (envio de código, redefinição de senha, link mágico) sem Turnstile nem o freio do site | CORRIGIDO, NÃO VALIDADO (`3ea2589`) | AppSec / Agente 05 |
 | SEC-007 | P3 | Convite de equipe é aceito sozinho: qualquer produtor põe qualquer conta confirmada na equipe dele, sem a pessoa aceitar | Confirmada (código + testes existentes) | decisão de produto + AppSec |
-| SEC-008 | P3 | Oráculo de cupons entre produtoras: criar cupom/evento responde "esse código já existe" para código de outro evento, sem limite | Confirmada (teste de banco) | AppSec |
-| SEC-009 | P3 | Público do e-mail marketing: "excluir quem comprou o evento X" aceita evento de outra produtora (descobre se um contato comprou no concorrente) | Confirmada por código | AppSec |
-| SEC-010 | P3 | Painel e e-mail marketing abertos a qualquer conta logada sem ser produtora (papel "dono" por padrão) | Confirmada por código | AppSec |
-| SEC-011 | P3 | Recursos pagos para qualquer conta logada: IA de descrição e de mapa (cota por conta) e detalhes do Google Places (`pickPlace`, sem cota) | Confirmada por código | Agente 05 |
+| SEC-008 | P3 | Oráculo de cupons entre produtoras: criar cupom/evento responde "esse código já existe" para código de outro evento, sem limite | PARCIAL: checkout CORRIGIDO, NÃO VALIDADO; criação aberta (schema, D-SEC-03-3) (`98bb01c`) | AppSec |
+| SEC-009 | P3 | Público do e-mail marketing: "excluir quem comprou o evento X" aceita evento de outra produtora (descobre se um contato comprou no concorrente) | CORRIGIDO, NÃO VALIDADO (`87cc3f3`) | AppSec |
+| SEC-010 | P3 | Painel e e-mail marketing abertos a qualquer conta logada sem ser produtora (papel "dono" por padrão) | CORRIGIDO, NÃO VALIDADO (`b92e206`) | AppSec |
+| SEC-011 | P3 | Recursos pagos para qualquer conta logada: IA de descrição e de mapa (cota por conta) e detalhes do Google Places (`pickPlace`, sem cota) | CORRIGIDO, NÃO VALIDADO (`a86a911`) | Agente 05 |
 | SEC-012 | P3 | Admin da equipe cancela o evento inteiro (estorno de todos os pedidos) e estorna pedidos: sem separação de função em relação ao dono | Confirmada por código (pode ser decisão de produto) | decisão do dono |
 
 **Por severidade:** P0: 0 · P1: 1 · P2: 4 · P3: 7.
@@ -72,7 +72,7 @@ Tentativas de escalonamento conferidas e barradas: cookie `tw_org` com id de out
 - **Identificador:** SEC-001
 - **Título:** Membro da equipe (portaria ou admin) conclui o "cadastro do produtor aprovado" e passa a ter produtora própria, com eventos vendáveis, sem inscrição nem aprovação.
 - **Severidade:** P1 (contorno da aprovação de produtor; mesma classe e mesma nota de S-02 e S-34).
-- **Status:** Confirmada (teste de banco; status de teste: FALHOU no comportamento seguro).
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `9c8f713`, ver `docs/security/security-fixes.md`. Antes: Confirmada (teste de banco; status de teste: FALHOU no comportamento seguro).
 - **Componente:** cadastro de produtor / autorização de função.
 - **Localização:** `src/lib/actions/onboarding.ts:46-71` (`finishOnboarding`, condição na linha 50); `src/app/produtores/cadastro/page.tsx:19-21`; causa em `src/lib/producer-apply.ts:26-30` (`producerStatus`) e `src/lib/data/producer.ts:13-23` (`isProducer`).
 - **Descrição:** `finishOnboarding` aceita `status === "approved"` **ou** `"producer"`. `producerStatus` devolve `"producer"` sempre que `isProducer(user)` é verdadeiro, e `isProducer` é verdadeiro para quem tem **qualquer** linha em `organizer_members` (admin ou portaria; inclusive convite pendente para o e-mail confirmado). A página `/produtores/cadastro` usa a mesma regra e abre o formulário para a portaria. Concluído o cadastro, a conta passa a ser dona de uma produtora com `onboarding` preenchido, que é exatamente o que a aprovação da central concede. Depois disso, `saveEvent` aceita evento novo e `saveEventAs` grava na produtora própria (a primeira da lista, papel dono). Sair (ou ser removida) da equipe não desfaz nada.
@@ -109,7 +109,7 @@ Tentativas de escalonamento conferidas e barradas: cookie `tw_org` com id de out
 - **Identificador:** SEC-003
 - **Título:** Remover um admin da equipe não troca token nem código dos acessos de portaria que ele via; com qualquer um deles ele continua entrando no app da portaria.
 - **Severidade:** P2 (exige ter sido admin; impacto: marcar ingressos como usados — quem pagou é barrado com "Ingresso já utilizado" — e ver o nome de todos os titulares, até um dia depois do fim do evento).
-- **Status:** Confirmada (teste de banco).
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `708a8ce`, ver `docs/security/security-fixes.md`. Antes: Confirmada (teste de banco).
 - **Componente:** equipe / portaria.
 - **Localização:** tela Equipe entrega token e código de todos os acessos ativos a dono **e admin** (`src/app/painel/equipe/page.tsx:19-21`, `:35`); `removeMember` só revoga os acessos pessoais criados pelo próprio removido (`src/lib/actions/painel.ts:177-197`); `activeAccess` aceita token ou código enquanto o acesso não for revogado (`src/lib/portaria.ts:50-59`).
 - **Descrição:** a S-06 cobriu o acesso pessoal do ex-membro. Mas o admin vê (e pode copiar) token e código de todos os acessos dos próximos eventos, inclusive os criados pela dona para a equipe da porta. Depois da remoção esses valores continuam iguais e válidos. Ele também pode, antes de sair, criar acessos com qualquer rótulo e e-mail, que não batem com a regra de revogação.
@@ -127,7 +127,7 @@ Tentativas de escalonamento conferidas e barradas: cookie `tw_org` com id de out
 - **Identificador:** SEC-004
 - **Título:** Com a sessão (já liberada) de alguém que usa código por e-mail, dá para cadastrar um app autenticador novo sem provar o fator atual; ligar o app numa conta sem 2FA também não pede reautenticação.
 - **Severidade:** P2 (exige sessão roubada; transforma o roubo temporário em tomada permanente: o próximo login da vítima pede o código do app do atacante, e "Esqueci a senha" não desliga o 2FA).
-- **Status:** Confirmada (teste de banco).
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `458fad2`, ver `docs/security/security-fixes.md`. Antes: Confirmada (teste de banco).
 - **Componente:** conta / verificação em duas etapas.
 - **Localização:** `src/lib/actions/conta.ts:260-288` (`startTotp`/`confirmTotp`): a conferência do fator atual só existe quando o método já é `totp` (`:263-266`). Comparar com `startEmailMfa` (`:218-229`), que exige o código do app para sair do app.
 - **Descrição:** `startTotp()` sem argumento devolve o QR para quem tem método `email` ou nenhum; `confirmTotp` com o código do app novo grava `mfaMethod = "totp"` e libera a sessão. O dono da conta recebe um e-mail de aviso, mas perde o acesso.
@@ -159,7 +159,7 @@ Tentativas de escalonamento conferidas e barradas: cookie `tw_org` com id de out
 - **Identificador:** SEC-006
 - **Título:** `/api/auth/[...path]` funciona como lista de bloqueio: tudo que não está em `BLOCKED` vai para o Neon Auth, inclusive envio de código e redefinição de senha.
 - **Severidade:** P3.
-- **Status:** Confirmada por código; efeito NÃO TESTADO (exigiria pedidos ao Neon Auth da produção, que dispara o webhook da produção e e-mails pela Resend).
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `3ea2589`, ver `docs/security/security-fixes.md`. Antes: Confirmada por código; efeito NÃO TESTADO (exigiria pedidos ao Neon Auth da produção, que dispara o webhook da produção e e-mails pela Resend).
 - **Componente:** autenticação (borda).
 - **Localização:** `src/app/api/auth/[...path]/route.ts:13-41`.
 - **Descrição:** o navegador do site só usa `get-session`, `sign-in/social` (Google), `callback/*` e `email-otp/verify-email` (`src/components/auth/*.tsx`, `src/components/compra/inline-auth.tsx`). Todo o resto que o site faz (esqueci a senha, reenviar ativação, OTP da Apple) é chamado **do servidor** direto no Neon Auth. Mesmo assim o proxy aceita, por exemplo, `email-otp/send-verification-otp`, `forget-password/email-otp`, `email-otp/reset-password`, `request-password-reset`/`forget-password`, `reset-password`, `send-verification-email`, `sign-in/magic-link` (se habilitados no Neon). Quem chama direto pula o Turnstile e o freio do site (`linkThrottled`, 30 s e 6/h por e-mail) e fica só com os limites do Neon. Em `request-password-reset`, o endereço de volta (`redirectTo`) vai no link do e-mail que o nosso webhook monta (`mailAuthLink`, `src/lib/notify.ts:100-107`); se a lista de domínios confiáveis do Neon estiver frouxa, o token iria para outro site (NÃO TESTADO).
@@ -173,7 +173,7 @@ Tentativas de escalonamento conferidas e barradas: cookie `tw_org` com id de out
 - **Identificador:** SEC-007
 - **Título:** Qualquer produtor coloca qualquer conta com e-mail confirmado na equipe dele (admin ou portaria) sem a pessoa aceitar.
 - **Severidade:** P3 (sozinho tem impacto baixo; é o que torna o SEC-001 trivial em escala).
-- **Status:** Confirmada (código; o próprio `tests/db/team.test.ts` usa esse comportamento).
+- **Status:** Confirmada (código; o próprio `tests/db/team.test.ts` usa esse comportamento). AppSec: não corrigido (precisa de tela de aceite); com o SEC-001 corrigido o convite não dá mais produtora própria a ninguém.
 - **Localização:** `src/lib/data/painel.ts:33-38` (`getPainelScope` grava `userId`/`acceptedAt` em todo convite pendente do e-mail confirmado na primeira chamada); `src/lib/data/producer.ts:13-23` (convite pendente já conta como produtor).
 - **Impacto:** a conta convidada passa a "ser produtora" (menu, `/produtores/cadastro`, SEC-001), aparece na produtora de outra pessoa e, se não tiver produtora própria, essa vira a ativa (eventos criados por ela iriam para a produtora de quem convidou).
 - **Correção recomendada:** aceite explícito (botão "Entrar na equipe de X" no painel ou link do e-mail), só então gravar `userId`/`acceptedAt`; `isProducer` deixa de contar convite pendente.
@@ -185,7 +185,7 @@ Tentativas de escalonamento conferidas e barradas: cookie `tw_org` com id de out
 - **Identificador:** SEC-008
 - **Título:** Criar cupom (ou salvar evento com cupom) responde "esse código já existe" para código de evento de outra produtora, sem limite de tentativas.
 - **Severidade:** P3 (exige conta de produtor ou admin; códigos de cupom são palavras escolhidas, fáceis de adivinhar por dicionário).
-- **Status:** Confirmada (teste de banco).
+- **Status:** PARCIAL: checkout CORRIGIDO, NÃO VALIDADO; criação aberta (schema, D-SEC-03-3) — AppSec, commit `98bb01c`, ver `docs/security/security-fixes.md`. Antes: Confirmada (teste de banco).
 - **Localização:** `src/lib/actions/painel.ts:129-130` (busca global por `code`); `src/lib/criar/save.ts:269-273` (devolve o código em conflito); checkout: `src/lib/actions/compra.ts:70-77` responde "Cupom não vale para este evento" (diferente de "inválido"), o que também revela a existência (com o limite de 20 erros por IP da S-14).
 - **Descrição / impacto:** um produtor descobre os cupons das concorrentes (ex.: `VIP100`, `STAFF`, cupons de 100%) e os vaza ou usa no evento delas; o limite por IP do `checkCoupon` (S-14) não vale nesse caminho.
 - **Evidência (sanitizada):** teste SEC-008: `{"resposta":{"ok":false,"error":"Esse código já existe. Escolha outro."}}`.
@@ -198,7 +198,7 @@ Tentativas de escalonamento conferidas e barradas: cookie `tw_org` com id de out
 
 - **Identificador:** SEC-009
 - **Título:** "Excluir quem comprou o evento X" aceita evento de qualquer produtora.
-- **Severidade:** P3. **Status:** Confirmada por código (sem teste dinâmico).
+- **Severidade:** P3. **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `87cc3f3`, teste `tests/db/sec-audience.test.ts`, ver `docs/security/security-fixes.md`. Antes: Confirmada por código (sem teste dinâmico).
 - **Localização:** `src/lib/mail/data.ts:138-142` (`exclude` aceita qualquer uuid); exposto por `audienceCount` (`src/lib/actions/emails.ts:128-133`).
 - **Descrição / impacto:** com um contato conhecido no público (ex.: o e-mail de alguém inscrito no "me avise" do próprio evento), o produtor compara a contagem com e sem `excludeBuyersOf = [evento da concorrente]` e descobre se aquela pessoa comprou lá. Dado pessoal de compra de outra controladora (LGPD).
 - **Correção recomendada:** filtrar `excludeBuyersOf` para os eventos da própria produtora (`own.has(id)`), como já é feito em `buyerIds`.
@@ -210,7 +210,7 @@ Tentativas de escalonamento conferidas e barradas: cookie `tw_org` com id de out
 - **Identificador:** SEC-010
 - **Título:** Conta sem produtora recebe papel "dono" por padrão e passa por `painelAccess` e pelo `scope()` do e-mail marketing.
 - **Severidade:** P3 (hoje não vaza dado de terceiros: os eventos são os criados pela própria conta; permite criar campanhas/modelos e mandar e-mail de teste para o próprio endereço).
-- **Status:** Confirmada por código.
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `b92e206`, ver `docs/security/security-fixes.md`. Antes: Confirmada por código.
 - **Localização:** `src/lib/data/painel.ts:42` (`role = active?.role ?? "owner"`); `src/lib/painel/access.ts:9-15` (não confere `isProducer`); `src/lib/actions/emails.ts:23-29`.
 - **Correção recomendada:** sem produtora e sem evento próprio, `getPainelScope` devolve um papel "nenhum" que `painelAccess`, `emails.scope`, `promoters.orgScope` e `launch.eventScope` recusam (defesa em profundidade; a S-02 tratou só as ações de dono).
 - **Teste de regressão proposto:** conta sem produtora: `createCampaign`/`saveTemplate` recusados e `/painel` redireciona.
@@ -220,7 +220,7 @@ Tentativas de escalonamento conferidas e barradas: cookie `tw_org` com id de out
 
 - **Identificador:** SEC-011
 - **Título:** IA de descrição (30/dia), IA de mapa (20/dia) e Google Places (`searchVenues` 300/dia; `pickPlace` **sem cota**) para qualquer conta, produtora ou não.
-- **Severidade:** P3. **Status:** Confirmada por código. Encaminhado ao Agente 05 (consumo).
+- **Severidade:** P3. **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `a86a911` (com o SEC-308), ver `docs/security/security-fixes.md`. Antes: Confirmada por código. Encaminhado ao Agente 05 (consumo).
 - **Localização:** `src/app/api/criar/descricao/route.ts:29-42`, `src/app/api/mapa/gerar/route.ts:45-59`, `src/lib/actions/criar.ts:31-60` e `:63-73` (`pickPlace`).
 - **Impacto:** custo (Anthropic, Google) multiplicado por contas criadas em série (o cadastro não exige confirmar o e-mail).
 - **Correção recomendada:** exigir produtora aprovada (ou e-mail confirmado + evento em rascunho) nessas rotas; cota diária também em `pickPlace` e cota por IP além da por conta.

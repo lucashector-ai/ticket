@@ -89,3 +89,58 @@ grant update (email, "emailVerified", name, "updatedAt") on neon_auth."user" to 
 
 ### D-SEC-02-9 · Exceções do audit no CI (SEC-205)
 - O CI aceita até 31/12/2026 três avisos do SDK do Neon Auth (better-auth 1.7.6, zod 4.5.4) que não rodam no nosso Worker; depois disso volta a falhar até alguém reavaliar. Pendência sua: perguntar ao suporte do Neon (perguntas na D-06).
+
+---
+
+## Agente 03 (AppSec, fase 2)
+
+Correções em `docs/security/security-fixes.md`. Nenhuma variável foi criada, nenhum segredo girado, nenhum schema alterado (nem no banco de teste).
+
+### D-SEC-03-0 · Antes de publicar: modo de teste de pagamento (SEC-100, aplica a D-SEC-04-1)
+- **O que muda:** sem `STRIPE_SECRET_KEY`, a produção **deixa de vender evento pago** em modo de teste ("Pagamento indisponível no momento"); ingresso grátis continua. 
+- **Decidir antes do deploy:** se a produção ainda não tem a chave e você quer manter a venda em modo de teste (D-07), crie no Worker a variável `ALLOW_TEST_PAYMENTS=1` (Cloudflare → Workers → ticket → Settings → Variables) antes ou junto da publicação. Para desligar depois: apagar a variável. Com a chave da Stripe configurada, a variável não tem efeito.
+
+### D-SEC-03-1 · Reserva de estoque e fila (SEC-305 restante, SEC-306) — regra comercial
+Aplicado sem mudar regra: até 3 eventos com pedido em andamento por conta; um pedido em andamento por CPF por evento. Para decidir:
+- **(a) Exigir e-mail confirmado para reservar/comprar** (`emailConfirmed` antes de `placeOrder` e do grupo). Contraria a D-08 ("conta não ativada pode comprar"). Corta a maior parte das contas descartáveis. Recomendação: sim nos eventos com fila ligada; ou geral.
+- **(b) Reserva do grupo de 60 para 20 min**, ou só segurar as vagas depois da primeira parte paga.
+- **(c) Fila:** liberação vale por 20 min (hoje vale para sempre) e fica presa à conta que comprou primeiro com ela (precisa de coluna `user_id` em `queue_entries`; SQL abaixo, não aplicado).
+```sql
+alter table queue_entries add column user_id text;
+```
+
+### D-SEC-03-2 · E-mail marketing exige e-mail confirmado (SEC-304) e a D-08
+Aplicado como pedido: o e-mail marketing (inclusive o teste) só funciona para produtor com e-mail confirmado. Produtor antigo sem e-mail confirmado (liberado pela D-08) perde **só** o e-mail marketing até digitar o código em Ativar conta (a tela manda para lá). Se preferir manter o envio para esses produtores, diga; a regra fica em `src/lib/actions/emails.ts` (`scope`).
+
+### D-SEC-03-3 · Cupom único por evento (SEC-008, criação) — schema
+Hoje `coupons.code` é único na plataforma, então criar um cupom diz se o código existe em outra produtora. Proposta (aplicar primeiro no banco de teste, depois na produção **antes** do código que busca por evento):
+```sql
+-- conferência (deve voltar 0): mesmo código em dois cupons do mesmo evento
+select event_id, code, count(*) from coupons group by event_id, code having count(*) > 1;
+drop index if exists coupons_code_idx;
+create unique index coupons_event_code_idx on coupons (event_id, code);
+```
+Depois disso o AppSec troca `findCoupon`/`createCoupon`/`saveEventAs` para buscar e conferir por (evento, código). Não aplicado.
+
+### D-SEC-03-4 · Contas que viraram produtoras pelo caminho do SEC-001 (produção, só leitura)
+```sql
+select o.id, o.name, o.owner_user_id, o.created_at
+from organizers o
+where o.onboarding is not null
+  and not exists (select 1 from producer_applications a where a.user_id = o.owner_user_id and a.status = 'approved')
+  and not exists (select 1 from events e where e.created_by_user_id = o.owner_user_id and e.created_at < o.created_at)
+  and exists (select 1 from organizer_members m where m.user_id = o.owner_user_id or lower(m.email) = (select lower(email) from neon_auth."user" u where u.id = o.owner_user_id));
+```
+Decidir o que fazer com cada uma (manter, pedir inscrição, suspender).
+
+### D-SEC-03-5 · Tetos de IA e Google (SEC-308, SEC-011)
+Valores iniciais em `src/lib/ai-quota.ts`: por conta 30 descrições, 20 mapas e 100 detalhes do Google por dia; na plataforma 1000, 300 e 3000 por dia. Ajustar ao orçamento.
+
+### D-SEC-03-6 · Pendências que dependem do Neon Auth ou de produto
+- **SEC-002 (Apple):** ao entrar com a Apple numa conta existente **não confirmada**, (a) recusar e pedir "Esqueci a senha"/ativação, ou (b) trocar a senha por uma aleatória e encerrar as sessões (API administrativa do Neon Auth). Recomendação: (a), simples e sem chamada administrativa. Conferir no console do Neon se o Google faz vínculo implícito.
+- **SEC-005:** conferir no console do Neon a opção de revogar sessões ao redefinir a senha.
+- **SEC-303:** conferir os plugins ligados (link mágico, e-mail OTP) e os domínios confiáveis no Neon Auth.
+- **SEC-312:** confirmar que `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` estão na produção; depois disso o AppSec liga a recusa sem chaves e a conferência do domínio.
+
+### D-SEC-03-7 · Rotação do segredo (SEC-200)
+Código pronto (chaves por finalidade, antigas aceitas). Plano passo a passo em `security-fixes.md` › SEC-200: `TW_SIGNING_SECRET` → alguns dias → `TW_LEGACY_SECRET` = valor atual do `NEON_AUTH_COOKIE_SECRET` + troca do `NEON_AUTH_COOKIE_SECRET` → apagar `TW_LEGACY_SECRET` quando não houver evento futuro com ingresso antigo. Nada foi girado.

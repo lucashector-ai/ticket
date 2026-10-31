@@ -10,17 +10,17 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 | ID | Sev. | Achado | Situação |
 |---|---|---|---|
-| SEC-300 | P1 | Login e cadastro sem limite próprio. O Neon Auth não recebe o IP de quem chama, e o Turnstile é a única barreira | Confirmada (código) · NÃO TESTADO em execução |
-| SEC-301 | P1 | Tentativas do código de 2FA (e-mail, app autenticador, banco e saque) contadas com "ler e depois gravar" no KV: pedidos simultâneos passam dos 5 ou 6 palpites | Confirmada (código + teste com KV simulado: 20 de 5 e 30 de 6) |
-| SEC-302 | P2 | O limitador genérico (`allowHit`) não é atômico e libera tudo quando o KV recusa a escrita | Confirmada (código + teste simulado: 30 de 12 e 20 de 12) |
-| SEC-303 | P1 | O proxy `/api/auth/*` repassa ao Neon Auth rotas de envio e conferência de código que não estão bloqueadas. Isso contorna o Turnstile e o freio da S-23 | Confirmada (código) · comportamento do Neon Auth hospedado: NÃO TESTADO (proibido) |
-| SEC-304 | P1 | E-mail de teste de campanha: qualquer conta logada manda e-mail com conteúdo, remetente e resposta livres, sem limite, para o próprio e-mail, que pode não ter sido confirmado | Confirmada (código) · NÃO TESTADO em execução |
-| SEC-305 | P1 | Estoque segurado sem pagar por contas descartáveis (15 min por pedido, 60 min por grupo). Evento grátis pode ser esgotado por robô | Confirmada (código) · NÃO TESTADO em execução |
+| SEC-300 | P1 | Login e cadastro sem limite próprio. O Neon Auth não recebe o IP de quem chama, e o Turnstile é a única barreira | CORRIGIDO, NÃO VALIDADO (freio próprio; Neon/Turnstile com o dono) (`0a0bcfa`) |
+| SEC-301 | P1 | Tentativas do código de 2FA (e-mail, app autenticador, banco e saque) contadas com "ler e depois gravar" no KV: pedidos simultâneos passam dos 5 ou 6 palpites | CORRIGIDO, NÃO VALIDADO (`e5445fd`) |
+| SEC-302 | P2 | O limitador genérico (`allowHit`) não é atômico e libera tudo quando o KV recusa a escrita | CORRIGIDO, NÃO VALIDADO (contato, upload e Google ainda no KV) (`7acb6bb`) |
+| SEC-303 | P1 | O proxy `/api/auth/*` repassa ao Neon Auth rotas de envio e conferência de código que não estão bloqueadas. Isso contorna o Turnstile e o freio da S-23 | CORRIGIDO, NÃO VALIDADO (`3ea2589`) |
+| SEC-304 | P1 | E-mail de teste de campanha: qualquer conta logada manda e-mail com conteúdo, remetente e resposta livres, sem limite, para o próprio e-mail, que pode não ter sido confirmado | CORRIGIDO, NÃO VALIDADO (`b92e206`) |
+| SEC-305 | P1 | Estoque segurado sem pagar por contas descartáveis (15 min por pedido, 60 min por grupo). Evento grátis pode ser esgotado por robô | PARCIAL: CORRIGIDO, NÃO VALIDADO (por conta e CPF); resto é decisão (D-SEC-03-1) (`7b0736b`) |
 | SEC-306 | P2 | Fila virtual: o cookie liberado vale para qualquer conta e para sempre, e `/api/fila` grava uma linha nova a cada pedido sem cookie | Confirmada (código) |
-| SEC-307 | P2 | Cupom: o pedido (`placeOrder`) confere o código sem contar os erros, e as mensagens revelam que o cupom existe | Confirmada (código) |
-| SEC-308 | P2 | IA (mapa e descrição): qualquer conta logada usa, com cota não atômica e sem teto global | Confirmada (código) |
-| SEC-309 | P2 | Troca de e-mail funciona como oráculo, sem limite, de quais e-mails têm conta | Confirmada (código) |
-| SEC-310 | P2 | Chaves por IP: IPv6 contado por endereço inteiro (troca trivial) e CGNAT compartilhado | Confirmada (código) |
+| SEC-307 | P2 | Cupom: o pedido (`placeOrder`) confere o código sem contar os erros, e as mensagens revelam que o cupom existe | CORRIGIDO, NÃO VALIDADO (`98bb01c`) |
+| SEC-308 | P2 | IA (mapa e descrição): qualquer conta logada usa, com cota não atômica e sem teto global | CORRIGIDO, NÃO VALIDADO (`a86a911`) |
+| SEC-309 | P2 | Troca de e-mail funciona como oráculo, sem limite, de quais e-mails têm conta | CORRIGIDO, NÃO VALIDADO (`d6ed990`) |
+| SEC-310 | P2 | Chaves por IP: IPv6 contado por endereço inteiro (troca trivial) e CGNAT compartilhado | PARCIAL: cadastro conta IPv6 pela /64 (0a0bcfa); demais limites por IP sem mudança (`0a0bcfa`) |
 | SEC-311 | P2 | "Me avise" e pré-venda aceitam e-mail de terceiros sem confirmação. Esses e-mails entram no público das campanhas e geram links de pré-venda | Confirmada (código) |
 | SEC-312 | P2 | Turnstile: falha aberta sem chaves, não confere o domínio e não cobre recuperação de senha, ativação, "me avise", newsletter nem emissão grátis | Confirmada (código) · produção NÃO TESTADO |
 | SEC-313 | P3 | Upload: qualquer conta logada envia 60 × 10 MB por hora, o corpo é lido inteiro antes do limite e os arquivos órfãos ficam públicos para sempre | Confirmada (código) |
@@ -30,8 +30,8 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 | SEC-317 | P3 | Rotas públicas que gravam sem limite: `/r/<código>` (cliques), newsletter e `/api/csp-report` | Confirmada (código) |
 | SEC-318 | P3 | Raspagem cara: `/explorar` lê todos os eventos a cada pedido, e prévia e arte geram imagem a cada chamada | Confirmada (código) |
 | SEC-319 | P3 | Busca no Spotify sem limite por conta: uma conta esgota a cota do app para todos | Confirmada (código) |
-| SEC-320 | P3 | Sem sinais de abuso: falhas de login, limitadores acionados e picos não são registrados nem alertados | Confirmada (código) |
-| SEC-321 | P3 | Contagem do público da campanha vira oráculo de sobreposição com compradores de outro produtor | Confirmada (código) |
+| SEC-320 | P3 | Sem sinais de abuso: falhas de login, limitadores acionados e picos não são registrados nem alertados | PARCIAL: login, cadastro e teto de IA registram k:"abuse" no log; alertas com o dono (`0a0bcfa`) |
+| SEC-321 | P3 | Contagem do público da campanha vira oráculo de sobreposição com compradores de outro produtor | CORRIGIDO, NÃO VALIDADO (`87cc3f3`) |
 
 **Total:** 0 P0 · 5 P1 · 8 P2 · 9 P3 (22 achados). Nenhum P0: os dois caminhos mais graves dependem de a senha já ter vazado (SEC-301) ou de um comportamento do Neon Auth hospedado que não pôde ser verificado (SEC-303).
 
@@ -39,7 +39,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-300 · Login e cadastro sem limite próprio; Neon Auth não vê o IP de quem chama
 - **Severidade:** P1
-- **Status:** Confirmada (análise de código) · NÃO TESTADO em execução (proibido: o login é o da produção). Se o Turnstile está ligado na produção: NÃO TESTADO (só o dono vê os secrets).
+- **Status:** CORRIGIDO, NÃO VALIDADO (freio próprio; Neon/Turnstile com o dono) — AppSec, commit `0a0bcfa`, ver `docs/security/security-fixes.md`. Antes: Confirmada (análise de código) · NÃO TESTADO em execução (proibido: o login é o da produção). Se o Turnstile está ligado na produção: NÃO TESTADO (só o dono vê os secrets).
 - **Componente:** autenticação (ações `signInWithEmail`, `signInInline`, `signUpWithEmail`, `signUpInline`)
 - **Localização:** `src/lib/actions/auth.ts:46-55`, `:57-74`, `:104-111`, `:114-128`. SDK: `node_modules/@neondatabase/auth/dist/server-i57Km2d6.mjs:960-985` (chamada do servidor) e `:1142-1148` (`PROXY_HEADERS`).
 - **Descrição:** a única barreira contra tentativas repetidas é o `verifyHuman` (Turnstile). Não há contador por e-mail, por conta nem por IP. Quem chama o Neon Auth é o nosso Worker, e o SDK só repassa `user-agent`, `authorization`, `referer`, `content-type` e `x-neon-client-info`, sem nenhum cabeçalho de IP (o próprio `mfa.ts:269` já observa que "o Neon Auth só vê o nosso servidor"). Qualquer limite por IP do Neon Auth (o better-auth tem um, por padrão) só pode fazer duas coisas: não proteger ninguém em particular, ou juntar todos os usuários no mesmo balde e travar o login de todo mundo quando um atacante o enche (**hipótese**, sem como confirmar sem falar com o Neon).
@@ -61,7 +61,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-301 · Tentativas do código de 2FA burláveis com pedidos simultâneos
 - **Severidade:** P1
-- **Status:** Confirmada (código) · VALIDADO em teste com KV simulado (`it.fails`, ver abaixo) · NÃO TESTADO contra o KV real
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `e5445fd`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código) · VALIDADO em teste com KV simulado (`it.fails`, ver abaixo) · NÃO TESTADO contra o KV real
 - **Componente:** verificação em duas etapas, banco e saque
 - **Localização:**
   - `src/lib/mfa.ts:92-108` (`checkCode`: lê `n` e regrava `n+1` **depois** de comparar);
@@ -93,7 +93,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-302 · Limitador genérico não atômico e com falha aberta
 - **Severidade:** P2
-- **Status:** Confirmada (código) · VALIDADO em teste simulado (`it.fails`)
+- **Status:** CORRIGIDO, NÃO VALIDADO (contato, upload e Google ainda no KV) — AppSec, commit `7acb6bb`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código) · VALIDADO em teste simulado (`it.fails`)
 - **Componente:** `src/lib/rate-limit.ts` e as cópias locais do mesmo padrão
 - **Localização:**
   - o limitador: `src/lib/rate-limit.ts:15-23` (`allowHit`), `:35-40` (`addHit`), com o `catch { /* sem KV: segue */ }` em `:21` e `:39`;
@@ -118,7 +118,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-303 · Proxy `/api/auth/*` repassa rotas de código e de "entrar sem senha" ao Neon Auth
 - **Severidade:** P1
-- **Status:** Confirmada (código), quanto às rotas que passam pelo nosso proxy. Hipótese, quanto ao que o Neon Auth hospedado faz com elas: NÃO TESTADO, porque mandar pedido ao login real é proibido.
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `3ea2589`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código), quanto às rotas que passam pelo nosso proxy. Hipótese, quanto ao que o Neon Auth hospedado faz com elas: NÃO TESTADO, porque mandar pedido ao login real é proibido.
 - **Componente:** proxy do login e webhook do Neon Auth
 - **Localização:** `src/app/api/auth/[...path]/route.ts:13` (`BLOCKED`), `:23-34` (`guard`). `src/app/api/webhooks/neon-auth/route.ts:44-50` (manda todo `send.otp` e `send.magic_link`). Freio da S-23 só nas ações: `src/lib/actions/senha.ts:15`, `src/lib/actions/auth.ts:151`.
 - **Descrição:**
@@ -158,7 +158,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-304 · E-mail de teste de campanha como disparo de phishing pelo domínio
 - **Severidade:** P1
-- **Status:** Confirmada (código) · NÃO TESTADO em execução (enviaria e-mail real pelo Resend)
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `b92e206`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código) · NÃO TESTADO em execução (enviaria e-mail real pelo Resend)
 - **Componente:** e-mail marketing do produtor
 - **Localização:**
   - `src/lib/actions/emails.ts:23-29` (`scope`: aceita qualquer sessão, menos portaria);
@@ -189,7 +189,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-305 · Estoque segurado sem pagar por contas descartáveis; evento grátis esgotável
 - **Severidade:** P1 (em lançamento disputado)
-- **Status:** Confirmada (código) · NÃO TESTADO em execução (exigiria muitas contas no Neon Auth)
+- **Status:** PARCIAL: CORRIGIDO, NÃO VALIDADO (por conta e CPF); resto é decisão (D-SEC-03-1) — AppSec, commit `7b0736b`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código) · NÃO TESTADO em execução (exigiria muitas contas no Neon Auth)
 - **Componente:** checkout, reservas e grupo
 - **Localização:**
   - `src/lib/actions/compra.ts:122-124` (só exige sessão), `:200` (12 pedidos em 10 min por conta), `:202` (um pedido aberto por evento por conta, `releaseOthers`), `:225` (reserva de 15 min);
@@ -234,7 +234,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-307 · Cupom: o pedido confere o código sem contar erros; mensagens revelam o cupom
 - **Severidade:** P2
-- **Status:** Confirmada (código)
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `98bb01c`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código)
 - **Componente:** cupom
 - **Localização:** `src/lib/actions/compra.ts:187-191` (`findCoupon` no `placeOrder`, sem `addHit`), `:200` (o limite de pedidos só conta depois do cupom), `:68-74` (mensagens "Cupom expirado.", "Cupom esgotado." e "Cupom não vale para este evento."), `:85-93` (`checkCoupon`: 20 erros em 10 min **por IP**).
 - **Descrição:**
@@ -254,7 +254,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-308 · IA (mapa e descrição): qualquer conta, cota não atômica, sem teto global
 - **Severidade:** P2
-- **Status:** Confirmada (código)
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `a86a911`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código)
 - **Componente:** `/api/mapa/gerar`, `/api/criar/descricao`
 - **Localização:** `src/app/api/mapa/gerar/route.ts:46-47` (só sessão), `:56-59` e `:80` (cota lida no início e gravada só depois de baixar e codificar a imagem), `:85-86` (modelo mais caro, `max_tokens: 16000`); `src/app/api/criar/descricao/route.ts:33-34` e `:39-42`.
 - **Descrição:**
@@ -277,7 +277,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-309 · Troca de e-mail como oráculo de contas
 - **Severidade:** P2
-- **Status:** Confirmada (código)
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `d6ed990`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código)
 - **Componente:** Minha conta → trocar e-mail
 - **Localização:** `src/lib/actions/conta.ts:113-118` (`emailTaken`), `:121-129` (`requestNewEmail`).
 - **Descrição:** depois de autorizar a troca (código no e-mail atual, válido por 15 min), `requestNewEmail` responde "Já existe uma conta com este e-mail." **antes** de gastar qualquer cota. Para e-mails sem conta, gasta a cota do `issueCode` (e passa a responder "Aguarde Xs…"), que é outra resposta. Dá para testar quantos e-mails quiser durante 15 min, e renovar a autorização 8 vezes por hora.
@@ -293,7 +293,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-310 · Chaves por IP: IPv6 por endereço inteiro e CGNAT
 - **Severidade:** P2
-- **Status:** Confirmada (código)
+- **Status:** PARCIAL: cadastro conta IPv6 pela /64 (0a0bcfa); demais limites por IP sem mudança — AppSec, commit `0a0bcfa`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código)
 - **Componente:** `clientIp` e todos os limites por IP
 - **Localização:** `src/lib/rate-limit.ts:6-9`; usado em `compra.ts:87` (cupom), `launch.ts:29` ("me avise"), `contato.ts:63-64`, `portaria.ts:26-27`.
 - **Descrição:** a chave é o endereço exato. No IPv6, quem tem uma rede /64 (comum em celular e fibra no Brasil) troca de endereço à vontade, e cada endereço novo ganha um balde novo. No IPv4 das operadoras móveis (CGNAT), milhares de pessoas dividem um endereço: o limite pune todas juntas. Exemplo: 20 cupons errados em 10 min numa operadora durante um lançamento com cupom divulgado. O código já reconhece o problema (comentários em `compra.ts:80-81` e `launch.ts:22`).
@@ -474,7 +474,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-320 · Sem sinais de abuso automatizado
 - **Severidade:** P3
-- **Status:** Confirmada (código)
+- **Status:** PARCIAL: login, cadastro e teto de IA registram k:"abuse" no log; alertas com o dono — AppSec, commit `0a0bcfa`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código)
 - **Componente:** observabilidade
 - **Localização:** `src/lib/mfa.ts:290-299` (`logSecurity` registra só os eventos de sucesso chamados pelas ações); `src/lib/rate-limit.ts` (limite acionado não é registrado); `src/lib/actions/auth.ts:51` (falha de login não registrada); `wrangler.jsonc` (`observability.enabled`, sem alertas).
 - **Descrição:** não há como ver uma campanha de credential stuffing, de cadastro em massa ou de chute de cupom: nada registra falhas nem limites acionados, e não há alerta.
@@ -491,7 +491,7 @@ Fase 1, revisão defensiva do código no branch `claude/auditoria-noturna` (base
 
 ### SEC-321 · Contagem do público como oráculo de compradores de outro produtor
 - **Severidade:** P3
-- **Status:** Confirmada (código)
+- **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `87cc3f3`, ver `docs/security/security-fixes.md`. Antes: Confirmada (código)
 - **Componente:** campanhas
 - **Localização:** `src/lib/mail/data.ts:138-142` (`excludeBuyersOf` aceita qualquer UUID, não só eventos próprios); `src/lib/actions/emails.ts:128-133` (`audienceCount`).
 - **Descrição:** um produtor monta um público com a sua lista e exclui "compradores do evento X" (de outro produtor). A diferença na contagem revela quantos e quais dos seus contatos compraram no concorrente: com um público de 1 pessoa, revela se aquela pessoa comprou.

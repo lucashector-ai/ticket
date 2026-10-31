@@ -10,7 +10,7 @@ Arquitetura completa: `docs/security/security-architecture.md`. Procedimentos: `
 
 | ID | Sev. | Título | Status | Quem trata |
 |---|---|---|---|---|
-| SEC-200 | **P1** | Um segredo só (`NEON_AUTH_COOKIE_SECRET`) assina sessão, 2FA, banco, portaria e QR, e o mesmo valor está nos arquivos de desenvolvimento deste ambiente; trocar hoje é destrutivo | Confirmada | AppSec (separar chaves) + dono (rotação) |
+| SEC-200 | **P1** | Um segredo só (`NEON_AUTH_COOKIE_SECRET`) assina sessão, 2FA, banco, portaria e QR, e o mesmo valor está nos arquivos de desenvolvimento deste ambiente; trocar hoje é destrutivo | CORRIGIDO, NÃO VALIDADO (código; rotação com o dono, D-SEC-03-7) (`52af1ba`) | AppSec (separar chaves) + dono (rotação) |
 | SEC-201 | **P1** | Repositório público no GitHub: código, histórico e relatórios de segurança (inclusive achados abertos desta operação) visíveis para qualquer pessoa | Confirmada | Dono |
 | SEC-202 | P2 | Produção usa o papel dono do banco (`*_owner`): DDL e acesso ao schema do login, sem menor privilégio | Confirmada | Dono + AppSec |
 | SEC-203 | P1 | Senha do papel do banco apareceu em comandos de uma sessão anterior (risco operacional) | Bloqueada (rotação depende do dono) | Dono |
@@ -32,7 +32,7 @@ Contagem: P0 0 · P1 3 (SEC-200, SEC-201, SEC-203) · P2 6 · P3 5.
 ## SEC-200 · Segredo mestre único, igual em desenvolvimento e produção
 
 - **Severidade:** P1 (vira P0 se houver indício de que os arquivos de ambiente deste ambiente saíram dele, como aconteceu com a senha do banco em SEC-203).
-- **Status:** Confirmada.
+- **Status:** CORRIGIDO, NÃO VALIDADO (código; rotação com o dono, D-SEC-03-7) — AppSec, commit `52af1ba`, ver `docs/security/security-fixes.md`. Antes: Confirmada.
 - **Componente:** login, 2FA, Banco Tickets Win, portaria, QR do ingresso, login com Apple.
 - **Localização:** `src/lib/auth/server.ts:10` (segredo do SDK do Neon Auth), `src/lib/signing-secret.ts:5-9` (o mesmo segredo para as assinaturas próprias), usado em `src/lib/mfa.ts:30-32` (cookie da segunda etapa, códigos), `src/lib/mfa.ts:193-196` (chave AES do segredo TOTP guardado no banco), `src/lib/bank.ts:211` (cookies do banco), `src/lib/portaria.ts:30` (cookie do aparelho), `src/lib/tickets/qr.ts:11` (assinatura do QR), `src/lib/auth/apple.ts:122-135` (cookie lacrado da volta da Apple).
 - **Descrição:** o SDK do Neon Auth usa `cookies.secret` para assinar um cache da sessão que ele aceita sem perguntar ao servidor de login. O código da Tickets Win reaproveita o mesmo valor para tudo o que assina ou cifra. Quem tiver esse valor consegue se passar por qualquer conta (inclusive a central, porque a segunda etapa também é um HMAC do mesmo segredo), abrir o banco de qualquer produtor e forjar o acesso da portaria. Nesta pasta, `.env.local`, `.dev.vars` e `.env.cloudflare` têm o **mesmo** valor, e `.env.cloudflare` tem a mesma URL de banco que `DATABASE_URL_PROD`, ou seja, é o arquivo da produção. O servidor local (banco de teste) assina com o segredo da produção.

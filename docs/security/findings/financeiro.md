@@ -8,12 +8,12 @@ Status: **NÃO TESTADO · BLOQUEADO · FALHOU · CORRIGIDO, NÃO VALIDADO · VAL
 
 | ID | Sev. | Título | Status |
 |---|---|---|---|
-| SEC-100 | P1 (P0 se a produção vender sem a chave) | Modo de teste liga sozinho quando falta `STRIPE_SECRET_KEY`, inclusive na produção | ABERTO, risco aceito pelo dono (D-07); decisão renovada em `decisoes.md` |
+| SEC-100 | P1 (P0 se a produção vender sem a chave) | Modo de teste liga sozinho quando falta `STRIPE_SECRET_KEY`, inclusive na produção | CORRIGIDO, NÃO VALIDADO (trava aplicada; ver D-SEC-03-0 antes do deploy) (`8979507`) |
 | SEC-101 | P2 | Emissão não conferia valor, moeda nem modo (teste/produção) do pagamento confirmado | CORRIGIDO, NÃO VALIDADO |
 | SEC-102 | P2 | Limite de usos do cupom não valia na reserva nem na confirmação | CORRIGIDO, NÃO VALIDADO |
 | SEC-103 | P3 | Portaria liberava ingresso de evento cancelado (reembolso em lotes) e não exigia pedido pago | CORRIGIDO, NÃO VALIDADO |
 | SEC-104 | P2 | Parte de grupo vendia acima da lotação | CORRIGIDO, NÃO VALIDADO |
-| SEC-105 | P2 | Lote pode ser reduzido abaixo de vendidos + vagas seguradas (causa do SEC-104 no editor) | ABERTO (encaminhado ao Agente 03: `src/lib/criar/save.ts`) |
+| SEC-105 | P2 | Lote pode ser reduzido abaixo de vendidos + vagas seguradas (causa do SEC-104 no editor) | CORRIGIDO, NÃO VALIDADO (`26b74fc`) |
 | SEC-106 | P3 | Repasse ao vendedor da revenda sem registro no sistema | ABERTO (decisão do dono) |
 | SEC-107 | P3 | Contestação (chargeback) não tratada: ingresso continua válido | ABERTO (decisão do dono) |
 | SEC-108 | P3 | Sem restrições CHECK de valores no banco | ABERTO (SQL proposto em `decisoes.md`) |
@@ -25,7 +25,7 @@ Nenhum P0 novo. Por severidade: P0 0 · P1 1 (aceito pelo dono) · P2 4 (3 corri
 
 ## SEC-100 · Modo de teste liga sozinho quando falta a chave da Stripe
 - **Severidade:** P1 de configuração. Vira **P0** (emissão de ingresso pago sem pagamento, para qualquer pessoa) se a produção estiver vendendo evento pago sem `STRIPE_SECRET_KEY`.
-- **Status:** ABERTO. Mesmo risco de S-18/D-07; o dono decidiu manter (rodada 2) enquanto a Stripe espera o CNPJ. Nada foi alterado. Renovado em `findings/decisoes.md` (D-SEC-04-1) com proposta pronta.
+- **Status:** CORRIGIDO, NÃO VALIDADO (trava aplicada; ver D-SEC-03-0 antes do deploy) — AppSec, commit `8979507`, ver `docs/security/security-fixes.md`. Antes: ABERTO. Mesmo risco de S-18/D-07; o dono decidiu manter (rodada 2) enquanto a Stripe espera o CNPJ. Nada foi alterado. Renovado em `findings/decisoes.md` (D-SEC-04-1) com proposta pronta.
 - **Componente:** pagamento / configuração.
 - **Localização:** `src/lib/payments/stripe.ts:16` (`stripeEnabled`), `src/lib/actions/compra.ts:284-293` (`confirmPayment`), `src/lib/actions/checkout.ts:31`.
 - **Descrição:** o servidor decide que é "teste" só pela ausência da variável `STRIPE_SECRET_KEY` em tempo de execução. Sem ela, "Já fiz o pagamento" (`confirmPayment`) emite ingressos válidos com referência `TEST-…`. Não há nada do navegador que ligue esse modo (não é parâmetro, cabeçalho nem cookie) e, com a chave presente, `confirmPayment` recusa pedido com valor (`compra.ts:291`), `payCard` e `checkPayment` só emitem com a Stripe confirmando, e o webhook responde 503 sem a chave.
@@ -82,7 +82,7 @@ Nenhum P0 novo. Por severidade: P0 0 · P1 1 (aceito pelo dono) · P2 4 (3 corri
 - **Risco residual:** ver SEC-105 (o editor deixa reduzir o lote abaixo das vagas seguradas; quem tinha a vaga e paga depois é estornado em vez de entrar acima da lotação).
 
 ## SEC-105 · Lote pode ser reduzido abaixo de vendidos + vagas seguradas
-- **Severidade:** P2. **Status:** ABERTO, encaminhado ao Agente 03 (fora do meu território).
+- **Severidade:** P2. **Status:** CORRIGIDO, NÃO VALIDADO — AppSec, commit `26b74fc`, teste `tests/db/sec-lot-reduce.test.ts`, ver `docs/security/security-fixes.md`. Antes: ABERTO, encaminhado ao Agente 03.
 - **Localização:** `src/lib/criar/save.ts:261` (só confere `qty < sold`).
 - **Correção sugerida:** recusar quantidade menor que `sold + vagas de grupos abertos + pedidos pendentes dentro da reserva` (as mesmas contas de `src/lib/holds.ts`), com a mensagem "Há N ingressos reservados em compras em andamento". Com o SEC-104 corrigido não há venda acima; o efeito hoje é estorno de quem já tinha a vaga.
 
