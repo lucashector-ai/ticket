@@ -57,6 +57,19 @@ describe.skipIf(!TEST_DB)("contador atômico de tentativas (banco de teste)", ()
     expect(await R.limitReached(miss, 3)).toBe(true);
   });
 
+  it("poda do cron: tentativa com mais de 2 dias sai; acontecimento de segurança fica", async () => {
+    const s = subject();
+    const { sql } = await import("drizzle-orm");
+    await D.db.insert(D.schema.securityEvents).values([
+      { userId: s, kind: "try:hit", createdAt: sql`now() - interval '3 days'` as never },
+      { userId: s, kind: "login", createdAt: sql`now() - interval '3 days'` as never },
+    ]);
+    expect(await A.pruneAttempts()).toBeGreaterThanOrEqual(1);
+    const { eq } = await import("drizzle-orm");
+    const left = await D.db.query.securityEvents.findMany({ where: eq(D.schema.securityEvents.userId, s) });
+    expect(left.map((x) => x.kind)).toEqual(["login"]);
+  });
+
   it("as tentativas não aparecem no histórico de segurança da pessoa", async () => {
     const s = subject();
     await A.reserveAttempt(s, "totp", 6, 300);

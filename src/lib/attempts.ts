@@ -60,3 +60,10 @@ export async function clearAttempts(subject: string, bucket: string) {
 
 /** Prefixo dos tipos de tentativa em security_events (fora do histórico que a pessoa vê). */
 export const ATTEMPT_KIND_PREFIX = "try:";
+
+/** Poda geral (cron): tentativas com mais de 2 dias, de qualquer balde (as de quem nunca voltou também saem). */
+export async function pruneAttempts() {
+  const { securityEvents: t } = schema;
+  const r = await db.delete(t).where(and(sql`${t.kind} like 'try:%'`, sql`${t.createdAt} < now() - interval '2 days'`)).returning({ id: t.id });
+  return r.length;
+}
