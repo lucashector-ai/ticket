@@ -58,6 +58,12 @@ export async function checkinTicket(input: string, eventIds: Set<string> | null,
     const why = ticket.status === "transferred" ? "transferido" : ticket.status === "refunded" ? "reembolsado" : "cancelado";
     return refused({ ok: false, status: 409, error: `Ingresso ${why}.`, ticket: info });
   }
+  // evento cancelado: os reembolsos correm em lotes (e um que falhou fica de fora até alguém tentar de novo), então o
+  // ingresso pode seguir "válido" por um tempo; a portaria não libera
+  if (ticket.event.status === "cancelled") return refused({ ok: false, status: 409, error: "Evento cancelado: este ingresso não dá entrada.", ticket: info });
+  // o ingresso só existe depois do pagamento confirmado (emissão na mesma transação que marca o pedido pago); se o
+  // pedido não está pago (estornado fora do painel, por exemplo), não entra
+  if (!ticket.order || ticket.order.status !== "paid") return refused({ ok: false, status: 409, error: "Pagamento deste ingresso não confirmado: procure a produção.", ticket: info });
   // evento de várias datas: o ingresso é de uma data (a sessão do tipo) e só entra nela
   if (ticket.ticketType.sessionId) {
     const sessions = await db.select({ id: schema.eventSessions.id, startAt: schema.eventSessions.startAt, doorsAt: schema.eventSessions.doorsAt, sortOrder: schema.eventSessions.sortOrder })
