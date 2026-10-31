@@ -11,6 +11,7 @@ import { AREA_KINDS, KIND_COLOR, MAX_AREAS, normalizePlan } from "@/lib/criar/pl
 import { meiaPriceError } from "@/lib/criar/meia";
 import { activeAccess, canEditEvent, PORTARIA_ONLY } from "@/lib/data/org-access";
 import { ownProducer } from "@/lib/producer-apply";
+import { heldByType } from "@/lib/holds";
 import {
   CATEGORY_KINDS, effTypes, eventSlug, limitOf, MAX_LIMIT, num, parseBrDateTime, parseCity, spDate, toCents,
   type DbMap, type Draft, type VenuePlace,
@@ -255,11 +256,18 @@ export async function saveEventAs(user: Producer, input: { draft: Draft; eventId
   for (const t of existing?.ticketTypes ?? []) {
     if (!keepTypes.has(t.id) && t.sold > 0) return fail(`"${t.name}" já tem ${t.sold} ingresso(s) vendido(s) e não pode ser removido.`, 5);
   }
+  // vagas seguradas agora (partes de grupo em aberto e compras dentro dos 15 min da reserva): reduzir o lote abaixo
+  // de vendidos + seguradas faria quem já tinha a vaga ser estornado ao pagar (SEC-105)
+  const held = existing ? await heldByType(existing.id) : new Map<string, number>();
   for (const k of wantTypeKeys) {
     const dbId = prevMap.types[k];
     const row = dbId ? ownTypes.get(dbId) : undefined;
     const t = allTypes.find((x) => x.id === k.split(":")[1])!;
     if (row && num(t.qty) < row.sold) return fail(`${t.name}: já foram vendidos ${row.sold}. A quantidade não pode ser menor.`, 5);
+    const h = row ? held.get(row.id) ?? 0 : 0;
+    if (row && h > 0 && num(t.qty) < row.sold + h) {
+      return fail(`${t.name}: há ${h} ${h === 1 ? "ingresso reservado" : "ingressos reservados"} em compras em andamento (e ${row.sold} vendidos). A quantidade não pode ser menor que ${row.sold + h} agora; tente de novo em alguns minutos.`, 5);
+    }
   }
   // tipo que sai: pedidos, ingressos, grupos e revenda apontam para ele (chave estrangeira sem cascata). Confere
   // ANTES de gravar qualquer coisa: o erro no meio deixava o evento salvo pela metade (e o reenvio duplicava tipos).
