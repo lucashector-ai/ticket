@@ -3,11 +3,11 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { AI_QUOTA, aiAllowed } from "@/lib/ai-quota";
 import { getSessionUser } from "@/lib/auth/server";
 import { AREA_KINDS, MAX_AREAS, normalizePlan, type AreaKind, type VenuePlan } from "@/lib/criar/plan";
 
 /** Gerações por produtor por dia (cada uma é uma chamada paga à API). */
-const DAILY_LIMIT = 20;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const inputSchema = z.object({
@@ -52,11 +52,10 @@ export async function POST(req: Request) {
   const { sketchUrl, prompt, sectors } = parsed.data;
   if (!sketchUrl && prompt.trim().length < 15) return NextResponse.json({ error: "Envie um rascunho ou descreva o espaço com mais detalhes." }, { status: 400 });
 
+  // só produtor confirmado, com cota por conta e teto da plataforma contados antes de qualquer trabalho (SEC-308)
+  const quota = await aiAllowed(user, "mapa");
+  if (!quota.ok) return NextResponse.json({ error: quota.error }, { status: quota.status });
   const { env } = await getCloudflareContext({ async: true });
-  const day = new Date().toISOString().slice(0, 10);
-  const quotaKey = `mapa-ia:${user.id}:${day}`;
-  const used = Number((await env.KV.get(quotaKey)) ?? 0);
-  if (used >= DAILY_LIMIT) return NextResponse.json({ error: `Limite de ${DAILY_LIMIT} gerações por dia atingido. Ajuste o mapa no editor ou tente amanhã.` }, { status: 429 });
 
   const content: Anthropic.Beta.BetaContentBlockParam[] = [];
   if (sketchUrl) {
@@ -77,7 +76,6 @@ export async function POST(req: Request) {
     ].filter(Boolean).join("\n\n"),
   });
 
-  await env.KV.put(quotaKey, String(used + 1), { expirationTtl: 60 * 60 * 26 });
   const client = new Anthropic({ apiKey });
   let message;
   try {
@@ -110,5 +108,5 @@ export async function POST(req: Request) {
       cap: a.lotacao, sector: a.setor_id,
     })),
   }, sectors.map((s) => s.id));
-  return NextResponse.json({ plan, remaining: DAILY_LIMIT - used - 1 });
+  return NextResponse.json({ plan, remaining: AI_QUOTA.mapa.perUser - quota.n });
 }

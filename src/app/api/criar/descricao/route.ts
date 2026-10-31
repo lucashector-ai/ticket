@@ -1,11 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { aiAllowed } from "@/lib/ai-quota";
 import { getSessionUser } from "@/lib/auth/server";
-
-/** Descrições por produtor por dia (cada uma é uma chamada paga à API). */
-const DAILY_LIMIT = 30;
 
 const inputSchema = z.object({
   title: z.string().trim().min(2).max(200),
@@ -35,11 +32,9 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Dê um nome ao evento antes de pedir a descrição." }, { status: 400 });
   const d = parsed.data;
 
-  const { env } = await getCloudflareContext({ async: true });
-  const quotaKey = `desc-ia:${user.id}:${new Date().toISOString().slice(0, 10)}`;
-  const used = Number((await env.KV.get(quotaKey)) ?? 0);
-  if (used >= DAILY_LIMIT) return NextResponse.json({ error: `Limite de ${DAILY_LIMIT} textos por dia atingido. Tente amanhã.` }, { status: 429 });
-  await env.KV.put(quotaKey, String(used + 1), { expirationTtl: 60 * 60 * 26 });
+  // só produtor confirmado, com cota por conta e teto da plataforma contados antes da chamada (SEC-308)
+  const quota = await aiAllowed(user, "desc");
+  if (!quota.ok) return NextResponse.json({ error: quota.error }, { status: quota.status });
 
   const facts = [
     `Nome: ${d.title}`, d.cat && `Tipo: ${d.cat}`, d.age && `Classificação: ${d.age}`, d.when && `Quando: ${d.when}`,

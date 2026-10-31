@@ -6,6 +6,7 @@ import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import type { DbMap, Draft, VenuePlace } from "@/lib/criar/model";
 import { saveEventAs, type SaveEventResult } from "@/lib/criar/save";
+import { aiAllowed } from "@/lib/ai-quota";
 import { autocompletePlaces, placeDetails, placesEnabled } from "@/lib/places";
 import { canCreateEvents, producerStatus } from "@/lib/producer-apply";
 
@@ -64,6 +65,8 @@ async function googleHits(userId: string, term: string, token: string): Promise<
 export async function pickPlace(placeId: string, token: string): Promise<{ city: string; place: VenuePlace } | null> {
   const user = await getSessionUser();
   if (!user || !placesEnabled() || !tokenOk(token) || !/^[\w-]{10,300}$/.test(placeId)) return null;
+  // detalhes do lugar são cobrados pelo Google: só produtor confirmado e com cota (SEC-011)
+  if (!(await aiAllowed(user, "places")).ok) return null;
   try {
     const p = await placeDetails(placeId, token);
     return p ? { city: `${p.city} – ${p.uf}`, place: p.place } : null;
