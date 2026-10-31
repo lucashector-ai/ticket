@@ -6,6 +6,8 @@ import { useToast } from "@/components/toast";
 const MSG: Record<string, string> = {
   erro: "Não foi possível entrar com a Apple. Tente de novo ou use seu e-mail.",
   cancelado: "Login com a Apple cancelado.",
+  // SEC-002: já existe conta com este e-mail, ainda não ativada; a Apple não entra nela
+  pendente: "Já existe uma conta com este e-mail que ainda não foi ativada. Entre com a senha e ative a conta com o código que enviamos, ou use “Esqueci a senha” para criar uma senha nova. Depois disso, a Apple funciona.",
 };
 
 export const appleHref = (next: string) => `/api/apple/start?next=${encodeURIComponent(next || "/")}`;

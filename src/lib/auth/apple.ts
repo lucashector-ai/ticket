@@ -141,11 +141,15 @@ export async function openApple(sealed: string | undefined): Promise<AppleDone |
  * sessão, com senha aleatória que ninguém conhece (se um dia quiser senha, a pessoa usa "Esqueci a senha").
  * Conta existente: código de "entrar" do Neon Auth, que o nosso webhook guarda em vez de mandar por e-mail.
  */
-export async function completeAppleSignIn(d: AppleDone): Promise<{ ok: true; to: string } | { ok: false; why: string }> {
+export async function completeAppleSignIn(d: AppleDone): Promise<{ ok: true; to: string } | { ok: false; why: string; pending?: true }> {
   const [{ sql }, { auth }, mfa, { mailWelcome }] = await Promise.all([import("drizzle-orm"), import("@/lib/auth/server"), import("@/lib/mfa"), import("@/lib/notify")]);
-  const found = await db.execute<{ id: string }>(sql`select id from neon_auth."user" where lower(email) = ${d.email} limit 1`).catch(() => null);
+  const found = await db.execute<{ id: string; emailVerified: boolean | null }>(sql`select id, "emailVerified" from neon_auth."user" where lower(email) = ${d.email} limit 1`).catch(() => null);
   if (!found) return { ok: false, why: "não foi possível consultar as contas" };
   const isNew = found.rows.length === 0;
+  // conta existente que ainda não confirmou o e-mail: pode ter sido criada por outra pessoa com o e-mail de quem agora
+  // entra com a Apple (pré-cadastro). Entrar nela e marcá-la como confirmada deixaria a senha do outro valendo (SEC-002).
+  // Não há vínculo: o dono do e-mail usa "Esqueci a senha" (troca a senha pelo link do e-mail) ou ativa a conta.
+  if (!isNew && found.rows[0].emailVerified !== true) return { ok: false, why: "conta existente com e-mail não confirmado", pending: true };
 
   let data: unknown;
   if (isNew) {
