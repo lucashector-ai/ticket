@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { qaId, TEST_DB } from "./setup";
+import { qaCpf, qaId, TEST_DB } from "./setup";
 
 /*
  * D-03 (decisão do dono): no checkout, caixa desmarcada "Quero receber novidades de <produtor> por e-mail".
@@ -26,7 +26,7 @@ async function event() {
 }
 const input = (slug: string, tt: string, u: U, producerOptIn?: boolean) => ({
   eventSlug: slug, items: [{ ticketTypeId: tt, quantity: 1 }], coupon: null,
-  buyer: { name: "Pessoa Teste", email: u.email, phone: "(11) 98765-4321", cpf: "529.982.247-25" },
+  buyer: { name: "Pessoa Teste", email: u.email, phone: "(11) 98765-4321", cpf: qaCpf() },
   holders: [{ ticketTypeId: tt, name: "Pessoa Teste", meia: false, me: true, email: null }],
   method: "pix" as const, installments: 1, groupShareId: null, resaleListingId: null, ...(producerOptIn === undefined ? {} : { producerOptIn }),
 });
