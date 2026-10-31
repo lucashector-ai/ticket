@@ -13,37 +13,25 @@ import Stripe from "stripe";
  *
  * Modo de teste (SEC-100): sem a chave, pedido com valor é confirmado pelo botão "Já fiz o pagamento"
  * (paymentRef TEST-…, nada é cobrado e a venda não entra no saldo sacável, mas o ingresso vale na portaria).
- * Por isso ele NÃO liga sozinho no site de produção: vale só quando testPaymentsAllowed() é verdadeira:
+ * Por isso ele NÃO liga sozinho em build de produção: vale só quando testPaymentsAllowed() é verdadeira:
  *
- *   sem STRIPE_SECRET_KEY  E  ( ALLOW_TEST_PAYMENTS=1   OU   o site não é o de produção )
+ *   sem STRIPE_SECRET_KEY  E  ( ALLOW_TEST_PAYMENTS=1   OU   não é build de produção )
  *
- *   "site de produção" = build de produção (NODE_ENV=production) com NEXT_PUBLIC_SITE_URL em ticketswin.com.br
- *   (ou sem NEXT_PUBLIC_SITE_URL, que cai no endereço da produção). O endereço vem da configuração, nunca do
- *   cabeçalho Host da requisição (que um *.workers.dev ou um proxy poderia trocar).
+ *   "build de produção" = NODE_ENV=production (next build / OpenNext). Não olha o endereço do site: as variáveis
+ *   NEXT_PUBLIC_* são gravadas no build, e um build feito com o .env.local levaria o endereço de desenvolvimento
+ *   para a produção (SEC-402). ALLOW_TEST_PAYMENTS é lida em tempo de execução (variável do Worker).
  *
  * Sem nenhuma das duas, o checkout de evento pago mostra "Pagamento indisponível no momento", placeOrder não
  * reserva e confirmPayment recusa. Ingresso grátis (total zero) não depende disso e continua funcionando.
- * `next dev`, os testes (NODE_ENV development/test) e qualquer ambiente com outro NEXT_PUBLIC_SITE_URL seguem
- * no modo de teste como antes. Para vender em modo de teste na produção (decisão do dono, D-SEC-04-1):
- * variável ALLOW_TEST_PAYMENTS=1 no Worker; apagar a variável desliga.
+ * `next dev` e os testes (NODE_ENV development/test) seguem no modo de teste como antes. Para vender em modo de
+ * teste num build de produção (decisão do dono, D-SEC-04-1): variável ALLOW_TEST_PAYMENTS=1 no Worker; apagar a
+ * variável desliga.
  */
 
 export const stripeEnabled = () => !!process.env.STRIPE_SECRET_KEY?.trim();
 
-/** Domínios do site de produção (sem o banco: ele não vende ingresso). */
-const PRODUCTION_HOSTS = new Set(["ticketswin.com.br", "www.ticketswin.com.br"]);
-
-/** Este servidor é o site de produção? Na dúvida (endereço ausente ou inválido num build de produção), é. */
-export function isProductionSite() {
-  if (process.env.NODE_ENV !== "production") return false;
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (!raw) return true;
-  try {
-    return PRODUCTION_HOSTS.has(new URL(raw).hostname.toLowerCase());
-  } catch {
-    return true;
-  }
-}
+/** Este servidor é um build de produção? (SEC-402: decidido só pelo NODE_ENV, nunca pelo endereço gravado no build.) */
+export const isProductionSite = () => process.env.NODE_ENV === "production";
 
 /**
  * Pode confirmar pedido com valor sem cobrança (modo de teste)? Ver o comentário do topo (SEC-100).

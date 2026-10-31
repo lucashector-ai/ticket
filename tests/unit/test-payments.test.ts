@@ -3,7 +3,7 @@ import { isProductionSite, paymentsAvailable, testPaymentsAllowed } from "@/lib/
 
 /*
  * SEC-100: o modo de teste de pagamento (confirmar pedido com valor sem cobrança) não liga sozinho no site de
- * produção quando falta a chave da Stripe. Só com ALLOW_TEST_PAYMENTS=1 (decisão do dono) ou fora da produção.
+ * produção quando falta a chave da Stripe. Só com ALLOW_TEST_PAYMENTS=1 (decisão do dono) ou fora de build de produção.
  */
 const prod = () => { vi.stubEnv("NODE_ENV", "production"); vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://ticketswin.com.br"); };
 
@@ -19,16 +19,14 @@ describe("SEC-100: testPaymentsAllowed", () => {
     expect(paymentsAvailable()).toBe(false);
   });
 
-  it("produção com www e sem NEXT_PUBLIC_SITE_URL (cai no endereço da produção): também recusa", () => {
+  it("SEC-402: build de produção com endereço de desenvolvimento gravado (ou sem endereço): também recusa", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("STRIPE_SECRET_KEY", "");
     vi.stubEnv("ALLOW_TEST_PAYMENTS", "");
-    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://www.ticketswin.com.br/");
-    expect(testPaymentsAllowed()).toBe(false);
-    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "");
-    expect(testPaymentsAllowed()).toBe(false);
-    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "não é url");
-    expect(testPaymentsAllowed()).toBe(false);
+    for (const url of ["http://localhost:3000", "http://localhost:3042", "https://ticketswin.com.br.example.com", "", "não é url"]) {
+      vi.stubEnv("NEXT_PUBLIC_SITE_URL", url);
+      expect(testPaymentsAllowed()).toBe(false);
+    }
   });
 
   it("produção com ALLOW_TEST_PAYMENTS=1: liberado (decisão explícita); outro valor não libera", () => {
@@ -40,17 +38,13 @@ describe("SEC-100: testPaymentsAllowed", () => {
     expect(testPaymentsAllowed()).toBe(false);
   });
 
-  it("fora da produção (next dev, testes ou outro endereço): liberado como antes", () => {
+  it("fora da produção (next dev e testes): liberado como antes", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
     vi.stubEnv("ALLOW_TEST_PAYMENTS", "");
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://ticketswin.com.br");
     expect(testPaymentsAllowed()).toBe(true);
-    vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3042");
-    expect(testPaymentsAllowed()).toBe(true);
-    // domínio parecido não engana a conferência (é outro site)
-    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://ticketswin.com.br.example.com");
+    vi.stubEnv("NODE_ENV", "test");
     expect(testPaymentsAllowed()).toBe(true);
   });
 
