@@ -10,7 +10,7 @@ import { cancelOrderForm } from "@/lib/actions/checkout-ui";
 import { getSessionUser } from "@/lib/auth/server";
 import { getOrderForUser } from "@/lib/data/user";
 import { brl, dateNice } from "@/lib/format";
-import { stripeEnabled } from "@/lib/payments/stripe";
+import { testPaymentsAllowed } from "@/lib/payments/stripe";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Pagamento" };
@@ -36,8 +36,8 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   const city = ev.venue ? `${ev.venue.city.name}, ${ev.venue.city.uf}` : "";
   const qty = order.items.reduce((s, i) => s + i.quantity, 0);
   const headerUser = { id: user.id, name: user.name, email: user.email, image: user.image };
-  /** pagamento de verdade ligado: esta página antiga não confirma pedido com valor (o checkout do evento cobra pela Stripe) */
-  const live = stripeEnabled() && order.totalCents > 0;
+  /** sem o modo de teste (Stripe ligada, ou produção sem ALLOW_TEST_PAYMENTS, SEC-100): esta página antiga não confirma pedido com valor */
+  const live = order.totalCents > 0 && !testPaymentsAllowed();
 
   return (
     <div className="pg-checkout">

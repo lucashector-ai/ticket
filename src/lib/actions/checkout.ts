@@ -7,7 +7,7 @@ import { db, schema } from "@/db";
 import { getSessionUser } from "@/lib/auth/server";
 import { confirmPayment } from "@/lib/actions/compra";
 import { releasePending } from "@/lib/payments/pending";
-import { stripeEnabled } from "@/lib/payments/stripe";
+import { PAYMENT_UNAVAILABLE, stripeEnabled, testPaymentsAllowed } from "@/lib/payments/stripe";
 
 const { orders } = schema;
 
@@ -29,6 +29,8 @@ export async function payOrder(orderId: string): Promise<CheckoutResult> {
   if (order.status !== "pending") return { error: "Este pedido não pode mais ser pago." };
   // com a Stripe ligada, pedido com valor só é pago de verdade (checkout do evento); aqui não há confirmação falsa
   if (stripeEnabled() && order.totalCents > 0) return { error: "Finalize a compra pelo checkout do evento, com Pix ou cartão." };
+  // sem a Stripe, o modo de teste só vale onde foi liberado (SEC-100)
+  if (order.totalCents > 0 && !testPaymentsAllowed()) return { error: PAYMENT_UNAVAILABLE };
   const r = await confirmPayment(order.id);
   return r.ok ? { redirect: `/meus-ingressos?pedido=${r.number}` } : { error: r.error };
 }

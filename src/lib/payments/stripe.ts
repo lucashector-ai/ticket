@@ -8,12 +8,58 @@ import Stripe from "stripe";
  *   STRIPE_PUBLISHABLE_KEY  pk_live_... / pk_test_...  (vai para o navegador como prop, sem NEXT_PUBLIC_)
  *   STRIPE_WEBHOOK_SECRET   whsec_...                  (assinatura do POST /api/webhooks/stripe)
  *
- * Sem STRIPE_SECRET_KEY o checkout segue no modo de teste (paymentRef TEST-…, nada é cobrado e a venda
- * não entra no saldo sacável). Com ela, pedido com valor só vira pago depois que a Stripe confirma.
+ * Com STRIPE_SECRET_KEY, pedido com valor só vira pago depois que a Stripe confirma.
  * As variáveis são lidas a cada chamada (Workers: os segredos chegam em runtime, não no build).
+ *
+ * Modo de teste (SEC-100): sem a chave, pedido com valor é confirmado pelo botão "Já fiz o pagamento"
+ * (paymentRef TEST-…, nada é cobrado e a venda não entra no saldo sacável, mas o ingresso vale na portaria).
+ * Por isso ele NÃO liga sozinho no site de produção: vale só quando testPaymentsAllowed() é verdadeira:
+ *
+ *   sem STRIPE_SECRET_KEY  E  ( ALLOW_TEST_PAYMENTS=1   OU   o site não é o de produção )
+ *
+ *   "site de produção" = build de produção (NODE_ENV=production) com NEXT_PUBLIC_SITE_URL em ticketswin.com.br
+ *   (ou sem NEXT_PUBLIC_SITE_URL, que cai no endereço da produção). O endereço vem da configuração, nunca do
+ *   cabeçalho Host da requisição (que um *.workers.dev ou um proxy poderia trocar).
+ *
+ * Sem nenhuma das duas, o checkout de evento pago mostra "Pagamento indisponível no momento", placeOrder não
+ * reserva e confirmPayment recusa. Ingresso grátis (total zero) não depende disso e continua funcionando.
+ * `next dev`, os testes (NODE_ENV development/test) e qualquer ambiente com outro NEXT_PUBLIC_SITE_URL seguem
+ * no modo de teste como antes. Para vender em modo de teste na produção (decisão do dono, D-SEC-04-1):
+ * variável ALLOW_TEST_PAYMENTS=1 no Worker; apagar a variável desliga.
  */
 
 export const stripeEnabled = () => !!process.env.STRIPE_SECRET_KEY?.trim();
+
+/** Domínios do site de produção (sem o banco: ele não vende ingresso). */
+const PRODUCTION_HOSTS = new Set(["ticketswin.com.br", "www.ticketswin.com.br"]);
+
+/** Este servidor é o site de produção? Na dúvida (endereço ausente ou inválido num build de produção), é. */
+export function isProductionSite() {
+  if (process.env.NODE_ENV !== "production") return false;
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!raw) return true;
+  try {
+    return PRODUCTION_HOSTS.has(new URL(raw).hostname.toLowerCase());
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Pode confirmar pedido com valor sem cobrança (modo de teste)? Ver o comentário do topo (SEC-100).
+ * Nunca com a Stripe configurada: aí o pagamento é sempre o de verdade.
+ */
+export function testPaymentsAllowed() {
+  if (stripeEnabled()) return false;
+  if (process.env.ALLOW_TEST_PAYMENTS?.trim() === "1") return true;
+  return !isProductionSite();
+}
+
+/** Há como pagar um pedido com valor agora (Stripe ou modo de teste liberado)? */
+export const paymentsAvailable = () => stripeEnabled() || testPaymentsAllowed();
+
+/** Mensagem única quando não há como pagar (sem nome de processador para o comprador). */
+export const PAYMENT_UNAVAILABLE = "Pagamento indisponível no momento. Tente de novo mais tarde.";
 
 /** Chave publicável para o Stripe.js; null quando a Stripe não está configurada. */
 export function stripePublishableKey() {

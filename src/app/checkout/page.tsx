@@ -18,7 +18,7 @@ import { queueAllows } from "@/lib/queue";
 import { heldByType } from "@/lib/holds";
 import { groupKey, meiaLeftByGroup } from "@/lib/meia-quota";
 import { lookupSpecial } from "@/lib/special";
-import { stripeEnabled, stripePublishableKey } from "@/lib/payments/stripe";
+import { paymentsAvailable, stripeEnabled, stripePublishableKey } from "@/lib/payments/stripe";
 import { pendingOrderFor, resumeView, type ResumeData } from "@/lib/payments/pending";
 
 export const dynamic = "force-dynamic";
@@ -164,6 +164,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         human={turnstileSiteKey()}
         apple={appleSignInEnabled()}
         stripeKey={stripeKey}
+        payOff={!paymentsAvailable()}
         hasSavedCards={!!stripeKey && !!profile?.stripeCustomerId}
         lock={special ? (special.kind === "grupo"
           ? { kind: "grupo", ref: { groupShareId: special.shareId }, query: `grupo=${encodeURIComponent(special.groupCode)}&vaga=${special.shareId}`, title: `Sua parte do grupo · vaga ${special.slot} de ${special.slots}`, note: "O preço é o do lote reservado pelo grupo. Cupom e meia-entrada não valem nas partes do grupo.", back: `/grupo/${special.groupCode}` }

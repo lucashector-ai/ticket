@@ -107,6 +107,8 @@ type Props = {
   apple?: boolean;
   /** chave publicável da Stripe: com ela o pagamento é de verdade; sem ela, modo de teste */
   stripeKey?: string | null;
+  /** não há como pagar pedido com valor agora (sem processador e sem o modo de teste liberado, SEC-100): grátis continua */
+  payOff?: boolean;
   /** pedido criado e ainda não pago (recarregou a página, voltou de Meus ingressos): continua nele */
   resume?: ResumeData | null;
   /** escolha nova feita na página do evento enquanto havia este pedido aberto (dá para trocar por ela) */
@@ -126,7 +128,7 @@ const UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "
 const PAID_KEY = "twPaid";
 let booted = false;
 
-export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, apple = false, stripeKey, resume, wanted, notice, hasSavedCards }: Props) {
+export function CompraFlow({ event, user, profile, initialQty, initialCoupon, initialStep, queueEventId, lock, human, apple = false, stripeKey, payOff = false, resume, wanted, notice, hasSavedCards }: Props) {
   const live = !!stripeKey;
   const router = useRouter();
   const { flash } = useToast();
@@ -1131,6 +1133,9 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
               {pay === "card" && step === "pagamento" && (
                 <span className="sm-inst">{price.installments === 1 ? "À vista no cartão" : `${price.installments}x de ${money(Math.round(price.total / price.installments))}${price.installments <= 3 ? " sem juros" : " com juros"}`}</span>
               )}
+              {payOff && !free && (step === "dados" || step === "pagamento") && (
+                <p className="err pay-off" role="status">Pagamento indisponível no momento. Tente de novo mais tarde.</p>
+              )}
               {(step === "dados" || step === "pagamento") && (
                 <div className={kb ? "ck-cta kb" : "ck-cta"}>
                 {!(step === "pagamento" && pay === "card" && price.installments === 1) && (
@@ -1142,7 +1147,7 @@ export function CompraFlow({ event, user, profile, initialQty, initialCoupon, in
                 <button
                   ref={ctaRef}
                   className={`go2 block tw-pay-btn${payPhase === "paying" ? " is-paying" : payPhase === "approved" ? " is-paying is-approved" : ""}`}
-                  type="button" onClick={() => void next()} disabled={busy || expired || payPhase !== "idle"} aria-live="polite"
+                  type="button" onClick={() => void next()} disabled={busy || expired || payPhase !== "idle" || (payOff && !free)} aria-live="polite"
                 >
                   {payPhase === "paying" && <span className="tw-spin" aria-hidden="true" />}
                   {payPhase === "approved" && <span className="tw-mini-check" aria-hidden="true" dangerouslySetInnerHTML={{ __html: MINI_CHECK }} />}
