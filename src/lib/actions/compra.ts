@@ -22,6 +22,7 @@ import { startPix, STRIPE_MIN_BRL_CENTS } from "@/lib/payments/intents";
 import { releaseOthers } from "@/lib/payments/pending";
 import { testPix } from "@/lib/payments/pix-test";
 import { stripeEnabled } from "@/lib/payments/stripe";
+import { couponHeldOkSql, couponLockKey } from "@/lib/payments/coupon";
 import { addHit, allowHit, clientIp, limitReached } from "@/lib/rate-limit";
 import { abortOf, ensure, lockKeys, runBatch } from "@/lib/payments/tx";
 
@@ -73,6 +74,9 @@ async function findCoupon(code: string, eventId: string) {
   if (c.eventId && c.eventId !== eventId) return { ok: false as const, error: "Cupom não vale para este evento." };
   return { ok: true as const, coupon: c };
 }
+
+/** o último uso do cupom está reservado por outro pedido em andamento (ou já foi usado) */
+const COUPON_TAKEN = "Este cupom esgotou: os últimos usos já estão em outros pedidos. Remova o cupom ou tente de novo em alguns minutos.";
 
 /** pedidos por conta a cada 10 min (trocar a forma de pagamento cria outro; uso normal fica bem abaixo) */
 const ORDERS_PER_10MIN = 12;
@@ -213,7 +217,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const meiaUse = special ? new Map() : meiaInOrder(ev.ticketTypes, lines, cleanHolders);
   const meiaGroups = [...meiaUse.values()].map((x) => x.group);
   const steps: BatchItem<"pg">[] = [];
-  if (!special) steps.push(lockKeys([...stockLockKeys(typeIds), ...meiaGroups.map((g) => meiaLockKey(ev.id, g))]));
+  // cupom com limite de usos: trava do cupom junto, conferência depois de gravar (o pedido segura um uso, como o lugar)
+  const couponCap = couponRow?.maxUses != null ? couponRow.id : null;
+  if (!special) steps.push(lockKeys([...stockLockKeys(typeIds), ...meiaGroups.map((g) => meiaLockKey(ev.id, g)), ...(couponCap ? [couponLockKey(couponCap)] : [])]));
   const at = steps.length;
   steps.push(db.insert(orders).values({
     id: orderId, userId: user.id, eventId: ev.id, status: "pending",
@@ -235,6 +241,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   }))));
   if (!special) steps.push(ensure(capacityOkSql(ev.id, typeIds), "stock"));
   if (meiaGroups.length) steps.push(ensure(meiaQuotaOkSql(ev.id, meiaGroups), "meia"));
+  if (couponCap) steps.push(ensure(couponHeldOkSql(couponCap), "coupon"));
   let order: typeof orders.$inferSelect;
   try {
     const res = await runBatch(steps);
@@ -242,6 +249,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   } catch (e) {
     if (abortOf(e) === "stock") return { ok: false, error: "Outra pessoa acabou de reservar os últimos ingressos deste tipo. Confira o que ainda resta e tente de novo." };
     if (abortOf(e) === "meia") return { ok: false, error: MEIA_SOLD_OUT };
+    if (abortOf(e) === "coupon") return { ok: false, error: COUPON_TAKEN };
     throw e;
   }
 

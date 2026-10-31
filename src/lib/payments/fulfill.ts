@@ -17,6 +17,7 @@ import { trailInsert } from "@/lib/tickets/trail";
 import { meiaInOrder, meiaLockKey, meiaQuotaPaidOkSql, MEIA_SOLD_OUT } from "@/lib/meia-quota";
 import { salesEndedError } from "@/lib/tickets/sales-end";
 import type { PaidAmount } from "@/lib/payments/stripe";
+import { couponPaidOkSql } from "@/lib/payments/coupon";
 
 /*
  * Emissão dos ingressos de um pedido pago: a MESMA rotina para o webhook da Stripe, para a conferência
@@ -102,7 +103,7 @@ export async function paidView(orderId: string): Promise<FulfillOk | null> {
  * grupo) viram comandos `ensure` dentro da transação: quando não passam, provocam um erro proposital
  * (TW_ABORT:<motivo>) que desfaz tudo e diz o motivo.
  */
-type Abort = "order" | "presale" | "share" | "share_one" | "stock" | "limit" | "listing" | "ticket" | "meia";
+type Abort = "order" | "presale" | "share" | "share_one" | "stock" | "limit" | "listing" | "ticket" | "meia" | "coupon";
 const ensure = (ok: SQL, why: Abort, withClause?: SQL) => ensureTx(ok, why, withClause);
 const abortOf = (e: unknown) => abortTx(e) as Abort | null;
 
@@ -300,7 +301,11 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
     }),
     ...gifts.map((g) => ({ ticketId: g.ticketId, kind: "presente" as const, code: codeOf.get(g.ticketId) ?? null, fromUserId: order.userId, toEmail: g.toEmail, holderName: giftTo.get(g.ticketId)?.name ?? null, orderId: order.id, refId: g.id })),
   ]));
-  if (order.couponId) steps.push(db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId)));
+  if (order.couponId) {
+    steps.push(db.update(coupons).set({ uses: sql`${coupons.uses} + 1` }).where(eq(coupons.id, order.couponId)));
+    // limite de usos do cupom: os pedidos que reservaram um uso cabem; o que confirma depois da reserva vencida não
+    steps.push(ensure(couponPaidOkSql(order.couponId), "coupon"));
+  }
   // depois da baixa: vendidos + vagas seguradas por grupos cabem na lotação (a parte de grupo segurada entra direto)
   if (!held) {
     steps.push(ensure(sql`not exists (
@@ -330,6 +335,7 @@ export async function fulfillOrder(orderId: string, pay: { ref: string; charged:
     if (why === "share_one") return fail(ONE_SHARE);
     if (why === "limit") return fail((await limitMsg()) ?? "Você chegou ao limite de ingressos por pessoa deste evento.");
     if (why === "meia") return fail(MEIA_SOLD_OUT);
+    if (why === "coupon") return fail("O cupom deste pedido esgotou antes da confirmação do pagamento.");
     return fail(pay.charged && order.expiresAt && order.expiresAt < new Date()
       ? "A reserva venceu antes da confirmação do pagamento e os ingressos esgotaram."
       : "Os ingressos esgotaram enquanto você pagava.");
